@@ -51,9 +51,6 @@ let list_of_charset cs =
   !res
 
 let print_charset oc cs =
-  match cs with
-  | None -> Printf.fprintf oc "None"
-  | Some cs ->
       begin
         Printf.fprintf oc "{";
         for i = 0 to 255 do

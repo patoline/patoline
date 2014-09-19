@@ -1,5 +1,5 @@
 open Input
-open Glr
+open Decap
 open Charset
 open Ast_helper
 open Asttypes
@@ -94,14 +94,14 @@ module Make(Initial:Extension) =
     let float_lit_no_dec = "[0-9][0-9_]*[eE][+-]?[0-9][0-9_]*"
     let float_re = union_re [float_lit_no_dec; float_lit_dec]
     let float_literal =
-      Glr.alternatives'
-        [Glr.apply (fun f  -> f)
-           (Glr.regexp ~name:"float" float_re (fun groupe  -> groupe 0));
-        Glr.fsequence (Glr.char '$' '$')
-          (Glr.fsequence (Glr.string "float" "float")
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$')
+      Decap.alternatives'
+        [Decap.apply (fun f  -> f)
+           (Decap.regexp ~name:"float" float_re (fun groupe  -> groupe 0));
+        Decap.fsequence (Decap.char '$' '$')
+          (Decap.fsequence (Decap.string "float" "float")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence (expression_lvl (next_exp App))
+                   (Decap.char '$' '$')
                    (fun e  _  _  _  _  -> string_of_float (push_pop_float e)))))]
     let char_regular = "[^\\']"
     let string_regular = "[^\\\"]"
@@ -110,10 +110,10 @@ module Make(Initial:Extension) =
     let char_hex = "[\\\\][x][0-9a-fA-F][0-9a-fA-F]"
     exception Illegal_escape of string
     let one_char is_char =
-      Glr.alternatives'
-        (let y = (Glr.apply (fun c  -> '\n') (Glr.char '\n' '\n')) ::
+      Decap.alternatives'
+        (let y = (Decap.apply (fun c  -> '\n') (Decap.char '\n' '\n')) ::
            (let y =
-              [Glr.apply
+              [Decap.apply
                  (fun c  ->
                     match c.[1] with
                     | 'n' -> '\n'
@@ -122,51 +122,52 @@ module Make(Initial:Extension) =
                     | 'r' -> '\r'
                     | 's' -> ' '
                     | c -> c)
-                 (Glr.regexp ~name:"char_escaped" char_escaped
+                 (Decap.regexp ~name:"char_escaped" char_escaped
                     (fun groupe  -> groupe 0));
-              Glr.apply
+              Decap.apply
                 (fun c  ->
                    let str = String.sub c 1 3 in
                    let i = Scanf.sscanf str "%i" (fun i  -> i) in
                    if i > 255
                    then raise (Illegal_escape str)
                    else char_of_int i)
-                (Glr.regexp ~name:"char_dec" char_dec
+                (Decap.regexp ~name:"char_dec" char_dec
                    (fun groupe  -> groupe 0));
-              Glr.apply
+              Decap.apply
                 (fun c  ->
                    let str = String.sub c 2 2 in
                    let str' = String.concat "" ["0x"; str] in
                    let i = Scanf.sscanf str' "%i" (fun i  -> i) in
                    char_of_int i)
-                (Glr.regexp ~name:"char_hex" char_hex
+                (Decap.regexp ~name:"char_hex" char_hex
                    (fun groupe  -> groupe 0))] in
             if not is_char
             then
-              (Glr.apply (fun c  -> c.[0])
-                 (Glr.regexp ~name:"string_regular" string_regular
+              (Decap.apply (fun c  -> c.[0])
+                 (Decap.regexp ~name:"string_regular" string_regular
                     (fun groupe  -> groupe 0)))
               :: y
             else y) in
          if is_char
          then
-           (Glr.apply (fun c  -> c.[0])
-              (Glr.regexp ~name:"char_regular" char_regular
+           (Decap.apply (fun c  -> c.[0])
+              (Decap.regexp ~name:"char_regular" char_regular
                  (fun groupe  -> groupe 0)))
            :: y
          else y)
     let char_literal =
-      Glr.alternatives'
-        [Glr.apply (fun r  -> r)
+      Decap.alternatives'
+        [Decap.apply (fun r  -> r)
            (change_layout
-              (Glr.fsequence (Glr.char '\'' '\'')
-                 (Glr.sequence (one_char true) (Glr.char '\'' '\'')
+              (Decap.fsequence (Decap.char '\'' '\'')
+                 (Decap.sequence (one_char true) (Decap.char '\'' '\'')
                     (fun c  _  _  -> c))) no_blank);
-        Glr.fsequence (Glr.char '$' '$')
-          (Glr.fsequence (Glr.string "char" "char")
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$') (fun e  _  _  _  _  -> push_pop_char e))))]
+        Decap.fsequence (Decap.char '$' '$')
+          (Decap.fsequence (Decap.string "char" "char")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence (expression_lvl (next_exp App))
+                   (Decap.char '$' '$')
+                   (fun e  _  _  _  _  -> push_pop_char e))))]
     let interspace = "[ \t]*"
     let string_literal =
       let char_list_to_string lc =
@@ -179,95 +180,98 @@ module Make(Initial:Extension) =
            | x::l -> (Bytes.unsafe_set str i x; ptr := l))
         done;
         Bytes.unsafe_to_string str in
-      Glr.alternatives'
-        [Glr.apply (fun r  -> r)
+      Decap.alternatives'
+        [Decap.apply (fun r  -> r)
            (change_layout
-              (Glr.fsequence (Glr.char '"' '"')
-                 (Glr.fsequence
-                    (Glr.apply List.rev
-                       (Glr.fixpoint []
-                          (Glr.apply (fun x  l  -> x :: l) (one_char false))))
-                    (Glr.sequence
-                       (Glr.apply List.rev
-                          (Glr.fixpoint []
-                             (Glr.apply (fun x  l  -> x :: l)
-                                (Glr.fsequence (Glr.char '\\' '\\')
-                                   (Glr.fsequence (Glr.char '\n' '\n')
-                                      (Glr.sequence
-                                         (Glr.regexp ~name:"interspace"
+              (Decap.fsequence (Decap.char '"' '"')
+                 (Decap.fsequence
+                    (Decap.apply List.rev
+                       (Decap.fixpoint []
+                          (Decap.apply (fun x  l  -> x :: l) (one_char false))))
+                    (Decap.sequence
+                       (Decap.apply List.rev
+                          (Decap.fixpoint []
+                             (Decap.apply (fun x  l  -> x :: l)
+                                (Decap.fsequence (Decap.char '\\' '\\')
+                                   (Decap.fsequence (Decap.char '\n' '\n')
+                                      (Decap.sequence
+                                         (Decap.regexp ~name:"interspace"
                                             interspace
                                             (fun groupe  -> groupe 0))
-                                         (Glr.apply List.rev
-                                            (Glr.fixpoint []
-                                               (Glr.apply
+                                         (Decap.apply List.rev
+                                            (Decap.fixpoint []
+                                               (Decap.apply
                                                   (fun x  l  -> x :: l)
                                                   (one_char false))))
                                          (fun _  lc  _  _  -> lc)))))))
-                       (Glr.char '"' '"')
+                       (Decap.char '"' '"')
                        (fun lcs  _  lc  _  ->
                           char_list_to_string (List.flatten (lc :: lcs))))))
               no_blank);
-        Glr.apply (fun r  -> r)
+        Decap.apply (fun r  -> r)
           (change_layout
-             (Glr.iter
-                (Glr.fsequence (Glr.char '{' '{')
-                   (Glr.sequence
-                      (Glr.regexp "[a-z]*" (fun groupe  -> groupe 0))
-                      (Glr.char '|' '|')
+             (Decap.iter
+                (Decap.fsequence (Decap.char '{' '{')
+                   (Decap.sequence
+                      (Decap.regexp "[a-z]*" (fun groupe  -> groupe 0))
+                      (Decap.char '|' '|')
                       (fun id  _  _  ->
                          let string_literal_suit =
                            declare_grammar "string_literal_suit" in
                          let _ =
                            set_grammar string_literal_suit
-                             (Glr.alternatives'
-                                [Glr.fsequence (Glr.char '|' '|')
-                                   (Glr.sequence (Glr.string id id)
-                                      (Glr.char '}' '}') (fun _  _  _  -> []));
-                                Glr.sequence Glr.any string_literal_suit
+                             (Decap.alternatives'
+                                [Decap.fsequence (Decap.char '|' '|')
+                                   (Decap.sequence (Decap.string id id)
+                                      (Decap.char '}' '}')
+                                      (fun _  _  _  -> []));
+                                Decap.sequence Decap.any string_literal_suit
                                   (fun c  r  -> c :: r)]) in
-                         Glr.apply (fun r  -> char_list_to_string r)
+                         Decap.apply (fun r  -> char_list_to_string r)
                            string_literal_suit)))) no_blank);
-        Glr.fsequence (Glr.char '$' '$')
-          (Glr.fsequence (Glr.string "string" "string")
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$')
+        Decap.fsequence (Decap.char '$' '$')
+          (Decap.fsequence (Decap.string "string" "string")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence (expression_lvl (next_exp App))
+                   (Decap.char '$' '$')
                    (fun e  _  _  _  _  -> push_pop_string e))))]
     let quotation = declare_grammar "quotation"
     let _ =
       set_grammar quotation
         (change_layout
-           (Glr.alternatives'
-              [Glr.fsequence (Glr.string "<:" "<:")
-                 (Glr.sequence quotation quotation
+           (Decap.alternatives'
+              [Decap.fsequence (Decap.string "<:" "<:")
+                 (Decap.sequence quotation quotation
                     (fun q  q'  _  -> "<:" ^ (q ^ (">>" ^ q'))));
-              Glr.sequence string_literal quotation
+              Decap.sequence string_literal quotation
                 (fun s  q  -> (Printf.sprintf "%S" s) ^ q);
-              Glr.apply (fun _  -> "") (Glr.string ">>" ">>");
-              Glr.sequence (one_char false) quotation
+              Decap.apply (fun _  -> "") (Decap.string ">>" ">>");
+              Decap.sequence (one_char false) quotation
                 (fun c  q  -> (String.make 1 c) ^ q)]) no_blank)
     let label_name = lowercase_ident
     let label =
-      Glr.sequence (Glr.string "~" "~") label_name (fun _  ln  -> ln)
+      Decap.sequence (Decap.string "~" "~") label_name (fun _  ln  -> ln)
     let opt_label =
-      Glr.sequence (Glr.string "?" "?") label_name (fun _  ln  -> ln)
+      Decap.sequence (Decap.string "?" "?") label_name (fun _  ln  -> ln)
     let maybe_opt_label =
-      Glr.sequence
-        (Glr.option None (Glr.apply (fun x  -> Some x) (Glr.string "?" "?")))
+      Decap.sequence
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x) (Decap.string "?" "?")))
         label_name (fun o  ln  -> if o = None then ln else "?" ^ ln)
-    let infix_op = Glr.apply (fun sym  -> sym) infix_symbol
+    let infix_op = Decap.apply (fun sym  -> sym) infix_symbol
     let operator_name =
-      Glr.alternatives'
-        [Glr.apply (fun op  -> op) infix_op;
-        Glr.apply (fun op  -> op) prefix_symbol]
+      Decap.alternatives'
+        [Decap.apply (fun op  -> op) infix_op;
+        Decap.apply (fun op  -> op) prefix_symbol]
     let value_name =
-      Glr.alternatives'
-        [Glr.apply (fun id  -> id) lowercase_ident;
-        Glr.fsequence (Glr.string "(" "(")
-          (Glr.sequence operator_name (Glr.string ")" ")")
+      Decap.alternatives'
+        [Decap.apply (fun id  -> id) lowercase_ident;
+        Decap.fsequence (Decap.string "(" "(")
+          (Decap.sequence operator_name (Decap.string ")" ")")
              (fun op  _  _  -> op))]
     let constr_name = capitalized_ident
-    let tag_name = Glr.sequence (Glr.string "`" "`") ident (fun _  c  -> c)
+    let tag_name =
+      Decap.sequence (Decap.string "`" "`") ident (fun _  c  -> c)
     let typeconstr_name = lowercase_ident
     let field_name = lowercase_ident
     let module_name = capitalized_ident
@@ -282,109 +286,111 @@ module Make(Initial:Extension) =
     let module_path_suit_aux =
       memoize1
         (fun allow_app  ->
-           Glr.alternatives'
+           Decap.alternatives'
              (let y =
-                [Glr.sequence (Glr.string "." ".") module_name
+                [Decap.sequence (Decap.string "." ".") module_name
                    (fun _  m  acc  -> Ldot (acc, m))] in
               if allow_app
               then
-                (Glr.fsequence (Glr.string "(" "(")
-                   (Glr.sequence (module_path_gen true) (Glr.string ")" ")")
+                (Decap.fsequence (Decap.string "(" "(")
+                   (Decap.sequence (module_path_gen true)
+                      (Decap.string ")" ")")
                       (fun m'  _  _  a  -> Lapply (a, m'))))
                 :: y
               else y))
     let _ =
       set_module_path_suit
         (fun allow_app  ->
-           Glr.alternatives'
-             [Glr.sequence (module_path_suit_aux allow_app)
+           Decap.alternatives'
+             [Decap.sequence (module_path_suit_aux allow_app)
                 (module_path_suit allow_app) (fun f  g  acc  -> g (f acc));
-             Glr.apply (fun _  acc  -> acc) (Glr.empty ())])
+             Decap.apply (fun _  acc  -> acc) (Decap.empty ())])
     let _ =
       set_module_path_gen
         (fun allow_app  ->
-           Glr.sequence module_name (module_path_suit allow_app)
+           Decap.sequence module_name (module_path_suit allow_app)
              (fun m  s  -> s (Lident m)))
     let module_path = module_path_gen false
     let extended_module_path = module_path_gen true
     let value_path =
-      Glr.sequence
-        (Glr.option None
-           (Glr.apply (fun x  -> Some x)
-              (Glr.sequence module_path (Glr.string "." ".") (fun m  _  -> m))))
-        value_name
+      Decap.sequence
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x)
+              (Decap.sequence module_path (Decap.string "." ".")
+                 (fun m  _  -> m)))) value_name
         (fun mp  vn  ->
            match mp with | None  -> Lident vn | Some p -> Ldot (p, vn))
     let constr =
-      Glr.sequence
-        (Glr.option None
-           (Glr.apply (fun x  -> Some x)
-              (Glr.sequence module_path (Glr.string "." ".") (fun m  _  -> m))))
-        constr_name
+      Decap.sequence
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x)
+              (Decap.sequence module_path (Decap.string "." ".")
+                 (fun m  _  -> m)))) constr_name
         (fun mp  cn  ->
            match mp with | None  -> Lident cn | Some p -> Ldot (p, cn))
     let typeconstr =
-      Glr.sequence
-        (Glr.option None
-           (Glr.apply (fun x  -> Some x)
-              (Glr.sequence extended_module_path (Glr.string "." ".")
+      Decap.sequence
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x)
+              (Decap.sequence extended_module_path (Decap.string "." ".")
                  (fun m  _  -> m)))) typeconstr_name
         (fun mp  tcn  ->
            match mp with | None  -> Lident tcn | Some p -> Ldot (p, tcn))
     let field =
-      Glr.sequence
-        (Glr.option None
-           (Glr.apply (fun x  -> Some x)
-              (Glr.sequence module_path (Glr.string "." ".") (fun m  _  -> m))))
-        field_name
+      Decap.sequence
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x)
+              (Decap.sequence module_path (Decap.string "." ".")
+                 (fun m  _  -> m)))) field_name
         (fun mp  fn  ->
            match mp with | None  -> Lident fn | Some p -> Ldot (p, fn))
     let class_path =
-      Glr.sequence
-        (Glr.option None
-           (Glr.apply (fun x  -> Some x)
-              (Glr.sequence module_path (Glr.string "." ".") (fun m  _  -> m))))
-        class_name
+      Decap.sequence
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x)
+              (Decap.sequence module_path (Decap.string "." ".")
+                 (fun m  _  -> m)))) class_name
         (fun mp  cn  ->
            match mp with | None  -> Lident cn | Some p -> Ldot (p, cn))
     let modtype_path =
-      Glr.sequence
-        (Glr.option None
-           (Glr.apply (fun x  -> Some x)
-              (Glr.sequence extended_module_path (Glr.string "." ".")
+      Decap.sequence
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x)
+              (Decap.sequence extended_module_path (Decap.string "." ".")
                  (fun m  _  -> m)))) modtype_name
         (fun mp  mtn  ->
            match mp with | None  -> Lident mtn | Some p -> Ldot (p, mtn))
     let classtype_path =
-      Glr.sequence
-        (Glr.option None
-           (Glr.apply (fun x  -> Some x)
-              (Glr.sequence extended_module_path (Glr.string "." ".")
+      Decap.sequence
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x)
+              (Decap.sequence extended_module_path (Decap.string "." ".")
                  (fun m  _  -> m)))) class_name
         (fun mp  cn  ->
            match mp with | None  -> Lident cn | Some p -> Ldot (p, cn))
     let opt_variance =
-      Glr.apply
+      Decap.apply
         (fun v  ->
            match v with
            | None  -> Invariant
            | Some "+" -> Covariant
            | Some "-" -> Contravariant
            | _ -> assert false)
-        (Glr.option None
-           (Glr.apply (fun x  -> Some x)
-              (Glr.regexp "[+-]" (fun groupe  -> groupe 0))))
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x)
+              (Decap.regexp "[+-]" (fun groupe  -> groupe 0))))
     let override_flag =
-      Glr.apply (fun o  -> if o <> None then Override else Fresh)
-        (Glr.option None (Glr.apply (fun x  -> Some x) (Glr.string "!" "!")))
+      Decap.apply (fun o  -> if o <> None then Override else Fresh)
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x) (Decap.string "!" "!")))
     let attr_id =
-      Glr.sequence_position
-        (Glr.regexp ~name:"ident" ident_re (fun groupe  -> groupe 0))
-        (Glr.apply List.rev
-           (Glr.fixpoint []
-              (Glr.apply (fun x  l  -> x :: l)
-                 (Glr.sequence (Glr.char '.' '.')
-                    (Glr.regexp ~name:"ident" ident_re
+      Decap.sequence_position
+        (Decap.regexp ~name:"ident" ident_re (fun groupe  -> groupe 0))
+        (Decap.apply List.rev
+           (Decap.fixpoint []
+              (Decap.apply (fun x  l  -> x :: l)
+                 (Decap.sequence (Decap.char '.' '.')
+                    (Decap.regexp ~name:"ident" ident_re
                        (fun groupe  -> groupe 0)) (fun _  id  -> id)))))
         (fun id  l  __loc__start__buf  __loc__start__pos  __loc__end__buf 
            __loc__end__pos  ->
@@ -393,153 +399,155 @@ module Make(Initial:Extension) =
                __loc__end__pos in
            id_loc (String.concat "." (id :: l)) _loc)
     let payload =
-      Glr.alternatives'
-        [Glr.apply (fun s  -> PStr s) structure;
-        Glr.sequence (Glr.char ':' ':') typexpr (fun _  t  -> PTyp t);
-        Glr.fsequence (Glr.char '?' '?')
-          (Glr.sequence pattern
-             (Glr.option None
-                (Glr.apply (fun x  -> Some x)
-                   (Glr.sequence (Glr.string "when" "when") expression
+      Decap.alternatives'
+        [Decap.apply (fun s  -> PStr s) structure;
+        Decap.sequence (Decap.char ':' ':') typexpr (fun _  t  -> PTyp t);
+        Decap.fsequence (Decap.char '?' '?')
+          (Decap.sequence pattern
+             (Decap.option None
+                (Decap.apply (fun x  -> Some x)
+                   (Decap.sequence (Decap.string "when" "when") expression
                       (fun _  e  -> e)))) (fun p  e  _  -> PPat (p, e)))]
     let attribute =
-      Glr.fsequence (Glr.string "[@" "[@")
-        (Glr.sequence attr_id payload (fun id  p  _  -> (id, p)))
+      Decap.fsequence (Decap.string "[@" "[@")
+        (Decap.sequence attr_id payload (fun id  p  _  -> (id, p)))
     let attributes =
-      Glr.apply (fun _  -> ())
-        (Glr.apply List.rev
-           (Glr.fixpoint []
-              (Glr.apply (fun x  l  -> x :: l)
-                 (Glr.apply (fun a  -> a) attribute))))
+      Decap.apply (fun _  -> ())
+        (Decap.apply List.rev
+           (Decap.fixpoint []
+              (Decap.apply (fun x  l  -> x :: l)
+                 (Decap.apply (fun a  -> a) attribute))))
     let ext_attributes =
-      Glr.sequence
-        (Glr.option None
-           (Glr.apply (fun x  -> Some x)
-              (Glr.sequence (Glr.char '%' '%') attribute (fun _  a  -> a))))
+      Decap.sequence
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x)
+              (Decap.sequence (Decap.char '%' '%') attribute (fun _  a  -> a))))
         attributes (fun a  l  -> (a, l))
     let post_item_attributes =
-      Glr.apply (fun l  -> l)
-        (Glr.apply List.rev
-           (Glr.fixpoint []
-              (Glr.apply (fun x  l  -> x :: l)
-                 (Glr.fsequence (Glr.string "[@@" "[@@")
-                    (Glr.fsequence attr_id
-                       (Glr.sequence payload (Glr.char ']' ']')
+      Decap.apply (fun l  -> l)
+        (Decap.apply List.rev
+           (Decap.fixpoint []
+              (Decap.apply (fun x  l  -> x :: l)
+                 (Decap.fsequence (Decap.string "[@@" "[@@")
+                    (Decap.fsequence attr_id
+                       (Decap.sequence payload (Decap.char ']' ']')
                           (fun p  _  id  _  -> (id, p))))))))
     let ext_attributes =
-      Glr.apply (fun l  -> l)
-        (Glr.apply List.rev
-           (Glr.fixpoint []
-              (Glr.apply (fun x  l  -> x :: l)
-                 (Glr.fsequence (Glr.string "[@@@" "[@@@")
-                    (Glr.fsequence attr_id
-                       (Glr.sequence payload (Glr.char ']' ']')
+      Decap.apply (fun l  -> l)
+        (Decap.apply List.rev
+           (Decap.fixpoint []
+              (Decap.apply (fun x  l  -> x :: l)
+                 (Decap.fsequence (Decap.string "[@@@" "[@@@")
+                    (Decap.fsequence attr_id
+                       (Decap.sequence payload (Decap.char ']' ']')
                           (fun p  _  id  _  -> (id, p))))))))
     let extension =
-      Glr.fsequence (Glr.string "[%" "[%")
-        (Glr.fsequence attr_id
-           (Glr.sequence payload (Glr.char ']' ']')
+      Decap.fsequence (Decap.string "[%" "[%")
+        (Decap.fsequence attr_id
+           (Decap.sequence payload (Decap.char ']' ']')
               (fun p  _  id  _  -> (id, p))))
     let item_extension =
-      Glr.fsequence (Glr.string "[%%" "[%%")
-        (Glr.fsequence attr_id
-           (Glr.sequence payload (Glr.char ']' ']')
+      Decap.fsequence (Decap.string "[%%" "[%%")
+        (Decap.fsequence attr_id
+           (Decap.sequence payload (Decap.char ']' ']')
               (fun p  _  id  _  -> (id, p))))
     let poly_typexpr =
-      Glr.alternatives'
-        [Glr.fsequence_position
-           (Glr.sequence
-              (Glr.sequence (Glr.string "'" "'") ident (fun _  id  -> id))
-              (Glr.fixpoint []
-                 (Glr.apply (fun x  l  -> x :: l)
-                    (Glr.sequence (Glr.string "'" "'") ident
+      Decap.alternatives'
+        [Decap.fsequence_position
+           (Decap.sequence
+              (Decap.sequence (Decap.string "'" "'") ident (fun _  id  -> id))
+              (Decap.fixpoint []
+                 (Decap.apply (fun x  l  -> x :: l)
+                    (Decap.sequence (Decap.string "'" "'") ident
                        (fun _  id  -> id)))) (fun x  l  -> x :: (List.rev l)))
-           (Glr.sequence (Glr.string "." ".") typexpr
+           (Decap.sequence (Decap.string "." ".") typexpr
               (fun _  te  ids  __loc__start__buf  __loc__start__pos 
                  __loc__end__buf  __loc__end__pos  ->
                  let _loc =
                    locate2 __loc__start__buf __loc__start__pos
                      __loc__end__buf __loc__end__pos in
                  loc_typ _loc (Ptyp_poly (ids, te))));
-        Glr.apply (fun te  -> te) typexpr]
+        Decap.apply (fun te  -> te) typexpr]
     let poly_syntax_typexpr =
-      Glr.fsequence type_kw
-        (Glr.fsequence
-           (Glr.sequence typeconstr_name
-              (Glr.fixpoint []
-                 (Glr.apply (fun x  l  -> x :: l) typeconstr_name))
+      Decap.fsequence type_kw
+        (Decap.fsequence
+           (Decap.sequence typeconstr_name
+              (Decap.fixpoint []
+                 (Decap.apply (fun x  l  -> x :: l) typeconstr_name))
               (fun x  l  -> x :: (List.rev l)))
-           (Glr.sequence (Glr.string "." ".") typexpr
+           (Decap.sequence (Decap.string "." ".") typexpr
               (fun _  te  ids  _  -> (ids, te))))
     let method_type =
-      Glr.fsequence method_name
-        (Glr.sequence (Glr.string ":" ":") poly_typexpr
+      Decap.fsequence method_name
+        (Decap.sequence (Decap.string ":" ":") poly_typexpr
            (fun _  pte  mn  -> (mn, [], pte)))
     let tag_spec =
-      Glr.alternatives'
-        [Glr.sequence tag_name
-           (Glr.option None
-              (Glr.apply (fun x  -> Some x)
-                 (Glr.fsequence of_kw
-                    (Glr.sequence
-                       (Glr.option None
-                          (Glr.apply (fun x  -> Some x) (Glr.char '&' '&')))
-                       typexpr (fun amp  te  _  -> (amp, te))))))
+      Decap.alternatives'
+        [Decap.sequence tag_name
+           (Decap.option None
+              (Decap.apply (fun x  -> Some x)
+                 (Decap.fsequence of_kw
+                    (Decap.sequence
+                       (Decap.option None
+                          (Decap.apply (fun x  -> Some x)
+                             (Decap.char '&' '&'))) typexpr
+                       (fun amp  te  _  -> (amp, te))))))
            (fun tn  te  ->
               let (amp,t) =
                 match te with
                 | None  -> (true, [])
                 | Some (amp,l) -> ((amp <> None), [l]) in
               Rtag (tn, [], amp, t));
-        Glr.apply (fun te  -> Rinherit te) typexpr]
+        Decap.apply (fun te  -> Rinherit te) typexpr]
     let tag_spec_first =
-      Glr.alternatives'
-        [Glr.sequence tag_name
-           (Glr.option None
-              (Glr.apply (fun x  -> Some x)
-                 (Glr.fsequence of_kw
-                    (Glr.sequence
-                       (Glr.option None
-                          (Glr.apply (fun x  -> Some x) (Glr.char '&' '&')))
-                       typexpr (fun amp  te  _  -> (amp, te))))))
+      Decap.alternatives'
+        [Decap.sequence tag_name
+           (Decap.option None
+              (Decap.apply (fun x  -> Some x)
+                 (Decap.fsequence of_kw
+                    (Decap.sequence
+                       (Decap.option None
+                          (Decap.apply (fun x  -> Some x)
+                             (Decap.char '&' '&'))) typexpr
+                       (fun amp  te  _  -> (amp, te))))))
            (fun tn  te  ->
               let (amp,t) =
                 match te with
                 | None  -> (true, [])
                 | Some (amp,l) -> ((amp <> None), [l]) in
               [Rtag (tn, [], amp, t)]);
-        Glr.fsequence
-          (Glr.option None (Glr.apply (fun x  -> Some x) typexpr))
-          (Glr.sequence (Glr.string "|" "|") tag_spec
+        Decap.fsequence
+          (Decap.option None (Decap.apply (fun x  -> Some x) typexpr))
+          (Decap.sequence (Decap.string "|" "|") tag_spec
              (fun _  ts  te  ->
                 match te with | None  -> [ts] | Some te -> [Rinherit te; ts]))]
     let tag_spec_full =
-      Glr.alternatives'
-        [Glr.sequence tag_name
-           (Glr.option (true, [])
-              (Glr.fsequence of_kw
-                 (Glr.fsequence
-                    (Glr.option None
-                       (Glr.apply (fun x  -> Some x) (Glr.string "&" "&")))
-                    (Glr.sequence typexpr
-                       (Glr.apply List.rev
-                          (Glr.fixpoint []
-                             (Glr.apply (fun x  l  -> x :: l)
-                                (Glr.sequence (Glr.string "&" "&") typexpr
-                                   (fun _  te  -> te)))))
+      Decap.alternatives'
+        [Decap.sequence tag_name
+           (Decap.option (true, [])
+              (Decap.fsequence of_kw
+                 (Decap.fsequence
+                    (Decap.option None
+                       (Decap.apply (fun x  -> Some x) (Decap.string "&" "&")))
+                    (Decap.sequence typexpr
+                       (Decap.apply List.rev
+                          (Decap.fixpoint []
+                             (Decap.apply (fun x  l  -> x :: l)
+                                (Decap.sequence (Decap.string "&" "&")
+                                   typexpr (fun _  te  -> te)))))
                        (fun te  tes  amp  _  -> ((amp <> None), (te :: tes)))))))
            (fun tn  (amp,tes)  -> Rtag (tn, [], amp, tes));
-        Glr.apply (fun te  -> Rinherit te) typexpr]
+        Decap.apply (fun te  -> Rinherit te) typexpr]
     let polymorphic_variant_type: core_type grammar =
-      Glr.alternatives'
-        [Glr.fsequence_position (Glr.string "[" "[")
-           (Glr.fsequence tag_spec_first
-              (Glr.sequence
-                 (Glr.apply List.rev
-                    (Glr.fixpoint []
-                       (Glr.apply (fun x  l  -> x :: l)
-                          (Glr.sequence (Glr.string "|" "|") tag_spec
-                             (fun _  ts  -> ts))))) (Glr.string "]" "]")
+      Decap.alternatives'
+        [Decap.fsequence_position (Decap.string "[" "[")
+           (Decap.fsequence tag_spec_first
+              (Decap.sequence
+                 (Decap.apply List.rev
+                    (Decap.fixpoint []
+                       (Decap.apply (fun x  l  -> x :: l)
+                          (Decap.sequence (Decap.string "|" "|") tag_spec
+                             (fun _  ts  -> ts))))) (Decap.string "]" "]")
                  (fun tss  _  tsf  _  __loc__start__buf  __loc__start__pos 
                     __loc__end__buf  __loc__end__pos  ->
                     let _loc =
@@ -547,15 +555,15 @@ module Make(Initial:Extension) =
                         __loc__end__buf __loc__end__pos in
                     let flag = Closed in
                     loc_typ _loc (Ptyp_variant ((tsf @ tss), flag, None)))));
-        Glr.fsequence_position (Glr.string "[>" "[>")
-          (Glr.fsequence
-             (Glr.option None (Glr.apply (fun x  -> Some x) tag_spec))
-             (Glr.sequence
-                (Glr.apply List.rev
-                   (Glr.fixpoint []
-                      (Glr.apply (fun x  l  -> x :: l)
-                         (Glr.sequence (Glr.string "|" "|") tag_spec
-                            (fun _  ts  -> ts))))) (Glr.string "]" "]")
+        Decap.fsequence_position (Decap.string "[>" "[>")
+          (Decap.fsequence
+             (Decap.option None (Decap.apply (fun x  -> Some x) tag_spec))
+             (Decap.sequence
+                (Decap.apply List.rev
+                   (Decap.fixpoint []
+                      (Decap.apply (fun x  l  -> x :: l)
+                         (Decap.sequence (Decap.string "|" "|") tag_spec
+                            (fun _  ts  -> ts))))) (Decap.string "]" "]")
                 (fun tss  _  ts  _  __loc__start__buf  __loc__start__pos 
                    __loc__end__buf  __loc__end__pos  ->
                    let _loc =
@@ -565,25 +573,25 @@ module Make(Initial:Extension) =
                      match ts with | None  -> tss | Some ts -> ts :: tss in
                    let flag = Open in
                    loc_typ _loc (Ptyp_variant (tss, flag, None)))));
-        Glr.fsequence_position (Glr.string "[<" "[<")
-          (Glr.fsequence
-             (Glr.option None
-                (Glr.apply (fun x  -> Some x) (Glr.string "|" "|")))
-             (Glr.fsequence tag_spec_full
-                (Glr.fsequence
-                   (Glr.apply List.rev
-                      (Glr.fixpoint []
-                         (Glr.apply (fun x  l  -> x :: l)
-                            (Glr.sequence (Glr.string "|" "|") tag_spec_full
-                               (fun _  tsf  -> tsf)))))
-                   (Glr.sequence
-                      (Glr.option []
-                         (Glr.sequence (Glr.string ">" ">")
-                            (Glr.sequence tag_name
-                               (Glr.fixpoint []
-                                  (Glr.apply (fun x  l  -> x :: l) tag_name))
+        Decap.fsequence_position (Decap.string "[<" "[<")
+          (Decap.fsequence
+             (Decap.option None
+                (Decap.apply (fun x  -> Some x) (Decap.string "|" "|")))
+             (Decap.fsequence tag_spec_full
+                (Decap.fsequence
+                   (Decap.apply List.rev
+                      (Decap.fixpoint []
+                         (Decap.apply (fun x  l  -> x :: l)
+                            (Decap.sequence (Decap.string "|" "|")
+                               tag_spec_full (fun _  tsf  -> tsf)))))
+                   (Decap.sequence
+                      (Decap.option []
+                         (Decap.sequence (Decap.string ">" ">")
+                            (Decap.sequence tag_name
+                               (Decap.fixpoint []
+                                  (Decap.apply (fun x  l  -> x :: l) tag_name))
                                (fun x  l  -> x :: (List.rev l)))
-                            (fun _  tns  -> tns))) (Glr.string "]" "]")
+                            (fun _  tns  -> tns))) (Decap.string "]" "]")
                       (fun tns  _  tfss  tfs  _  _  __loc__start__buf 
                          __loc__start__pos  __loc__end__buf  __loc__end__pos 
                          ->
@@ -594,72 +602,74 @@ module Make(Initial:Extension) =
                          loc_typ _loc
                            (Ptyp_variant ((tfs :: tfss), flag, (Some tns))))))))]
     let package_constraint =
-      Glr.fsequence type_kw
-        (Glr.fsequence (locate typeconstr)
-           (Glr.sequence (Glr.char '=' '=') typexpr
+      Decap.fsequence type_kw
+        (Decap.fsequence (locate typeconstr)
+           (Decap.sequence (Decap.char '=' '=') typexpr
               (fun _  te  tc  ->
                  let (_loc_tc,tc) = tc in
                  fun _  -> let tc = id_loc tc _loc_tc in (tc, te))))
     let package_type =
-      Glr.sequence (locate modtype_path)
-        (Glr.option []
-           (Glr.fsequence with_kw
-              (Glr.sequence package_constraint
-                 (Glr.apply List.rev
-                    (Glr.fixpoint []
-                       (Glr.apply (fun x  l  -> x :: l)
-                          (Glr.sequence and_kw package_constraint
+      Decap.sequence (locate modtype_path)
+        (Decap.option []
+           (Decap.fsequence with_kw
+              (Decap.sequence package_constraint
+                 (Decap.apply List.rev
+                    (Decap.fixpoint []
+                       (Decap.apply (fun x  l  -> x :: l)
+                          (Decap.sequence and_kw package_constraint
                              (fun _  pc  -> pc)))))
                  (fun pc  pcs  _  -> pc :: pcs))))
         (fun mtp  ->
            let (_loc_mtp,mtp) = mtp in
            fun cs  -> let mtp = id_loc mtp _loc_mtp in Ptyp_package (mtp, cs))
     let opt_present =
-      Glr.alternatives'
-        [Glr.fsequence (Glr.string "[>" "[>")
-           (Glr.sequence
-              (Glr.sequence tag_name
-                 (Glr.fixpoint [] (Glr.apply (fun x  l  -> x :: l) tag_name))
-                 (fun x  l  -> x :: (List.rev l))) (Glr.string "]" "]")
+      Decap.alternatives'
+        [Decap.fsequence (Decap.string "[>" "[>")
+           (Decap.sequence
+              (Decap.sequence tag_name
+                 (Decap.fixpoint []
+                    (Decap.apply (fun x  l  -> x :: l) tag_name))
+                 (fun x  l  -> x :: (List.rev l))) (Decap.string "]" "]")
               (fun l  _  _  -> l));
-        Glr.apply (fun _  -> []) (Glr.empty ())]
+        Decap.apply (fun _  -> []) (Decap.empty ())]
     let mkoption loc d =
       let loc = ghost loc in
       loc_typ loc
         (Ptyp_constr
            ((id_loc (Ldot ((Lident "*predef*"), "option")) loc), [d]))
     let typexpr_base: core_type grammar =
-      Glr.alternatives'
-        [Glr.apply (fun e  -> e) (alternatives extra_types);
-        Glr.sequence_position (Glr.string "'" "'") ident
+      Decap.alternatives'
+        [Decap.apply (fun e  -> e) (alternatives extra_types);
+        Decap.sequence_position (Decap.string "'" "'") ident
           (fun _  id  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
                locate2 __loc__start__buf __loc__start__pos __loc__end__buf
                  __loc__end__pos in
              loc_typ _loc (Ptyp_var id));
-        Glr.apply_position
+        Decap.apply_position
           (fun _  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
                locate2 __loc__start__buf __loc__start__pos __loc__end__buf
                  __loc__end__pos in
-             loc_typ _loc Ptyp_any) (Glr.string "_" "_");
-        Glr.fsequence_position (Glr.string "(" "(")
-          (Glr.fsequence module_kw
-             (Glr.sequence package_type (Glr.string ")" ")")
+             loc_typ _loc Ptyp_any) (Decap.string "_" "_");
+        Decap.fsequence_position (Decap.string "(" "(")
+          (Decap.fsequence module_kw
+             (Decap.sequence package_type (Decap.string ")" ")")
                 (fun pt  _  _  _  __loc__start__buf  __loc__start__pos 
                    __loc__end__buf  __loc__end__pos  ->
                    let _loc =
                      locate2 __loc__start__buf __loc__start__pos
                        __loc__end__buf __loc__end__pos in
                    loc_typ _loc pt)));
-        Glr.fsequence (Glr.string "(" "(")
-          (Glr.sequence typexpr (Glr.string ")" ")") (fun te  _  _  -> te));
-        Glr.fsequence_position opt_label
-          (Glr.fsequence (Glr.string ":" ":")
-             (Glr.fsequence (locate (typexpr_lvl (next_type_prio Arr)))
-                (Glr.sequence (Glr.string "->" "->") typexpr
+        Decap.fsequence (Decap.string "(" "(")
+          (Decap.sequence typexpr (Decap.string ")" ")")
+             (fun te  _  _  -> te));
+        Decap.fsequence_position opt_label
+          (Decap.fsequence (Decap.string ":" ":")
+             (Decap.fsequence (locate (typexpr_lvl (next_type_prio Arr)))
+                (Decap.sequence (Decap.string "->" "->") typexpr
                    (fun _  te'  te  ->
                       let (_loc_te,te) = te in
                       fun _  ln  __loc__start__buf  __loc__start__pos 
@@ -670,17 +680,17 @@ module Make(Initial:Extension) =
                         loc_typ _loc
                           (Ptyp_arrow
                              (("?" ^ ln), (mkoption _loc_te te), te'))))));
-        Glr.fsequence_position label_name
-          (Glr.fsequence (Glr.string ":" ":")
-             (Glr.fsequence (typexpr_lvl (next_type_prio Arr))
-                (Glr.sequence (Glr.string "->" "->") typexpr
+        Decap.fsequence_position label_name
+          (Decap.fsequence (Decap.string ":" ":")
+             (Decap.fsequence (typexpr_lvl (next_type_prio Arr))
+                (Decap.sequence (Decap.string "->" "->") typexpr
                    (fun _  te'  te  _  ln  __loc__start__buf 
                       __loc__start__pos  __loc__end__buf  __loc__end__pos  ->
                       let _loc =
                         locate2 __loc__start__buf __loc__start__pos
                           __loc__end__buf __loc__end__pos in
                       loc_typ _loc (Ptyp_arrow (ln, te, te'))))));
-        Glr.apply_position
+        Decap.apply_position
           (fun tc  ->
              let (_loc_tc,tc) = tc in
              fun __loc__start__buf  __loc__start__pos  __loc__end__buf 
@@ -690,15 +700,15 @@ module Make(Initial:Extension) =
                    __loc__end__pos in
                loc_typ _loc (Ptyp_constr ((id_loc tc _loc_tc), [])))
           (locate typeconstr);
-        Glr.fsequence_position (Glr.string "(" "(")
-          (Glr.fsequence typexpr
-             (Glr.fsequence
-                (Glr.apply List.rev
-                   (Glr.fixpoint []
-                      (Glr.apply (fun x  l  -> x :: l)
-                         (Glr.sequence (Glr.string "," ",") typexpr
+        Decap.fsequence_position (Decap.string "(" "(")
+          (Decap.fsequence typexpr
+             (Decap.fsequence
+                (Decap.apply List.rev
+                   (Decap.fixpoint []
+                      (Decap.apply (fun x  l  -> x :: l)
+                         (Decap.sequence (Decap.string "," ",") typexpr
                             (fun _  te  -> te)))))
-                (Glr.sequence (Glr.string ")" ")") (locate typeconstr)
+                (Decap.sequence (Decap.string ")" ")") (locate typeconstr)
                    (fun _  tc  ->
                       let (_loc_tc,tc) = tc in
                       fun tes  te  _  __loc__start__buf  __loc__start__pos 
@@ -708,12 +718,12 @@ module Make(Initial:Extension) =
                             __loc__end__buf __loc__end__pos in
                         let constr = id_loc tc _loc_tc in
                         loc_typ _loc (Ptyp_constr (constr, (te :: tes)))))));
-        Glr.apply (fun pvt  -> pvt) polymorphic_variant_type;
-        Glr.fsequence_position (Glr.string "<" "<")
-          (Glr.sequence
-             (Glr.option None
-                (Glr.apply (fun x  -> Some x) (Glr.string ".." "..")))
-             (Glr.string ">" ">")
+        Decap.apply (fun pvt  -> pvt) polymorphic_variant_type;
+        Decap.fsequence_position (Decap.string "<" "<")
+          (Decap.sequence
+             (Decap.option None
+                (Decap.apply (fun x  -> Some x) (Decap.string ".." "..")))
+             (Decap.string ">" ">")
              (fun rv  _  _  __loc__start__buf  __loc__start__pos 
                 __loc__end__buf  __loc__end__pos  ->
                 let _loc =
@@ -721,22 +731,22 @@ module Make(Initial:Extension) =
                     __loc__end__pos in
                 let ml = if rv = None then Closed else Open in
                 loc_typ _loc (Ptyp_object ([], ml))));
-        Glr.fsequence_position (Glr.string "<" "<")
-          (Glr.fsequence method_type
-             (Glr.fsequence
-                (Glr.apply List.rev
-                   (Glr.fixpoint []
-                      (Glr.apply (fun x  l  -> x :: l)
-                         (Glr.sequence (Glr.string ";" ";") method_type
+        Decap.fsequence_position (Decap.string "<" "<")
+          (Decap.fsequence method_type
+             (Decap.fsequence
+                (Decap.apply List.rev
+                   (Decap.fixpoint []
+                      (Decap.apply (fun x  l  -> x :: l)
+                         (Decap.sequence (Decap.string ";" ";") method_type
                             (fun _  mt  -> mt)))))
-                (Glr.sequence
-                   (Glr.option None
-                      (Glr.apply (fun x  -> Some x)
-                         (Glr.sequence (Glr.string ";" ";")
-                            (Glr.option None
-                               (Glr.apply (fun x  -> Some x)
-                                  (Glr.string ".." ".."))) (fun _  rv  -> rv))))
-                   (Glr.string ">" ">")
+                (Decap.sequence
+                   (Decap.option None
+                      (Decap.apply (fun x  -> Some x)
+                         (Decap.sequence (Decap.string ";" ";")
+                            (Decap.option None
+                               (Decap.apply (fun x  -> Some x)
+                                  (Decap.string ".." "..")))
+                            (fun _  rv  -> rv)))) (Decap.string ">" ">")
                    (fun rv  _  mts  mt  _  __loc__start__buf 
                       __loc__start__pos  __loc__end__buf  __loc__end__pos  ->
                       let _loc =
@@ -747,7 +757,7 @@ module Make(Initial:Extension) =
                         then Closed
                         else Open in
                       loc_typ _loc (Ptyp_object ((mt :: mts), ml))))));
-        Glr.sequence_position (Glr.string "#" "#") (locate class_path)
+        Decap.sequence_position (Decap.string "#" "#") (locate class_path)
           (fun _  cp  ->
              let (_loc_cp,cp) = cp in
              fun __loc__start__buf  __loc__start__pos  __loc__end__buf 
@@ -757,16 +767,16 @@ module Make(Initial:Extension) =
                    __loc__end__pos in
                let cp = id_loc cp _loc_cp in
                loc_typ _loc (Ptyp_class (cp, [])));
-        Glr.fsequence_position (Glr.string "(" "(")
-          (Glr.fsequence typexpr
-             (Glr.fsequence
-                (Glr.apply List.rev
-                   (Glr.fixpoint []
-                      (Glr.apply (fun x  l  -> x :: l)
-                         (Glr.sequence (Glr.string "," ",") typexpr
+        Decap.fsequence_position (Decap.string "(" "(")
+          (Decap.fsequence typexpr
+             (Decap.fsequence
+                (Decap.apply List.rev
+                   (Decap.fixpoint []
+                      (Decap.apply (fun x  l  -> x :: l)
+                         (Decap.sequence (Decap.string "," ",") typexpr
                             (fun _  te  -> te)))))
-                (Glr.fsequence (Glr.string ")" ")")
-                   (Glr.sequence (Glr.string "#" "#") (locate class_path)
+                (Decap.fsequence (Decap.string ")" ")")
+                   (Decap.sequence (Decap.string "#" "#") (locate class_path)
                       (fun _  cp  ->
                          let (_loc_cp,cp) = cp in
                          fun _  tes  te  _  __loc__start__buf 
@@ -777,15 +787,16 @@ module Make(Initial:Extension) =
                                __loc__end__buf __loc__end__pos in
                            let cp = id_loc cp _loc_cp in
                            loc_typ _loc (Ptyp_class (cp, (te :: tes))))))));
-        Glr.fsequence_position (Glr.char '$' '$')
-          (Glr.fsequence
-             (Glr.option None
-                (Glr.apply (fun x  -> Some x)
-                   (Glr.sequence
-                      (Glr.apply (fun _  -> "tuple")
-                         (Glr.string "tuple" "tuple")) (Glr.char ':' ':')
+        Decap.fsequence_position (Decap.char '$' '$')
+          (Decap.fsequence
+             (Decap.option None
+                (Decap.apply (fun x  -> Some x)
+                   (Decap.sequence
+                      (Decap.apply (fun _  -> "tuple")
+                         (Decap.string "tuple" "tuple")) (Decap.char ':' ':')
                       (fun t  _  -> t))))
-             (Glr.sequence (expression_lvl (next_exp App)) (Glr.char '$' '$')
+             (Decap.sequence (expression_lvl (next_exp App))
+                (Decap.char '$' '$')
                 (fun e  _  t  _  __loc__start__buf  __loc__start__pos 
                    __loc__end__buf  __loc__end__pos  ->
                    let _loc =
@@ -806,7 +817,7 @@ module Make(Initial:Extension) =
       memoize1
         (fun lvl'  lvl  ->
            let ln f _loc e _loc_f = loc_typ (merge2 _loc_f _loc) e in
-           Glr.alternatives'
+           Decap.alternatives'
              (let y =
                 let y =
                   let y =
@@ -814,7 +825,7 @@ module Make(Initial:Extension) =
                       let y = [] in
                       if (lvl' >= DashType) && (lvl <= DashType)
                       then
-                        (Glr.sequence_position (Glr.string "#" "#")
+                        (Decap.sequence_position (Decap.string "#" "#")
                            (locate class_path)
                            (fun _  cp  ->
                               let (_loc_cp,cp) = cp in
@@ -831,8 +842,8 @@ module Make(Initial:Extension) =
                       else y in
                     if (lvl' >= As) && (lvl <= As)
                     then
-                      (Glr.fsequence_position as_kw
-                         (Glr.sequence (Glr.string "'" "'") ident
+                      (Decap.fsequence_position as_kw
+                         (Decap.sequence (Decap.string "'" "'") ident
                             (fun _  id  _  __loc__start__buf 
                                __loc__start__pos  __loc__end__buf 
                                __loc__end__pos  ->
@@ -845,7 +856,7 @@ module Make(Initial:Extension) =
                     else y in
                   if (lvl' >= AppType) && (lvl <= AppType)
                   then
-                    (Glr.apply_position
+                    (Decap.apply_position
                        (fun tc  ->
                           let (_loc_tc,tc) = tc in
                           fun __loc__start__buf  __loc__start__pos 
@@ -862,7 +873,7 @@ module Make(Initial:Extension) =
                   else y in
                 if (lvl' > ProdType) && (lvl <= ProdType)
                 then
-                  (Glr.apply_position
+                  (Decap.apply_position
                      (fun tes  __loc__start__buf  __loc__start__pos 
                         __loc__end__buf  __loc__end__pos  ->
                         let _loc =
@@ -870,13 +881,13 @@ module Make(Initial:Extension) =
                             __loc__end__buf __loc__end__pos in
                         (ProdType,
                           (fun te  -> ln te _loc (Ptyp_tuple (te :: tes)))))
-                     (Glr.sequence
-                        (Glr.sequence (Glr.string "*" "*")
+                     (Decap.sequence
+                        (Decap.sequence (Decap.string "*" "*")
                            (typexpr_lvl (next_type_prio ProdType))
                            (fun _  te  -> te))
-                        (Glr.fixpoint []
-                           (Glr.apply (fun x  l  -> x :: l)
-                              (Glr.sequence (Glr.string "*" "*")
+                        (Decap.fixpoint []
+                           (Decap.apply (fun x  l  -> x :: l)
+                              (Decap.sequence (Decap.string "*" "*")
                                  (typexpr_lvl (next_type_prio ProdType))
                                  (fun _  te  -> te))))
                         (fun x  l  -> x :: (List.rev l))))
@@ -884,7 +895,7 @@ module Make(Initial:Extension) =
                 else y in
               if (lvl' > Arr) && (lvl <= Arr)
               then
-                (Glr.sequence_position (Glr.string "->" "->")
+                (Decap.sequence_position (Decap.string "->" "->")
                    (typexpr_lvl Arr)
                    (fun _  te'  __loc__start__buf  __loc__start__pos 
                       __loc__end__buf  __loc__end__pos  ->
@@ -899,52 +910,52 @@ module Make(Initial:Extension) =
       let f =
         memoize2'
           (fun type_suit  lvl'  lvl  ->
-             Glr.alternatives'
-               [Glr.iter
-                  (Glr.apply
+             Decap.alternatives'
+               [Decap.iter
+                  (Decap.apply
                      (fun (p1,f1)  ->
-                        Glr.apply
+                        Decap.apply
                           (fun (p2,f2)  ->
                              (p2,
                                (fun f  _loc_f  -> f2 (f1 f _loc_f) _loc_f)))
                           (type_suit p1 lvl)) (typexpr_suit_aux lvl' lvl));
-               Glr.apply (fun _  -> (lvl', (fun f  _loc_f  -> f)))
-                 (Glr.empty ())]) in
+               Decap.apply (fun _  -> (lvl', (fun f  _loc_f  -> f)))
+                 (Decap.empty ())]) in
       let rec res x y = f res x y in res
     let _ =
       set_typexpr_lvl
         (fun lvl  ->
-           Glr.sequence (locate typexpr_base) (typexpr_suit AtomType lvl)
+           Decap.sequence (locate typexpr_base) (typexpr_suit AtomType lvl)
              (fun t  -> let (_loc_t,t) = t in fun ft  -> snd ft t _loc_t))
     let type_param =
-      Glr.alternatives'
-        [Glr.fsequence opt_variance
-           (Glr.sequence (Glr.char '\'' '\'') (locate ident)
+      Decap.alternatives'
+        [Decap.fsequence opt_variance
+           (Decap.sequence (Decap.char '\'' '\'') (locate ident)
               (fun _  id  ->
                  let (_loc_id,id) = id in
                  fun var  -> ((Some (id_loc id _loc_id)), var)));
-        Glr.sequence opt_variance (Glr.char '_' '_')
+        Decap.sequence opt_variance (Decap.char '_' '_')
           (fun var  _  -> (None, var))]
     let type_params =
-      Glr.alternatives'
-        [Glr.apply (fun tp  -> [tp]) type_param;
-        Glr.fsequence (Glr.string "(" "(")
-          (Glr.fsequence type_param
-             (Glr.sequence
-                (Glr.apply List.rev
-                   (Glr.fixpoint []
-                      (Glr.apply (fun x  l  -> x :: l)
-                         (Glr.sequence (Glr.string "," ",") type_param
-                            (fun _  tp  -> tp))))) (Glr.string ")" ")")
+      Decap.alternatives'
+        [Decap.apply (fun tp  -> [tp]) type_param;
+        Decap.fsequence (Decap.string "(" "(")
+          (Decap.fsequence type_param
+             (Decap.sequence
+                (Decap.apply List.rev
+                   (Decap.fixpoint []
+                      (Decap.apply (fun x  l  -> x :: l)
+                         (Decap.sequence (Decap.string "," ",") type_param
+                            (fun _  tp  -> tp))))) (Decap.string ")" ")")
                 (fun tps  _  tp  _  -> tp :: tps)))]
     let type_equation =
-      Glr.fsequence (Glr.char '=' '=')
-        (Glr.sequence private_flag typexpr (fun p  te  _  -> (p, te)))
+      Decap.fsequence (Decap.char '=' '=')
+        (Decap.sequence private_flag typexpr (fun p  te  _  -> (p, te)))
     let type_constraint =
-      Glr.fsequence_position constraint_kw
-        (Glr.fsequence (Glr.string "'" "'")
-           (Glr.fsequence (locate ident)
-              (Glr.sequence (Glr.char '=' '=') typexpr
+      Decap.fsequence_position constraint_kw
+        (Decap.fsequence (Decap.string "'" "'")
+           (Decap.fsequence (locate ident)
+              (Decap.sequence (Decap.char '=' '=') typexpr
                  (fun _  te  id  ->
                     let (_loc_id,id) = id in
                     fun _  _  __loc__start__buf  __loc__start__pos 
@@ -955,13 +966,13 @@ module Make(Initial:Extension) =
                       ((loc_typ _loc_id (Ptyp_var id)), te, _loc)))))
     let constr_decl =
       let constr_name =
-        Glr.alternatives'
-          [Glr.apply (fun cn  -> cn) constr_name;
-          Glr.sequence (Glr.string "(" "(") (Glr.string ")" ")")
+        Decap.alternatives'
+          [Decap.apply (fun cn  -> cn) constr_name;
+          Decap.sequence (Decap.string "(" "(") (Decap.string ")" ")")
             (fun _  _  -> "()")] in
-      Glr.sequence_position (locate constr_name)
-        (Glr.alternatives'
-           [Glr.apply
+      Decap.sequence_position (locate constr_name)
+        (Decap.alternatives'
+           [Decap.apply
               (fun te  ->
                  let tes =
                    match te with
@@ -969,21 +980,21 @@ module Make(Initial:Extension) =
                    | Some { ptyp_desc = Ptyp_tuple tes; ptyp_loc = _ } -> tes
                    | Some t -> [t] in
                  (tes, None))
-              (Glr.option None
-                 (Glr.apply (fun x  -> Some x)
-                    (Glr.sequence of_kw typexpr (fun _  te  -> te))));
-           Glr.fsequence (Glr.char ':' ':')
-             (Glr.sequence
-                (Glr.option []
-                   (Glr.fsequence (typexpr_lvl (next_type_prio ProdType))
-                      (Glr.sequence
-                         (Glr.apply List.rev
-                            (Glr.fixpoint []
-                               (Glr.apply (fun x  l  -> x :: l)
-                                  (Glr.sequence (Glr.char '*' '*')
+              (Decap.option None
+                 (Decap.apply (fun x  -> Some x)
+                    (Decap.sequence of_kw typexpr (fun _  te  -> te))));
+           Decap.fsequence (Decap.char ':' ':')
+             (Decap.sequence
+                (Decap.option []
+                   (Decap.fsequence (typexpr_lvl (next_type_prio ProdType))
+                      (Decap.sequence
+                         (Decap.apply List.rev
+                            (Decap.fixpoint []
+                               (Decap.apply (fun x  l  -> x :: l)
+                                  (Decap.sequence (Decap.char '*' '*')
                                      (typexpr_lvl (next_type_prio ProdType))
                                      (fun _  te  -> te)))))
-                         (Glr.string "->" "->")
+                         (Decap.string "->" "->")
                          (fun tes  _  te  -> te :: tes)))) typexpr
                 (fun ats  te  _  -> (ats, (Some te))))])
         (fun cn  ->
@@ -996,9 +1007,9 @@ module Make(Initial:Extension) =
              let c = id_loc cn _loc_cn in
              constructor_declaration _loc c tes te)
     let field_decl =
-      Glr.fsequence_position mutable_flag
-        (Glr.fsequence (locate field_name)
-           (Glr.sequence (Glr.string ":" ":") poly_typexpr
+      Decap.fsequence_position mutable_flag
+        (Decap.fsequence (locate field_name)
+           (Decap.sequence (Decap.string ":" ":") poly_typexpr
               (fun _  pte  fn  ->
                  let (_loc_fn,fn) = fn in
                  fun m  __loc__start__buf  __loc__start__pos  __loc__end__buf
@@ -1008,42 +1019,42 @@ module Make(Initial:Extension) =
                        __loc__end__buf __loc__end__pos in
                    label_declaration _loc (id_loc fn _loc_fn) m pte)))
     let type_representation =
-      Glr.alternatives'
-        [Glr.fsequence
-           (Glr.option None
-              (Glr.apply (fun x  -> Some x) (Glr.string "|" "|")))
-           (Glr.sequence constr_decl
-              (Glr.apply List.rev
-                 (Glr.fixpoint []
-                    (Glr.apply (fun x  l  -> x :: l)
-                       (Glr.sequence (Glr.string "|" "|") constr_decl
+      Decap.alternatives'
+        [Decap.fsequence
+           (Decap.option None
+              (Decap.apply (fun x  -> Some x) (Decap.string "|" "|")))
+           (Decap.sequence constr_decl
+              (Decap.apply List.rev
+                 (Decap.fixpoint []
+                    (Decap.apply (fun x  l  -> x :: l)
+                       (Decap.sequence (Decap.string "|" "|") constr_decl
                           (fun _  cd  -> cd)))))
               (fun cd  cds  _  -> Ptype_variant (cd :: cds)));
-        Glr.fsequence (Glr.string "{" "{")
-          (Glr.fsequence field_decl
-             (Glr.fsequence
-                (Glr.apply List.rev
-                   (Glr.fixpoint []
-                      (Glr.apply (fun x  l  -> x :: l)
-                         (Glr.sequence (Glr.string ";" ";") field_decl
+        Decap.fsequence (Decap.string "{" "{")
+          (Decap.fsequence field_decl
+             (Decap.fsequence
+                (Decap.apply List.rev
+                   (Decap.fixpoint []
+                      (Decap.apply (fun x  l  -> x :: l)
+                         (Decap.sequence (Decap.string ";" ";") field_decl
                             (fun _  fd  -> fd)))))
-                (Glr.sequence
-                   (Glr.option None
-                      (Glr.apply (fun x  -> Some x) (Glr.string ";" ";")))
-                   (Glr.string "}" "}")
+                (Decap.sequence
+                   (Decap.option None
+                      (Decap.apply (fun x  -> Some x) (Decap.string ";" ";")))
+                   (Decap.string "}" "}")
                    (fun _  _  fds  fd  _  -> Ptype_record (fd :: fds)))))]
     let type_information =
-      Glr.fsequence
-        (Glr.option None (Glr.apply (fun x  -> Some x) type_equation))
-        (Glr.sequence
-           (Glr.option None
-              (Glr.apply (fun x  -> Some x)
-                 (Glr.fsequence (Glr.char '=' '=')
-                    (Glr.sequence private_flag type_representation
+      Decap.fsequence
+        (Decap.option None (Decap.apply (fun x  -> Some x) type_equation))
+        (Decap.sequence
+           (Decap.option None
+              (Decap.apply (fun x  -> Some x)
+                 (Decap.fsequence (Decap.char '=' '=')
+                    (Decap.sequence private_flag type_representation
                        (fun pri  tr  _  -> (pri, tr))))))
-           (Glr.apply List.rev
-              (Glr.fixpoint []
-                 (Glr.apply (fun x  l  -> x :: l) type_constraint)))
+           (Decap.apply List.rev
+              (Decap.fixpoint []
+                 (Decap.apply (fun x  l  -> x :: l) type_constraint)))
            (fun ptr  cstrs  te  ->
               let (pri,tkind) =
                 match ptr with
@@ -1051,8 +1062,8 @@ module Make(Initial:Extension) =
                 | Some c -> c in
               (pri, te, tkind, cstrs)))
     let typedef_gen ?prev_loc  constr filter =
-      Glr.fsequence_position (Glr.option [] type_params)
-        (Glr.sequence (locate constr) type_information
+      Decap.fsequence_position (Decap.option [] type_params)
+        (Decap.sequence (locate constr) type_information
            (fun tcn  ->
               let (_loc_tcn,tcn) = tcn in
               fun ti  tps  __loc__start__buf  __loc__start__pos 
@@ -1079,20 +1090,20 @@ module Make(Initial:Extension) =
     let typedef_in_constraint prev_loc =
       typedef_gen ~prev_loc typeconstr Longident.last
     let type_definition =
-      Glr.fsequence type_kw
-        (Glr.sequence typedef
-           (Glr.apply List.rev
-              (Glr.fixpoint []
-                 (Glr.apply (fun x  l  -> x :: l)
-                    (Glr.sequence and_kw typedef (fun _  td  -> td)))))
+      Decap.fsequence type_kw
+        (Decap.sequence typedef
+           (Decap.apply List.rev
+              (Decap.fixpoint []
+                 (Decap.apply (fun x  l  -> x :: l)
+                    (Decap.sequence and_kw typedef (fun _  td  -> td)))))
            (fun td  tds  _  -> td :: tds))
     let exception_declaration =
-      Glr.fsequence exception_kw
-        (Glr.sequence (locate constr_name)
+      Decap.fsequence exception_kw
+        (Decap.sequence (locate constr_name)
            (locate
-              (Glr.option None
-                 (Glr.apply (fun x  -> Some x)
-                    (Glr.sequence of_kw typexpr (fun _  te  -> te)))))
+              (Decap.option None
+                 (Decap.apply (fun x  -> Some x)
+                    (Decap.sequence of_kw typexpr (fun _  te  -> te)))))
            (fun cn  ->
               let (_loc_cn,cn) = cn in
               fun te  ->
@@ -1106,10 +1117,10 @@ module Make(Initial:Extension) =
                     | Some t -> [t] in
                   ((id_loc cn _loc_cn), tes, (merge2 _loc_cn _loc_te))))
     let exception_definition =
-      Glr.alternatives'
-        [Glr.fsequence_position exception_kw
-           (Glr.fsequence (locate constr_name)
-              (Glr.sequence (Glr.char '=' '=') (locate constr)
+      Decap.alternatives'
+        [Decap.fsequence_position exception_kw
+           (Decap.fsequence (locate constr_name)
+              (Decap.sequence (Decap.char '=' '=') (locate constr)
                  (fun _  c  ->
                     let (_loc_c,c) = c in
                     fun cn  ->
@@ -1123,7 +1134,7 @@ module Make(Initial:Extension) =
                          let ex = id_loc c _loc_c in
                          Str.exception_ ~loc:_loc
                            (Te.rebind ~loc:(merge2 _loc_cn _loc_c) name ex)).pstr_desc)));
-        Glr.apply_position
+        Decap.apply_position
           (fun (name,ed,_loc')  __loc__start__buf  __loc__start__pos 
              __loc__end__buf  __loc__end__pos  ->
              let _loc =
@@ -1134,27 +1145,29 @@ module Make(Initial:Extension) =
     let class_field_spec = declare_grammar "class_field_spec"
     let class_body_type = declare_grammar "class_body_type"
     let virt_mut =
-      Glr.alternatives'
-        [Glr.sequence virtual_flag mutable_flag (fun v  m  -> (v, m));
-        Glr.sequence mutable_kw virtual_kw (fun _  _  -> (Virtual, Mutable))]
+      Decap.alternatives'
+        [Decap.sequence virtual_flag mutable_flag (fun v  m  -> (v, m));
+        Decap.sequence mutable_kw virtual_kw
+          (fun _  _  -> (Virtual, Mutable))]
     let virt_priv =
-      Glr.alternatives'
-        [Glr.sequence virtual_flag private_flag (fun v  p  -> (v, p));
-        Glr.sequence private_kw virtual_kw (fun _  _  -> (Virtual, Private))]
+      Decap.alternatives'
+        [Decap.sequence virtual_flag private_flag (fun v  p  -> (v, p));
+        Decap.sequence private_kw virtual_kw
+          (fun _  _  -> (Virtual, Private))]
     let _ =
       set_grammar class_field_spec
-        (Glr.alternatives'
-           [Glr.sequence_position inherit_kw class_body_type
+        (Decap.alternatives'
+           [Decap.sequence_position inherit_kw class_body_type
               (fun _  cbt  __loc__start__buf  __loc__start__pos 
                  __loc__end__buf  __loc__end__pos  ->
                  let _loc =
                    locate2 __loc__start__buf __loc__start__pos
                      __loc__end__buf __loc__end__pos in
                  pctf_loc _loc (Pctf_inherit cbt));
-           Glr.fsequence_position val_kw
-             (Glr.fsequence virt_mut
-                (Glr.fsequence inst_var_name
-                   (Glr.sequence (Glr.string ":" ":") typexpr
+           Decap.fsequence_position val_kw
+             (Decap.fsequence virt_mut
+                (Decap.fsequence inst_var_name
+                   (Decap.sequence (Decap.string ":" ":") typexpr
                       (fun _  te  ivn  (vir,mut)  _  __loc__start__buf 
                          __loc__start__pos  __loc__end__buf  __loc__end__pos 
                          ->
@@ -1162,10 +1175,10 @@ module Make(Initial:Extension) =
                            locate2 __loc__start__buf __loc__start__pos
                              __loc__end__buf __loc__end__pos in
                          pctf_loc _loc (Pctf_val (ivn, mut, vir, te))))));
-           Glr.fsequence_position method_kw
-             (Glr.fsequence virt_priv
-                (Glr.fsequence method_name
-                   (Glr.sequence (Glr.string ":" ":") poly_typexpr
+           Decap.fsequence_position method_kw
+             (Decap.fsequence virt_priv
+                (Decap.fsequence method_name
+                   (Decap.sequence (Decap.string ":" ":") poly_typexpr
                       (fun _  te  mn  (v,pri)  _  __loc__start__buf 
                          __loc__start__pos  __loc__end__buf  __loc__end__pos 
                          ->
@@ -1173,9 +1186,9 @@ module Make(Initial:Extension) =
                            locate2 __loc__start__buf __loc__start__pos
                              __loc__end__buf __loc__end__pos in
                          pctf_loc _loc (Pctf_method (mn, pri, v, te))))));
-           Glr.fsequence_position constraint_kw
-             (Glr.fsequence typexpr
-                (Glr.sequence (Glr.char '=' '=') typexpr
+           Decap.fsequence_position constraint_kw
+             (Decap.fsequence typexpr
+                (Decap.sequence (Decap.char '=' '=') typexpr
                    (fun _  te'  te  _  __loc__start__buf  __loc__start__pos 
                       __loc__end__buf  __loc__end__pos  ->
                       let _loc =
@@ -1184,19 +1197,19 @@ module Make(Initial:Extension) =
                       pctf_loc _loc (Pctf_constraint (te, te')))))])
     let _ =
       set_grammar class_body_type
-        (Glr.alternatives'
-           [Glr.fsequence_position object_kw
-              (Glr.fsequence
+        (Decap.alternatives'
+           [Decap.fsequence_position object_kw
+              (Decap.fsequence
                  (locate
-                    (Glr.option None
-                       (Glr.apply (fun x  -> Some x)
-                          (Glr.fsequence (Glr.string "(" "(")
-                             (Glr.sequence typexpr (Glr.string ")" ")")
+                    (Decap.option None
+                       (Decap.apply (fun x  -> Some x)
+                          (Decap.fsequence (Decap.string "(" "(")
+                             (Decap.sequence typexpr (Decap.string ")" ")")
                                 (fun te  _  _  -> te))))))
-                 (Glr.sequence
-                    (Glr.apply List.rev
-                       (Glr.fixpoint []
-                          (Glr.apply (fun x  l  -> x :: l) class_field_spec)))
+                 (Decap.sequence
+                    (Decap.apply List.rev
+                       (Decap.fixpoint []
+                          (Decap.apply (fun x  l  -> x :: l) class_field_spec)))
                     end_kw
                     (fun cfs  _  te  ->
                        let (_loc_te,te) = te in
@@ -1211,17 +1224,17 @@ module Make(Initial:Extension) =
                            | Some t -> t in
                          let sign = { pcsig_self = self; pcsig_fields = cfs } in
                          pcty_loc _loc (Pcty_signature sign))));
-           Glr.sequence_position
-             (Glr.option []
-                (Glr.fsequence (Glr.string "[" "[")
-                   (Glr.fsequence typexpr
-                      (Glr.sequence
-                         (Glr.apply List.rev
-                            (Glr.fixpoint []
-                               (Glr.apply (fun x  l  -> x :: l)
-                                  (Glr.sequence (Glr.string "," ",") typexpr
-                                     (fun _  te  -> te)))))
-                         (Glr.string "]" "]")
+           Decap.sequence_position
+             (Decap.option []
+                (Decap.fsequence (Decap.string "[" "[")
+                   (Decap.fsequence typexpr
+                      (Decap.sequence
+                         (Decap.apply List.rev
+                            (Decap.fixpoint []
+                               (Decap.apply (fun x  l  -> x :: l)
+                                  (Decap.sequence (Decap.string "," ",")
+                                     typexpr (fun _  te  -> te)))))
+                         (Decap.string "]" "]")
                          (fun tes  _  te  _  -> te :: tes)))))
              (locate classtype_path)
              (fun tes  ctp  ->
@@ -1234,15 +1247,15 @@ module Make(Initial:Extension) =
                   let ctp = id_loc ctp _loc_ctp in
                   pcty_loc _loc (Pcty_constr (ctp, tes)))])
     let class_type =
-      Glr.sequence_position
+      Decap.sequence_position
         (locate
-           (Glr.apply List.rev
-              (Glr.fixpoint []
-                 (Glr.apply (fun x  l  -> x :: l)
-                    (Glr.fsequence
-                       (Glr.option None
-                          (Glr.apply (fun x  -> Some x) maybe_opt_label))
-                       (Glr.sequence (Glr.string ":" ":") typexpr
+           (Decap.apply List.rev
+              (Decap.fixpoint []
+                 (Decap.apply (fun x  l  -> x :: l)
+                    (Decap.fsequence
+                       (Decap.option None
+                          (Decap.apply (fun x  -> Some x) maybe_opt_label))
+                       (Decap.sequence (Decap.string ":" ":") typexpr
                           (fun _  te  l  -> (l, te)))))))) class_body_type
         (fun tes  ->
            let (_loc_tes,tes) = tes in
@@ -1262,22 +1275,22 @@ module Make(Initial:Extension) =
                           acc)) in
              List.fold_left app cbt (List.rev tes))
     let type_parameters =
-      Glr.sequence type_param
-        (Glr.apply List.rev
-           (Glr.fixpoint []
-              (Glr.apply (fun x  l  -> x :: l)
-                 (Glr.sequence (Glr.string "," ",") type_param
+      Decap.sequence type_param
+        (Decap.apply List.rev
+           (Decap.fixpoint []
+              (Decap.apply (fun x  l  -> x :: l)
+                 (Decap.sequence (Decap.string "," ",") type_param
                     (fun _  i2  -> i2))))) (fun i1  l  -> i1 :: l)
     let class_spec =
-      Glr.fsequence_position virtual_flag
-        (Glr.fsequence
+      Decap.fsequence_position virtual_flag
+        (Decap.fsequence
            (locate
-              (Glr.option []
-                 (Glr.fsequence (Glr.string "[" "[")
-                    (Glr.sequence type_parameters (Glr.string "]" "]")
+              (Decap.option []
+                 (Decap.fsequence (Decap.string "[" "[")
+                    (Decap.sequence type_parameters (Decap.string "]" "]")
                        (fun params  _  _  -> params)))))
-           (Glr.fsequence (locate class_name)
-              (Glr.sequence (Glr.string ":" ":") class_type
+           (Decap.fsequence (locate class_name)
+              (Decap.sequence (Decap.string ":" ":") class_type
                  (fun _  ct  cn  ->
                     let (_loc_cn,cn) = cn in
                     fun params  ->
@@ -1290,22 +1303,22 @@ module Make(Initial:Extension) =
                         class_type_declaration _loc_params _loc
                           (id_loc cn _loc_cn) params v ct))))
     let class_specification =
-      Glr.sequence class_spec
-        (Glr.apply List.rev
-           (Glr.fixpoint []
-              (Glr.apply (fun x  l  -> x :: l)
-                 (Glr.sequence and_kw class_spec (fun _  cd  -> cd)))))
+      Decap.sequence class_spec
+        (Decap.apply List.rev
+           (Decap.fixpoint []
+              (Decap.apply (fun x  l  -> x :: l)
+                 (Decap.sequence and_kw class_spec (fun _  cd  -> cd)))))
         (fun cs  css  -> cs :: css)
     let classtype_def =
-      Glr.fsequence_position virtual_flag
-        (Glr.fsequence
+      Decap.fsequence_position virtual_flag
+        (Decap.fsequence
            (locate
-              (Glr.option []
-                 (Glr.fsequence (Glr.string "[" "[")
-                    (Glr.sequence type_parameters (Glr.string "]" "]")
+              (Decap.option []
+                 (Decap.fsequence (Decap.string "[" "[")
+                    (Decap.sequence type_parameters (Decap.string "]" "]")
                        (fun tp  _  _  -> tp)))))
-           (Glr.fsequence (locate class_name)
-              (Glr.sequence (Glr.char '=' '=') class_body_type
+           (Decap.fsequence (locate class_name)
+              (Decap.sequence (Decap.char '=' '=') class_body_type
                  (fun _  cbt  cn  ->
                     let (_loc_cn,cn) = cn in
                     fun params  ->
@@ -1318,36 +1331,36 @@ module Make(Initial:Extension) =
                         class_type_declaration _loc_params _loc
                           (id_loc cn _loc_cn) params v cbt))))
     let classtype_definition =
-      Glr.fsequence type_kw
-        (Glr.sequence classtype_def
-           (Glr.apply List.rev
-              (Glr.fixpoint []
-                 (Glr.apply (fun x  l  -> x :: l)
-                    (Glr.sequence and_kw classtype_def (fun _  cd  -> cd)))))
+      Decap.fsequence type_kw
+        (Decap.sequence classtype_def
+           (Decap.apply List.rev
+              (Decap.fixpoint []
+                 (Decap.apply (fun x  l  -> x :: l)
+                    (Decap.sequence and_kw classtype_def (fun _  cd  -> cd)))))
            (fun cd  cds  _  -> cd :: cds))
     let constant =
-      Glr.alternatives'
-        [Glr.apply (fun f  -> Const_float f) float_literal;
-        Glr.apply (fun c  -> Const_char c) char_literal;
-        Glr.apply (fun s  -> const_string s) string_literal;
-        Glr.apply (fun i  -> Const_int32 i) int32_lit;
-        Glr.apply (fun i  -> Const_int64 i) int64_lit;
-        Glr.apply (fun i  -> Const_nativeint i) nat_int_lit;
-        Glr.apply (fun i  -> Const_int i) integer_literal]
+      Decap.alternatives'
+        [Decap.apply (fun f  -> Const_float f) float_literal;
+        Decap.apply (fun c  -> Const_char c) char_literal;
+        Decap.apply (fun s  -> const_string s) string_literal;
+        Decap.apply (fun i  -> Const_int32 i) int32_lit;
+        Decap.apply (fun i  -> Const_int64 i) int64_lit;
+        Decap.apply (fun i  -> Const_nativeint i) nat_int_lit;
+        Decap.apply (fun i  -> Const_int i) integer_literal]
     let neg_constant =
-      Glr.alternatives'
-        [Glr.sequence
-           (Glr.alternatives'
-              [Glr.apply (fun _  -> ()) (Glr.char '-' '-');
-              Glr.apply (fun _  -> ()) (Glr.string "-." "-.")]) float_literal
-           (fun _  f  -> Const_float ("-" ^ f));
-        Glr.sequence (Glr.char '-' '-') int32_lit
+      Decap.alternatives'
+        [Decap.sequence
+           (Decap.alternatives'
+              [Decap.apply (fun _  -> ()) (Decap.char '-' '-');
+              Decap.apply (fun _  -> ()) (Decap.string "-." "-.")])
+           float_literal (fun _  f  -> Const_float ("-" ^ f));
+        Decap.sequence (Decap.char '-' '-') int32_lit
           (fun _  i  -> Const_int32 (Int32.neg i));
-        Glr.sequence (Glr.char '-' '-') int64_lit
+        Decap.sequence (Decap.char '-' '-') int64_lit
           (fun _  i  -> Const_int64 (Int64.neg i));
-        Glr.sequence (Glr.char '-' '-') nat_int_lit
+        Decap.sequence (Decap.char '-' '-') nat_int_lit
           (fun _  i  -> Const_nativeint (Nativeint.neg i));
-        Glr.sequence (Glr.char '-' '-') integer_literal
+        Decap.sequence (Decap.char '-' '-') integer_literal
           (fun _  i  -> Const_int (- i))]
     let pattern_prios =
       [TopPat; AsPat; AltPat; TupPat; ConsPat; ConstrPat; AtomPat]
@@ -1371,9 +1384,9 @@ module Make(Initial:Extension) =
     let pattern_base =
       memoize1
         (fun lvl  ->
-           Glr.alternatives'
-             ((Glr.apply (fun e  -> e) (alternatives extra_patterns)) ::
-             (Glr.apply_position
+           Decap.alternatives'
+             ((Decap.apply (fun e  -> e) (alternatives extra_patterns)) ::
+             (Decap.apply_position
                 (fun vn  ->
                    let (_loc_vn,vn) = vn in
                    fun __loc__start__buf  __loc__start__pos  __loc__end__buf 
@@ -1383,16 +1396,16 @@ module Make(Initial:Extension) =
                          __loc__end__buf __loc__end__pos in
                      (AtomPat, (loc_pat _loc (Ppat_var (id_loc vn _loc_vn)))))
                 (locate value_name)) ::
-             (Glr.apply_position
+             (Decap.apply_position
                 (fun _  __loc__start__buf  __loc__start__pos  __loc__end__buf
                     __loc__end__pos  ->
                    let _loc =
                      locate2 __loc__start__buf __loc__start__pos
                        __loc__end__buf __loc__end__pos in
-                   (AtomPat, (loc_pat _loc Ppat_any))) (Glr.string "_" "_"))
+                   (AtomPat, (loc_pat _loc Ppat_any))) (Decap.string "_" "_"))
              ::
-             (Glr.fsequence_position char_literal
-                (Glr.sequence (Glr.string ".." "..") char_literal
+             (Decap.fsequence_position char_literal
+                (Decap.sequence (Decap.string ".." "..") char_literal
                    (fun _  c2  c1  __loc__start__buf  __loc__start__pos 
                       __loc__end__buf  __loc__end__pos  ->
                       let _loc =
@@ -1405,22 +1418,22 @@ module Make(Initial:Extension) =
                            (Ppat_interval
                               ((Const_char (Char.chr ic1)),
                                 (Const_char (Char.chr ic2))))))))) ::
-             (Glr.apply_position
+             (Decap.apply_position
                 (fun c  __loc__start__buf  __loc__start__pos  __loc__end__buf
                     __loc__end__pos  ->
                    let _loc =
                      locate2 __loc__start__buf __loc__start__pos
                        __loc__end__buf __loc__end__pos in
                    (AtomPat, (loc_pat _loc (Ppat_constant c))))
-                (Glr.alternatives'
-                   [Glr.apply (fun c  -> c) constant;
-                   Glr.apply (fun c  -> c) neg_constant])) ::
-             (Glr.fsequence (Glr.string "(" "(")
-                (Glr.sequence pattern (Glr.string ")" ")")
+                (Decap.alternatives'
+                   [Decap.apply (fun c  -> c) constant;
+                   Decap.apply (fun c  -> c) neg_constant])) ::
+             (Decap.fsequence (Decap.string "(" "(")
+                (Decap.sequence pattern (Decap.string ")" ")")
                    (fun p  _  _  -> (AtomPat, p)))) ::
              (let y =
                 let y =
-                  (Glr.apply_position
+                  (Decap.apply_position
                      (fun c  ->
                         let (_loc_c,c) = c in
                         fun __loc__start__buf  __loc__start__pos 
@@ -1431,7 +1444,7 @@ module Make(Initial:Extension) =
                           let ast = ppat_construct ((id_loc c _loc_c), None) in
                           (AtomPat, (loc_pat _loc ast))) (locate constr))
                   ::
-                  (Glr.apply_position
+                  (Decap.apply_position
                      (fun b  __loc__start__buf  __loc__start__pos 
                         __loc__end__buf  __loc__end__pos  ->
                         let _loc =
@@ -1443,7 +1456,7 @@ module Make(Initial:Extension) =
                      bool_lit)
                   ::
                   (let y =
-                     [Glr.apply_position
+                     [Decap.apply_position
                         (fun c  __loc__start__buf  __loc__start__pos 
                            __loc__end__buf  __loc__end__pos  ->
                            let _loc =
@@ -1451,7 +1464,7 @@ module Make(Initial:Extension) =
                                __loc__end__buf __loc__end__pos in
                            (AtomPat, (loc_pat _loc (Ppat_variant (c, None)))))
                         tag_name;
-                     Glr.sequence_position (Glr.string "#" "#")
+                     Decap.sequence_position (Decap.string "#" "#")
                        (locate typeconstr)
                        (fun s  t  ->
                           let (_loc_t,t) = t in
@@ -1462,41 +1475,43 @@ module Make(Initial:Extension) =
                                 __loc__end__buf __loc__end__pos in
                             (AtomPat,
                               (loc_pat _loc (Ppat_type (id_loc t _loc_t)))));
-                     Glr.fsequence_position (Glr.string "{" "{")
-                       (Glr.fsequence (locate field)
-                          (Glr.fsequence
-                             (Glr.option None
-                                (Glr.apply (fun x  -> Some x)
-                                   (Glr.sequence (Glr.char '=' '=') pattern
-                                      (fun _  p  -> p))))
-                             (Glr.fsequence
-                                (Glr.apply List.rev
-                                   (Glr.fixpoint []
-                                      (Glr.apply (fun x  l  -> x :: l)
-                                         (Glr.fsequence (Glr.string ";" ";")
-                                            (Glr.sequence (locate field)
-                                               (Glr.option None
-                                                  (Glr.apply
+                     Decap.fsequence_position (Decap.string "{" "{")
+                       (Decap.fsequence (locate field)
+                          (Decap.fsequence
+                             (Decap.option None
+                                (Decap.apply (fun x  -> Some x)
+                                   (Decap.sequence (Decap.char '=' '=')
+                                      pattern (fun _  p  -> p))))
+                             (Decap.fsequence
+                                (Decap.apply List.rev
+                                   (Decap.fixpoint []
+                                      (Decap.apply (fun x  l  -> x :: l)
+                                         (Decap.fsequence
+                                            (Decap.string ";" ";")
+                                            (Decap.sequence (locate field)
+                                               (Decap.option None
+                                                  (Decap.apply
                                                      (fun x  -> Some x)
-                                                     (Glr.sequence
-                                                        (Glr.char '=' '=')
+                                                     (Decap.sequence
+                                                        (Decap.char '=' '=')
                                                         pattern
                                                         (fun _  p  -> p))))
                                                (fun f  ->
                                                   let (_loc_f,f) = f in
                                                   fun p  _  ->
                                                     ((id_loc f _loc_f), p)))))))
-                                (Glr.fsequence
-                                   (Glr.option None
-                                      (Glr.apply (fun x  -> Some x)
-                                         (Glr.sequence (Glr.string ";" ";")
-                                            (Glr.string "_" "_")
+                                (Decap.fsequence
+                                   (Decap.option None
+                                      (Decap.apply (fun x  -> Some x)
+                                         (Decap.sequence
+                                            (Decap.string ";" ";")
+                                            (Decap.string "_" "_")
                                             (fun _  _  -> ()))))
-                                   (Glr.sequence
-                                      (Glr.option None
-                                         (Glr.apply (fun x  -> Some x)
-                                            (Glr.string ";" ";")))
-                                      (Glr.string "}" "}")
+                                   (Decap.sequence
+                                      (Decap.option None
+                                         (Decap.apply (fun x  -> Some x)
+                                            (Decap.string ";" ";")))
+                                      (Decap.string "}" "}")
                                       (fun _  _  clsd  fps  p  f  ->
                                          let (_loc_f,f) = f in
                                          fun s  __loc__start__buf 
@@ -1529,19 +1544,19 @@ module Make(Initial:Extension) =
                                            (AtomPat,
                                              (loc_pat _loc
                                                 (Ppat_record (all, cl))))))))));
-                     Glr.fsequence_position (Glr.string "[" "[")
-                       (Glr.fsequence pattern
-                          (Glr.fsequence
-                             (Glr.apply List.rev
-                                (Glr.fixpoint []
-                                   (Glr.apply (fun x  l  -> x :: l)
-                                      (Glr.sequence (Glr.string ";" ";")
+                     Decap.fsequence_position (Decap.string "[" "[")
+                       (Decap.fsequence pattern
+                          (Decap.fsequence
+                             (Decap.apply List.rev
+                                (Decap.fixpoint []
+                                   (Decap.apply (fun x  l  -> x :: l)
+                                      (Decap.sequence (Decap.string ";" ";")
                                          pattern (fun _  p  -> p)))))
-                             (Glr.sequence
-                                (Glr.option None
-                                   (Glr.apply (fun x  -> Some x)
-                                      (Glr.string ";" ";")))
-                                (Glr.string "]" "]")
+                             (Decap.sequence
+                                (Decap.option None
+                                   (Decap.apply (fun x  -> Some x)
+                                      (Decap.string ";" ";")))
+                                (Decap.string "]" "]")
                                 (fun _  _  ps  p  _  __loc__start__buf 
                                    __loc__start__pos  __loc__end__buf 
                                    __loc__end__pos  ->
@@ -1550,8 +1565,8 @@ module Make(Initial:Extension) =
                                        __loc__start__pos __loc__end__buf
                                        __loc__end__pos in
                                    (AtomPat, (ppat_list _loc (p :: ps)))))));
-                     Glr.sequence_position (Glr.string "[" "[")
-                       (Glr.string "]" "]")
+                     Decap.sequence_position (Decap.string "[" "[")
+                       (Decap.string "]" "]")
                        (fun _  _  __loc__start__buf  __loc__start__pos 
                           __loc__end__buf  __loc__end__pos  ->
                           let _loc =
@@ -1560,19 +1575,19 @@ module Make(Initial:Extension) =
                           let nil = id_loc (Lident "[]") _loc in
                           (AtomPat,
                             (loc_pat _loc (ppat_construct (nil, None)))));
-                     Glr.fsequence_position (Glr.string "[|" "[|")
-                       (Glr.fsequence pattern
-                          (Glr.fsequence
-                             (Glr.apply List.rev
-                                (Glr.fixpoint []
-                                   (Glr.apply (fun x  l  -> x :: l)
-                                      (Glr.sequence (Glr.string ";" ";")
+                     Decap.fsequence_position (Decap.string "[|" "[|")
+                       (Decap.fsequence pattern
+                          (Decap.fsequence
+                             (Decap.apply List.rev
+                                (Decap.fixpoint []
+                                   (Decap.apply (fun x  l  -> x :: l)
+                                      (Decap.sequence (Decap.string ";" ";")
                                          pattern (fun _  p  -> p)))))
-                             (Glr.sequence
-                                (Glr.option None
-                                   (Glr.apply (fun x  -> Some x)
-                                      (Glr.string ";" ";")))
-                                (Glr.string "|]" "|]")
+                             (Decap.sequence
+                                (Decap.option None
+                                   (Decap.apply (fun x  -> Some x)
+                                      (Decap.string ";" ";")))
+                                (Decap.string "|]" "|]")
                                 (fun _  _  ps  p  _  __loc__start__buf 
                                    __loc__start__pos  __loc__end__buf 
                                    __loc__end__pos  ->
@@ -1582,16 +1597,16 @@ module Make(Initial:Extension) =
                                        __loc__end__pos in
                                    (AtomPat,
                                      (loc_pat _loc (Ppat_array (p :: ps))))))));
-                     Glr.sequence_position (Glr.string "[|" "[|")
-                       (Glr.string "|]" "|]")
+                     Decap.sequence_position (Decap.string "[|" "[|")
+                       (Decap.string "|]" "|]")
                        (fun _  _  __loc__start__buf  __loc__start__pos 
                           __loc__end__buf  __loc__end__pos  ->
                           let _loc =
                             locate2 __loc__start__buf __loc__start__pos
                               __loc__end__buf __loc__end__pos in
                           (AtomPat, (loc_pat _loc (Ppat_array []))));
-                     Glr.sequence_position (Glr.string "(" "(")
-                       (Glr.string ")" ")")
+                     Decap.sequence_position (Decap.string "(" "(")
+                       (Decap.string ")" ")")
                        (fun _  _  __loc__start__buf  __loc__start__pos 
                           __loc__end__buf  __loc__end__pos  ->
                           let _loc =
@@ -1600,7 +1615,7 @@ module Make(Initial:Extension) =
                           let unt = id_loc (Lident "()") _loc in
                           (AtomPat,
                             (loc_pat _loc (ppat_construct (unt, None)))));
-                     Glr.sequence_position begin_kw end_kw
+                     Decap.sequence_position begin_kw end_kw
                        (fun _  _  __loc__start__buf  __loc__start__pos 
                           __loc__end__buf  __loc__end__pos  ->
                           let _loc =
@@ -1609,16 +1624,17 @@ module Make(Initial:Extension) =
                           let unt = id_loc (Lident "()") _loc in
                           (AtomPat,
                             (loc_pat _loc (ppat_construct (unt, None)))));
-                     Glr.fsequence_position (Glr.string "(" "(")
-                       (Glr.fsequence module_kw
-                          (Glr.fsequence (locate module_name)
-                             (Glr.sequence
+                     Decap.fsequence_position (Decap.string "(" "(")
+                       (Decap.fsequence module_kw
+                          (Decap.fsequence (locate module_name)
+                             (Decap.sequence
                                 (locate
-                                   (Glr.option None
-                                      (Glr.apply (fun x  -> Some x)
-                                         (Glr.sequence (Glr.string ":" ":")
+                                   (Decap.option None
+                                      (Decap.apply (fun x  -> Some x)
+                                         (Decap.sequence
+                                            (Decap.string ":" ":")
                                             package_type (fun _  pt  -> pt)))))
-                                (Glr.string ")" ")")
+                                (Decap.string ")" ")")
                                 (fun pt  ->
                                    let (_loc_pt,pt) = pt in
                                    fun _  mn  ->
@@ -1641,7 +1657,7 @@ module Make(Initial:Extension) =
                                              Ppat_constraint
                                                ((loc_pat _loc_mn unpack), pt) in
                                        (AtomPat, (loc_pat _loc pat))))));
-                     Glr.sequence (Glr.char '$' '$') capitalized_ident
+                     Decap.sequence (Decap.char '$' '$') capitalized_ident
                        (fun _  c  ->
                           try
                             let str = Sys.getenv c in
@@ -1649,21 +1665,21 @@ module Make(Initial:Extension) =
                               (parse_string ~filename:("ENV:" ^ c) pattern
                                  blank str))
                           with | Not_found  -> raise Give_up);
-                     Glr.fsequence_position (Glr.char '$' '$')
-                       (Glr.fsequence
-                          (Glr.option None
-                             (Glr.apply (fun x  -> Some x)
-                                (Glr.sequence
-                                   (Glr.alternatives'
-                                      [Glr.apply (fun _  -> "tuple")
-                                         (Glr.string "tuple" "tuple");
-                                      Glr.apply (fun _  -> "list")
-                                        (Glr.string "list" "list");
-                                      Glr.apply (fun _  -> "array")
-                                        (Glr.string "array" "array")])
-                                   (Glr.char ':' ':') (fun t  _  -> t))))
-                          (Glr.sequence (expression_lvl (next_exp App))
-                             (Glr.char '$' '$')
+                     Decap.fsequence_position (Decap.char '$' '$')
+                       (Decap.fsequence
+                          (Decap.option None
+                             (Decap.apply (fun x  -> Some x)
+                                (Decap.sequence
+                                   (Decap.alternatives'
+                                      [Decap.apply (fun _  -> "tuple")
+                                         (Decap.string "tuple" "tuple");
+                                      Decap.apply (fun _  -> "list")
+                                        (Decap.string "list" "list");
+                                      Decap.apply (fun _  -> "array")
+                                        (Decap.string "array" "array")])
+                                   (Decap.char ':' ':') (fun t  _  -> t))))
+                          (Decap.sequence (expression_lvl (next_exp App))
+                             (Decap.char '$' '$')
                              (fun e  _  t  _  __loc__start__buf 
                                 __loc__start__pos  __loc__end__buf 
                                 __loc__end__pos  ->
@@ -1686,7 +1702,8 @@ module Make(Initial:Extension) =
                                      | _ -> raise Give_up))))] in
                    if lvl <= ConstrPat
                    then
-                     (Glr.sequence_position tag_name (pattern_lvl ConstrPat)
+                     (Decap.sequence_position tag_name
+                        (pattern_lvl ConstrPat)
                         (fun c  p  __loc__start__buf  __loc__start__pos 
                            __loc__end__buf  __loc__end__pos  ->
                            let _loc =
@@ -1698,7 +1715,7 @@ module Make(Initial:Extension) =
                    else y) in
                 if lvl <= ConstrPat
                 then
-                  (Glr.sequence_position (locate constr)
+                  (Decap.sequence_position (locate constr)
                      (pattern_lvl ConstrPat)
                      (fun c  ->
                         let (_loc_c,c) = c in
@@ -1714,7 +1731,7 @@ module Make(Initial:Extension) =
                 else y in
               if lvl <= ConstrPat
               then
-                (Glr.sequence_position lazy_kw (pattern_lvl ConstrPat)
+                (Decap.sequence_position lazy_kw (pattern_lvl ConstrPat)
                    (fun _  p  __loc__start__buf  __loc__start__pos 
                       __loc__end__buf  __loc__end__pos  ->
                       let _loc =
@@ -1731,7 +1748,7 @@ module Make(Initial:Extension) =
       memoize1
         (fun lvl'  lvl  ->
            let ln f _loc e = loc_pat (merge2 f.ppat_loc _loc) e in
-           Glr.alternatives'
+           Decap.alternatives'
              (let y =
                 let y =
                   let y =
@@ -1740,7 +1757,8 @@ module Make(Initial:Extension) =
                         let y = [] in
                         if (lvl' >= TopPat) && (lvl <= TopPat)
                         then
-                          (Glr.sequence_position (Glr.string ":" ":") typexpr
+                          (Decap.sequence_position (Decap.string ":" ":")
+                             typexpr
                              (fun _  ty  __loc__start__buf  __loc__start__pos
                                  __loc__end__buf  __loc__end__pos  ->
                                 let _loc =
@@ -1753,17 +1771,17 @@ module Make(Initial:Extension) =
                         else y in
                       if (lvl' >= AsPat) && (lvl <= AsPat)
                       then
-                        (Glr.fsequence_position (Glr.string ":" ":")
-                           (Glr.fsequence
-                              (Glr.sequence
-                                 (Glr.sequence (Glr.string "'" "'") ident
+                        (Decap.fsequence_position (Decap.string ":" ":")
+                           (Decap.fsequence
+                              (Decap.sequence
+                                 (Decap.sequence (Decap.string "'" "'") ident
                                     (fun _  id  -> id))
-                                 (Glr.fixpoint []
-                                    (Glr.apply (fun x  l  -> x :: l)
-                                       (Glr.sequence (Glr.string "'" "'")
+                                 (Decap.fixpoint []
+                                    (Decap.apply (fun x  l  -> x :: l)
+                                       (Decap.sequence (Decap.string "'" "'")
                                           ident (fun _  id  -> id))))
                                  (fun x  l  -> x :: (List.rev l)))
-                              (Glr.sequence (Glr.string "." ".") typexpr
+                              (Decap.sequence (Decap.string "." ".") typexpr
                                  (fun _  te  ids  _  __loc__start__buf 
                                     __loc__start__pos  __loc__end__buf 
                                     __loc__end__pos  ->
@@ -1782,7 +1800,8 @@ module Make(Initial:Extension) =
                       else y in
                     if (lvl' > ConsPat) && (lvl <= ConsPat)
                     then
-                      (Glr.sequence_position (locate (Glr.string "::" "::"))
+                      (Decap.sequence_position
+                         (locate (Decap.string "::" "::"))
                          (pattern_lvl ConsPat)
                          (fun c  ->
                             let (_loc_c,c) = c in
@@ -1802,7 +1821,7 @@ module Make(Initial:Extension) =
                     else y in
                   if (lvl' > TupPat) && (lvl <= TupPat)
                   then
-                    (Glr.apply_position
+                    (Decap.apply_position
                        (fun ps  __loc__start__buf  __loc__start__pos 
                           __loc__end__buf  __loc__end__pos  ->
                           let _loc =
@@ -1810,13 +1829,13 @@ module Make(Initial:Extension) =
                               __loc__end__buf __loc__end__pos in
                           (TupPat,
                             (fun p  -> ln p _loc (Ppat_tuple (p :: ps)))))
-                       (Glr.sequence
-                          (Glr.sequence (Glr.string "," ",")
+                       (Decap.sequence
+                          (Decap.sequence (Decap.string "," ",")
                              (pattern_lvl (next_pat_prio TupPat))
                              (fun _  p  -> p))
-                          (Glr.fixpoint []
-                             (Glr.apply (fun x  l  -> x :: l)
-                                (Glr.sequence (Glr.string "," ",")
+                          (Decap.fixpoint []
+                             (Decap.apply (fun x  l  -> x :: l)
+                                (Decap.sequence (Decap.string "," ",")
                                    (pattern_lvl (next_pat_prio TupPat))
                                    (fun _  p  -> p))))
                           (fun x  l  -> x :: (List.rev l))))
@@ -1824,7 +1843,7 @@ module Make(Initial:Extension) =
                   else y in
                 if (lvl' >= AltPat) && (lvl <= AltPat)
                 then
-                  (Glr.sequence_position (Glr.string "|" "|")
+                  (Decap.sequence_position (Decap.string "|" "|")
                      (pattern_lvl (next_pat_prio AltPat))
                      (fun _  p'  __loc__start__buf  __loc__start__pos 
                         __loc__end__buf  __loc__end__pos  ->
@@ -1836,7 +1855,7 @@ module Make(Initial:Extension) =
                 else y in
               if (lvl' >= AsPat) && (lvl <= AsPat)
               then
-                (Glr.sequence_position as_kw (locate value_name)
+                (Decap.sequence_position as_kw (locate value_name)
                    (fun _  vn  ->
                       let (_loc_vn,vn) = vn in
                       fun __loc__start__buf  __loc__start__pos 
@@ -1853,22 +1872,22 @@ module Make(Initial:Extension) =
       let f =
         memoize2'
           (fun pat_suit  lvl'  lvl  ->
-             Glr.alternatives'
-               [Glr.iter
-                  (Glr.apply
+             Decap.alternatives'
+               [Decap.iter
+                  (Decap.apply
                      (fun (p1,f1)  ->
-                        Glr.apply
+                        Decap.apply
                           (fun (p2,f2)  -> (p2, (fun f  -> f2 (f1 f))))
                           (pat_suit p1 lvl)) (pattern_suit_aux lvl' lvl));
-               Glr.apply (fun _  -> (lvl', (fun f  -> f))) (Glr.empty ())]) in
+               Decap.apply (fun _  -> (lvl', (fun f  -> f))) (Decap.empty ())]) in
       let rec res x y = f res x y in res
     let _ =
       set_pattern_lvl
         (fun lvl  ->
-           Glr.iter
-             (Glr.apply
+           Decap.iter
+             (Decap.apply
                 (fun (lvl',t)  ->
-                   Glr.apply (fun ft  -> snd ft t) (pattern_suit lvl' lvl))
+                   Decap.apply (fun ft  -> snd ft t) (pattern_suit lvl' lvl))
                 (pattern_base lvl)))
     let expression_lvls =
       [Top;
@@ -1979,24 +1998,26 @@ module Make(Initial:Extension) =
                  ("", (loc_expr loc (Pexp_array coords)));
                  ("", newval)]))
     let constructor =
-      Glr.sequence
-        (Glr.option None
-           (Glr.apply (fun x  -> Some x)
-              (Glr.sequence module_path (Glr.string "." ".") (fun m  _  -> m))))
-        (Glr.alternatives'
-           [Glr.apply (fun id  -> id) capitalized_ident;
-           Glr.apply (fun b  -> b) bool_lit])
+      Decap.sequence
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x)
+              (Decap.sequence module_path (Decap.string "." ".")
+                 (fun m  _  -> m))))
+        (Decap.alternatives'
+           [Decap.apply (fun id  -> id) capitalized_ident;
+           Decap.apply (fun b  -> b) bool_lit])
         (fun m  id  ->
            match m with | None  -> Lident id | Some m -> Ldot (m, id))
     let argument =
-      Glr.alternatives'
-        [Glr.fsequence label
-           (Glr.sequence (Glr.string ":" ":") (expression_lvl (next_exp App))
-              (fun _  e  id  -> (id, e)));
-        Glr.fsequence opt_label
-          (Glr.sequence (Glr.string ":" ":") (expression_lvl (next_exp App))
+      Decap.alternatives'
+        [Decap.fsequence label
+           (Decap.sequence (Decap.string ":" ":")
+              (expression_lvl (next_exp App)) (fun _  e  id  -> (id, e)));
+        Decap.fsequence opt_label
+          (Decap.sequence (Decap.string ":" ":")
+             (expression_lvl (next_exp App))
              (fun _  e  id  -> (("?" ^ id), e)));
-        Glr.apply_position
+        Decap.apply_position
           (fun id  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
@@ -2004,7 +2025,7 @@ module Make(Initial:Extension) =
                  __loc__end__pos in
              (id, (loc_expr _loc (Pexp_ident (id_loc (Lident id) _loc)))))
           label;
-        Glr.apply_position
+        Decap.apply_position
           (fun id  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
@@ -2013,19 +2034,19 @@ module Make(Initial:Extension) =
              (("?" ^ id),
                (loc_expr _loc (Pexp_ident (id_loc (Lident id) _loc)))))
           opt_label;
-        Glr.apply (fun e  -> ("", e)) (expression_lvl (next_exp App))]
+        Decap.apply (fun e  -> ("", e)) (expression_lvl (next_exp App))]
     let parameter allow_new_type =
-      Glr.alternatives'
-        ((Glr.apply (fun pat  -> `Arg ("", None, pat)) (pattern_lvl AtomPat))
-        ::
-        (Glr.fsequence_position (Glr.string "~" "~")
-           (Glr.fsequence (Glr.string "(" "(")
-              (Glr.fsequence (locate lowercase_ident)
-                 (Glr.sequence
-                    (Glr.option None
-                       (Glr.apply (fun x  -> Some x)
-                          (Glr.sequence (Glr.string ":" ":") typexpr
-                             (fun _  t  -> t)))) (Glr.string ")" ")")
+      Decap.alternatives'
+        ((Decap.apply (fun pat  -> `Arg ("", None, pat))
+            (pattern_lvl AtomPat)) ::
+        (Decap.fsequence_position (Decap.string "~" "~")
+           (Decap.fsequence (Decap.string "(" "(")
+              (Decap.fsequence (locate lowercase_ident)
+                 (Decap.sequence
+                    (Decap.option None
+                       (Decap.apply (fun x  -> Some x)
+                          (Decap.sequence (Decap.string ":" ":") typexpr
+                             (fun _  t  -> t)))) (Decap.string ")" ")")
                     (fun t  _  id  ->
                        let (_loc_id,id) = id in
                        fun _  _  __loc__start__buf  __loc__start__pos 
@@ -2041,29 +2062,30 @@ module Make(Initial:Extension) =
                            | Some t ->
                                loc_pat _loc (Ppat_constraint (pat, t)) in
                          `Arg (id, None, pat)))))) ::
-        (Glr.fsequence label
-           (Glr.sequence (Glr.string ":" ":") pattern
+        (Decap.fsequence label
+           (Decap.sequence (Decap.string ":" ":") pattern
               (fun _  pat  id  -> `Arg (id, None, pat)))) ::
-        (Glr.sequence (Glr.char '~' '~') (locate ident)
+        (Decap.sequence (Decap.char '~' '~') (locate ident)
            (fun _  id  ->
               let (_loc_id,id) = id in
               `Arg
                 (id, None, (loc_pat _loc_id (Ppat_var (id_loc id _loc_id))))))
         ::
-        (Glr.fsequence (Glr.string "?" "?")
-           (Glr.fsequence (Glr.string "(" "(")
-              (Glr.fsequence (locate lowercase_ident)
-                 (Glr.fsequence
+        (Decap.fsequence (Decap.string "?" "?")
+           (Decap.fsequence (Decap.string "(" "(")
+              (Decap.fsequence (locate lowercase_ident)
+                 (Decap.fsequence
                     (locate
-                       (Glr.option None
-                          (Glr.apply (fun x  -> Some x)
-                             (Glr.sequence (Glr.string ":" ":") typexpr
+                       (Decap.option None
+                          (Decap.apply (fun x  -> Some x)
+                             (Decap.sequence (Decap.string ":" ":") typexpr
                                 (fun _  t  -> t)))))
-                    (Glr.sequence
-                       (Glr.option None
-                          (Glr.apply (fun x  -> Some x)
-                             (Glr.sequence (Glr.string "=" "=") expression
-                                (fun _  e  -> e)))) (Glr.string ")" ")")
+                    (Decap.sequence
+                       (Decap.option None
+                          (Decap.apply (fun x  -> Some x)
+                             (Decap.sequence (Decap.string "=" "=")
+                                expression (fun _  e  -> e))))
+                       (Decap.string ")" ")")
                        (fun e  _  t  ->
                           let (_loc_t,t) = t in
                           fun id  ->
@@ -2079,21 +2101,22 @@ module Make(Initial:Extension) =
                                     loc_pat (merge2 _loc_id _loc_t)
                                       (Ppat_constraint (pat, t)) in
                               `Arg (("?" ^ id), e, pat))))))) ::
-        (Glr.fsequence opt_label
-           (Glr.fsequence (Glr.string ":" ":")
-              (Glr.fsequence (Glr.string "(" "(")
-                 (Glr.fsequence (locate pattern)
-                    (Glr.fsequence
+        (Decap.fsequence opt_label
+           (Decap.fsequence (Decap.string ":" ":")
+              (Decap.fsequence (Decap.string "(" "(")
+                 (Decap.fsequence (locate pattern)
+                    (Decap.fsequence
                        (locate
-                          (Glr.option None
-                             (Glr.apply (fun x  -> Some x)
-                                (Glr.sequence (Glr.string ":" ":") typexpr
-                                   (fun _  t  -> t)))))
-                       (Glr.sequence
-                          (Glr.option None
-                             (Glr.apply (fun x  -> Some x)
-                                (Glr.sequence (Glr.char '=' '=') expression
-                                   (fun _  e  -> e)))) (Glr.string ")" ")")
+                          (Decap.option None
+                             (Decap.apply (fun x  -> Some x)
+                                (Decap.sequence (Decap.string ":" ":")
+                                   typexpr (fun _  t  -> t)))))
+                       (Decap.sequence
+                          (Decap.option None
+                             (Decap.apply (fun x  -> Some x)
+                                (Decap.sequence (Decap.char '=' '=')
+                                   expression (fun _  e  -> e))))
+                          (Decap.string ")" ")")
                           (fun e  _  t  ->
                              let (_loc_t,t) = t in
                              fun pat  ->
@@ -2106,10 +2129,10 @@ module Make(Initial:Extension) =
                                        loc_pat (merge2 _loc_pat _loc_t)
                                          (Ppat_constraint (pat, t)) in
                                  `Arg (("?" ^ id), e, pat)))))))) ::
-        (Glr.fsequence opt_label
-           (Glr.sequence (Glr.string ":" ":") pattern
+        (Decap.fsequence opt_label
+           (Decap.sequence (Decap.string ":" ":") pattern
               (fun _  pat  id  -> `Arg (("?" ^ id), None, pat)))) ::
-        (Glr.apply
+        (Decap.apply
            (fun id  ->
               let (_loc_id,id) = id in
               `Arg
@@ -2119,9 +2142,9 @@ module Make(Initial:Extension) =
         (let y = [] in
          if allow_new_type
          then
-           (Glr.fsequence (Glr.char '(' '(')
-              (Glr.fsequence type_kw
-                 (Glr.sequence typeconstr_name (Glr.char ')' ')')
+           (Decap.fsequence (Decap.char '(' '(')
+              (Decap.fsequence type_kw
+                 (Decap.sequence typeconstr_name (Decap.char ')' ')')
                     (fun name  _  _  _  -> `Type name))))
            :: y
          else y))
@@ -2141,18 +2164,19 @@ module Make(Initial:Extension) =
         | `Type name -> assert false in
       List.fold_left f e (List.rev params)
     let right_member =
-      Glr.fsequence_position
-        (Glr.apply List.rev
-           (Glr.fixpoint []
-              (Glr.apply (fun x  l  -> x :: l)
-                 (Glr.apply
+      Decap.fsequence_position
+        (Decap.apply List.rev
+           (Decap.fixpoint []
+              (Decap.apply (fun x  l  -> x :: l)
+                 (Decap.apply
                     (fun lb  -> let (_loc_lb,lb) = lb in (lb, _loc_lb))
                     (locate (parameter true))))))
-        (Glr.fsequence
-           (Glr.option None
-              (Glr.apply (fun x  -> Some x)
-                 (Glr.sequence (Glr.char ':' ':') typexpr (fun _  t  -> t))))
-           (Glr.sequence (Glr.char '=' '=') expression
+        (Decap.fsequence
+           (Decap.option None
+              (Decap.apply (fun x  -> Some x)
+                 (Decap.sequence (Decap.char ':' ':') typexpr
+                    (fun _  t  -> t))))
+           (Decap.sequence (Decap.char '=' '=') expression
               (fun _  e  ty  l  __loc__start__buf  __loc__start__pos 
                  __loc__end__buf  __loc__end__pos  ->
                  let _loc =
@@ -2165,12 +2189,12 @@ module Make(Initial:Extension) =
                  apply_params l e)))
     let _ =
       set_grammar let_binding
-        (Glr.alternatives'
-           [Glr.fsequence (locate (pattern_lvl AsPat))
-              (Glr.fsequence (locate right_member)
-                 (Glr.sequence post_item_attributes
-                    (Glr.option []
-                       (Glr.sequence and_kw let_binding (fun _  l  -> l)))
+        (Decap.alternatives'
+           [Decap.fsequence (locate (pattern_lvl AsPat))
+              (Decap.fsequence (locate right_member)
+                 (Decap.sequence post_item_attributes
+                    (Decap.option []
+                       (Decap.sequence and_kw let_binding (fun _  l  -> l)))
                     (fun a  l  e  ->
                        let (_loc_e,e) = e in
                        fun pat  ->
@@ -2178,13 +2202,14 @@ module Make(Initial:Extension) =
                          (value_binding ~attributes:a
                             (merge2 _loc_pat _loc_e) pat e)
                            :: l)));
-           Glr.fsequence_position (locate lowercase_ident)
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.fsequence poly_typexpr
-                   (Glr.fsequence (locate right_member)
-                      (Glr.sequence post_item_attributes
-                         (Glr.option []
-                            (Glr.sequence and_kw let_binding (fun _  l  -> l)))
+           Decap.fsequence_position (locate lowercase_ident)
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.fsequence poly_typexpr
+                   (Decap.fsequence (locate right_member)
+                      (Decap.sequence post_item_attributes
+                         (Decap.option []
+                            (Decap.sequence and_kw let_binding
+                               (fun _  l  -> l)))
                          (fun a  l  e  ->
                             let (_loc_e,e) = e in
                             fun ty  _  vn  ->
@@ -2203,13 +2228,14 @@ module Make(Initial:Extension) =
                                 (value_binding ~attributes:a
                                    (merge2 _loc_vn _loc_e) pat e)
                                   :: l)))));
-           Glr.fsequence_position (locate lowercase_ident)
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.fsequence poly_syntax_typexpr
-                   (Glr.fsequence (locate right_member)
-                      (Glr.sequence post_item_attributes
-                         (Glr.option []
-                            (Glr.sequence and_kw let_binding (fun _  l  -> l)))
+           Decap.fsequence_position (locate lowercase_ident)
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.fsequence poly_syntax_typexpr
+                   (Decap.fsequence (locate right_member)
+                      (Decap.sequence post_item_attributes
+                         (Decap.option []
+                            (Decap.sequence and_kw let_binding
+                               (fun _  l  -> l)))
                          (fun a  l  e  ->
                             let (_loc_e,e) = e in
                             fun (ids,ty)  _  vn  ->
@@ -2233,94 +2259,96 @@ module Make(Initial:Extension) =
     let match_cases =
       memoize1
         (fun lvl  ->
-           Glr.apply (fun l  -> l)
-             (Glr.option []
-                (Glr.fsequence
-                   (Glr.option None
-                      (Glr.apply (fun x  -> Some x) (Glr.string "|" "|")))
-                   (Glr.fsequence pattern
-                      (Glr.fsequence
-                         (Glr.option None
-                            (Glr.apply (fun x  -> Some x)
-                               (Glr.sequence when_kw expression
+           Decap.apply (fun l  -> l)
+             (Decap.option []
+                (Decap.fsequence
+                   (Decap.option None
+                      (Decap.apply (fun x  -> Some x) (Decap.string "|" "|")))
+                   (Decap.fsequence pattern
+                      (Decap.fsequence
+                         (Decap.option None
+                            (Decap.apply (fun x  -> Some x)
+                               (Decap.sequence when_kw expression
                                   (fun _  e  -> e))))
-                         (Glr.fsequence (Glr.string "->" "->")
-                            (Glr.sequence (expression_lvl lvl)
-                               (Glr.apply List.rev
-                                  (Glr.fixpoint []
-                                     (Glr.apply (fun x  l  -> x :: l)
-                                        (Glr.fsequence (Glr.string "|" "|")
-                                           (Glr.fsequence pattern
-                                              (Glr.fsequence
-                                                 (Glr.option None
-                                                    (Glr.apply
+                         (Decap.fsequence (Decap.string "->" "->")
+                            (Decap.sequence (expression_lvl lvl)
+                               (Decap.apply List.rev
+                                  (Decap.fixpoint []
+                                     (Decap.apply (fun x  l  -> x :: l)
+                                        (Decap.fsequence
+                                           (Decap.string "|" "|")
+                                           (Decap.fsequence pattern
+                                              (Decap.fsequence
+                                                 (Decap.option None
+                                                    (Decap.apply
                                                        (fun x  -> Some x)
-                                                       (Glr.sequence when_kw
-                                                          expression
+                                                       (Decap.sequence
+                                                          when_kw expression
                                                           (fun _  e  -> e))))
-                                                 (Glr.sequence
-                                                    (Glr.string "->" "->")
+                                                 (Decap.sequence
+                                                    (Decap.string "->" "->")
                                                     (expression_lvl lvl)
                                                     (fun _  e  w  pat  _  ->
                                                        (pat, e, w)))))))))
                                (fun e  l  _  w  pat  _  ->
                                   map_cases ((pat, e, w) :: l)))))))))
     let type_coercion =
-      Glr.alternatives'
-        [Glr.fsequence (Glr.string ":" ":")
-           (Glr.sequence typexpr
-              (Glr.option None
-                 (Glr.apply (fun x  -> Some x)
-                    (Glr.sequence (Glr.string ":>" ":>") typexpr
+      Decap.alternatives'
+        [Decap.fsequence (Decap.string ":" ":")
+           (Decap.sequence typexpr
+              (Decap.option None
+                 (Decap.apply (fun x  -> Some x)
+                    (Decap.sequence (Decap.string ":>" ":>") typexpr
                        (fun _  t'  -> t'))))
               (fun t  t'  _  -> ((Some t), t')));
-        Glr.sequence (Glr.string ":>" ":>") typexpr
+        Decap.sequence (Decap.string ":>" ":>") typexpr
           (fun _  t'  -> (None, (Some t')))]
     let expression_list =
-      Glr.alternatives'
-        [Glr.fsequence (locate (expression_lvl (next_exp Seq)))
-           (Glr.sequence
-              (Glr.apply List.rev
-                 (Glr.fixpoint []
-                    (Glr.apply (fun x  l  -> x :: l)
-                       (Glr.sequence (Glr.string ";" ";")
+      Decap.alternatives'
+        [Decap.fsequence (locate (expression_lvl (next_exp Seq)))
+           (Decap.sequence
+              (Decap.apply List.rev
+                 (Decap.fixpoint []
+                    (Decap.apply (fun x  l  -> x :: l)
+                       (Decap.sequence (Decap.string ";" ";")
                           (locate (expression_lvl (next_exp Seq)))
                           (fun _  e  -> let (_loc_e,e) = e in (e, _loc_e))))))
-              (Glr.option None
-                 (Glr.apply (fun x  -> Some x) (Glr.string ";" ";")))
+              (Decap.option None
+                 (Decap.apply (fun x  -> Some x) (Decap.string ";" ";")))
               (fun l  _  e  -> let (_loc_e,e) = e in (e, _loc_e) :: l));
-        Glr.apply (fun _  -> []) (Glr.empty ())]
+        Decap.apply (fun _  -> []) (Decap.empty ())]
     let record_item =
-      Glr.alternatives'
-        [Glr.fsequence (locate field)
-           (Glr.sequence (Glr.char '=' '=') (expression_lvl (next_exp Seq))
+      Decap.alternatives'
+        [Decap.fsequence (locate field)
+           (Decap.sequence (Decap.char '=' '=')
+              (expression_lvl (next_exp Seq))
               (fun _  e  f  -> let (_loc_f,f) = f in ((id_loc f _loc_f), e)));
-        Glr.apply
+        Decap.apply
           (fun f  ->
              let (_loc_f,f) = f in
              let id = id_loc (Lident f) _loc_f in
              (id, (loc_expr _loc_f (Pexp_ident id))))
           (locate lowercase_ident)]
     let record_list =
-      Glr.alternatives'
-        [Glr.fsequence record_item
-           (Glr.sequence
-              (Glr.apply List.rev
-                 (Glr.fixpoint []
-                    (Glr.apply (fun x  l  -> x :: l)
-                       (Glr.sequence (Glr.string ";" ";") record_item
+      Decap.alternatives'
+        [Decap.fsequence record_item
+           (Decap.sequence
+              (Decap.apply List.rev
+                 (Decap.fixpoint []
+                    (Decap.apply (fun x  l  -> x :: l)
+                       (Decap.sequence (Decap.string ";" ";") record_item
                           (fun _  it  -> it)))))
-              (Glr.option None
-                 (Glr.apply (fun x  -> Some x) (Glr.string ";" ";")))
+              (Decap.option None
+                 (Decap.apply (fun x  -> Some x) (Decap.string ";" ";")))
               (fun l  _  it  -> it :: l));
-        Glr.apply (fun _  -> []) (Glr.empty ())]
+        Decap.apply (fun _  -> []) (Decap.empty ())]
     let obj_item =
-      Glr.fsequence (locate inst_var_name)
-        (Glr.sequence (Glr.char '=' '=') (expression_lvl (next_exp Seq))
+      Decap.fsequence (locate inst_var_name)
+        (Decap.sequence (Decap.char '=' '=') (expression_lvl (next_exp Seq))
            (fun _  e  v  -> let (_loc_v,v) = v in ((id_loc v _loc_v), e)))
     let class_expr_base =
-      Glr.alternatives'
-        [Glr.apply_position
+      Decap.alternatives'
+        [Decap.apply_position
            (fun cp  ->
               let (_loc_cp,cp) = cp in
               fun __loc__start__buf  __loc__start__pos  __loc__end__buf 
@@ -2330,15 +2358,15 @@ module Make(Initial:Extension) =
                     __loc__end__pos in
                 let cp = id_loc cp _loc_cp in
                 loc_pcl _loc (Pcl_constr (cp, []))) (locate class_path);
-        Glr.fsequence_position (Glr.char '[' '[')
-          (Glr.fsequence typexpr
-             (Glr.fsequence
-                (Glr.apply List.rev
-                   (Glr.fixpoint []
-                      (Glr.apply (fun x  l  -> x :: l)
-                         (Glr.sequence (Glr.string "," ",") typexpr
+        Decap.fsequence_position (Decap.char '[' '[')
+          (Decap.fsequence typexpr
+             (Decap.fsequence
+                (Decap.apply List.rev
+                   (Decap.fixpoint []
+                      (Decap.apply (fun x  l  -> x :: l)
+                         (Decap.sequence (Decap.string "," ",") typexpr
                             (fun _  te  -> te)))))
-                (Glr.sequence (Glr.char ']' ']') (locate class_path)
+                (Decap.sequence (Decap.char ']' ']') (locate class_path)
                    (fun _  cp  ->
                       let (_loc_cp,cp) = cp in
                       fun tes  te  _  __loc__start__buf  __loc__start__pos 
@@ -2348,49 +2376,49 @@ module Make(Initial:Extension) =
                             __loc__end__buf __loc__end__pos in
                         let cp = id_loc cp _loc_cp in
                         loc_pcl _loc (Pcl_constr (cp, (te :: tes)))))));
-        Glr.fsequence_position (Glr.string "(" "(")
-          (Glr.sequence class_expr (Glr.string ")" ")")
+        Decap.fsequence_position (Decap.string "(" "(")
+          (Decap.sequence class_expr (Decap.string ")" ")")
              (fun ce  _  _  __loc__start__buf  __loc__start__pos 
                 __loc__end__buf  __loc__end__pos  ->
                 let _loc =
                   locate2 __loc__start__buf __loc__start__pos __loc__end__buf
                     __loc__end__pos in
                 loc_pcl _loc ce.pcl_desc));
-        Glr.fsequence_position (Glr.string "(" "(")
-          (Glr.fsequence class_expr
-             (Glr.fsequence (Glr.string ":" ":")
-                (Glr.sequence class_type (Glr.string ")" ")")
+        Decap.fsequence_position (Decap.string "(" "(")
+          (Decap.fsequence class_expr
+             (Decap.fsequence (Decap.string ":" ":")
+                (Decap.sequence class_type (Decap.string ")" ")")
                    (fun ct  _  _  ce  _  __loc__start__buf  __loc__start__pos
                        __loc__end__buf  __loc__end__pos  ->
                       let _loc =
                         locate2 __loc__start__buf __loc__start__pos
                           __loc__end__buf __loc__end__pos in
                       loc_pcl _loc (Pcl_constraint (ce, ct))))));
-        Glr.fsequence_position fun_kw
-          (Glr.fsequence
-             (Glr.sequence (parameter false)
-                (Glr.fixpoint []
-                   (Glr.apply (fun x  l  -> x :: l) (parameter false)))
+        Decap.fsequence_position fun_kw
+          (Decap.fsequence
+             (Decap.sequence (parameter false)
+                (Decap.fixpoint []
+                   (Decap.apply (fun x  l  -> x :: l) (parameter false)))
                 (fun x  l  -> x :: (List.rev l)))
-             (Glr.sequence (Glr.string "->" "->") class_expr
+             (Decap.sequence (Decap.string "->" "->") class_expr
                 (fun _  ce  ps  _  __loc__start__buf  __loc__start__pos 
                    __loc__end__buf  __loc__end__pos  ->
                    let _loc =
                      locate2 __loc__start__buf __loc__start__pos
                        __loc__end__buf __loc__end__pos in
                    apply_params_cls _loc ps ce)));
-        Glr.fsequence_position let_kw
-          (Glr.fsequence rec_flag
-             (Glr.fsequence let_binding
-                (Glr.sequence in_kw class_expr
+        Decap.fsequence_position let_kw
+          (Decap.fsequence rec_flag
+             (Decap.fsequence let_binding
+                (Decap.sequence in_kw class_expr
                    (fun _  ce  lbs  r  _  __loc__start__buf 
                       __loc__start__pos  __loc__end__buf  __loc__end__pos  ->
                       let _loc =
                         locate2 __loc__start__buf __loc__start__pos
                           __loc__end__buf __loc__end__pos in
                       loc_pcl _loc (Pcl_let (r, lbs, ce))))));
-        Glr.fsequence_position object_kw
-          (Glr.sequence class_body end_kw
+        Decap.fsequence_position object_kw
+          (Decap.sequence class_body end_kw
              (fun cb  _  _  __loc__start__buf  __loc__start__pos 
                 __loc__end__buf  __loc__end__pos  ->
                 let _loc =
@@ -2399,13 +2427,13 @@ module Make(Initial:Extension) =
                 loc_pcl _loc (Pcl_structure cb)))]
     let _ =
       set_grammar class_expr
-        (Glr.sequence_position class_expr_base
-           (Glr.option None
-              (Glr.apply (fun x  -> Some x)
-                 (Glr.apply (fun arg  -> arg)
-                    (Glr.sequence argument
-                       (Glr.fixpoint []
-                          (Glr.apply (fun x  l  -> x :: l) argument))
+        (Decap.sequence_position class_expr_base
+           (Decap.option None
+              (Decap.apply (fun x  -> Some x)
+                 (Decap.apply (fun arg  -> arg)
+                    (Decap.sequence argument
+                       (Decap.fixpoint []
+                          (Decap.apply (fun x  l  -> x :: l) argument))
                        (fun x  l  -> x :: (List.rev l))))))
            (fun ce  args  __loc__start__buf  __loc__start__pos 
               __loc__end__buf  __loc__end__pos  ->
@@ -2416,30 +2444,31 @@ module Make(Initial:Extension) =
               | None  -> ce
               | Some l -> loc_pcl _loc (Pcl_apply (ce, l))))
     let class_field =
-      Glr.alternatives'
-        [Glr.fsequence_position inherit_kw
-           (Glr.fsequence override_flag
-              (Glr.sequence class_expr
-                 (Glr.option None
-                    (Glr.apply (fun x  -> Some x)
-                       (Glr.sequence as_kw lowercase_ident (fun _  id  -> id))))
+      Decap.alternatives'
+        [Decap.fsequence_position inherit_kw
+           (Decap.fsequence override_flag
+              (Decap.sequence class_expr
+                 (Decap.option None
+                    (Decap.apply (fun x  -> Some x)
+                       (Decap.sequence as_kw lowercase_ident
+                          (fun _  id  -> id))))
                  (fun ce  id  o  _  __loc__start__buf  __loc__start__pos 
                     __loc__end__buf  __loc__end__pos  ->
                     let _loc =
                       locate2 __loc__start__buf __loc__start__pos
                         __loc__end__buf __loc__end__pos in
                     loc_pcf _loc (Pcf_inherit (o, ce, id)))));
-        Glr.fsequence_position val_kw
-          (Glr.fsequence override_flag
-             (Glr.fsequence mutable_flag
-                (Glr.fsequence (locate inst_var_name)
-                   (Glr.fsequence
+        Decap.fsequence_position val_kw
+          (Decap.fsequence override_flag
+             (Decap.fsequence mutable_flag
+                (Decap.fsequence (locate inst_var_name)
+                   (Decap.fsequence
                       (locate
-                         (Glr.option None
-                            (Glr.apply (fun x  -> Some x)
-                               (Glr.sequence (Glr.char ':' ':') typexpr
+                         (Decap.option None
+                            (Decap.apply (fun x  -> Some x)
+                               (Decap.sequence (Decap.char ':' ':') typexpr
                                   (fun _  t  -> t)))))
-                      (Glr.sequence (Glr.char '=' '=') expr
+                      (Decap.sequence (Decap.char '=' '=') expr
                          (fun _  e  te  ->
                             let (_loc_te,te) = te in
                             fun ivn  ->
@@ -2459,11 +2488,11 @@ module Make(Initial:Extension) =
                                         (pexp_constraint (e, t)) in
                                 loc_pcf _loc
                                   (Pcf_val (ivn, m, (Cfk_concrete (o, ex))))))))));
-        Glr.fsequence_position val_kw
-          (Glr.fsequence mutable_flag
-             (Glr.fsequence virtual_kw
-                (Glr.fsequence (locate inst_var_name)
-                   (Glr.sequence (Glr.string ":" ":") typexpr
+        Decap.fsequence_position val_kw
+          (Decap.fsequence mutable_flag
+             (Decap.fsequence virtual_kw
+                (Decap.fsequence (locate inst_var_name)
+                   (Decap.sequence (Decap.string ":" ":") typexpr
                       (fun _  te  ivn  ->
                          let (_loc_ivn,ivn) = ivn in
                          fun _  m  _  __loc__start__buf  __loc__start__pos 
@@ -2473,11 +2502,11 @@ module Make(Initial:Extension) =
                                __loc__end__buf __loc__end__pos in
                            let ivn = id_loc ivn _loc_ivn in
                            loc_pcf _loc (Pcf_val (ivn, m, (Cfk_virtual te))))))));
-        Glr.fsequence_position val_kw
-          (Glr.fsequence virtual_kw
-             (Glr.fsequence mutable_kw
-                (Glr.fsequence (locate inst_var_name)
-                   (Glr.sequence (Glr.string ":" ":") typexpr
+        Decap.fsequence_position val_kw
+          (Decap.fsequence virtual_kw
+             (Decap.fsequence mutable_kw
+                (Decap.fsequence (locate inst_var_name)
+                   (Decap.sequence (Decap.string ":" ":") typexpr
                       (fun _  te  ivn  ->
                          let (_loc_ivn,ivn) = ivn in
                          fun _  _  _  __loc__start__buf  __loc__start__pos 
@@ -2488,13 +2517,13 @@ module Make(Initial:Extension) =
                            let ivn = id_loc ivn _loc_ivn in
                            loc_pcf _loc
                              (Pcf_val (ivn, Mutable, (Cfk_virtual te))))))));
-        Glr.fsequence_position method_kw
-          (Glr.fsequence override_flag
-             (Glr.fsequence private_flag
-                (Glr.fsequence (locate method_name)
-                   (Glr.fsequence (Glr.string ":" ":")
-                      (Glr.fsequence poly_typexpr
-                         (Glr.sequence (Glr.char '=' '=') expr
+        Decap.fsequence_position method_kw
+          (Decap.fsequence override_flag
+             (Decap.fsequence private_flag
+                (Decap.fsequence (locate method_name)
+                   (Decap.fsequence (Decap.string ":" ":")
+                      (Decap.fsequence poly_typexpr
+                         (Decap.sequence (Decap.char '=' '=') expr
                             (fun _  e  te  _  mn  ->
                                let (_loc_mn,mn) = mn in
                                fun p  o  _  __loc__start__buf 
@@ -2509,13 +2538,13 @@ module Make(Initial:Extension) =
                                    loc_expr _loc (Pexp_poly (e, (Some te))) in
                                  loc_pcf _loc
                                    (Pcf_method (mn, p, (Cfk_concrete (o, e)))))))))));
-        Glr.fsequence_position method_kw
-          (Glr.fsequence override_flag
-             (Glr.fsequence private_flag
-                (Glr.fsequence (locate method_name)
-                   (Glr.fsequence (Glr.string ":" ":")
-                      (Glr.fsequence poly_syntax_typexpr
-                         (Glr.sequence (Glr.char '=' '=') expr
+        Decap.fsequence_position method_kw
+          (Decap.fsequence override_flag
+             (Decap.fsequence private_flag
+                (Decap.fsequence (locate method_name)
+                   (Decap.fsequence (Decap.string ":" ":")
+                      (Decap.fsequence poly_syntax_typexpr
+                         (Decap.sequence (Decap.char '=' '=') expr
                             (fun _  e  (ids,te)  _  mn  ->
                                let (_loc_mn,mn) = mn in
                                fun p  o  _  __loc__start__buf 
@@ -2532,24 +2561,24 @@ module Make(Initial:Extension) =
                                    loc_expr _loc (Pexp_poly (e, (Some poly))) in
                                  loc_pcf _loc
                                    (Pcf_method (mn, p, (Cfk_concrete (o, e)))))))))));
-        Glr.fsequence_position method_kw
-          (Glr.fsequence override_flag
-             (Glr.fsequence private_flag
-                (Glr.fsequence (locate method_name)
-                   (Glr.fsequence
-                      (Glr.apply List.rev
-                         (Glr.fixpoint []
-                            (Glr.apply (fun x  l  -> x :: l)
-                               (Glr.apply
+        Decap.fsequence_position method_kw
+          (Decap.fsequence override_flag
+             (Decap.fsequence private_flag
+                (Decap.fsequence (locate method_name)
+                   (Decap.fsequence
+                      (Decap.apply List.rev
+                         (Decap.fixpoint []
+                            (Decap.apply (fun x  l  -> x :: l)
+                               (Decap.apply
                                   (fun p  ->
                                      let (_loc_p,p) = p in (p, _loc_p))
                                   (locate (parameter true))))))
-                      (Glr.fsequence
-                         (Glr.option None
-                            (Glr.apply (fun x  -> Some x)
-                               (Glr.sequence (Glr.string ":" ":") typexpr
+                      (Decap.fsequence
+                         (Decap.option None
+                            (Decap.apply (fun x  -> Some x)
+                               (Decap.sequence (Decap.string ":" ":") typexpr
                                   (fun _  te  -> te))))
-                         (Glr.sequence (Glr.char '=' '=') expr
+                         (Decap.sequence (Decap.char '=' '=') expr
                             (fun _  e  te  ps  mn  ->
                                let (_loc_mn,mn) = mn in
                                fun p  o  _  __loc__start__buf 
@@ -2570,11 +2599,11 @@ module Make(Initial:Extension) =
                                  let e = loc_expr _loc (Pexp_poly (e, None)) in
                                  loc_pcf _loc
                                    (Pcf_method (mn, p, (Cfk_concrete (o, e)))))))))));
-        Glr.fsequence_position method_kw
-          (Glr.fsequence private_flag
-             (Glr.fsequence virtual_kw
-                (Glr.fsequence (locate method_name)
-                   (Glr.sequence (Glr.string ":" ":") poly_typexpr
+        Decap.fsequence_position method_kw
+          (Decap.fsequence private_flag
+             (Decap.fsequence virtual_kw
+                (Decap.fsequence (locate method_name)
+                   (Decap.sequence (Decap.string ":" ":") poly_typexpr
                       (fun _  pte  mn  ->
                          let (_loc_mn,mn) = mn in
                          fun _  p  _  __loc__start__buf  __loc__start__pos 
@@ -2585,11 +2614,11 @@ module Make(Initial:Extension) =
                            let mn = id_loc mn _loc_mn in
                            loc_pcf _loc
                              (Pcf_method (mn, p, (Cfk_virtual pte))))))));
-        Glr.fsequence_position method_kw
-          (Glr.fsequence virtual_kw
-             (Glr.fsequence private_kw
-                (Glr.fsequence (locate method_name)
-                   (Glr.sequence (Glr.string ":" ":") poly_typexpr
+        Decap.fsequence_position method_kw
+          (Decap.fsequence virtual_kw
+             (Decap.fsequence private_kw
+                (Decap.fsequence (locate method_name)
+                   (Decap.sequence (Decap.string ":" ":") poly_typexpr
                       (fun _  pte  mn  ->
                          let (_loc_mn,mn) = mn in
                          fun _  _  _  __loc__start__buf  __loc__start__pos 
@@ -2600,16 +2629,16 @@ module Make(Initial:Extension) =
                            let mn = id_loc mn _loc_mn in
                            loc_pcf _loc
                              (Pcf_method (mn, Private, (Cfk_virtual pte))))))));
-        Glr.fsequence_position constraint_kw
-          (Glr.fsequence typexpr
-             (Glr.sequence (Glr.char '=' '=') typexpr
+        Decap.fsequence_position constraint_kw
+          (Decap.fsequence typexpr
+             (Decap.sequence (Decap.char '=' '=') typexpr
                 (fun _  te'  te  _  __loc__start__buf  __loc__start__pos 
                    __loc__end__buf  __loc__end__pos  ->
                    let _loc =
                      locate2 __loc__start__buf __loc__start__pos
                        __loc__end__buf __loc__end__pos in
                    loc_pcf _loc (Pcf_constraint (te, te')))));
-        Glr.sequence_position initializer_kw expr
+        Decap.sequence_position initializer_kw expr
           (fun _  e  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
@@ -2618,10 +2647,12 @@ module Make(Initial:Extension) =
              loc_pcf _loc (Pcf_initializer e))]
     let _ =
       set_grammar class_body
-        (Glr.sequence
-           (locate (Glr.option None (Glr.apply (fun x  -> Some x) pattern)))
-           (Glr.apply List.rev
-              (Glr.fixpoint [] (Glr.apply (fun x  l  -> x :: l) class_field)))
+        (Decap.sequence
+           (locate
+              (Decap.option None (Decap.apply (fun x  -> Some x) pattern)))
+           (Decap.apply List.rev
+              (Decap.fixpoint []
+                 (Decap.apply (fun x  l  -> x :: l) class_field)))
            (fun p  ->
               let (_loc_p,p) = p in
               fun f  ->
@@ -2631,24 +2662,24 @@ module Make(Initial:Extension) =
                   | Some p -> p in
                 { pcstr_self = p; pcstr_fields = f }))
     let class_binding =
-      Glr.fsequence_position virtual_flag
-        (Glr.fsequence
+      Decap.fsequence_position virtual_flag
+        (Decap.fsequence
            (locate
-              (Glr.option []
-                 (Glr.fsequence (Glr.string "[" "[")
-                    (Glr.sequence type_parameters (Glr.string "]" "]")
+              (Decap.option []
+                 (Decap.fsequence (Decap.string "[" "[")
+                    (Decap.sequence type_parameters (Decap.string "]" "]")
                        (fun params  _  _  -> params)))))
-           (Glr.fsequence (locate class_name)
-              (Glr.fsequence
-                 (Glr.apply List.rev
-                    (Glr.fixpoint []
-                       (Glr.apply (fun x  l  -> x :: l) (parameter false))))
-                 (Glr.fsequence
-                    (Glr.option None
-                       (Glr.apply (fun x  -> Some x)
-                          (Glr.sequence (Glr.string ":" ":") class_type
+           (Decap.fsequence (locate class_name)
+              (Decap.fsequence
+                 (Decap.apply List.rev
+                    (Decap.fixpoint []
+                       (Decap.apply (fun x  l  -> x :: l) (parameter false))))
+                 (Decap.fsequence
+                    (Decap.option None
+                       (Decap.apply (fun x  -> Some x)
+                          (Decap.sequence (Decap.string ":" ":") class_type
                              (fun _  ct  -> ct))))
-                    (Glr.sequence (Glr.char '=' '=') class_expr
+                    (Decap.sequence (Decap.char '=' '=') class_expr
                        (fun _  ce  ct  ps  cn  ->
                           let (_loc_cn,cn) = cn in
                           fun params  ->
@@ -2667,11 +2698,11 @@ module Make(Initial:Extension) =
                               class_type_declaration _loc_params _loc
                                 (id_loc cn _loc_cn) params v ce))))))
     let class_definition =
-      Glr.sequence class_binding
-        (Glr.apply List.rev
-           (Glr.fixpoint []
-              (Glr.apply (fun x  l  -> x :: l)
-                 (Glr.sequence and_kw class_binding (fun _  cb  -> cb)))))
+      Decap.sequence class_binding
+        (Decap.apply List.rev
+           (Decap.fixpoint []
+              (Decap.apply (fun x  l  -> x :: l)
+                 (Decap.sequence and_kw class_binding (fun _  cb  -> cb)))))
         (fun cb  cbs  -> cb :: cbs)
     let module_expr = declare_grammar "module_expr"
     let module_type = declare_grammar "module_type"
@@ -2692,10 +2723,10 @@ module Make(Initial:Extension) =
     let expression_base =
       memoize1
         (fun lvl  ->
-           Glr.alternatives'
-             ((Glr.apply (fun e  -> e) (alternatives extra_expressions)) ::
+           Decap.alternatives'
+             ((Decap.apply (fun e  -> e) (alternatives extra_expressions)) ::
              (let y =
-                (Glr.apply_position
+                (Decap.apply_position
                    (fun id  ->
                       let (_loc_id,id) = id in
                       fun __loc__start__buf  __loc__start__pos 
@@ -2707,7 +2738,7 @@ module Make(Initial:Extension) =
                           (loc_expr _loc (Pexp_ident (id_loc id _loc_id)))))
                    (locate value_path))
                 ::
-                (Glr.apply_position
+                (Decap.apply_position
                    (fun c  __loc__start__buf  __loc__start__pos 
                       __loc__end__buf  __loc__end__pos  ->
                       let _loc =
@@ -2715,10 +2746,10 @@ module Make(Initial:Extension) =
                           __loc__end__buf __loc__end__pos in
                       (Atom, (loc_expr _loc (Pexp_constant c)))) constant)
                 ::
-                (Glr.fsequence_position (locate module_path)
-                   (Glr.fsequence (Glr.string "." ".")
-                      (Glr.fsequence (Glr.string "(" "(")
-                         (Glr.sequence expression (Glr.string ")" ")")
+                (Decap.fsequence_position (locate module_path)
+                   (Decap.fsequence (Decap.string "." ".")
+                      (Decap.fsequence (Decap.string "(" "(")
+                         (Decap.sequence expression (Decap.string ")" ")")
                             (fun e  _  _  _  mp  ->
                                let (_loc_mp,mp) = mp in
                                fun __loc__start__buf  __loc__start__pos 
@@ -2731,17 +2762,17 @@ module Make(Initial:Extension) =
                                  (Atom,
                                    (loc_expr _loc (Pexp_open (Fresh, mp, e)))))))))
                 ::
-                (Glr.sequence_position let_kw
-                   (Glr.alternatives'
+                (Decap.sequence_position let_kw
+                   (Decap.alternatives'
                       (let y =
                          let y =
                            let y = [] in
                            if lvl < App
                            then
-                             (Glr.fsequence_position open_kw
-                                (Glr.fsequence override_flag
-                                   (Glr.fsequence (locate module_path)
-                                      (Glr.sequence in_kw
+                             (Decap.fsequence_position open_kw
+                                (Decap.fsequence override_flag
+                                   (Decap.fsequence (locate module_path)
+                                      (Decap.sequence in_kw
                                          (expression_lvl (let_prio lvl))
                                          (fun _  e  mp  ->
                                             let (_loc_mp,mp) = mp in
@@ -2763,27 +2794,27 @@ module Make(Initial:Extension) =
                            else y in
                          if lvl < App
                          then
-                           (Glr.fsequence_position module_kw
-                              (Glr.fsequence (locate module_name)
-                                 (Glr.fsequence
-                                    (Glr.apply List.rev
-                                       (Glr.fixpoint []
-                                          (Glr.apply (fun x  l  -> x :: l)
-                                             (Glr.fsequence_position
-                                                (Glr.string "(" "(")
-                                                (Glr.fsequence
+                           (Decap.fsequence_position module_kw
+                              (Decap.fsequence (locate module_name)
+                                 (Decap.fsequence
+                                    (Decap.apply List.rev
+                                       (Decap.fixpoint []
+                                          (Decap.apply (fun x  l  -> x :: l)
+                                             (Decap.fsequence_position
+                                                (Decap.string "(" "(")
+                                                (Decap.fsequence
                                                    (locate module_name)
-                                                   (Glr.sequence
-                                                      (Glr.option None
-                                                         (Glr.apply
+                                                   (Decap.sequence
+                                                      (Decap.option None
+                                                         (Decap.apply
                                                             (fun x  -> Some x)
-                                                            (Glr.sequence
-                                                               (Glr.string
+                                                            (Decap.sequence
+                                                               (Decap.string
                                                                   ":" ":")
                                                                module_type
                                                                (fun _  mt  ->
                                                                   mt))))
-                                                      (Glr.string ")" ")")
+                                                      (Decap.string ")" ")")
                                                       (fun mt  _  mn  ->
                                                          let (_loc_mn,mn) =
                                                            mn in
@@ -2802,17 +2833,19 @@ module Make(Initial:Extension) =
                                                            ((id_loc mn
                                                                _loc_mn), mt,
                                                              _loc))))))))
-                                    (Glr.fsequence
+                                    (Decap.fsequence
                                        (locate
-                                          (Glr.option None
-                                             (Glr.apply (fun x  -> Some x)
-                                                (Glr.sequence
-                                                   (Glr.string ":" ":")
+                                          (Decap.option None
+                                             (Decap.apply (fun x  -> Some x)
+                                                (Decap.sequence
+                                                   (Decap.string ":" ":")
                                                    module_type
                                                    (fun _  mt  -> mt)))))
-                                       (Glr.fsequence (Glr.string "=" "=")
-                                          (Glr.fsequence (locate module_expr)
-                                             (Glr.sequence in_kw
+                                       (Decap.fsequence
+                                          (Decap.string "=" "=")
+                                          (Decap.fsequence
+                                             (locate module_expr)
+                                             (Decap.sequence in_kw
                                                 (expression_lvl
                                                    (let_prio lvl))
                                                 (fun _  e  me  ->
@@ -2867,9 +2900,9 @@ module Make(Initial:Extension) =
                          else y in
                        if lvl < App
                        then
-                         (Glr.fsequence_position rec_flag
-                            (Glr.fsequence let_binding
-                               (Glr.sequence in_kw
+                         (Decap.fsequence_position rec_flag
+                            (Decap.fsequence let_binding
+                               (Decap.sequence in_kw
                                   (expression_lvl (let_prio lvl))
                                   (fun _  e  l  r  __loc__start__buf 
                                      __loc__start__pos  __loc__end__buf 
@@ -2895,11 +2928,11 @@ module Make(Initial:Extension) =
                      let y =
                        let y =
                          let y =
-                           (Glr.fsequence_position (Glr.string "(" "(")
-                              (Glr.sequence
-                                 (Glr.option None
-                                    (Glr.apply (fun x  -> Some x) expression))
-                                 (Glr.string ")" ")")
+                           (Decap.fsequence_position (Decap.string "(" "(")
+                              (Decap.sequence
+                                 (Decap.option None
+                                    (Decap.apply (fun x  -> Some x)
+                                       expression)) (Decap.string ")" ")")
                                  (fun e  _  _  __loc__start__buf 
                                     __loc__start__pos  __loc__end__buf 
                                     __loc__end__pos  ->
@@ -2916,11 +2949,11 @@ module Make(Initial:Extension) =
                                            loc_expr _loc
                                              (pexp_construct (cunit, None)))))))
                            ::
-                           (Glr.fsequence_position begin_kw
-                              (Glr.sequence
-                                 (Glr.option None
-                                    (Glr.apply (fun x  -> Some x) expression))
-                                 end_kw
+                           (Decap.fsequence_position begin_kw
+                              (Decap.sequence
+                                 (Decap.option None
+                                    (Decap.apply (fun x  -> Some x)
+                                       expression)) end_kw
                                  (fun e  _  _  __loc__start__buf 
                                     __loc__start__pos  __loc__end__buf 
                                     __loc__end__pos  ->
@@ -2937,14 +2970,14 @@ module Make(Initial:Extension) =
                                            loc_expr _loc
                                              (pexp_construct (cunit, None)))))))
                            ::
-                           (Glr.sequence_position (locate constructor)
-                              (Glr.option None
-                                 (Glr.apply (fun x  -> Some x)
+                           (Decap.sequence_position (locate constructor)
+                              (Decap.option None
+                                 (Decap.apply (fun x  -> Some x)
                                     (if lvl <= App
                                      then
-                                       Glr.apply (fun e  -> e)
+                                       Decap.apply (fun e  -> e)
                                          (expression_lvl (next_exp App))
-                                     else Glr.fail "")))
+                                     else Decap.fail "")))
                               (fun c  ->
                                  let (_loc_c,c) = c in
                                  fun e  __loc__start__buf  __loc__start__pos 
@@ -2961,7 +2994,7 @@ module Make(Initial:Extension) =
                            (let y =
                               let y =
                                 let y =
-                                  [Glr.apply_position
+                                  [Decap.apply_position
                                      (fun l  __loc__start__buf 
                                         __loc__start__pos  __loc__end__buf 
                                         __loc__end__pos  ->
@@ -2973,10 +3006,10 @@ module Make(Initial:Extension) =
                                           (loc_expr _loc
                                              (Pexp_variant (l, None)))))
                                      tag_name;
-                                  Glr.fsequence_position
-                                    (Glr.string "[|" "[|")
-                                    (Glr.sequence expression_list
-                                       (Glr.string "|]" "|]")
+                                  Decap.fsequence_position
+                                    (Decap.string "[|" "[|")
+                                    (Decap.sequence expression_list
+                                       (Decap.string "|]" "|]")
                                        (fun l  _  _  __loc__start__buf 
                                           __loc__start__pos  __loc__end__buf 
                                           __loc__end__pos  ->
@@ -2987,9 +3020,10 @@ module Make(Initial:Extension) =
                                           (Atom,
                                             (loc_expr _loc
                                                (Pexp_array (List.map fst l))))));
-                                  Glr.fsequence_position (Glr.string "[" "[")
-                                    (Glr.sequence expression_list
-                                       (locate (Glr.string "]" "]"))
+                                  Decap.fsequence_position
+                                    (Decap.string "[" "[")
+                                    (Decap.sequence expression_list
+                                       (locate (Decap.string "]" "]"))
                                        (fun l  cl  ->
                                           let (_loc_cl,cl) = cl in
                                           fun _  __loc__start__buf 
@@ -3005,16 +3039,17 @@ module Make(Initial:Extension) =
                                               (loc_expr _loc
                                                  (pexp_list _loc
                                                     ~loc_cl:_loc_cl l).pexp_desc))));
-                                  Glr.fsequence_position (Glr.string "{" "{")
-                                    (Glr.fsequence
-                                       (Glr.option None
-                                          (Glr.apply (fun x  -> Some x)
-                                             (Glr.sequence
+                                  Decap.fsequence_position
+                                    (Decap.string "{" "{")
+                                    (Decap.fsequence
+                                       (Decap.option None
+                                          (Decap.apply (fun x  -> Some x)
+                                             (Decap.sequence
                                                 (expression_lvl
                                                    (next_exp Seq)) with_kw
                                                 (fun e  _  -> e))))
-                                       (Glr.sequence record_list
-                                          (Glr.string "}" "}")
+                                       (Decap.sequence record_list
+                                          (Decap.string "}" "}")
                                           (fun l  _  e  _  __loc__start__buf 
                                              __loc__start__pos 
                                              __loc__end__buf  __loc__end__pos
@@ -3027,10 +3062,10 @@ module Make(Initial:Extension) =
                                              (Atom,
                                                (loc_expr _loc
                                                   (Pexp_record (l, e)))))));
-                                  Glr.fsequence_position while_kw
-                                    (Glr.fsequence expression
-                                       (Glr.fsequence do_kw
-                                          (Glr.sequence expression done_kw
+                                  Decap.fsequence_position while_kw
+                                    (Decap.fsequence expression
+                                       (Decap.fsequence do_kw
+                                          (Decap.sequence expression done_kw
                                              (fun e'  _  _  e  _ 
                                                 __loc__start__buf 
                                                 __loc__start__pos 
@@ -3044,14 +3079,14 @@ module Make(Initial:Extension) =
                                                 (Atom,
                                                   (loc_expr _loc
                                                      (Pexp_while (e, e'))))))));
-                                  Glr.fsequence_position for_kw
-                                    (Glr.fsequence pattern
-                                       (Glr.fsequence (Glr.char '=' '=')
-                                          (Glr.fsequence expression
-                                             (Glr.fsequence downto_flag
-                                                (Glr.fsequence expression
-                                                   (Glr.fsequence do_kw
-                                                      (Glr.sequence
+                                  Decap.fsequence_position for_kw
+                                    (Decap.fsequence pattern
+                                       (Decap.fsequence (Decap.char '=' '=')
+                                          (Decap.fsequence expression
+                                             (Decap.fsequence downto_flag
+                                                (Decap.fsequence expression
+                                                   (Decap.fsequence do_kw
+                                                      (Decap.sequence
                                                          expression done_kw
                                                          (fun e''  _  _  e' 
                                                             d  e  _  id  _ 
@@ -3072,7 +3107,7 @@ module Make(Initial:Extension) =
                                                                     (id, e,
                                                                     e', d,
                                                                     e''))))))))))));
-                                  Glr.sequence_position new_kw
+                                  Decap.sequence_position new_kw
                                     (locate class_path)
                                     (fun _  p  ->
                                        let (_loc_p,p) = p in
@@ -3086,8 +3121,8 @@ module Make(Initial:Extension) =
                                          (Atom,
                                            (loc_expr _loc
                                               (Pexp_new (id_loc p _loc_p)))));
-                                  Glr.fsequence_position object_kw
-                                    (Glr.sequence class_body end_kw
+                                  Decap.fsequence_position object_kw
+                                    (Decap.sequence class_body end_kw
                                        (fun o  _  _  __loc__start__buf 
                                           __loc__start__pos  __loc__end__buf 
                                           __loc__end__pos  ->
@@ -3097,26 +3132,26 @@ module Make(Initial:Extension) =
                                               __loc__end__buf __loc__end__pos in
                                           (Atom,
                                             (loc_expr _loc (Pexp_object o)))));
-                                  Glr.fsequence_position
-                                    (Glr.string "{<" "{<")
-                                    (Glr.sequence
-                                       (Glr.option []
-                                          (Glr.fsequence obj_item
-                                             (Glr.sequence
-                                                (Glr.apply List.rev
-                                                   (Glr.fixpoint []
-                                                      (Glr.apply
+                                  Decap.fsequence_position
+                                    (Decap.string "{<" "{<")
+                                    (Decap.sequence
+                                       (Decap.option []
+                                          (Decap.fsequence obj_item
+                                             (Decap.sequence
+                                                (Decap.apply List.rev
+                                                   (Decap.fixpoint []
+                                                      (Decap.apply
                                                          (fun x  l  -> x :: l)
-                                                         (Glr.sequence
-                                                            (Glr.string ";"
+                                                         (Decap.sequence
+                                                            (Decap.string ";"
                                                                ";") obj_item
                                                             (fun _  o  -> o)))))
-                                                (Glr.option None
-                                                   (Glr.apply
+                                                (Decap.option None
+                                                   (Decap.apply
                                                       (fun x  -> Some x)
-                                                      (Glr.string ";" ";")))
+                                                      (Decap.string ";" ";")))
                                                 (fun l  _  o  -> o :: l))))
-                                       (Glr.string ">}" ">}")
+                                       (Decap.string ">}" ">}")
                                        (fun l  _  _  __loc__start__buf 
                                           __loc__start__pos  __loc__end__buf 
                                           __loc__end__pos  ->
@@ -3126,19 +3161,20 @@ module Make(Initial:Extension) =
                                               __loc__end__buf __loc__end__pos in
                                           (Atom,
                                             (loc_expr _loc (Pexp_override l)))));
-                                  Glr.fsequence_position (Glr.string "(" "(")
-                                    (Glr.fsequence module_kw
-                                       (Glr.fsequence (locate module_expr)
-                                          (Glr.sequence
+                                  Decap.fsequence_position
+                                    (Decap.string "(" "(")
+                                    (Decap.fsequence module_kw
+                                       (Decap.fsequence (locate module_expr)
+                                          (Decap.sequence
                                              (locate
-                                                (Glr.option None
-                                                   (Glr.apply
+                                                (Decap.option None
+                                                   (Decap.apply
                                                       (fun x  -> Some x)
-                                                      (Glr.sequence
-                                                         (Glr.string ":" ":")
-                                                         package_type
+                                                      (Decap.sequence
+                                                         (Decap.string ":"
+                                                            ":") package_type
                                                          (fun _  pt  -> pt)))))
-                                             (Glr.string ")" ")")
+                                             (Decap.string ")" ")")
                                              (fun pt  ->
                                                 let (_loc_pt,pt) = pt in
                                                 fun _  me  ->
@@ -3167,30 +3203,32 @@ module Make(Initial:Extension) =
                                                             (me, pt) in
                                                     (Atom,
                                                       (loc_expr _loc desc))))));
-                                  Glr.fsequence (Glr.string "<:" "<:")
-                                    (Glr.fsequence
-                                       (Glr.alternatives'
-                                          [Glr.apply (fun _  -> "expression")
-                                             (Glr.string "expr" "expr");
-                                          Glr.apply (fun _  -> "type")
-                                            (Glr.string "type" "type");
-                                          Glr.apply (fun _  -> "pattern")
-                                            (Glr.string "pat" "pat");
-                                          Glr.apply (fun _  -> "structure")
-                                            (Glr.string "structure"
+                                  Decap.fsequence (Decap.string "<:" "<:")
+                                    (Decap.fsequence
+                                       (Decap.alternatives'
+                                          [Decap.apply
+                                             (fun _  -> "expression")
+                                             (Decap.string "expr" "expr");
+                                          Decap.apply (fun _  -> "type")
+                                            (Decap.string "type" "type");
+                                          Decap.apply (fun _  -> "pattern")
+                                            (Decap.string "pat" "pat");
+                                          Decap.apply (fun _  -> "structure")
+                                            (Decap.string "structure"
                                                "structure");
-                                          Glr.apply (fun _  -> "signature")
-                                            (Glr.string "signature"
+                                          Decap.apply (fun _  -> "signature")
+                                            (Decap.string "signature"
                                                "signature")])
-                                       (Glr.fsequence
-                                          (Glr.option None
-                                             (Glr.apply (fun x  -> Some x)
-                                                (Glr.sequence
-                                                   (Glr.char '@' '@')
+                                       (Decap.fsequence
+                                          (Decap.option None
+                                             (Decap.apply (fun x  -> Some x)
+                                                (Decap.sequence
+                                                   (Decap.char '@' '@')
                                                    (expression_lvl
                                                       (next_exp App))
                                                    (fun _  e  -> e))))
-                                          (Glr.sequence (Glr.char '<' '<')
+                                          (Decap.sequence
+                                             (Decap.char '<' '<')
                                              (locate quotation)
                                              (fun _  q  ->
                                                 let (_loc_q,q) = q in
@@ -3200,8 +3238,8 @@ module Make(Initial:Extension) =
                                                   (Atom,
                                                     (quote_expression _loc_q
                                                        loc q name))))));
-                                  Glr.sequence_position (Glr.char '$' '$')
-                                    capitalized_ident
+                                  Decap.sequence_position
+                                    (Decap.char '$' '$') capitalized_ident
                                     (fun _  c  __loc__start__buf 
                                        __loc__start__pos  __loc__end__buf 
                                        __loc__end__pos  ->
@@ -3229,29 +3267,30 @@ module Make(Initial:Extension) =
                                                    expression blank str
                                                with
                                                | Not_found  -> raise Give_up))));
-                                  Glr.fsequence_position (Glr.char '$' '$')
-                                    (Glr.fsequence
-                                       (Glr.option None
-                                          (Glr.apply (fun x  -> Some x)
-                                             (Glr.sequence
-                                                (Glr.alternatives'
-                                                   [Glr.apply
+                                  Decap.fsequence_position
+                                    (Decap.char '$' '$')
+                                    (Decap.fsequence
+                                       (Decap.option None
+                                          (Decap.apply (fun x  -> Some x)
+                                             (Decap.sequence
+                                                (Decap.alternatives'
+                                                   [Decap.apply
                                                       (fun _  -> "tuple")
-                                                      (Glr.string "tuple"
+                                                      (Decap.string "tuple"
                                                          "tuple");
-                                                   Glr.apply
+                                                   Decap.apply
                                                      (fun _  -> "list")
-                                                     (Glr.string "list"
+                                                     (Decap.string "list"
                                                         "list");
-                                                   Glr.apply
+                                                   Decap.apply
                                                      (fun _  -> "array")
-                                                     (Glr.string "array"
+                                                     (Decap.string "array"
                                                         "array")])
-                                                (Glr.char ':' ':')
+                                                (Decap.char ':' ':')
                                                 (fun t  _  -> t))))
-                                       (Glr.sequence
+                                       (Decap.sequence
                                           (expression_lvl (next_exp App))
-                                          (Glr.char '$' '$')
+                                          (Decap.char '$' '$')
                                           (fun e  _  t  _  __loc__start__buf 
                                              __loc__start__pos 
                                              __loc__end__buf  __loc__end__pos
@@ -3286,25 +3325,25 @@ module Make(Initial:Extension) =
                                                         (loc_expr _loc
                                                            (pexp_list _loc l).pexp_desc))
                                                   | _ -> raise Give_up))));
-                                  Glr.iter
-                                    (Glr.apply
+                                  Decap.iter
+                                    (Decap.apply
                                        (fun p  ->
                                           let (_loc_p,p) = p in
                                           let lvl' = prefix_prio p in
                                           if lvl <= lvl'
                                           then
-                                            Glr.apply
+                                            Decap.apply
                                               (fun e  ->
                                                  let (_loc_e,e) = e in
                                                  (lvl',
                                                    (mk_unary_opp p _loc_p e
                                                       _loc_e)))
                                               (locate (expression_lvl lvl'))
-                                          else Glr.fail "")
+                                          else Decap.fail "")
                                        (locate prefix_symbol))] in
                                 if lvl <= App
                                 then
-                                  (Glr.sequence_position tag_name
+                                  (Decap.sequence_position tag_name
                                      (expression_lvl (next_exp App))
                                      (fun l  e  __loc__start__buf 
                                         __loc__start__pos  __loc__end__buf 
@@ -3320,7 +3359,7 @@ module Make(Initial:Extension) =
                                 else y in
                               if lvl <= App
                               then
-                                (Glr.sequence_position lazy_kw
+                                (Decap.sequence_position lazy_kw
                                    (expression_lvl App)
                                    (fun _  e  __loc__start__buf 
                                       __loc__start__pos  __loc__end__buf 
@@ -3334,9 +3373,9 @@ module Make(Initial:Extension) =
                               else y in
                             if lvl <= App
                             then
-                              (Glr.sequence_position assert_kw
-                                 (Glr.alternatives'
-                                    [Glr.apply_position
+                              (Decap.sequence_position assert_kw
+                                 (Decap.alternatives'
+                                    [Decap.apply_position
                                        (fun _  __loc__start__buf 
                                           __loc__start__pos  __loc__end__buf 
                                           __loc__end__pos  ->
@@ -3345,7 +3384,7 @@ module Make(Initial:Extension) =
                                               __loc__start__pos
                                               __loc__end__buf __loc__end__pos in
                                           pexp_assertfalse _loc) false_kw;
-                                    Glr.apply (fun e  -> Pexp_assert e)
+                                    Decap.apply (fun e  -> Pexp_assert e)
                                       (expression_lvl App)])
                                  (fun _  e  __loc__start__buf 
                                     __loc__start__pos  __loc__end__buf 
@@ -3359,13 +3398,13 @@ module Make(Initial:Extension) =
                             else y) in
                          if lvl < App
                          then
-                           (Glr.fsequence_position if_kw
-                              (Glr.fsequence expression
-                                 (Glr.fsequence then_kw
-                                    (Glr.sequence (expression_lvl If)
-                                       (Glr.option None
-                                          (Glr.apply (fun x  -> Some x)
-                                             (Glr.sequence else_kw
+                           (Decap.fsequence_position if_kw
+                              (Decap.fsequence expression
+                                 (Decap.fsequence then_kw
+                                    (Decap.sequence (expression_lvl If)
+                                       (Decap.option None
+                                          (Decap.apply (fun x  -> Some x)
+                                             (Decap.sequence else_kw
                                                 (expression_lvl If)
                                                 (fun _  e  -> e))))
                                        (fun e  e'  _  c  _  __loc__start__buf
@@ -3382,9 +3421,9 @@ module Make(Initial:Extension) =
                          else y in
                        if lvl < App
                        then
-                         (Glr.fsequence_position try_kw
-                            (Glr.fsequence expression
-                               (Glr.sequence with_kw
+                         (Decap.fsequence_position try_kw
+                            (Decap.fsequence expression
+                               (Decap.sequence with_kw
                                   (match_cases (let_prio lvl))
                                   (fun _  l  e  _  __loc__start__buf 
                                      __loc__start__pos  __loc__end__buf 
@@ -3398,9 +3437,9 @@ module Make(Initial:Extension) =
                        else y in
                      if lvl < App
                      then
-                       (Glr.fsequence_position match_kw
-                          (Glr.fsequence expression
-                             (Glr.sequence with_kw
+                       (Decap.fsequence_position match_kw
+                          (Decap.fsequence expression
+                             (Decap.sequence with_kw
                                 (match_cases (let_prio lvl))
                                 (fun _  l  e  _  __loc__start__buf 
                                    __loc__start__pos  __loc__end__buf 
@@ -3414,17 +3453,17 @@ module Make(Initial:Extension) =
                      else y in
                    if lvl < App
                    then
-                     (Glr.fsequence_position fun_kw
-                        (Glr.fsequence
-                           (Glr.apply List.rev
-                              (Glr.fixpoint []
-                                 (Glr.apply (fun x  l  -> x :: l)
-                                    (Glr.apply
+                     (Decap.fsequence_position fun_kw
+                        (Decap.fsequence
+                           (Decap.apply List.rev
+                              (Decap.fixpoint []
+                                 (Decap.apply (fun x  l  -> x :: l)
+                                    (Decap.apply
                                        (fun lbl  ->
                                           let (_loc_lbl,lbl) = lbl in
                                           (lbl, _loc_lbl))
                                        (locate (parameter true))))))
-                           (Glr.sequence (Glr.string "->" "->")
+                           (Decap.sequence (Decap.string "->" "->")
                               (expression_lvl (let_prio lvl))
                               (fun _  e  l  _  __loc__start__buf 
                                  __loc__start__pos  __loc__end__buf 
@@ -3440,7 +3479,7 @@ module Make(Initial:Extension) =
                    else y in
                  if lvl < App
                  then
-                   (Glr.sequence_position function_kw
+                   (Decap.sequence_position function_kw
                       (match_cases (let_prio lvl))
                       (fun _  l  __loc__start__buf  __loc__start__pos 
                          __loc__end__buf  __loc__end__pos  ->
@@ -3452,8 +3491,8 @@ module Make(Initial:Extension) =
                  else y) in
               if lvl <= Aff
               then
-                (Glr.fsequence_position (locate inst_var_name)
-                   (Glr.sequence (Glr.string "<-" "<-")
+                (Decap.fsequence_position (locate inst_var_name)
+                   (Decap.sequence (Decap.string "<-" "<-")
                       (expression_lvl (next_exp Aff))
                       (fun _  e  v  ->
                          let (_loc_v,v) = v in
@@ -3502,13 +3541,13 @@ module Make(Initial:Extension) =
       memoize2
         (fun lvl'  lvl  ->
            let ln f _loc e = loc_expr (merge2 f.pexp_loc _loc) e in
-           Glr.alternatives'
+           Decap.alternatives'
              (let y =
                 let y =
                   let y =
                     let y =
-                      (Glr.sequence (Glr.string "." ".")
-                         (Glr.alternatives'
+                      (Decap.sequence (Decap.string "." ".")
+                         (Decap.alternatives'
                             (let y =
                                let y =
                                  let y =
@@ -3519,7 +3558,7 @@ module Make(Initial:Extension) =
                                            let y = [] in
                                            if (lvl' >= Dot) && (lvl <= Dot)
                                            then
-                                             (Glr.apply_position
+                                             (Decap.apply_position
                                                 (fun f  ->
                                                    let (_loc_f,f) = f in
                                                    fun __loc__start__buf 
@@ -3544,10 +3583,10 @@ module Make(Initial:Extension) =
                                            else y in
                                          if (lvl' >= Aff) && (lvl <= Aff)
                                          then
-                                           (Glr.fsequence_position
+                                           (Decap.fsequence_position
                                               (locate field)
-                                              (Glr.sequence
-                                                 (Glr.string "<-" "<-")
+                                              (Decap.sequence
+                                                 (Decap.string "<-" "<-")
                                                  (expression_lvl
                                                     (next_exp Aff))
                                                  (fun _  e  f  ->
@@ -3573,10 +3612,10 @@ module Make(Initial:Extension) =
                                          else y in
                                        if (lvl' >= Dot) && (lvl <= Dot)
                                        then
-                                         (Glr.fsequence_position
-                                            (Glr.string "{" "{")
-                                            (Glr.sequence expression
-                                               (Glr.string "}" "}")
+                                         (Decap.fsequence_position
+                                            (Decap.string "{" "{")
+                                            (Decap.sequence expression
+                                               (Decap.string "}" "}")
                                                (fun f  _  _ 
                                                   __loc__start__buf 
                                                   __loc__start__pos 
@@ -3596,13 +3635,13 @@ module Make(Initial:Extension) =
                                        else y in
                                      if (lvl' >= Aff) && (lvl <= Aff)
                                      then
-                                       (Glr.fsequence_position
-                                          (Glr.string "{" "{")
-                                          (Glr.fsequence expression
-                                             (Glr.fsequence
-                                                (Glr.string "}" "}")
-                                                (Glr.sequence
-                                                   (Glr.string "<-" "<-")
+                                       (Decap.fsequence_position
+                                          (Decap.string "{" "{")
+                                          (Decap.fsequence expression
+                                             (Decap.fsequence
+                                                (Decap.string "}" "}")
+                                                (Decap.sequence
+                                                   (Decap.string "<-" "<-")
                                                    (expression_lvl
                                                       (next_exp Aff))
                                                    (fun _  e  _  f  _ 
@@ -3626,10 +3665,10 @@ module Make(Initial:Extension) =
                                      else y in
                                    if (lvl' >= Dot) && (lvl <= Dot)
                                    then
-                                     (Glr.fsequence_position
-                                        (Glr.string "[" "[")
-                                        (Glr.sequence expression
-                                           (Glr.string "]" "]")
+                                     (Decap.fsequence_position
+                                        (Decap.string "[" "[")
+                                        (Decap.sequence expression
+                                           (Decap.string "]" "]")
                                            (fun f  _  _  __loc__start__buf 
                                               __loc__start__pos 
                                               __loc__end__buf 
@@ -3653,12 +3692,13 @@ module Make(Initial:Extension) =
                                    else y in
                                  if (lvl' >= Aff) && (lvl <= Aff)
                                  then
-                                   (Glr.fsequence_position
-                                      (Glr.string "[" "[")
-                                      (Glr.fsequence expression
-                                         (Glr.fsequence (Glr.string "]" "]")
-                                            (Glr.sequence
-                                               (Glr.string "<-" "<-")
+                                   (Decap.fsequence_position
+                                      (Decap.string "[" "[")
+                                      (Decap.fsequence expression
+                                         (Decap.fsequence
+                                            (Decap.string "]" "]")
+                                            (Decap.sequence
+                                               (Decap.string "<-" "<-")
                                                (expression_lvl (next_exp Aff))
                                                (fun _  e  _  f  _ 
                                                   __loc__start__buf 
@@ -3687,9 +3727,10 @@ module Make(Initial:Extension) =
                                  else y in
                                if (lvl' >= Dot) && (lvl <= Dot)
                                then
-                                 (Glr.fsequence_position (Glr.string "(" "(")
-                                    (Glr.sequence expression
-                                       (Glr.string ")" ")")
+                                 (Decap.fsequence_position
+                                    (Decap.string "(" "(")
+                                    (Decap.sequence expression
+                                       (Decap.string ")" ")")
                                        (fun f  _  _  __loc__start__buf 
                                           __loc__start__pos  __loc__end__buf 
                                           __loc__end__pos  ->
@@ -3710,10 +3751,12 @@ module Make(Initial:Extension) =
                                else y in
                              if (lvl' > Aff) && (lvl <= Aff)
                              then
-                               (Glr.fsequence_position (Glr.string "(" "(")
-                                  (Glr.fsequence expression
-                                     (Glr.fsequence (Glr.string ")" ")")
-                                        (Glr.sequence (Glr.string "<-" "<-")
+                               (Decap.fsequence_position
+                                  (Decap.string "(" "(")
+                                  (Decap.fsequence expression
+                                     (Decap.fsequence (Decap.string ")" ")")
+                                        (Decap.sequence
+                                           (Decap.string "<-" "<-")
                                            (expression_lvl (next_exp Aff))
                                            (fun _  e  _  f  _ 
                                               __loc__start__buf 
@@ -3742,8 +3785,8 @@ module Make(Initial:Extension) =
                       ::
                       (let y =
                          let y =
-                           [Glr.iter
-                              (Glr.apply
+                           [Decap.iter
+                              (Decap.apply
                                  (fun op  ->
                                     let (_loc_op,op) = op in
                                     let p = infix_prio op in
@@ -3753,7 +3796,7 @@ module Make(Initial:Extension) =
                                         ((lvl' > p) ||
                                            ((a = Left) && (lvl' = p)))
                                     then
-                                      Glr.apply_position
+                                      Decap.apply_position
                                         (fun e  __loc__start__buf 
                                            __loc__start__pos  __loc__end__buf
                                             __loc__end__pos  ->
@@ -3786,10 +3829,10 @@ module Make(Initial:Extension) =
                                            (if a = Right
                                             then p
                                             else next_exp p))
-                                    else Glr.fail "") (locate infix_op))] in
+                                    else Decap.fail "") (locate infix_op))] in
                          if (lvl' > App) && (lvl <= App)
                          then
-                           (Glr.apply_position
+                           (Decap.apply_position
                               (fun l  __loc__start__buf  __loc__start__pos 
                                  __loc__end__buf  __loc__end__pos  ->
                                  let _loc =
@@ -3798,17 +3841,17 @@ module Make(Initial:Extension) =
                                      __loc__end__pos in
                                  (App,
                                    (fun f  -> ln f _loc (Pexp_apply (f, l)))))
-                              (Glr.sequence
-                                 (Glr.apply (fun a  -> a) argument)
-                                 (Glr.fixpoint []
-                                    (Glr.apply (fun x  l  -> x :: l)
-                                       (Glr.apply (fun a  -> a) argument)))
+                              (Decap.sequence
+                                 (Decap.apply (fun a  -> a) argument)
+                                 (Decap.fixpoint []
+                                    (Decap.apply (fun x  l  -> x :: l)
+                                       (Decap.apply (fun a  -> a) argument)))
                                  (fun x  l  -> x :: (List.rev l))))
                            :: y
                          else y in
                        if (lvl' >= Dash) && (lvl <= Dash)
                        then
-                         (Glr.sequence_position (Glr.string "#" "#")
+                         (Decap.sequence_position (Decap.string "#" "#")
                             method_name
                             (fun _  f  __loc__start__buf  __loc__start__pos 
                                __loc__end__buf  __loc__end__pos  ->
@@ -3821,18 +3864,19 @@ module Make(Initial:Extension) =
                        else y) in
                     if (lvl' >= Seq) && (lvl <= Seq)
                     then
-                      (Glr.apply (fun _  -> (Seq, (fun e  -> e))) semi_col)
+                      (Decap.apply (fun _  -> (Seq, (fun e  -> e))) semi_col)
                       :: y
                     else y in
                   if (lvl' > Seq) && (lvl <= Seq)
                   then
-                    (Glr.apply (fun l  -> (Seq, (fun f  -> mk_seq (f :: l))))
-                       (Glr.sequence
-                          (Glr.sequence semi_col
+                    (Decap.apply
+                       (fun l  -> (Seq, (fun f  -> mk_seq (f :: l))))
+                       (Decap.sequence
+                          (Decap.sequence semi_col
                              (expression_lvl (next_exp Seq)) (fun _  e  -> e))
-                          (Glr.fixpoint []
-                             (Glr.apply (fun x  l  -> x :: l)
-                                (Glr.sequence semi_col
+                          (Decap.fixpoint []
+                             (Decap.apply (fun x  l  -> x :: l)
+                                (Decap.sequence semi_col
                                    (expression_lvl (next_exp Seq))
                                    (fun _  e  -> e))))
                           (fun x  l  -> x :: (List.rev l))))
@@ -3840,7 +3884,7 @@ module Make(Initial:Extension) =
                   else y in
                 if (lvl' > Coerce) && (lvl <= Coerce)
                 then
-                  (Glr.apply_position
+                  (Decap.apply_position
                      (fun t  __loc__start__buf  __loc__start__pos 
                         __loc__end__buf  __loc__end__pos  ->
                         let _loc =
@@ -3858,19 +3902,19 @@ module Make(Initial:Extension) =
                 else y in
               if (lvl' > Tupl) && (lvl <= Tupl)
               then
-                (Glr.apply_position
+                (Decap.apply_position
                    (fun l  __loc__start__buf  __loc__start__pos 
                       __loc__end__buf  __loc__end__pos  ->
                       let _loc =
                         locate2 __loc__start__buf __loc__start__pos
                           __loc__end__buf __loc__end__pos in
                       (Tupl, (fun f  -> ln f _loc (Pexp_tuple (f :: l)))))
-                   (Glr.sequence
-                      (Glr.sequence (Glr.string "," ",")
+                   (Decap.sequence
+                      (Decap.sequence (Decap.string "," ",")
                          (expression_lvl (next_exp Tupl)) (fun _  e  -> e))
-                      (Glr.fixpoint []
-                         (Glr.apply (fun x  l  -> x :: l)
-                            (Glr.sequence (Glr.string "," ",")
+                      (Decap.fixpoint []
+                         (Decap.apply (fun x  l  -> x :: l)
+                            (Decap.sequence (Decap.string "," ",")
                                (expression_lvl (next_exp Tupl))
                                (fun _  e  -> e))))
                       (fun x  l  -> x :: (List.rev l))))
@@ -3880,27 +3924,27 @@ module Make(Initial:Extension) =
       let f =
         memoize2'
           (fun expression_suit  lvl'  lvl  ->
-             Glr.alternatives'
-               [Glr.iter
-                  (Glr.apply
+             Decap.alternatives'
+               [Decap.iter
+                  (Decap.apply
                      (fun (p1,f1)  ->
-                        Glr.apply
+                        Decap.apply
                           (fun (p2,f2)  -> (p2, (fun f  -> f2 (f1 f))))
                           (expression_suit p1 lvl))
                      (expression_suit_aux lvl' lvl));
-               Glr.apply (fun _  -> (lvl', (fun f  -> f))) (Glr.empty ())]) in
+               Decap.apply (fun _  -> (lvl', (fun f  -> f))) (Decap.empty ())]) in
       let rec res x y = f res x y in res
     let _ =
       set_expression_lvl
         (fun lvl  ->
-           Glr.iter
-             (Glr.apply
+           Decap.iter
+             (Decap.apply
                 (fun (lvl',e)  ->
-                   Glr.apply (fun (_,f)  -> f e) (expression_suit lvl' lvl))
+                   Decap.apply (fun (_,f)  -> f e) (expression_suit lvl' lvl))
                 (expression_base lvl)))
     let module_expr_base =
-      Glr.alternatives'
-        [Glr.apply_position
+      Decap.alternatives'
+        [Decap.apply_position
            (fun mp  __loc__start__buf  __loc__start__pos  __loc__end__buf 
               __loc__end__pos  ->
               let _loc =
@@ -3908,24 +3952,24 @@ module Make(Initial:Extension) =
                   __loc__end__pos in
               let mid = id_loc mp _loc in mexpr_loc _loc (Pmod_ident mid))
            module_path;
-        Glr.fsequence_position struct_kw
-          (Glr.sequence structure end_kw
+        Decap.fsequence_position struct_kw
+          (Decap.sequence structure end_kw
              (fun ms  _  _  __loc__start__buf  __loc__start__pos 
                 __loc__end__buf  __loc__end__pos  ->
                 let _loc =
                   locate2 __loc__start__buf __loc__start__pos __loc__end__buf
                     __loc__end__pos in
                 mexpr_loc _loc (Pmod_structure ms)));
-        Glr.fsequence_position functor_kw
-          (Glr.fsequence (Glr.string "(" "(")
-             (Glr.fsequence (locate module_name)
-                (Glr.fsequence
-                   (Glr.option None
-                      (Glr.apply (fun x  -> Some x)
-                         (Glr.sequence (Glr.string ":" ":") module_type
+        Decap.fsequence_position functor_kw
+          (Decap.fsequence (Decap.string "(" "(")
+             (Decap.fsequence (locate module_name)
+                (Decap.fsequence
+                   (Decap.option None
+                      (Decap.apply (fun x  -> Some x)
+                         (Decap.sequence (Decap.string ":" ":") module_type
                             (fun _  mt  -> mt))))
-                   (Glr.fsequence (Glr.string ")" ")")
-                      (Glr.sequence (Glr.string "->" "->") module_expr
+                   (Decap.fsequence (Decap.string ")" ")")
+                      (Decap.sequence (Decap.string "->" "->") module_expr
                          (fun _  me  _  mt  mn  ->
                             let (_loc_mn,mn) = mn in
                             fun _  _  __loc__start__buf  __loc__start__pos 
@@ -3935,13 +3979,13 @@ module Make(Initial:Extension) =
                                   __loc__end__buf __loc__end__pos in
                               mexpr_loc _loc
                                 (Pmod_functor ((id_loc mn _loc_mn), mt, me))))))));
-        Glr.fsequence_position (Glr.string "(" "(")
-          (Glr.fsequence module_expr
-             (Glr.sequence
-                (Glr.option None
-                   (Glr.apply (fun x  -> Some x)
-                      (Glr.sequence (Glr.string ":" ":") module_type
-                         (fun _  mt  -> mt)))) (Glr.string ")" ")")
+        Decap.fsequence_position (Decap.string "(" "(")
+          (Decap.fsequence module_expr
+             (Decap.sequence
+                (Decap.option None
+                   (Decap.apply (fun x  -> Some x)
+                      (Decap.sequence (Decap.string ":" ":") module_type
+                         (fun _  mt  -> mt)))) (Decap.string ")" ")")
                 (fun mt  _  me  _  __loc__start__buf  __loc__start__pos 
                    __loc__end__buf  __loc__end__pos  ->
                    let _loc =
@@ -3950,15 +3994,16 @@ module Make(Initial:Extension) =
                    match mt with
                    | None  -> me
                    | Some mt -> mexpr_loc _loc (Pmod_constraint (me, mt)))));
-        Glr.fsequence_position (Glr.string "(" "(")
-          (Glr.fsequence val_kw
-             (Glr.fsequence expr
-                (Glr.sequence
+        Decap.fsequence_position (Decap.string "(" "(")
+          (Decap.fsequence val_kw
+             (Decap.fsequence expr
+                (Decap.sequence
                    (locate
-                      (Glr.option None
-                         (Glr.apply (fun x  -> Some x)
-                            (Glr.sequence (Glr.string ":" ":") package_type
-                               (fun _  pt  -> pt))))) (Glr.string ")" ")")
+                      (Decap.option None
+                         (Decap.apply (fun x  -> Some x)
+                            (Decap.sequence (Decap.string ":" ":")
+                               package_type (fun _  pt  -> pt)))))
+                   (Decap.string ")" ")")
                    (fun pt  ->
                       let (_loc_pt,pt) = pt in
                       fun _  e  _  _  __loc__start__buf  __loc__start__pos 
@@ -3976,12 +4021,12 @@ module Make(Initial:Extension) =
                         mexpr_loc _loc e))))]
     let _ =
       set_grammar module_expr
-        (Glr.sequence (locate module_expr_base)
-           (Glr.apply List.rev
-              (Glr.fixpoint []
-                 (Glr.apply (fun x  l  -> x :: l)
-                    (Glr.fsequence_position (Glr.string "(" "(")
-                       (Glr.sequence module_expr (Glr.string ")" ")")
+        (Decap.sequence (locate module_expr_base)
+           (Decap.apply List.rev
+              (Decap.fixpoint []
+                 (Decap.apply (fun x  l  -> x :: l)
+                    (Decap.fsequence_position (Decap.string "(" "(")
+                       (Decap.sequence module_expr (Decap.string ")" ")")
                           (fun m  _  _  __loc__start__buf  __loc__start__pos 
                              __loc__end__buf  __loc__end__pos  ->
                              let _loc =
@@ -3996,8 +4041,8 @@ module Make(Initial:Extension) =
                      mexpr_loc (merge2 _loc_m _loc_n) (Pmod_apply (acc, n)))
                   m l))
     let module_type_base =
-      Glr.alternatives'
-        [Glr.apply_position
+      Decap.alternatives'
+        [Decap.apply_position
            (fun mp  __loc__start__buf  __loc__start__pos  __loc__end__buf 
               __loc__end__pos  ->
               let _loc =
@@ -4005,24 +4050,24 @@ module Make(Initial:Extension) =
                   __loc__end__pos in
               let mid = id_loc mp _loc in mtyp_loc _loc (Pmty_ident mid))
            modtype_path;
-        Glr.fsequence_position sig_kw
-          (Glr.sequence signature end_kw
+        Decap.fsequence_position sig_kw
+          (Decap.sequence signature end_kw
              (fun ms  _  _  __loc__start__buf  __loc__start__pos 
                 __loc__end__buf  __loc__end__pos  ->
                 let _loc =
                   locate2 __loc__start__buf __loc__start__pos __loc__end__buf
                     __loc__end__pos in
                 mtyp_loc _loc (Pmty_signature ms)));
-        Glr.fsequence_position functor_kw
-          (Glr.fsequence (Glr.string "(" "(")
-             (Glr.fsequence (locate module_name)
-                (Glr.fsequence
-                   (Glr.option None
-                      (Glr.apply (fun x  -> Some x)
-                         (Glr.sequence (Glr.string ":" ":") module_type
+        Decap.fsequence_position functor_kw
+          (Decap.fsequence (Decap.string "(" "(")
+             (Decap.fsequence (locate module_name)
+                (Decap.fsequence
+                   (Decap.option None
+                      (Decap.apply (fun x  -> Some x)
+                         (Decap.sequence (Decap.string ":" ":") module_type
                             (fun _  mt  -> mt))))
-                   (Glr.fsequence (Glr.string ")" ")")
-                      (Glr.sequence (Glr.string "->" "->") module_type
+                   (Decap.fsequence (Decap.string ")" ")")
+                      (Decap.sequence (Decap.string "->" "->") module_type
                          (fun _  me  _  mt  mn  ->
                             let (_loc_mn,mn) = mn in
                             fun _  _  __loc__start__buf  __loc__start__pos 
@@ -4032,12 +4077,12 @@ module Make(Initial:Extension) =
                                   __loc__end__buf __loc__end__pos in
                               mtyp_loc _loc
                                 (Pmty_functor ((id_loc mn _loc_mn), mt, me))))))));
-        Glr.fsequence (Glr.string "(" "(")
-          (Glr.sequence module_type (Glr.string ")" ")")
+        Decap.fsequence (Decap.string "(" "(")
+          (Decap.sequence module_type (Decap.string ")" ")")
              (fun mt  _  _  -> mt));
-        Glr.fsequence_position module_kw
-          (Glr.fsequence type_kw
-             (Glr.sequence of_kw module_expr
+        Decap.fsequence_position module_kw
+          (Decap.fsequence type_kw
+             (Decap.sequence of_kw module_expr
                 (fun _  me  _  _  __loc__start__buf  __loc__start__pos 
                    __loc__end__buf  __loc__end__pos  ->
                    let _loc =
@@ -4045,16 +4090,17 @@ module Make(Initial:Extension) =
                        __loc__end__buf __loc__end__pos in
                    mtyp_loc _loc (Pmty_typeof me))))]
     let mod_constraint =
-      Glr.alternatives'
-        [Glr.iter
-           (Glr.apply
+      Decap.alternatives'
+        [Decap.iter
+           (Decap.apply
               (fun t  ->
                  let (_loc_t,t) = t in
-                 Glr.apply (fun (tn,ty)  -> Pwith_type (tn, ty))
+                 Decap.apply (fun (tn,ty)  -> Pwith_type (tn, ty))
                    (typedef_in_constraint _loc_t)) (locate type_kw));
-        Glr.fsequence module_kw
-          (Glr.fsequence (locate module_path)
-             (Glr.sequence (Glr.char '=' '=') (locate extended_module_path)
+        Decap.fsequence module_kw
+          (Decap.fsequence (locate module_path)
+             (Decap.sequence (Decap.char '=' '=')
+                (locate extended_module_path)
                 (fun _  m2  ->
                    let (_loc_m2,m2) = m2 in
                    fun m1  ->
@@ -4062,10 +4108,10 @@ module Make(Initial:Extension) =
                      fun _  ->
                        let name = id_loc m1 _loc_m1 in
                        Pwith_module (name, (id_loc m2 _loc_m2)))));
-        Glr.fsequence_position type_kw
-          (Glr.fsequence (Glr.option [] type_params)
-             (Glr.fsequence (locate typeconstr_name)
-                (Glr.sequence (Glr.string ":=" ":=") typexpr
+        Decap.fsequence_position type_kw
+          (Decap.fsequence (Decap.option [] type_params)
+             (Decap.fsequence (locate typeconstr_name)
+                (Decap.sequence (Decap.string ":=" ":=") typexpr
                    (fun _  te  tcn  ->
                       let (_loc_tcn,tcn) = tcn in
                       fun tps  _  __loc__start__buf  __loc__start__pos 
@@ -4077,9 +4123,9 @@ module Make(Initial:Extension) =
                           type_declaration _loc (id_loc tcn _loc_tcn) tps []
                             Ptype_abstract Public (Some te) in
                         Pwith_typesubst td))));
-        Glr.fsequence module_kw
-          (Glr.fsequence (locate module_name)
-             (Glr.sequence (Glr.string ":=" ":=")
+        Decap.fsequence module_kw
+          (Decap.fsequence (locate module_name)
+             (Decap.sequence (Decap.string ":=" ":=")
                 (locate extended_module_path)
                 (fun _  emp  ->
                    let (_loc_emp,emp) = emp in
@@ -4090,15 +4136,15 @@ module Make(Initial:Extension) =
                          ((id_loc mn _loc_mn), (id_loc emp _loc_emp)))))]
     let _ =
       set_grammar module_type
-        (Glr.sequence_position module_type_base
-           (Glr.option None
-              (Glr.apply (fun x  -> Some x)
-                 (Glr.fsequence with_kw
-                    (Glr.sequence mod_constraint
-                       (Glr.apply List.rev
-                          (Glr.fixpoint []
-                             (Glr.apply (fun x  l  -> x :: l)
-                                (Glr.sequence and_kw mod_constraint
+        (Decap.sequence_position module_type_base
+           (Decap.option None
+              (Decap.apply (fun x  -> Some x)
+                 (Decap.fsequence with_kw
+                    (Decap.sequence mod_constraint
+                       (Decap.apply List.rev
+                          (Decap.fixpoint []
+                             (Decap.apply (fun x  l  -> x :: l)
+                                (Decap.sequence and_kw mod_constraint
                                    (fun _  m  -> m)))))
                        (fun m  l  _  -> m :: l)))))
            (fun m  l  __loc__start__buf  __loc__start__pos  __loc__end__buf 
@@ -4110,23 +4156,23 @@ module Make(Initial:Extension) =
               | None  -> m
               | Some l -> mtyp_loc _loc (Pmty_with (m, l))))
     let structure_item_base =
-      Glr.alternatives'
-        [Glr.fsequence
-           (Glr.regexp ~name:"let" let_re (fun groupe  -> groupe 0))
-           (Glr.sequence rec_flag let_binding
+      Decap.alternatives'
+        [Decap.fsequence
+           (Decap.regexp ~name:"let" let_re (fun groupe  -> groupe 0))
+           (Decap.sequence rec_flag let_binding
               (fun r  l  _  ->
                  match l with
                  | { pvb_pat = { ppat_desc = Ppat_any  }; pvb_expr = e }::[]
                      -> pstr_eval e
                  | _ -> Pstr_value (r, l)));
-        Glr.fsequence_position external_kw
-          (Glr.fsequence (locate value_name)
-             (Glr.fsequence (Glr.string ":" ":")
-                (Glr.fsequence typexpr
-                   (Glr.sequence (Glr.string "=" "=")
-                      (Glr.apply List.rev
-                         (Glr.fixpoint []
-                            (Glr.apply (fun x  l  -> x :: l) string_literal)))
+        Decap.fsequence_position external_kw
+          (Decap.fsequence (locate value_name)
+             (Decap.fsequence (Decap.string ":" ":")
+                (Decap.fsequence typexpr
+                   (Decap.sequence (Decap.string "=" "=")
+                      (Decap.apply List.rev
+                         (Decap.fixpoint []
+                            (Decap.apply (fun x  l  -> x :: l) string_literal)))
                       (fun _  ls  ty  _  n  ->
                          let (_loc_n,n) = n in
                          fun _  __loc__start__buf  __loc__start__pos 
@@ -4144,34 +4190,34 @@ module Make(Initial:Extension) =
                                pval_loc = _loc;
                                pval_attributes = []
                              })))));
-        Glr.apply (fun td  -> Pstr_type (List.map snd td)) type_definition;
-        Glr.apply (fun ex  -> ex) exception_definition;
-        Glr.sequence module_kw
-          (Glr.alternatives'
-             [Glr.fsequence_position rec_kw
-                (Glr.fsequence (locate module_name)
-                   (Glr.fsequence
-                      (Glr.option None
-                         (Glr.apply (fun x  -> Some x)
-                            (Glr.sequence (Glr.string ":" ":") module_type
-                               (fun _  mt  -> mt))))
-                      (Glr.fsequence (Glr.char '=' '=')
-                         (Glr.sequence module_expr
-                            (Glr.apply List.rev
-                               (Glr.fixpoint []
-                                  (Glr.apply (fun x  l  -> x :: l)
-                                     (Glr.fsequence_position and_kw
-                                        (Glr.fsequence (locate module_name)
-                                           (Glr.fsequence
-                                              (Glr.option None
-                                                 (Glr.apply
+        Decap.apply (fun td  -> Pstr_type (List.map snd td)) type_definition;
+        Decap.apply (fun ex  -> ex) exception_definition;
+        Decap.sequence module_kw
+          (Decap.alternatives'
+             [Decap.fsequence_position rec_kw
+                (Decap.fsequence (locate module_name)
+                   (Decap.fsequence
+                      (Decap.option None
+                         (Decap.apply (fun x  -> Some x)
+                            (Decap.sequence (Decap.string ":" ":")
+                               module_type (fun _  mt  -> mt))))
+                      (Decap.fsequence (Decap.char '=' '=')
+                         (Decap.sequence module_expr
+                            (Decap.apply List.rev
+                               (Decap.fixpoint []
+                                  (Decap.apply (fun x  l  -> x :: l)
+                                     (Decap.fsequence_position and_kw
+                                        (Decap.fsequence (locate module_name)
+                                           (Decap.fsequence
+                                              (Decap.option None
+                                                 (Decap.apply
                                                     (fun x  -> Some x)
-                                                    (Glr.sequence
-                                                       (Glr.string ":" ":")
+                                                    (Decap.sequence
+                                                       (Decap.string ":" ":")
                                                        module_type
                                                        (fun _  mt  -> mt))))
-                                              (Glr.sequence
-                                                 (Glr.char '=' '=')
+                                              (Decap.sequence
+                                                 (Decap.char '=' '=')
                                                  module_expr
                                                  (fun _  me  mt  mn  ->
                                                     let (_loc_mn,mn) = mn in
@@ -4200,19 +4246,20 @@ module Make(Initial:Extension) =
                                    module_binding _loc (id_loc mn _loc_mn) mt
                                      me in
                                  Pstr_recmodule (m :: ms))))));
-             Glr.fsequence_position (locate module_name)
-               (Glr.fsequence
-                  (Glr.apply List.rev
-                     (Glr.fixpoint []
-                        (Glr.apply (fun x  l  -> x :: l)
-                           (Glr.fsequence_position (Glr.string "(" "(")
-                              (Glr.fsequence (locate module_name)
-                                 (Glr.sequence
-                                    (Glr.option None
-                                       (Glr.apply (fun x  -> Some x)
-                                          (Glr.sequence (Glr.string ":" ":")
+             Decap.fsequence_position (locate module_name)
+               (Decap.fsequence
+                  (Decap.apply List.rev
+                     (Decap.fixpoint []
+                        (Decap.apply (fun x  l  -> x :: l)
+                           (Decap.fsequence_position (Decap.string "(" "(")
+                              (Decap.fsequence (locate module_name)
+                                 (Decap.sequence
+                                    (Decap.option None
+                                       (Decap.apply (fun x  -> Some x)
+                                          (Decap.sequence
+                                             (Decap.string ":" ":")
                                              module_type (fun _  mt  -> mt))))
-                                    (Glr.string ")" ")")
+                                    (Decap.string ")" ")")
                                     (fun mt  _  mn  ->
                                        let (_loc_mn,mn) = mn in
                                        fun _  __loc__start__buf 
@@ -4223,13 +4270,14 @@ module Make(Initial:Extension) =
                                              __loc__start__pos
                                              __loc__end__buf __loc__end__pos in
                                          ((id_loc mn _loc_mn), mt, _loc))))))))
-                  (Glr.fsequence
+                  (Decap.fsequence
                      (locate
-                        (Glr.option None
-                           (Glr.apply (fun x  -> Some x)
-                              (Glr.sequence (Glr.string ":" ":") module_type
-                                 (fun _  mt  -> mt)))))
-                     (Glr.sequence (Glr.string "=" "=") (locate module_expr)
+                        (Decap.option None
+                           (Decap.apply (fun x  -> Some x)
+                              (Decap.sequence (Decap.string ":" ":")
+                                 module_type (fun _  mt  -> mt)))))
+                     (Decap.sequence (Decap.string "=" "=")
+                        (locate module_expr)
                         (fun _  me  ->
                            let (_loc_me,me) = me in
                            fun mt  ->
@@ -4257,11 +4305,11 @@ module Make(Initial:Extension) =
                                  Pstr_module
                                    (module_binding _loc (id_loc mn _loc_mn)
                                       None me)))));
-             Glr.fsequence_position type_kw
-               (Glr.sequence (locate modtype_name)
-                  (Glr.option None
-                     (Glr.apply (fun x  -> Some x)
-                        (Glr.sequence (Glr.string "=" "=") module_type
+             Decap.fsequence_position type_kw
+               (Decap.sequence (locate modtype_name)
+                  (Decap.option None
+                     (Decap.apply (fun x  -> Some x)
+                        (Decap.sequence (Decap.string "=" "=") module_type
                            (fun _  mt  -> mt))))
                   (fun mn  ->
                      let (_loc_mn,mn) = mn in
@@ -4277,8 +4325,8 @@ module Make(Initial:Extension) =
                            pmtd_attributes = [];
                            pmtd_loc = _loc
                          }))]) (fun _  r  -> r);
-        Glr.fsequence_position open_kw
-          (Glr.sequence override_flag (locate module_path)
+        Decap.fsequence_position open_kw
+          (Decap.sequence override_flag (locate module_path)
              (fun o  m  ->
                 let (_loc_m,m) = m in
                 fun _  __loc__start__buf  __loc__start__pos  __loc__end__buf 
@@ -4293,7 +4341,7 @@ module Make(Initial:Extension) =
                       popen_loc = _loc;
                       popen_attributes = []
                     }));
-        Glr.sequence_position include_kw module_expr
+        Decap.sequence_position include_kw module_expr
           (fun _  me  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
@@ -4301,33 +4349,34 @@ module Make(Initial:Extension) =
                  __loc__end__pos in
              Pstr_include
                { pincl_mod = me; pincl_loc = _loc; pincl_attributes = [] });
-        Glr.sequence class_kw
-          (Glr.alternatives'
-             [Glr.apply (fun ctd  -> Pstr_class_type ctd)
+        Decap.sequence class_kw
+          (Decap.alternatives'
+             [Decap.apply (fun ctd  -> Pstr_class_type ctd)
                 classtype_definition;
-             Glr.apply (fun cds  -> Pstr_class cds) class_definition])
+             Decap.apply (fun cds  -> Pstr_class cds) class_definition])
           (fun _  r  -> r);
-        Glr.apply (fun e  -> pstr_eval e) expression]
+        Decap.apply (fun e  -> pstr_eval e) expression]
     let _ =
       set_grammar structure_item
-        (Glr.alternatives'
-           [Glr.apply (fun e  -> e) (alternatives extra_structure);
-           Glr.fsequence (Glr.char '$' '$')
-             (Glr.fsequence (expression_lvl (next_exp App))
-                (Glr.sequence (Glr.char '$' '$')
-                   (Glr.option None
-                      (Glr.apply (fun x  -> Some x) (Glr.string ";;" ";;")))
+        (Decap.alternatives'
+           [Decap.apply (fun e  -> e) (alternatives extra_structure);
+           Decap.fsequence (Decap.char '$' '$')
+             (Decap.fsequence (expression_lvl (next_exp App))
+                (Decap.sequence (Decap.char '$' '$')
+                   (Decap.option None
+                      (Decap.apply (fun x  -> Some x)
+                         (Decap.string ";;" ";;")))
                    (fun _  _  e  _  -> push_pop_structure e)));
-           Glr.sequence (locate structure_item_base)
-             (Glr.option None
-                (Glr.apply (fun x  -> Some x) (Glr.string ";;" ";;")))
+           Decap.sequence (locate structure_item_base)
+             (Decap.option None
+                (Decap.apply (fun x  -> Some x) (Decap.string ";;" ";;")))
              (fun s  -> let (_loc_s,s) = s in fun _  -> [loc_str _loc_s s])])
     let signature_item_base =
-      Glr.alternatives'
-        [Glr.fsequence_position val_kw
-           (Glr.fsequence (locate value_name)
-              (Glr.fsequence (Glr.string ":" ":")
-                 (Glr.sequence typexpr post_item_attributes
+      Decap.alternatives'
+        [Decap.fsequence_position val_kw
+           (Decap.fsequence (locate value_name)
+              (Decap.fsequence (Decap.string ":" ":")
+                 (Decap.sequence typexpr post_item_attributes
                     (fun ty  a  _  n  ->
                        let (_loc_n,n) = n in
                        fun _  __loc__start__buf  __loc__start__pos 
@@ -4337,15 +4386,15 @@ module Make(Initial:Extension) =
                              __loc__end__buf __loc__end__pos in
                          psig_value ~attributes:a _loc (id_loc n _loc_n) ty
                            []))));
-        Glr.fsequence_position external_kw
-          (Glr.fsequence (locate value_name)
-             (Glr.fsequence (Glr.string ":" ":")
-                (Glr.fsequence typexpr
-                   (Glr.fsequence (Glr.string "=" "=")
-                      (Glr.sequence
-                         (Glr.apply List.rev
-                            (Glr.fixpoint []
-                               (Glr.apply (fun x  l  -> x :: l)
+        Decap.fsequence_position external_kw
+          (Decap.fsequence (locate value_name)
+             (Decap.fsequence (Decap.string ":" ":")
+                (Decap.fsequence typexpr
+                   (Decap.fsequence (Decap.string "=" "=")
+                      (Decap.sequence
+                         (Decap.apply List.rev
+                            (Decap.fixpoint []
+                               (Decap.apply (fun x  l  -> x :: l)
                                   string_literal))) post_item_attributes
                          (fun ls  a  _  ty  _  n  ->
                             let (_loc_n,n) = n in
@@ -4358,22 +4407,22 @@ module Make(Initial:Extension) =
                               if (l < 1) || (l > 3) then raise Give_up;
                               psig_value ~attributes:a _loc (id_loc n _loc_n)
                                 ty ls))))));
-        Glr.apply (fun td  -> Psig_type (List.map snd td)) type_definition;
-        Glr.apply
+        Decap.apply (fun td  -> Psig_type (List.map snd td)) type_definition;
+        Decap.apply
           (fun (name,ed,_loc')  ->
              Psig_exception (Te.decl ~loc:_loc' ~args:ed name))
           exception_declaration;
-        Glr.fsequence_position module_kw
-          (Glr.fsequence rec_kw
-             (Glr.fsequence (locate module_name)
-                (Glr.fsequence (Glr.string ":" ":")
-                   (Glr.sequence module_type
-                      (Glr.apply List.rev
-                         (Glr.fixpoint []
-                            (Glr.apply (fun x  l  -> x :: l)
-                               (Glr.fsequence_position and_kw
-                                  (Glr.fsequence (locate module_name)
-                                     (Glr.sequence (Glr.string ":" ":")
+        Decap.fsequence_position module_kw
+          (Decap.fsequence rec_kw
+             (Decap.fsequence (locate module_name)
+                (Decap.fsequence (Decap.string ":" ":")
+                   (Decap.sequence module_type
+                      (Decap.apply List.rev
+                         (Decap.fixpoint []
+                            (Decap.apply (fun x  l  -> x :: l)
+                               (Decap.fsequence_position and_kw
+                                  (Decap.fsequence (locate module_name)
+                                     (Decap.sequence (Decap.string ":" ":")
                                         module_type
                                         (fun _  mt  mn  ->
                                            let (_loc_mn,mn) = mn in
@@ -4398,21 +4447,22 @@ module Make(Initial:Extension) =
                            let m =
                              module_declaration _loc (id_loc mn _loc_mn) mt in
                            Psig_recmodule (m :: ms))))));
-        Glr.sequence module_kw
-          (Glr.alternatives'
-             [Glr.fsequence_position (locate module_name)
-                (Glr.fsequence
-                   (Glr.apply List.rev
-                      (Glr.fixpoint []
-                         (Glr.apply (fun x  l  -> x :: l)
-                            (Glr.fsequence_position (Glr.string "(" "(")
-                               (Glr.fsequence (locate module_name)
-                                  (Glr.sequence
-                                     (Glr.option None
-                                        (Glr.apply (fun x  -> Some x)
-                                           (Glr.sequence (Glr.string ":" ":")
+        Decap.sequence module_kw
+          (Decap.alternatives'
+             [Decap.fsequence_position (locate module_name)
+                (Decap.fsequence
+                   (Decap.apply List.rev
+                      (Decap.fixpoint []
+                         (Decap.apply (fun x  l  -> x :: l)
+                            (Decap.fsequence_position (Decap.string "(" "(")
+                               (Decap.fsequence (locate module_name)
+                                  (Decap.sequence
+                                     (Decap.option None
+                                        (Decap.apply (fun x  -> Some x)
+                                           (Decap.sequence
+                                              (Decap.string ":" ":")
                                               module_type (fun _  mt  -> mt))))
-                                     (Glr.string ")" ")")
+                                     (Decap.string ")" ")")
                                      (fun mt  _  mn  ->
                                         let (_loc_mn,mn) = mn in
                                         fun _  __loc__start__buf 
@@ -4423,7 +4473,8 @@ module Make(Initial:Extension) =
                                               __loc__start__pos
                                               __loc__end__buf __loc__end__pos in
                                           ((id_loc mn _loc_mn), mt, _loc))))))))
-                   (Glr.sequence (Glr.string ":" ":") (locate module_type)
+                   (Decap.sequence (Decap.string ":" ":")
+                      (locate module_type)
                       (fun _  mt  ->
                          let (_loc_mt,mt) = mt in
                          fun l  mn  ->
@@ -4442,11 +4493,11 @@ module Make(Initial:Extension) =
                              Psig_module
                                (module_declaration _loc (id_loc mn _loc_mn)
                                   mt))));
-             Glr.fsequence_position type_kw
-               (Glr.sequence (locate modtype_name)
-                  (Glr.option None
-                     (Glr.apply (fun x  -> Some x)
-                        (Glr.sequence (Glr.string "=" "=") module_type
+             Decap.fsequence_position type_kw
+               (Decap.sequence (locate modtype_name)
+                  (Decap.option None
+                     (Decap.apply (fun x  -> Some x)
+                        (Decap.sequence (Decap.string "=" "=") module_type
                            (fun _  mt  -> mt))))
                   (fun mn  ->
                      let (_loc_mn,mn) = mn in
@@ -4462,8 +4513,8 @@ module Make(Initial:Extension) =
                            pmtd_attributes = [];
                            pmtd_loc = _loc
                          }))]) (fun _  r  -> r);
-        Glr.fsequence_position open_kw
-          (Glr.sequence override_flag (locate module_path)
+        Decap.fsequence_position open_kw
+          (Decap.sequence override_flag (locate module_path)
              (fun o  m  ->
                 let (_loc_m,m) = m in
                 fun _  __loc__start__buf  __loc__start__pos  __loc__end__buf 
@@ -4478,7 +4529,7 @@ module Make(Initial:Extension) =
                       popen_loc = _loc;
                       popen_attributes = []
                     }));
-        Glr.sequence_position include_kw module_type
+        Decap.sequence_position include_kw module_type
           (fun _  me  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
@@ -4486,22 +4537,22 @@ module Make(Initial:Extension) =
                  __loc__end__pos in
              Psig_include
                { pincl_mod = me; pincl_loc = _loc; pincl_attributes = [] });
-        Glr.sequence class_kw
-          (Glr.alternatives'
-             [Glr.apply (fun ctd  -> Psig_class_type ctd)
+        Decap.sequence class_kw
+          (Decap.alternatives'
+             [Decap.apply (fun ctd  -> Psig_class_type ctd)
                 classtype_definition;
-             Glr.apply (fun cs  -> Psig_class cs) class_specification])
+             Decap.apply (fun cs  -> Psig_class cs) class_specification])
           (fun _  r  -> r)]
     let _ =
       set_grammar signature_item
-        (Glr.alternatives'
-           [Glr.apply (fun e  -> e) (alternatives extra_signature);
-           Glr.fsequence (Glr.char '$' '$')
-             (Glr.sequence (expression_lvl (next_exp App)) (Glr.char '$' '$')
-                (fun e  _  _  -> push_pop_signature e));
-           Glr.sequence_position signature_item_base
-             (Glr.option None
-                (Glr.apply (fun x  -> Some x) (Glr.string ";;" ";;")))
+        (Decap.alternatives'
+           [Decap.apply (fun e  -> e) (alternatives extra_signature);
+           Decap.fsequence (Decap.char '$' '$')
+             (Decap.sequence (expression_lvl (next_exp App))
+                (Decap.char '$' '$') (fun e  _  _  -> push_pop_signature e));
+           Decap.sequence_position signature_item_base
+             (Decap.option None
+                (Decap.apply (fun x  -> Some x) (Decap.string ";;" ";;")))
              (fun s  _  __loc__start__buf  __loc__start__pos  __loc__end__buf
                  __loc__end__pos  ->
                 let _loc =
@@ -4510,21 +4561,22 @@ module Make(Initial:Extension) =
                 [loc_sig _loc s])])
     exception Top_Exit
     let top_phrase =
-      Glr.alternatives'
-        [Glr.fsequence
-           (Glr.option None (Glr.apply (fun x  -> Some x) (Glr.char ';' ';')))
-           (Glr.sequence
-              (Glr.sequence
-                 (Glr.apply_position
+      Decap.alternatives'
+        [Decap.fsequence
+           (Decap.option None
+              (Decap.apply (fun x  -> Some x) (Decap.char ';' ';')))
+           (Decap.sequence
+              (Decap.sequence
+                 (Decap.apply_position
                     (fun s  __loc__start__buf  __loc__start__pos 
                        __loc__end__buf  __loc__end__pos  ->
                        let _loc =
                          locate2 __loc__start__buf __loc__start__pos
                            __loc__end__buf __loc__end__pos in
                        loc_str _loc s) structure_item_base)
-                 (Glr.fixpoint []
-                    (Glr.apply (fun x  l  -> x :: l)
-                       (Glr.apply_position
+                 (Decap.fixpoint []
+                    (Decap.apply (fun x  l  -> x :: l)
+                       (Decap.apply_position
                           (fun s  __loc__start__buf  __loc__start__pos 
                              __loc__end__buf  __loc__end__pos  ->
                              let _loc =
@@ -4533,7 +4585,8 @@ module Make(Initial:Extension) =
                              loc_str _loc s) structure_item_base)))
                  (fun x  l  -> x :: (List.rev l))) double_semi_col
               (fun l  _  _  -> Ptop_def l));
-        Glr.sequence
-          (Glr.option None (Glr.apply (fun x  -> Some x) (Glr.char ';' ';')))
-          (Glr.eof ()) (fun _  _  -> raise Top_Exit)]
+        Decap.sequence
+          (Decap.option None
+             (Decap.apply (fun x  -> Some x) (Decap.char ';' ';')))
+          (Decap.eof ()) (fun _  _  -> raise Top_Exit)]
   end

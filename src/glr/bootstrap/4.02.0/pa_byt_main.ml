@@ -1,6 +1,6 @@
 open Pa_ocaml_prelude
 open Pa_ocaml
-open Glr
+open Decap
 open Format
 open Pa_compose
 let entry =
@@ -27,7 +27,7 @@ let _ =
           partial_parse_buffer Main.top_phrase blank buffer 0 in
         ignore (Toploop.execute_phrase true Format.std_formatter ph)
       with | Main.Top_Exit  -> raise Main.Top_Exit
-      | Glr.Parse_error (_,line,col,msgs) ->
+      | Decap.Parse_error (_,line,col,msgs) ->
           let msgs = String.concat " | " msgs in
           Printf.eprintf
             "line %d, characters %d:\nError: Syntax error, %s expected\n%!"

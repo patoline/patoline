@@ -45,7 +45,7 @@ val copy : charset -> charset
 
 (** [print_charset oc cs] prints the charset [cs] on the output channel [oc].
    If no charset is provided, ["None"] is printed. *)
-val print_charset : out_channel -> charset option -> unit
+val print_charset : out_channel -> charset -> unit
 
 (** [list_of_charset cs] transforms a charset into a list of strings, each
    containing an escaped character. *)

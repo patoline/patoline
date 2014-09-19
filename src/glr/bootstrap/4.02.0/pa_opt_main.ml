@@ -1,6 +1,6 @@
 open Pa_ocaml_prelude
 open Pa_ocaml
-open Glr
+open Decap
 open Format
 open Pa_compose
 let entry =
