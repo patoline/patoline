@@ -24,10 +24,10 @@ let with_time f x =
 
 (* GLR *)
 let rec parse_implementation path = 
-  Glr.handle_exception (Glr.parse_file Pa_compose.Final.structure Pa_ocaml_prelude.blank) path
+  Decap.handle_exception (Decap.parse_file Pa_compose.Final.structure Pa_ocaml_prelude.blank) path
 
 let rec parse_interface path = 
-  Glr.handle_exception (Glr.parse_file Pa_compose.Final.signature Pa_ocaml_prelude.blank) path
+  Decap.handle_exception (Decap.parse_file Pa_compose.Final.signature Pa_ocaml_prelude.blank) path
 
 (* OCaml *)
 let parse_implementation_orig f =

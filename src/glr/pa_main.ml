@@ -1,6 +1,6 @@
 open Pa_ocaml_prelude
 open Pa_ocaml
-open Glr
+open Decap
 open Format
 open Pa_compose
 
@@ -31,7 +31,7 @@ let _ = if entry = `Top then
       with
       | Main.Top_Exit -> 
 	 raise Main.Top_Exit
-      | Glr.Parse_error(_,line,col,msgs) ->
+      | Decap.Parse_error(_,line,col,msgs) ->
 	 let msgs = String.concat " | " msgs in
 	 Printf.eprintf "line %d, characters %d:\n\
 			 Error: Syntax error, %s expected\n%!"

@@ -1,9 +1,9 @@
-(** A module implementing and input buffer for the glr parser combinator
+(** A module implementing and input buffer for the DECAP parser combinator
    library. *)
 
 (** {2 Type} *)
 
-(** The abstract type for an input buffer for a glr parser. *)
+(** The abstract type for an input buffer. *)
 type buffer
 
 (** {2 Reading from a buffer} *)

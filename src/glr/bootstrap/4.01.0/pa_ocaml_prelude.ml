@@ -1,5 +1,5 @@
 open Input
-open Glr
+open Decap
 open Charset
 open Asttypes
 open Parsetree
@@ -11,27 +11,23 @@ let memoize1 f =
     with | Not_found  -> let res = f x in (Hashtbl.add h x res; res)
 let memoize2 f =
   let h = Hashtbl.create 1001 in
-  fun x  ->
-    fun y  ->
-      try Hashtbl.find h (x, y)
-      with | Not_found  -> let res = f x y in (Hashtbl.add h (x, y) res; res)
+  fun x  y  ->
+    try Hashtbl.find h (x, y)
+    with | Not_found  -> let res = f x y in (Hashtbl.add h (x, y) res; res)
 let memoize2' f =
   let h = Hashtbl.create 1001 in
-  fun a  ->
-    fun x  ->
-      fun y  ->
-        try Hashtbl.find h (x, y)
-        with
-        | Not_found  -> let res = f a x y in (Hashtbl.add h (x, y) res; res)
+  fun a  x  y  ->
+    try Hashtbl.find h (x, y)
+    with | Not_found  -> let res = f a x y in (Hashtbl.add h (x, y) res; res)
 let fast = ref false
 let file: string option ref = ref None
 let ascii = ref false
 let in_ocamldep = ref false
-type entry =
+type entry =  
   | FromExt
   | Impl
   | Intf
-  | Toplvl
+  | Toplvl 
 let entry = ref FromExt
 let modern = ref false
 let spec =
@@ -47,7 +43,7 @@ let spec =
     ("--unsafe", (Arg.Set fast), "use unsafe function for arrays");
     ("--ocamldep", (Arg.Set in_ocamldep),
       "set a flag to inform parser that we are computing dependencies")]
-exception Unclosed_comment of int* int
+exception Unclosed_comment of int*int
 let print_blank_state ch s =
   let s =
     match s with
@@ -74,7 +70,7 @@ let blank str pos =
        | (`Chr,_) -> fn lvl `Ini cur next
        | (`Str,'\\') -> fn lvl `Esc cur next
        | (`Str,_) -> fn lvl `Str cur next
-       | (`StrO l,'a'..'z') -> fn lvl (`StrO (c :: l)) cur next
+       | (`StrO l,('a'..'z')) -> fn lvl (`StrO (c :: l)) cur next
        | (`StrO l,'|') -> fn lvl (`StrI (List.rev l)) cur next
        | (`StrO _,_) -> fn lvl `Ini cur next
        | (`StrI l,'|') -> fn lvl (`StrC (l, l)) cur next
@@ -103,15 +99,11 @@ let start_pos loc = loc.Location.loc_start
 let end_pos loc = loc.Location.loc_end
 let locate g =
   apply_position
-    (fun x  ->
-       fun str  ->
-         fun pos  ->
-           fun str'  ->
-             fun pos'  ->
-               let s = Input.lexing_position str pos in
-               let e = Input.lexing_position str' pos' in
-               let open Location in
-                 ({ loc_start = s; loc_end = e; loc_ghost = false }, x)) g
+    (fun x  str  pos  str'  pos'  ->
+       let s = Input.lexing_position str pos in
+       let e = Input.lexing_position str' pos' in
+       let open Location in
+         ({ loc_start = s; loc_end = e; loc_ghost = false }, x)) g
 let locate2 str pos str' pos' =
   let open Lexing in
     let s = Input.lexing_position str pos in
@@ -149,10 +141,9 @@ let (push_frame,pop_frame,push_location,pop_location) =
     (fun ()  ->
        let h = try Stack.pop loc_tbl with | Stack.Empty  -> assert false in
        Hashtbl.iter
-         (fun l  ->
-            fun _  ->
-              try let h' = Stack.top loc_tbl in Hashtbl.replace h' l ()
-              with | Stack.Empty  -> ()) h),
+         (fun l  _  ->
+            try let h' = Stack.top loc_tbl in Hashtbl.replace h' l ()
+            with | Stack.Empty  -> ()) h),
     (fun id  ->
        try let h = Stack.top loc_tbl in Hashtbl.replace h id ()
        with | Stack.Empty  -> ()),
@@ -163,7 +154,7 @@ let (push_frame,pop_frame,push_location,pop_location) =
        with | Stack.Empty  -> false))
 module Initial =
   struct
-    type expression_lvl =
+    type expression_lvl =  
       | Top
       | Let
       | Seq
@@ -184,7 +175,7 @@ module Initial =
       | Dash
       | Dot
       | Prefix
-      | Atom
+      | Atom 
     let next_exp =
       function
       | Top  -> Let
@@ -217,25 +208,25 @@ module Initial =
     let signature_item: signature_item list grammar =
       declare_grammar "signature_item"
     let structure =
-      Glr.apply (fun l  -> List.flatten l)
-        (Glr.apply List.rev
-           (Glr.fixpoint' []
-              (Glr.apply (fun x  -> fun l  -> x :: l)
-                 (Glr.apply (fun s  -> s) (delim structure_item)))))
+      Decap.apply (fun l  -> List.flatten l)
+        (Decap.apply List.rev
+           (Decap.fixpoint' []
+              (Decap.apply (fun x  l  -> x :: l)
+                 (Decap.apply (fun s  -> s) (delim structure_item)))))
     let signature =
-      Glr.apply (fun l  -> List.flatten l)
-        (Glr.apply List.rev
-           (Glr.fixpoint' []
-              (Glr.apply (fun x  -> fun l  -> x :: l)
-                 (Glr.apply (fun s  -> s) (delim signature_item)))))
-    type type_prio =
+      Decap.apply (fun l  -> List.flatten l)
+        (Decap.apply List.rev
+           (Decap.fixpoint' []
+              (Decap.apply (fun x  l  -> x :: l)
+                 (Decap.apply (fun s  -> s) (delim signature_item)))))
+    type type_prio =  
       | TopType
       | As
       | Arr
       | ProdType
       | DashType
       | AppType
-      | AtomType
+      | AtomType 
     let type_prios =
       [TopType; As; Arr; ProdType; DashType; AppType; AtomType]
     let type_prio_to_string =
@@ -259,14 +250,14 @@ module Initial =
     let ((typexpr_lvl : type_prio -> core_type grammar),set_typexpr_lvl) =
       grammar_family ~param_to_string:type_prio_to_string "typexpr_lvl"
     let typexpr = typexpr_lvl TopType
-    type pattern_prio =
+    type pattern_prio =  
       | TopPat
       | AsPat
       | AltPat
       | TupPat
       | ConsPat
       | ConstrPat
-      | AtomPat
+      | AtomPat 
     let ((pattern_lvl : pattern_prio -> pattern grammar),set_pattern_lvl) =
       grammar_family "pattern_lvl"
     let pattern = pattern_lvl TopPat
@@ -352,8 +343,8 @@ module Initial =
     let pexp_function cases = Pexp_function ("", None, cases)
     let pexp_fun (label,opt,pat,expr) =
       Pexp_function (label, opt, [(pat, expr)])
-    type quote_env1 = (string* Parsetree.expression) Stack.t
-    type quote_env2_data =
+    type quote_env1 = (string* Parsetree.expression) Stack.t 
+    type quote_env2_data =  
       | Expression of Parsetree.expression
       | Expression_list of Parsetree.expression list
       | Pattern of Parsetree.pattern
@@ -369,11 +360,11 @@ module Initial =
       | Natint of nativeint
       | Float of float
       | Char of char
-      | Bool of bool
-    type quote_env2 = quote_env2_data Stack.t
-    type quote_env =
+      | Bool of bool 
+    type quote_env2 = quote_env2_data Stack.t 
+    type quote_env =  
       | First of quote_env1
-      | Second of quote_env2
+      | Second of quote_env2 
     let quote_stack: quote_env Stack.t = Stack.create ()
     let empty_quote_env1 () = First (Stack.create ())
     let empty_quote_env2 () = Second (Stack.create ())
@@ -632,17 +623,16 @@ module Initial =
          with | Stack.Empty  -> acc in
        let push_expr =
          stack_fold
-           (fun acc  ->
-              fun (name,e)  ->
-                let push_e =
-                  loc_expr _loc
-                    (Pexp_apply
-                       ((loc_expr _loc
-                           (Pexp_ident
-                              (id_loc
-                                 (Ldot ((Lident "Pa_ocaml_prelude"), name))
-                                 _loc))), [("", e)])) in
-                loc_expr _loc (Pexp_sequence (acc, push_e))) push_expr env in
+           (fun acc  (name,e)  ->
+              let push_e =
+                loc_expr _loc
+                  (Pexp_apply
+                     ((loc_expr _loc
+                         (Pexp_ident
+                            (id_loc
+                               (Ldot ((Lident "Pa_ocaml_prelude"), name))
+                               _loc))), [("", e)])) in
+              loc_expr _loc (Pexp_sequence (acc, push_e))) push_expr env in
        let pop_expr =
          loc_expr _loc
            (Pexp_apply
@@ -772,32 +762,28 @@ module Initial =
         "with"]
     let is_reserved_id w = List.mem w (!reserved_ident)
     let ident =
-      Glr.alternatives'
-        [Glr.apply (fun id  -> if is_reserved_id id then raise Give_up; id)
-           (Glr.regexp ~name:"ident" ident_re (fun groupe  -> groupe 0));
-        Glr.fsequence (Glr.char '$' '$')
-          (Glr.fsequence (Glr.string "ident" "ident")
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$')
-                   (fun e  ->
-                      fun _  ->
-                        fun _  -> fun _  -> fun _  -> push_pop_string e))))]
+      Decap.alternatives'
+        [Decap.apply (fun id  -> if is_reserved_id id then raise Give_up; id)
+           (Decap.regexp ~name:"ident" ident_re (fun groupe  -> groupe 0));
+        Decap.fsequence (Decap.char '$' '$')
+          (Decap.fsequence (Decap.string "ident" "ident")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence (expression_lvl (next_exp App))
+                   (Decap.char '$' '$')
+                   (fun e  _  _  _  _  -> push_pop_string e))))]
     let capitalized_ident =
-      Glr.alternatives'
-        [Glr.apply (fun id  -> id)
-           (Glr.regexp ~name:"cident" cident_re (fun groupe  -> groupe 0));
-        Glr.fsequence (Glr.char '$' '$')
-          (Glr.fsequence (Glr.string "uid" "uid")
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$')
-                   (fun e  ->
-                      fun _  ->
-                        fun _  -> fun _  -> fun _  -> push_pop_string e))))]
+      Decap.alternatives'
+        [Decap.apply (fun id  -> id)
+           (Decap.regexp ~name:"cident" cident_re (fun groupe  -> groupe 0));
+        Decap.fsequence (Decap.char '$' '$')
+          (Decap.fsequence (Decap.string "uid" "uid")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence (expression_lvl (next_exp App))
+                   (Decap.char '$' '$')
+                   (fun e  _  _  _  _  -> push_pop_string e))))]
     let lowercase_ident =
-      Glr.alternatives'
-        [Glr.apply
+      Decap.alternatives'
+        [Decap.apply
            (fun id  ->
               let len = String.length id in
               (try
@@ -814,15 +800,13 @@ module Initial =
                with | Exit  -> ());
               if is_reserved_id id then raise Give_up;
               id)
-           (Glr.regexp ~name:"lident" lident_re (fun groupe  -> groupe 0));
-        Glr.fsequence (Glr.char '$' '$')
-          (Glr.fsequence (Glr.string "lid" "lid")
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$')
-                   (fun e  ->
-                      fun _  ->
-                        fun _  -> fun _  -> fun _  -> push_pop_string e))))]
+           (Decap.regexp ~name:"lident" lident_re (fun groupe  -> groupe 0));
+        Decap.fsequence (Decap.char '$' '$')
+          (Decap.fsequence (Decap.string "lid" "lid")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence (expression_lvl (next_exp App))
+                   (Decap.char '$' '$')
+                   (fun e  _  _  _  _  -> push_pop_string e))))]
     let reserved_symbols =
       ref
         ["#";
@@ -872,61 +856,60 @@ module Initial =
     let prefix_symb_re =
       "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)\\|\\([-+][.]?\\)"
     let infix_symbol =
-      Glr.apply (fun sym  -> if is_reserved_symb sym then raise Give_up; sym)
-        (Glr.regexp ~name:"infix_symb" infix_symb_re
+      Decap.apply
+        (fun sym  -> if is_reserved_symb sym then raise Give_up; sym)
+        (Decap.regexp ~name:"infix_symb" infix_symb_re
            (fun groupe  -> groupe 0))
     let prefix_symbol =
-      Glr.apply
+      Decap.apply
         (fun sym  ->
            if (is_reserved_symb sym) || (sym = "!=") then raise Give_up; sym)
-        (Glr.regexp ~name:"prefix_symb" prefix_symb_re
+        (Decap.regexp ~name:"prefix_symb" prefix_symb_re
            (fun groupe  -> groupe 0))
     let key_word s =
       let len_s = String.length s in
       assert (len_s > 0);
       black_box
-        (fun str  ->
-           fun pos  ->
-             let str' = ref str in
-             let pos' = ref pos in
-             for i = 0 to len_s - 1 do
-               (let (c,_str',_pos') = read (!str') (!pos') in
-                if c <> (s.[i]) then raise Give_up;
-                str' := _str';
-                pos' := _pos')
-             done;
-             (let str' = !str'
-              and pos' = !pos' in
-              let (c,_,_) = read str' pos' in
-              match c with
-              | 'a'..'z'|'A'..'Z'|'0'..'9'|'_'|'\'' -> raise Give_up
-              | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) false s
+        (fun str  pos  ->
+           let str' = ref str in
+           let pos' = ref pos in
+           for i = 0 to len_s - 1 do
+             (let (c,_str',_pos') = read (!str') (!pos') in
+              if c <> (s.[i]) then raise Give_up;
+              str' := _str';
+              pos' := _pos')
+           done;
+           (let str' = !str' and pos' = !pos' in
+            let (c,_,_) = read str' pos' in
+            match c with
+            | 'a'|'b'..'z'|'A'..'Z'|'0'..'9'|'_'|'\'' -> raise Give_up
+            | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) false s
     let mutable_kw = key_word "mutable"
     let mutable_flag =
-      Glr.alternatives'
-        [Glr.apply (fun _  -> Mutable) mutable_kw;
-        Glr.apply (fun _  -> Immutable) (Glr.empty ())]
+      Decap.alternatives'
+        [Decap.apply (fun _  -> Mutable) mutable_kw;
+        Decap.apply (fun _  -> Immutable) (Decap.empty ())]
     let private_kw = key_word "private"
     let private_flag =
-      Glr.alternatives'
-        [Glr.apply (fun _  -> Private) private_kw;
-        Glr.apply (fun _  -> Public) (Glr.empty ())]
+      Decap.alternatives'
+        [Decap.apply (fun _  -> Private) private_kw;
+        Decap.apply (fun _  -> Public) (Decap.empty ())]
     let virtual_kw = key_word "virtual"
     let virtual_flag =
-      Glr.alternatives'
-        [Glr.apply (fun _  -> Virtual) virtual_kw;
-        Glr.apply (fun _  -> Concrete) (Glr.empty ())]
+      Decap.alternatives'
+        [Decap.apply (fun _  -> Virtual) virtual_kw;
+        Decap.apply (fun _  -> Concrete) (Decap.empty ())]
     let rec_kw = key_word "rec"
     let rec_flag =
-      Glr.alternatives'
-        [Glr.apply (fun _  -> Recursive) rec_kw;
-        Glr.apply (fun _  -> Nonrecursive) (Glr.empty ())]
+      Decap.alternatives'
+        [Decap.apply (fun _  -> Recursive) rec_kw;
+        Decap.apply (fun _  -> Nonrecursive) (Decap.empty ())]
     let to_kw = key_word "to"
     let downto_kw = key_word "downto"
     let downto_flag =
-      Glr.alternatives'
-        [Glr.apply (fun _  -> Upto) to_kw;
-        Glr.apply (fun _  -> Downto) downto_kw]
+      Decap.alternatives'
+        [Decap.apply (fun _  -> Upto) to_kw;
+        Decap.apply (fun _  -> Downto) downto_kw]
     let method_kw = key_word "method"
     let object_kw = key_word "object"
     let class_kw = key_word "class"
@@ -980,76 +963,65 @@ module Initial =
     let int64_re = (par_re int_pos_re) ^ "L"
     let natint_re = (par_re int_pos_re) ^ "n"
     let integer_literal =
-      Glr.alternatives'
-        [Glr.apply (fun i  -> int_of_string i)
-           (Glr.regexp ~name:"int_pos" int_pos_re (fun groupe  -> groupe 0));
-        Glr.fsequence (Glr.char '$' '$')
-          (Glr.fsequence (Glr.string "int" "int")
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$')
-                   (fun e  ->
-                      fun _  -> fun _  -> fun _  -> fun _  -> push_pop_int e))))]
+      Decap.alternatives'
+        [Decap.apply (fun i  -> int_of_string i)
+           (Decap.regexp ~name:"int_pos" int_pos_re (fun groupe  -> groupe 0));
+        Decap.fsequence (Decap.char '$' '$')
+          (Decap.fsequence (Decap.string "int" "int")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence (expression_lvl (next_exp App))
+                   (Decap.char '$' '$')
+                   (fun e  _  _  _  _  -> push_pop_int e))))]
     let int32_lit =
-      Glr.alternatives'
-        [Glr.apply (fun i  -> Int32.of_string i)
-           (Glr.regexp ~name:"int32" int32_re (fun groupe  -> groupe 1));
-        Glr.fsequence (Glr.char '$' '$')
-          (Glr.fsequence (Glr.string "int32" "int32")
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$')
-                   (fun e  ->
-                      fun _  ->
-                        fun _  -> fun _  -> fun _  -> push_pop_int32 e))))]
+      Decap.alternatives'
+        [Decap.apply (fun i  -> Int32.of_string i)
+           (Decap.regexp ~name:"int32" int32_re (fun groupe  -> groupe 1));
+        Decap.fsequence (Decap.char '$' '$')
+          (Decap.fsequence (Decap.string "int32" "int32")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence (expression_lvl (next_exp App))
+                   (Decap.char '$' '$')
+                   (fun e  _  _  _  _  -> push_pop_int32 e))))]
     let int64_lit =
-      Glr.alternatives'
-        [Glr.apply (fun i  -> Int64.of_string i)
-           (Glr.regexp ~name:"int64" int64_re (fun groupe  -> groupe 1));
-        Glr.fsequence (Glr.char '$' '$')
-          (Glr.fsequence (Glr.string "int64" "int64")
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$')
-                   (fun e  ->
-                      fun _  ->
-                        fun _  -> fun _  -> fun _  -> push_pop_int64 e))))]
+      Decap.alternatives'
+        [Decap.apply (fun i  -> Int64.of_string i)
+           (Decap.regexp ~name:"int64" int64_re (fun groupe  -> groupe 1));
+        Decap.fsequence (Decap.char '$' '$')
+          (Decap.fsequence (Decap.string "int64" "int64")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence (expression_lvl (next_exp App))
+                   (Decap.char '$' '$')
+                   (fun e  _  _  _  _  -> push_pop_int64 e))))]
     let nat_int_lit =
-      Glr.alternatives'
-        [Glr.apply (fun i  -> Nativeint.of_string i)
-           (Glr.regexp ~name:"natint" natint_re (fun groupe  -> groupe 1));
-        Glr.fsequence (Glr.char '$' '$')
-          (Glr.fsequence (Glr.string "natint" "natint")
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$')
-                   (fun e  ->
-                      fun _  ->
-                        fun _  -> fun _  -> fun _  -> push_pop_natint e))))]
+      Decap.alternatives'
+        [Decap.apply (fun i  -> Nativeint.of_string i)
+           (Decap.regexp ~name:"natint" natint_re (fun groupe  -> groupe 1));
+        Decap.fsequence (Decap.char '$' '$')
+          (Decap.fsequence (Decap.string "natint" "natint")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence (expression_lvl (next_exp App))
+                   (Decap.char '$' '$')
+                   (fun e  _  _  _  _  -> push_pop_natint e))))]
     let bool_lit =
-      Glr.alternatives'
-        [Glr.apply (fun _  -> "false") false_kw;
-        Glr.apply (fun _  -> "true") true_kw;
-        Glr.fsequence (Glr.char '$' '$')
-          (Glr.fsequence (Glr.string "bool" "bool")
-             (Glr.fsequence (Glr.char ':' ':')
-                (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$')
-                   (fun e  ->
-                      fun _  ->
-                        fun _  ->
-                          fun _  ->
-                            fun _  ->
-                              if push_pop_bool e then "true" else "false"))))]
+      Decap.alternatives'
+        [Decap.apply (fun _  -> "false") false_kw;
+        Decap.apply (fun _  -> "true") true_kw;
+        Decap.fsequence (Decap.char '$' '$')
+          (Decap.fsequence (Decap.string "bool" "bool")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence (expression_lvl (next_exp App))
+                   (Decap.char '$' '$')
+                   (fun e  _  _  _  _  ->
+                      if push_pop_bool e then "true" else "false"))))]
     let entry_points:
       (string*
-        [ `Impl of Parsetree.structure_item list Glr.grammar
-        | `Intf of Parsetree.signature_item list Glr.grammar | `Top]) list
+        [ `Impl of Parsetree.structure_item list Decap.grammar
+        | `Intf of Parsetree.signature_item list Decap.grammar | `Top]) list
         ref
       = ref [(".mli", (`Intf signature)); (".ml", (`Impl structure))]
   end
-module type Extension  = module type of Initial
-module type FExt  = functor (E : Extension) -> Extension
-let extensions_mod = ref ([] : (module FExt) list)
+module type Extension = module type of Initial
+module type FExt = functor (E : Extension) -> Extension
+let extensions_mod = ref ([] : (module FExt) list )
 let register_extension e = extensions_mod := (e :: (!extensions_mod))
 include Initial

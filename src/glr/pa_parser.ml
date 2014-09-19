@@ -65,7 +65,7 @@ let exp_app _loc =
   exp_fun _loc "x" (exp_fun _loc "y" (exp_apply _loc (exp_ident _loc "y") [exp_ident _loc "x"]))
 
 let exp_glr_fun _loc f =
-  loc_expr _loc (Pexp_ident((id_loc (Ldot(Lident "Glr",f)) _loc) ))
+  loc_expr _loc (Pexp_ident((id_loc (Ldot(Lident "Decap",f)) _loc) ))
 
 let exp_list_fun _loc f =
   loc_expr _loc (Pexp_ident((id_loc (Ldot(Lident "List",f)) _loc) ))
@@ -189,8 +189,8 @@ module Ext = functor(In:Extension) ->
 struct
   include In
 
-  let glr_rules = Glr.declare_grammar "glr_rules"
-  let glr_rule = Glr.declare_grammar "glr_rule"
+  let glr_rules = Decap.declare_grammar "glr_rules"
+  let glr_rule = Decap.declare_grammar "glr_rule"
 
   let location_name_re = {|_loc\([a-zA-Z0-9_']*\)|}
 
@@ -271,15 +271,15 @@ struct
 	 | _ -> "_", Some p)
     | EMPTY -> ("_", None)
 
-  let dash = Glr.black_box 
+  let dash = Decap.black_box 
 	       (fun str pos ->
 		let c,str',pos' = Input.read str pos in
 		if c = '-' then
 		  let c',_,_ = Input.read str' pos' in
-		  if c' = '>' then raise Glr.Give_up
+		  if c' = '>' then raise Decap.Give_up
 		  else (), str', pos'
 		else
-		  raise Glr.Give_up)
+		  raise Decap.Give_up)
 	       (Charset.singleton '-') false ("-")
 
   let glr_left_member =
@@ -287,8 +287,8 @@ struct
     | i:{id: glr_ident s:glr_sequence opt:glr_option -> `Normal(id,s,opt)} 
       l:{ id: glr_ident s:glr_sequence opt:glr_option -> `Normal(id,s,opt) | dash -> `Ignore }* -> i::l
 
-  let glr_let = Glr.declare_grammar "glr_let" 
-  let _ = Glr.set_grammar glr_let (
+  let glr_let = Decap.declare_grammar "glr_let" 
+  let _ = Decap.set_grammar glr_let (
     parser
     | STR("let") r:rec_flag lbs:let_binding STR("in") l:glr_let -> (fun x -> loc_expr _loc (Pexp_let(r,lbs,l x)))
     | EMPTY -> (fun x -> x)
@@ -305,7 +305,7 @@ struct
     | STR("->") action:expression -> Normal action
     | EMPTY -> Default
 
-  let _ = Glr.set_grammar glr_rule (
+  let _ = Decap.set_grammar glr_rule (
     parser
     | def:glr_let l:glr_left_member condition:glr_cond ->> let _ = push_frame () in action:glr_action ->
       let iter, action = match action with
@@ -375,7 +375,7 @@ struct
 	) (r::l) (exp_Nil _loc) in
 	(fun x -> x), None, (exp_apply _loc (exp_glr_fun _loc "alternatives'") [l]))
 
-  let _ = Glr.set_grammar glr_rules (
+  let _ = Decap.set_grammar glr_rules (
     parser
     { CHR('|') }? r:glr_rules_aux rs:{ { CHR('|') } r:glr_rules_aux}* -> 
       (match r,rs with

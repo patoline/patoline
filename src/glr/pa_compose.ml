@@ -1,6 +1,6 @@
 open Pa_ocaml_prelude
 open Pa_ocaml
-open Glr
+open Decap
 open Format
 
 let anon_fun s = file := Some s

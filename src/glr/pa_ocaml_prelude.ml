@@ -1,5 +1,5 @@
 open Input
-open Glr
+open Decap
 open Charset
 open Asttypes
 open Parsetree
@@ -1032,8 +1032,8 @@ let bool_lit =
   | CHR('$') STR("bool") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> if push_pop_bool e then "true" else "false"
 
   let entry_points : (string *
-            [ `Impl of Parsetree.structure_item list Glr.grammar
-            | `Intf of Parsetree.signature_item list Glr.grammar | `Top ]) list ref
+            [ `Impl of Parsetree.structure_item list Decap.grammar
+            | `Intf of Parsetree.signature_item list Decap.grammar | `Top ]) list ref
    = ref [ ".mli", `Intf signature ;  ".ml", `Impl structure ]
 end
 

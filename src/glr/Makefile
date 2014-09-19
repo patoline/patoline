@@ -5,7 +5,7 @@ OCAMLOPT = $(FINDLIB) ocamlopt.opt $(CAMLFLAGS)
 BINDIR = /usr/local/bin
 LIBDIR = /$(shell ocamlc -where)/glr
 
-all: glr.cmxa glr.cma glr.cmi doc pa_ocaml
+all: decap.cmxa decap.cma decap.cmi doc pa_ocaml
 
 %.cmi: %.mli
 	$(OCAMLC) -c $< 
@@ -16,17 +16,17 @@ all: glr.cmxa glr.cma glr.cmi doc pa_ocaml
 %.cmx: %.ml %.cmi
 	$(OCAMLOPT) -c $< 
 
-glr.cmi: charset.cmi input.cmi
+decap.cmi: charset.cmi input.cmi
 
-glr.cmo: umap.cmi charset.cmi input.cmi
+decap.cmo: umap.cmi charset.cmi input.cmi
 
-glr.cmx: umap.cmx umap.cmi charset.cmx charset.cmi input.cmx input.cmi
+decap.cmx: umap.cmx umap.cmi charset.cmx charset.cmi input.cmx input.cmi
 
-glr.cmxa: umap.cmx charset.cmx input.cmx glr.cmx
-	$(OCAMLOPT) -a -o glr.cmxa $^
+decap.cmxa: umap.cmx charset.cmx input.cmx decap.cmx
+	$(OCAMLOPT) -a -o decap.cmxa $^
 
-glr.cma: umap.cmo charset.cmo input.cmo glr.cmo
-	$(OCAMLC) -a -o glr.cma $^
+decap.cma: umap.cmo charset.cmo input.cmo decap.cmo
+	$(OCAMLC) -a -o decap.cma $^
 
 HAS_PA_OCAML=$(shell if [ -x pa_ocaml ]; then echo 1; else echo 0; fi)
 
@@ -47,19 +47,19 @@ COMPILER_LIBO := $(COMPILER_LIBO:.cmo=.cmx)
 
 ifeq ($(HAS_PA_OCAML),1)
 
-pa_compose.cmo: pa_compose.ml pa_ocaml_prelude.cmo pa_ocaml.cmo glr.cma
+pa_compose.cmo: pa_compose.ml pa_ocaml_prelude.cmo pa_ocaml.cmo decap.cma
 	$(OCAMLC) $(COMPILER_INC) -c $< 
 
-pa_compose.cmx: pa_compose.ml pa_ocaml_prelude.cmx pa_ocaml.cmx glr.cmxa
+pa_compose.cmx: pa_compose.ml pa_ocaml_prelude.cmx pa_ocaml.cmx decap.cmxa
 	$(OCAMLOPT) $(COMPILER_INC) -c $< 
 
-pa_ocaml_prelude.cmo: pa_ocaml_prelude.ml glr.cma
+pa_ocaml_prelude.cmo: pa_ocaml_prelude.ml decap.cma
 	$(OCAMLC) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
-pa_ocaml.cmo: pa_ocaml.ml pa_ocaml_prelude.cmo glr.cma
+pa_ocaml.cmo: pa_ocaml.ml pa_ocaml_prelude.cmo decap.cma
 	$(OCAMLC) -pp ./pa_ocaml $(COMPILER_INC) -c $< 
 
-pa_parser.cmo: pa_parser.ml pa_ocaml_prelude.cmo glr.cma
+pa_parser.cmo: pa_parser.ml pa_ocaml_prelude.cmo decap.cma
 	$(OCAMLC) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
 pa_byt_main.ml: pa_main.ml
@@ -68,16 +68,16 @@ pa_byt_main.ml: pa_main.ml
 pa_byt_main.cmo: pa_byt_main.ml pa_compose.cmo input.cmi pa_ocaml.cmo
 	export BYTE=1; $(OCAMLC) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
-pa_ocaml.byt: glr.cma pa_ocaml_prelude.cmo pa_parser.cmo pa_ocaml.cmo pa_compose.cmo pa_byt_main.cmo
+pa_ocaml.byt: decap.cma pa_ocaml_prelude.cmo pa_parser.cmo pa_ocaml.cmo pa_compose.cmo pa_byt_main.cmo
 	$(OCAMLC) $(COMPILER_INC) -o $@ unix.cma str.cma $(COMPILER_LIBS) $(COMPILER_TOP) $^
 
-pa_ocaml_prelude.cmx: pa_ocaml_prelude.ml glr.cmxa
+pa_ocaml_prelude.cmx: pa_ocaml_prelude.ml decap.cmxa
 	$(OCAMLOPT) -pp ./pa_ocaml $(COMPILER_INC) -c $< 
 
-pa_ocaml.cmx: pa_ocaml.ml pa_ocaml_prelude.cmx glr.cmxa
+pa_ocaml.cmx: pa_ocaml.ml pa_ocaml_prelude.cmx decap.cmxa
 	$(OCAMLOPT) -pp ./pa_ocaml $(COMPILER_INC) -c $< 
 
-pa_parser.cmx: pa_parser.ml pa_ocaml_prelude.cmx glr.cmxa
+pa_parser.cmx: pa_parser.ml pa_ocaml_prelude.cmx decap.cmxa
 	$(OCAMLOPT) -pp ./pa_ocaml $(COMPILER_INC) -c $< 
 
 pa_opt_main.ml: pa_main.ml
@@ -86,48 +86,48 @@ pa_opt_main.ml: pa_main.ml
 pa_opt_main.cmx: pa_opt_main.ml pa_compose.cmx input.cmi input.cmx pa_ocaml.cmx 
 	$(OCAMLOPT) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
-pa_ocaml: glr.cmxa pa_ocaml_prelude.cmx pa_parser.cmx pa_ocaml.cmx pa_compose.cmx pa_opt_main.cmx 
+pa_ocaml: decap.cmxa pa_ocaml_prelude.cmx pa_parser.cmx pa_ocaml.cmx pa_compose.cmx pa_opt_main.cmx 
 	$(OCAMLOPT) $(COMPILER_INC)  -o $@ unix.cmxa str.cmxa $(COMPILER_LIBO) $^
 
-test_parsers: glr.cmxa pa_ocaml_prelude.cmx pa_parser.cmx pa_ocaml.cmx pa_compose.cmx test_parsers.ml
+test_parsers: decap.cmxa pa_ocaml_prelude.cmx pa_parser.cmx pa_ocaml.cmx pa_compose.cmx test_parsers.ml
 	$(OCAMLOPT) $(COMPILER_INC) -I +camlp4 -I +camlp4/Camlp4Parsers -o $@ dynlink.cmxa unix.cmxa str.cmxa camlp4lib.cmxa Camlp4OCamlRevisedParser.cmx Camlp4OCamlParser.cmx	$(COMPILER_INC) $(COMPILER_LIBO) $^
 
 else
 
-pa_compose.cmo: pa_compose.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo glr.cma
+pa_compose.cmo: pa_compose.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo decap.cma
 	$(OCAMLC) $(COMPILER_INC) -c -I bootstrap/$(OCAMLVERSION) $< 
 
-pa_compose.cmx: pa_compose.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx glr.cmxa
+pa_compose.cmx: pa_compose.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx decap.cmxa
 	$(OCAMLOPT) $(COMPILER_INC) -c -I bootstrap/$(OCAMLVERSION) $< 
 
-bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo: bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.ml glr.cma
+bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo: bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.ml decap.cma
 	$(OCAMLC) $(COMPILER_INC) -c -I bootstrap/$(OCAMLVERSION) $<
 
-bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo: bootstrap/$(OCAMLVERSION)/pa_ocaml.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo glr.cma
+bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo: bootstrap/$(OCAMLVERSION)/pa_ocaml.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo decap.cma
 	$(OCAMLC) $(COMPILER_INC) -c -I bootstrap/$(OCAMLVERSION) $< 
 
-bootstrap/$(OCAMLVERSION)/pa_parser.cmo: bootstrap/$(OCAMLVERSION)/pa_parser.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo glr.cma
+bootstrap/$(OCAMLVERSION)/pa_parser.cmo: bootstrap/$(OCAMLVERSION)/pa_parser.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo decap.cma
 	$(OCAMLC) $(COMPILER_INC) -c -I bootstrap/$(OCAMLVERSION) $<
 
 bootstrap/$(OCAMLVERSION)/pa_byt_main.cmo: bootstrap/$(OCAMLVERSION)/pa_byt_main.ml pa_compose.cmo input.cmi bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo 
 	$(OCAMLC) $(COMPILER_INC) -c -I bootstrap/$(OCAMLVERSION) $<
 
-pa_ocaml.byt: glr.cma bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo bootstrap/$(OCAMLVERSION)/pa_parser.cmo bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo pa_compose.cmo bootstrap/$(OCAMLVERSION)/pa_byt_main.cmo
+pa_ocaml.byt: decap.cma bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo bootstrap/$(OCAMLVERSION)/pa_parser.cmo bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo pa_compose.cmo bootstrap/$(OCAMLVERSION)/pa_byt_main.cmo
 	$(OCAMLC) $(COMPILER_INC) -o $@ unix.cma str.cma  $(COMPILER_LIBS) $(COMPILER_TOP) $^
 
-bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx: bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.ml glr.cmxa
+bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx: bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.ml decap.cmxa
 	$(OCAMLOPT) $(COMPILER_INC) -I bootstrap/$(OCAMLVERSION) -c $< 
 
-bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx: bootstrap/$(OCAMLVERSION)/pa_ocaml.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx glr.cmxa
+bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx: bootstrap/$(OCAMLVERSION)/pa_ocaml.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx decap.cmxa
 	$(OCAMLOPT) $(COMPILER_INC) -I bootstrap/$(OCAMLVERSION) -c $< 
 
-bootstrap/$(OCAMLVERSION)/pa_parser.cmx: bootstrap/$(OCAMLVERSION)/pa_parser.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx glr.cmxa
+bootstrap/$(OCAMLVERSION)/pa_parser.cmx: bootstrap/$(OCAMLVERSION)/pa_parser.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx decap.cmxa
 	$(OCAMLOPT) $(COMPILER_INC) -I bootstrap/$(OCAMLVERSION) -c $< 
 
 bootstrap/$(OCAMLVERSION)/pa_opt_main.cmx: bootstrap/$(OCAMLVERSION)/pa_opt_main.ml pa_compose.cmx input.cmi input.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx 
 	$(OCAMLOPT) $(COMPILER_INC) -I bootstrap/$(OCAMLVERSION) -c $<
 
-pa_ocaml: glr.cmxa bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx bootstrap/$(OCAMLVERSION)/pa_parser.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx pa_compose.cmx bootstrap/$(OCAMLVERSION)/pa_opt_main.cmx 
+pa_ocaml: decap.cmxa bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx bootstrap/$(OCAMLVERSION)/pa_parser.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx pa_compose.cmx bootstrap/$(OCAMLVERSION)/pa_opt_main.cmx 
 	$(OCAMLOPT) $(COMPILER_INC)  -I bootstrap/$(OCAMLVERSION) -o $@ unix.cmxa str.cmxa $(COMPILER_LIBO) $^
 
 endif
@@ -135,7 +135,8 @@ endif
 boot: BACKUP:=bootstrap/$(OCAMLVERSION)/$(shell date +%Y-%m-%d-%H-%M-%S)
 boot:
 	- if [ ! -d bootstrap/$(OCAMLVERSION) ] ; then mkdir bootstrap/$(OCAMLVERSION); fi
-	- if [ ! -d $(BACKUP) ] ; then mkdir $(BACKUP) ; fi ; \
+	- if [ ! -d $(BACKUP) ] ; then \
+	     mkdir $(BACKUP) ; \
 	     mv bootstrap/$(OCAMLVERSION)/*.ml $(BACKUP) ; \
 	fi
 	export OCAMLVERSION=$(OCAMLVERSION); \
@@ -149,46 +150,46 @@ boot:
 	export BYTE=1 ;\
 	./pa_ocaml --ascii pa_main.ml > bootstrap/$(OCAMLVERSION)/pa_byt_main.ml
 
-examples/calc: examples/calc.cmx glr.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
+examples/calc: examples/calc.cmx decap.cmxa
+	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
 
-examples/calc.cmx: examples/calc.ml glr.cmxa pa_ocaml
+examples/calc.cmx: examples/calc.ml decap.cmxa pa_ocaml
 	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
-examples/calc_all: examples/calc_all.cmx glr.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
+examples/calc_all: examples/calc_all.cmx decap.cmxa
+	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
 
-examples/calc_all.cmx: examples/calc_all.ml glr.cmxa pa_ocaml
+examples/calc_all.cmx: examples/calc_all.ml decap.cmxa pa_ocaml
 	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
-examples/calc_prio: examples/calc_prio.cmx glr.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
+examples/calc_prio: examples/calc_prio.cmx decap.cmxa
+	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
 
-examples/calc_prio.cmx: examples/calc_prio.ml glr.cmxa pa_ocaml
+examples/calc_prio.cmx: examples/calc_prio.ml decap.cmxa pa_ocaml
 	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
-examples/text: examples/text.cmx glr.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
+examples/text: examples/text.cmx decap.cmxa
+	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
 
-examples/text.cmx: examples/text.ml glr.cmxa pa_ocaml
+examples/text.cmx: examples/text.ml decap.cmxa pa_ocaml
 	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
-examples/text_opt: examples/text_opt.cmx glr.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
+examples/text_opt: examples/text_opt.cmx decap.cmxa
+	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
 
-examples/text_opt.cmx: examples/text_opt.ml glr.cmxa pa_ocaml
+examples/text_opt.cmx: examples/text_opt.ml decap.cmxa pa_ocaml
 	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
-examples/test_merge: examples/test_merge.cmx glr.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
+examples/test_merge: examples/test_merge.cmx decap.cmxa
+	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
 
-examples/test_merge.cmx: examples/test_merge.ml glr.cmxa
+examples/test_merge.cmx: examples/test_merge.ml decap.cmxa
 	$(OCAMLOPT) -c $<
 
-examples/test_list: examples/test_list.cmx glr.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
+examples/test_list: examples/test_list.cmx decap.cmxa
+	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
 
-examples/test_list.cmx: examples/test_list.ml glr.cmxa
+examples/test_list.cmx: examples/test_list.ml decap.cmxa
 	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
 #check: examples/calc examples/calc_strict examples/calc_simple examples/text examples/text_opt examples/test_merge examples/test_list
@@ -218,10 +219,10 @@ examples/test_list.cmx: examples/test_list.ml glr.cmxa
 #	time examples/test_merge 15
 #	time examples/test_list 12
 
-install: uninstall glr.mli glr.cmxa glr.cma
+install: uninstall decap.mli decap.cmxa decap.cma
 	- mkdir $(DESTDIR)/$(LIBDIR)
 	- ocamlfind remove -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr
-	ocamlfind install -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr META glr.cmi glr.cmo glr.mli glr.cmx umap.cmi umap.cmo umap.mli umap.cmx charset.cmi charset.cmo charset.mli charset.cmx glr.cma glr.cmxa glr.a
+	ocamlfind install -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr META decap.cmi decap.cmo decap.mli decap.cmx umap.cmi umap.cmo umap.mli umap.cmx charset.cmi charset.cmo charset.mli charset.cmx decap.cma decap.cmxa decap.a
 	install pa_ocaml $(DESTDIR)/$(BINDIR)
 
 uninstall:
@@ -236,7 +237,7 @@ clean:
 distclean: clean
 	- rm -f pa_ocaml pa_ocaml.byt
 
-doc: glr.mli charset.mli input.mli
-	ocamldoc -d html -html glr.mli
+doc: decap.mli charset.mli input.mli
+	ocamldoc -d html -html decap.mli
 	ocamldoc -d html -html charset.mli
 	ocamldoc -d html -html input.mli
