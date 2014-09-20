@@ -616,7 +616,7 @@ let typexpr_base : core_type grammar =
 	    let l = push_pop_type_list e in
 	    match str with
 	    | "tuple" -> loc_typ _loc (Ptyp_tuple l)
-	    | _ -> raise Give_up)
+	    | _ -> raise (Give_up "" (* FIXME *)))
 			    
 let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> Location.t -> core_type)) grammar = memoize1 (fun lvl' lvl ->
   let ln f _loc e _loc_f = loc_typ (merge2 _loc_f _loc) e in
@@ -745,13 +745,13 @@ let typedef_gen = (fun ?prev_loc constr filter ->
       let pri, te = match te with
 	  None -> pri, None
 	| Some(Private, te) -> 
-	   if pri = Private then raise Give_up; (* ty = private ty' = private A | B is not legal *) 
+	   if pri = Private then raise (Give_up "" (* FIXME *)); (* ty = private ty' = private A | B is not legal *) 
 	   Private, Some te
 	| Some(_, te) -> pri, Some te
       in
 #ifversion < 4.00
       let tps = List.map (function
-			     (Some s, t) -> s,t | None, _ -> raise Give_up) tps in
+			     (Some s, t) -> s,t | None, _ -> raise (Give_up "" (* FIXME *))) tps in
 #endif
       id_loc tcn _loc_tcn, 
          type_declaration _loc (id_loc (filter tcn) _loc_tcn)
@@ -1026,12 +1026,12 @@ let pattern_base = memoize1 (fun lvl ->
 #ifversion < 4.00
 	   let slab = match lab with
                                | Lident s -> s
-                               | _        -> raise Give_up
+                               | _        -> raise (Give_up "" (* FIXME *))
                     in (lab, loc_pat _loc (Ppat_var slab))
 #else
 	   let slab = match lab.txt with
                                | Lident s -> id_loc s lab.loc
-                               | _        -> raise Give_up
+                               | _        -> raise (Give_up "" (* FIXME *))
                     in (lab, loc_pat lab.loc (Ppat_var slab))
 #endif
       in
@@ -1069,7 +1069,7 @@ let pattern_base = memoize1 (fun lvl ->
   | CHR('$') c:capitalized_ident ->
      (try let str = Sys.getenv c in
 	  AtomPat, parse_string ~filename:("ENV:"^c) pattern blank str
-      with Not_found -> raise Give_up)
+      with Not_found -> raise (Give_up "" (* FIXME *)))
 
   | CHR('$') t:{t:{ STR("tuple") -> "tuple" | 
 		    STR("list") -> "list" |
@@ -1084,7 +1084,7 @@ let pattern_base = memoize1 (fun lvl ->
 	    | "tuple" -> (AtomPat, loc_pat _loc (Ppat_tuple l))
 	    | "array" -> (AtomPat, loc_pat _loc (Ppat_array l))
 	    | "list" -> (AtomPat, ppat_list _loc l)
-	    | _ -> raise Give_up)
+	    | _ -> raise (Give_up "" (* FIXME *)))
   )
 
 let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
@@ -1627,7 +1627,7 @@ let expression_base = memoize1 (fun lvl ->
                               pexp_constraint (me, pt)
 #else
                  | Some(Ptyp_package(n,l)) -> Pexp_pack(me,(n,l))
-                 | _    -> raise Give_up
+                 | _    -> raise (Give_up "" (* FIXME *))
 #endif
       in
       (Atom, loc_expr _loc desc)
@@ -1645,7 +1645,7 @@ let expression_base = memoize1 (fun lvl ->
       | _ ->
 	 try let str = Sys.getenv c in
 	     parse_string ~filename:("ENV:"^c) expression blank str
-	 with Not_found -> raise Give_up)
+	 with Not_found -> raise (Give_up "" (* FIXME *)))
   | CHR('$') t:{t:{ STR("tuple") -> "tuple" | 
 		    STR("list") -> "list" |
 		    STR("array") -> "array" } CHR(':') }? 
@@ -1661,7 +1661,7 @@ let expression_base = memoize1 (fun lvl ->
 	    | "list" ->   
 	       let l = List.map (fun x -> x,_loc) l in
 	       (Atom, loc_expr _loc (pexp_list _loc l).pexp_desc)
-	    | _ -> raise Give_up)
+	    | _ -> raise (Give_up "" (* FIXME *)))
   | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
      (lvl', mk_unary_opp p _loc_p e _loc_e)
   )
@@ -1684,10 +1684,10 @@ let semi_col = black_box
    let c,str',pos' = read str pos in
    if c = ';' then
      let c',_,_ = read str' pos' in
-     if c' = ';' then raise Give_up
+     if c' = ';' then raise (Give_up "" (* FIXME *))
      else (), str', pos'
    else
-     raise Give_up)
+     raise (Give_up "" (* FIXME *)))
   (Charset.singleton ';') false (";")
 
 let double_semi_col = black_box 
@@ -1695,10 +1695,10 @@ let double_semi_col = black_box
    let c,str',pos' = read str pos in
    if c = ';' then
      let c',_,_ = read str' pos' in
-     if c' <> ';' then raise Give_up
+     if c' <> ';' then raise (Give_up "" (* FIXME *))
      else (), str', pos'
    else
-     raise Give_up)
+     raise (Give_up "" (* FIXME *)))
   (Charset.singleton ';') false (";;")
 
 let expression_suit_aux = memoize2 (fun lvl' lvl ->
@@ -1793,7 +1793,7 @@ let module_expr_base =
                            Pmod_unpack (loc_expr _loc (pexp_constraint (e, pt)))
 #else
                  | Some(Ptyp_package(n,l)) -> Pmod_unpack(e,(n,l))
-                 | _    -> raise Give_up
+                 | _    -> raise (Give_up "" (* FIXME *))
 #endif
       in
       mexpr_loc _loc e
@@ -1838,7 +1838,7 @@ let mod_constraint =
   | type_kw tps:type_params?[[]] tcn:typeconstr_name STR(":=") te:typexpr ->
 #ifversion < 4.00
       let tps = List.map (function
-			     (Some s, t) -> s,t | None, _ -> raise Give_up) tps in
+			     (Some s, t) -> s,t | None, _ -> raise (Give_up "" (* FIXME *))) tps in
 #endif
       let td = type_declaration _loc (id_loc tcn _loc_tcn)
 	   tps [] Ptype_abstract Public (Some te) in
@@ -1874,7 +1874,7 @@ let structure_item_base =
        | _                                           -> Pstr_value (r, l))
   | external_kw n:value_name STR":" ty:typexpr STR"=" ls:string_literal* ->
       let l = List.length ls in
-      if l < 1 || l > 3 then raise Give_up;
+      if l < 1 || l > 3 then raise (Give_up "" (* FIXME *));
 #ifversion >= 4.02
       Pstr_primitive({ pval_name = id_loc n _loc_n; pval_type = ty; pval_prim = ls; pval_loc = _loc; pval_attributes = [] })
 #else
@@ -1956,7 +1956,7 @@ let signature_item_base =
      psig_value ~attributes:a _loc (id_loc n _loc_n) ty []
   | external_kw n:value_name STR":" ty:typexpr STR"=" ls:string_literal* a:post_item_attributes ->
       let l = List.length ls in
-      if l < 1 || l > 3 then raise Give_up;
+      if l < 1 || l > 3 then raise (Give_up "" (* FIXME *));
       psig_value ~attributes:a _loc (id_loc n _loc_n) ty ls
   | td:type_definition -> 
 #ifversion >= 4.02

@@ -23,7 +23,7 @@ let arith_prod =
   parser
     a:arith_pow 
     f:{op:RE"[*]\\|/" b:arith_pow
-           -> fun f x -> if op = "*" then f x *. b else if b = 0.0 then raise Give_up else f x /. b}*[fun x -> x]
+           -> fun f x -> if op = "*" then f x *. b else if b = 0.0 then raise (Give_up "Division by 0") else f x /. b}*[fun x -> x]
                    (* *[...] avoid to use lists for repetition *)
       -> f a
 

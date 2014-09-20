@@ -16,7 +16,7 @@ exception Parse_error of string * int * int * string list
 (** [Give_up msg] can be raised when a parsing rule needs to be rejected. It
   is strongly advised to provide a very explicit message [msg] while raising
   this exception, in order for DeCaP to provide useful error messages. *)
-exception Give_up (* of string *) (* FIXME *) 
+exception Give_up of string
 
 (** {2 Blank functions} *)
 

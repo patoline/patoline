@@ -452,7 +452,7 @@ let push_pop_expression e =
 	 Expression e ->  e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_expression e =
     match Stack.top quote_stack with
@@ -468,7 +468,7 @@ let push_pop_expression_list e =
 	 Expression_list e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_expression_list e =
     match Stack.top quote_stack with
@@ -484,7 +484,7 @@ let push_pop_type e =
 	 Type e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_type e =
     match Stack.top quote_stack with
@@ -500,7 +500,7 @@ let push_pop_type_list e =
 	 Type_list e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_type_list e =
     match Stack.top quote_stack with
@@ -516,7 +516,7 @@ let push_pop_pattern e =
 	 Pattern e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_pattern e =
     match Stack.top quote_stack with
@@ -532,7 +532,7 @@ let push_pop_pattern_list e =
 	 Pattern_list e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_pattern_list e =
     match Stack.top quote_stack with
@@ -548,7 +548,7 @@ let push_pop_structure e =
 	 Structure e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_structure e =
     match Stack.top quote_stack with
@@ -564,7 +564,7 @@ let push_pop_signature e =
 	 Signature e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_signature e =
     match Stack.top quote_stack with
@@ -580,7 +580,7 @@ let push_pop_string e =
 	 String e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_string e =
     match Stack.top quote_stack with
@@ -596,7 +596,7 @@ let push_pop_int e =
 	 Int e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_int e =
     match Stack.top quote_stack with
@@ -612,7 +612,7 @@ let push_pop_int32 e =
 	 Int32 e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_int32 e =
     match Stack.top quote_stack with
@@ -628,7 +628,7 @@ let push_pop_int64 e =
 	 Int64 e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_int64 e =
     match Stack.top quote_stack with
@@ -644,7 +644,7 @@ let push_pop_natint e =
 	 Natint e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_natint e =
     match Stack.top quote_stack with
@@ -660,7 +660,7 @@ let push_pop_float e =
 	 Float e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_float e =
     match Stack.top quote_stack with
@@ -676,7 +676,7 @@ let push_pop_char e =
 	 Char e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_char e =
     match Stack.top quote_stack with
@@ -692,7 +692,7 @@ let push_pop_bool e =
 	 Bool e -> e
        | _ -> assert false
   with
-    Stack.Empty -> raise Give_up
+    Stack.Empty -> assert false
 
 let push_bool e =
     match Stack.top quote_stack with
@@ -846,7 +846,7 @@ let is_reserved_id w =
 
 let ident =
   parser
-    id:RE(ident_re) -> (if is_reserved_id id then raise Give_up; id)
+    id:RE(ident_re) -> (if is_reserved_id id then raise (Give_up (id^" is a keyword...")); id)
   | CHR('$') STR("ident") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
 
 let capitalized_ident =
@@ -867,7 +867,7 @@ let lowercase_ident =
 	     in
 	     push_location id'
 	 with Exit -> ());
-       if is_reserved_id id then raise Give_up; id
+       if is_reserved_id id then raise (Give_up (id^" is a keyword...")); id
   | CHR('$') STR("lid") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
 
 (* Prefix and infix symbols *)
@@ -893,11 +893,11 @@ let prefix_symb_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~
 
 let infix_symbol =
   parser
-    sym:RE(infix_symb_re) -> (if is_reserved_symb sym then raise Give_up; sym)
+    sym:RE(infix_symb_re) -> (if is_reserved_symb sym then raise (Give_up ("The infix sybol "^sym^"is reserved...")); sym)
 
 let prefix_symbol =
   parser
-    sym:RE(prefix_symb_re) -> (if is_reserved_symb sym || sym = "!=" then raise Give_up; sym)
+    sym:RE(prefix_symb_re) -> (if is_reserved_symb sym || sym = "!=" then raise (Give_up ("The prefix symbol "^sym^"is reserved...")); sym)
 
 (****************************************************************************
  * Several shortcuts for flags and keywords                                 *
@@ -911,13 +911,13 @@ let key_word s =
       let pos' = ref pos in
       for i = 0 to len_s - 1 do
 	let c, _str', _pos' = read !str' !pos' in
-	if c <> s.[i] then raise Give_up;
+	if c <> s.[i] then raise (Give_up ("The keyword "^s^" was expected..."));
 	str' := _str'; pos' := _pos'
       done;
       let str' = !str' and pos' = !pos' in 
       let c,_,_ = read str' pos' in
       match c with
-	'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> raise Give_up
+	'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> raise (Give_up ("The keyword "^s^" was expected..."))
 	| _ -> (), str', pos')
      (Charset.singleton s.[0]) false s
 
