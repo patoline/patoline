@@ -127,7 +127,7 @@ val string : string -> 'a -> 'a grammar
   messages while refering to the regular expression [re]. *)
 val regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
 
-(** {2 Combinators} *)
+(** {2 Combinators acting on blanks} *)
 
 (** [change_layout ~nbb ~oba g bl] replaces the default blank function with
   [bl] while parsing with using the grammar [g]. The optional parameter [nbb],
@@ -146,26 +146,59 @@ val change_layout : ?new_blank_before:bool -> ?old_blank_after:bool
   empty). *)
 val ignore_next_blank : 'a grammar -> 'a grammar
 
+(** {2 Sequencing combinators} *)
+
 (** [sequence g1 g2 f] is a grammar that first parses using [g1], and then
   parses using [g2]. The results of the sequence is then obtained by applying
   [f] to the results of [g1] and [g2]. *)
 val sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
 
-val sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -> buffer -> int -> 'c) -> 'c grammar
+(** [sequence_position g1 g2 f] is a grammar that first parses using [g1], and
+  then parses using [g2]. The results of the sequence is then obtained by
+  applying [f] to the results of [g1] and [g2], and to the positions (i.e.
+  buffer and index) of the corresponding parsed input.
+  
+  Remark: [sequence g1 g2 f] is equivalent to
+  [sequence_position g1 g2 (fun r1 r2 _ _ _ _ -> f r1 r2)]. *)
+val sequence_position : 'a grammar -> 'b grammar
+                        -> ('a -> 'b -> buffer -> int -> buffer -> int -> 'c)
+                        -> 'c grammar
 
-(** [fsequence p1 p2 := fun l1 l2 -> sequence l1 l2 (fun x f -> f x)] *)
+(** [fsequence g1 g2] is a grammar that first parses using [g1], and then
+  parses using [g2]. The results of the sequence is then obtained by applying
+  the result of [g1] to the result of [g2].
+  
+  Remark: [fsequence g1 g2] is equivalent to
+  [sequence g1 g2 (fun x f -> f x)]. *)
 val fsequence : 'a grammar -> ('a -> 'b) grammar -> 'b grammar
 
-val fsequence_position : 'a grammar -> ('a -> buffer -> int -> buffer -> int -> 'b) grammar -> 'b grammar
+(** [fsequence_position g1 g2] is a grammar that first parses using [g1], and
+  then parses using [g2]. The results of the sequence is then obtained by
+  applying the result of [g1] and position information (see the definition of
+  [sequence_position]) to the result of [g2]. *)
+val fsequence_position : 'a grammar
+                    -> ('a -> buffer -> int -> buffer -> int -> 'b) grammar
+                    -> 'b grammar
 
-(** [sequence3 p1 p2 p3 action =
-    fun l1 l2 l3 g ->
-      sequence (sequence l1 l2 (fun x y z -> g x y z)) l3 (fun f -> f)] *)
-val sequence3 : 'a grammar -> 'b grammar -> 'c grammar -> ('a -> 'b -> 'c -> 'd) -> 'd grammar
+(** [sequence3] is similar to [sequence], but it composes three grammars into
+  a sequence.
 
-(** [dependent_sequence p1 p2]: parses with [p1] which returns [x] and then parses the rest of input
-    with [p2 x] and returns its result. *)
+  Remark: [sequence3 g1 g2 g3 f] is equivalent to
+  [sequence (sequence g1 g2 f) g3 (fun f x -> f x)]. *)
+val sequence3 : 'a grammar -> 'b grammar -> 'c grammar
+                -> ('a -> 'b -> 'c -> 'd) -> 'd grammar
+
+(** [dependent_sequence g1 g2] is a grammar that first parses using [g1],
+  which returns a value [x], and then continues to parse with [g2 x] and
+  return its result. *)
 val dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
+
+
+
+
+
+
+
 
 val iter : 'a grammar grammar -> 'a grammar
   (* = fun g -> dependent_sequence g (fun x -> x) *)
