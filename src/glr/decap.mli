@@ -4,6 +4,8 @@ open Input
 (** DeCaP (Delimited Continuation Parser): a minimalist combinator library.
   @author Christophe Raffalli *)
 
+(** {2 Exceptions} *)
+
 (** [Parse_error (fn, lnum, col, msgs)] is raised when the input cannot be
   parsed. It provides the file name [fn], line number [lnum] and column
   number [col] of the last succesfully parsed terminal. The list [msgs]
@@ -15,6 +17,8 @@ exception Parse_error of string * int * int * string list
   is strongly advised to provide a very explicit message [msg] while raising
   this exception, in order for DeCaP to provide useful error messages. *)
 exception Give_up (* of string *) (* FIXME *) 
+
+(** {2 Blank functions} *)
 
 (** Type of functions that are used to parse "blanks" (i.e. parts of the input
   that should be ignored, like spaces or comments). Such function takes as
@@ -32,29 +36,91 @@ type blank = buffer -> int -> buffer * int
   only a newline. *)
 val blank_regexp : Str.regexp -> blank
 
+(** {2 Core type} *)
+
 (** Type of a grammar returning a value of type ['a]. *)
 type 'a grammar
 
-(** [parse_buffer parser blank buffer] parses the given buffer using the provided parser and blank function. *)
+(** {2 Parsing functions} *)
+
+(** [parse_buffer par bl buf] parses input from the buffer [buf] using the
+  parser [par] and the blank function [bl]. *)
 val parse_buffer : 'a grammar -> blank -> buffer -> 'a
 
-(** [parse_string ~filename parser blank str]: parses the string [str] with the given grammar and blank function.
-    a "filename" is provided for error messages only *)
+(** [parse_string ~fn par bl str] parses the string [str] using the parser
+  [par] and the blank function [bl]. A filename [fn] can be provided in order
+  to obtain better error messages. *)
 val parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a
 
-(** [parse_channel ~filename parser blank in_channel]: load the content of the channel in a string
-     and parses it. *)
+(** [parse_channel ~fn par bl ic] loads the content of the input channel [ic]
+  and parses it using the parser [par] and the blank function [bl]. A filename
+  [fn] can be provided in order to obtain better error messages. *)
 val parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a
 
-(** [parse_file parser blank filename]: open the file and calls the previous function. *)
+(** [parse_file par bl fn] opens the file [fn] and parses it using the parser
+  [par] and the blank function [bl]. *)
 val parse_file : 'a grammar -> blank -> string -> 'a
 
-(* The two following function allows to parse only the beginning of the file and they return
-   the buffer after parsing. *)
-val partial_parse_buffer : 'a grammar -> blank -> buffer-> int -> buffer * int * 'a
-val partial_parse_string : ?filename:string -> 'a grammar -> blank -> string -> int -> buffer * int * 'a
+(** [partial_parse_buffer par bl buf pos] parses input from the buffer [buf],
+  starting a position [pos], using the parser [par] and the blank function
+  [bl]. A triple is returned containing the new buffer, the position that was
+  reached during parsing, and the result of the parsing. *)
+val partial_parse_buffer : 'a grammar -> blank -> buffer -> int
+                           -> buffer * int * 'a
 
-(** [change_layout parser blank]: change the blank function for a given grammar.
+(** [partial_parse_string fn par bl str pos] parses input from the string
+  [str], starting a position [pos], using the parser [par] and the blank
+  function [bl]. A triple is returned containing the new buffer, the position
+  that was reached during parsing, and the result of the parsing. The optional
+  file name [fn] is provided to obtain better error messages. *)
+val partial_parse_string : ?filename:string -> 'a grammar -> blank -> string
+                           -> int -> buffer * int * 'a
+
+(** {2 Atomic parsers} *)
+
+(** [eof v] parses the end of file character [EOF], and returns [x]. *)
+val eof : 'a -> 'a grammar
+
+(** [any] parses any character (that is not [EOF], and returns is. *)
+val any : char grammar
+
+(** [empty v] does not parse anything and always succeeds. It returns a the
+  provided value [v]. *)
+val empty : 'a -> 'a grammar
+
+(** [debug msg] does not parse anything and always succeeds. It prints the
+  message [msg] on [stderr] for debugging. *)
+val debug : string -> unit grammar
+
+(** [fail msg] always fails, adding [msg] to the list of messages int the
+  list of messages to be reported by [Parse_error]. *)
+val fail : string -> 'a grammar
+
+(** [black_box fn cs accept_empty] parses the input buffer using the the
+  provided function [fn]. [fn buf pos] should start parsing [buf] at position
+  [pos], and return a couple containing the new buffer and the position of the
+  first unread character. The character set [cs] should contain at least the
+  characters that are accepted as first character by the parser, and no less.
+  The boolean [accept_empty] shoud be set to [true] if the parsing function
+  [fn] accepts the empty string, and to false otherwise. In case of parse
+  error, the function [fn] should raise the exception [Give_up msg], where
+  [msg] is an explicit error message. *)
+(* FIXME the string argument should be removed since error message will be handled by Give_up *)
+val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool -> string -> 'a grammar
+
+(** [char str x]: parses a given char and returns [x] *)
+val char : char -> 'a -> 'a grammar
+
+(** [string str x]: parses a given string and returns [x] *)
+val string : string -> 'a -> 'a grammar
+
+(** [regexp re g]: parses a given regexp, and returns [g groupe] where [groupe n] gives the
+   n-th matching group as in the [Str] module. The optional argument is a name for
+   the regexp, used in error messages *)
+val regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
+
+
+(** [change_layout ~nbb ~oba par bl] changes the blank function for a given grammar.
     Remark: the new layout is only used inside the input parsed by the grammar, not
     at the beginning nor at the end
 
@@ -71,40 +137,6 @@ val change_layout : ?new_blank_before:bool -> ?old_blank_after:bool -> 'a gramma
    if g parses the empty input, blank will be parsed normally by the rest
    of the parser. Therefore, [ignore_next_blank empty] is equivalent to empty. *)
 val ignore_next_blank : 'a grammar -> 'a grammar
-
-(** [eof x]: parses the end of input only and returns [x] *)
-val eof : 'a -> 'a grammar
-
-(** [any]: parses one char and returns it *)
-val any : char grammar
-
-(** [empty x]: parses no characters (always succeed) and return [x]*)
-val empty : 'a -> 'a grammar
-
-(** [debug msg] is identical to [empty ()] but print [msg] on stderr for debugging *)
-val debug : string -> unit grammar
-
-(** [fail msg]: always fails and add msg to Parse_error *)
-val fail : string -> 'a grammar
-
-(** [black_box fn cs accept_empty msg]: parses with the function [fn str pos], that shoud start
-    parsing [str] at the position [pos] and return the position of the first unread char.
-    [cs] is the set of characters accepted as first char by your parser (or a supperset of).
-    [accept_empty] shoud be false if your parser does not accept the empty string.
-    If [fn] raises [Give_up], [msg] is added to Parse_error.
-*)
-val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool -> string -> 'a grammar
-
-(** [char str x]: parses a given char and returns [x] *)
-val char : char -> 'a -> 'a grammar
-
-(** [string str x]: parses a given string and returns [x] *)
-val string : string -> 'a -> 'a grammar
-
-(** [regexp re g]: parses a given regexp, and returns [g groupe] where [groupe n] gives the
-   n-th matching group as in the [Str] module. The optional argument is a name for
-   the regexp, used in error messages *)
-val regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
 
 (** [sequence p1 p2 action]: parses with [p1] which returns [x], then parses with [p2] the rest of
     the input which return [y] and returns [action x y] *)
