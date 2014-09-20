@@ -43,49 +43,52 @@ type 'a grammar
 
 (** {2 Parsing functions} *)
 
-(** [parse_buffer par bl buf] parses input from the buffer [buf] using the
-  parser [par] and the blank function [bl]. *)
+(** [parse_buffer g bl buf] parses input from the buffer [buf] using the
+  grammar [g] and the blank function [bl]. *)
 val parse_buffer : 'a grammar -> blank -> buffer -> 'a
 
-(** [parse_string ~fn par bl str] parses the string [str] using the parser
-  [par] and the blank function [bl]. A filename [fn] can be provided in order
-  to obtain better error messages. *)
+(** [parse_string ~fn g bl str] parses the string [str] using the grammar [g]
+  and the blank function [bl]. A filename [fn] can be provided in order to
+  obtain better error messages. *)
 val parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a
 
-(** [parse_channel ~fn par bl ic] loads the content of the input channel [ic]
-  and parses it using the parser [par] and the blank function [bl]. A filename
+(** [parse_channel ~fn g bl ic] loads the content of the input channel [ic]
+  and parses it using the grammar [g] and the blank function [bl]. A file name
   [fn] can be provided in order to obtain better error messages. *)
-val parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a
+val parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel
+                    -> 'a
 
-(** [parse_file par bl fn] opens the file [fn] and parses it using the parser
-  [par] and the blank function [bl]. *)
+(** [parse_file g bl fn] opens the file [fn] and parses it using the grammar
+ * [g] and the blank function [bl]. *)
 val parse_file : 'a grammar -> blank -> string -> 'a
 
-(** [partial_parse_buffer par bl buf pos] parses input from the buffer [buf],
-  starting a position [pos], using the parser [par] and the blank function
+(** [partial_parse_buffer g bl buf pos] parses input from the buffer [buf],
+  starting a position [pos], using the grammar [g] and the blank function
   [bl]. A triple is returned containing the new buffer, the position that was
   reached during parsing, and the result of the parsing. *)
 val partial_parse_buffer : 'a grammar -> blank -> buffer -> int
                            -> buffer * int * 'a
 
-(** [partial_parse_string fn par bl str pos] parses input from the string
-  [str], starting a position [pos], using the parser [par] and the blank
-  function [bl]. A triple is returned containing the new buffer, the position
-  that was reached during parsing, and the result of the parsing. The optional
-  file name [fn] is provided to obtain better error messages. *)
+(** [partial_parse_string fn g bl str pos] parses input from the string [str],
+  starting a position [pos], using the grammar [g] and the blank function
+  [bl]. A triple is returned containing the new buffer, the position that was
+  reached during parsing, and the result of the parsing. The optional file
+  name [fn] is provided to obtain better error messages. *)
 val partial_parse_string : ?filename:string -> 'a grammar -> blank -> string
                            -> int -> buffer * int * 'a
 
 (** {2 Atomic parsers} *)
 
-(** [eof v] parses the end of file character [EOF], and returns [x]. *)
+(** [eof v] is a grammar that parses the end of file character [EOF], and
+  returns [x]. *)
 val eof : 'a -> 'a grammar
 
-(** [any] parses any character (that is not [EOF], and returns is. *)
+(** [any] is a grammar that parses any character (that is not [EOF], and
+  returns it. *)
 val any : char grammar
 
-(** [empty v] does not parse anything and always succeeds. It returns a the
-  provided value [v]. *)
+(** [empty v] is an empty grammar, it does not parse anything and always
+  succeeds. It returns a the provided value [v]. *)
 val empty : 'a -> 'a grammar
 
 (** [debug msg] does not parse anything and always succeeds. It prints the
@@ -96,50 +99,56 @@ val debug : string -> unit grammar
   list of messages to be reported by [Parse_error]. *)
 val fail : string -> 'a grammar
 
-(** [black_box fn cs accept_empty] parses the input buffer using the the
-  provided function [fn]. [fn buf pos] should start parsing [buf] at position
-  [pos], and return a couple containing the new buffer and the position of the
-  first unread character. The character set [cs] should contain at least the
-  characters that are accepted as first character by the parser, and no less.
-  The boolean [accept_empty] shoud be set to [true] if the parsing function
-  [fn] accepts the empty string, and to false otherwise. In case of parse
-  error, the function [fn] should raise the exception [Give_up msg], where
-  [msg] is an explicit error message. *)
+(** [black_box fn cs accept_empty] is a grammar that parses the input buffer
+  using the the provided function [fn]. [fn buf pos] should start parsing
+  [buf] at position [pos], and return a couple containing the new buffer and
+  the position of the first unread character. The character set [cs] should
+  contain at least the characters that are accepted as first character by the
+  parser, and no less. The boolean [accept_empty] shoud be set to [true] if
+  the parsing function [fn] accepts the empty string, and to false otherwise.
+  In case of parse error, the function [fn] should raise the exception
+  [Give_up msg], where [msg] is an explicit error message. *)
 (* FIXME the string argument should be removed since error message will be handled by Give_up *)
-val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool -> string -> 'a grammar
+val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool -> string
+                 -> 'a grammar
 
-(** [char str x]: parses a given char and returns [x] *)
+(** [char c v] is a grammar that parses the character [c] and returns [v]. *)
 val char : char -> 'a -> 'a grammar
 
-(** [string str x]: parses a given string and returns [x] *)
+(** [string str v] is a grammar that parses the string [str] and returns
+  [v]. *)
 val string : string -> 'a -> 'a grammar
 
-(** [regexp re g]: parses a given regexp, and returns [g groupe] where [groupe n] gives the
-   n-th matching group as in the [Str] module. The optional argument is a name for
-   the regexp, used in error messages *)
+(** [regexp re ?name g] is a grammar that parses the input according to the
+  regular expression [re], and returns a value build by applying the function
+  [g] to a function of type [int -> string] that returns the substring matched
+  by the [n]-th match group of the regular expression [re] (as in the [Str]
+  module). The optional [name] argument is used to give more readable error
+  messages while refering to the regular expression [re]. *)
 val regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
 
+(** {2 Combinators} *)
 
-(** [change_layout ~nbb ~oba par bl] changes the blank function for a given grammar.
-    Remark: the new layout is only used inside the input parsed by the grammar, not
-    at the beginning nor at the end
+(** [change_layout ~nbb ~oba g bl] replaces the default blank function with
+  [bl] while parsing with using the grammar [g]. The optional parameter [nbb],
+  which is [true] by default, forces the application of the new blank
+  function, before parsing the first terminal of [g]. Note that the old blank
+  function is always called before the first terminal of [g]. Similarly, the
+  optional parameter [oba], which is [true] by default, forces a call to the
+  old blank function, after the end of the parsing of [g]. The new blank
+  function is always called after the last terminal. *)
+val change_layout : ?new_blank_before:bool -> ?old_blank_after:bool
+                    -> 'a grammar -> blank -> 'a grammar
 
-    The optional parameter [new_blank_before], ([true] by default) forces parsing the
-    new blank before parsing with the given grammar (the old blank function was used
-    before the next terminal symbol anyway).
-
-    Similarly, the optional parameter [old_blank_after], ([true] by default) forces
-    the parsing of the old blank after parsing with the given grammar and the old blank.
-*)
-val change_layout : ?new_blank_before:bool -> ?old_blank_after:bool -> 'a grammar -> blank -> 'a grammar
-
-(* [ignore_next_blank g] prevent parsing blank at the beginning of g.
-   if g parses the empty input, blank will be parsed normally by the rest
-   of the parser. Therefore, [ignore_next_blank empty] is equivalent to empty. *)
+(** [ignore_next_blank g] disables the call to the blank function before the
+  first terminal of [g]. If the empty input is parsed using [g], blanks are
+  ignored in the usual way ([ignore_next_blank empty] is equivalent to
+  empty). *)
 val ignore_next_blank : 'a grammar -> 'a grammar
 
-(** [sequence p1 p2 action]: parses with [p1] which returns [x], then parses with [p2] the rest of
-    the input which return [y] and returns [action x y] *)
+(** [sequence g1 g2 f] is a grammar that first parses using [g1], and then
+  parses using [g2]. The results of the sequence is then obtained by applying
+  [f] to the results of [g1] and [g2]. *)
 val sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
 
 val sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -> buffer -> int -> 'c) -> 'c grammar
