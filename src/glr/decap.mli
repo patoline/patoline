@@ -193,23 +193,22 @@ val sequence3 : 'a grammar -> 'b grammar -> 'c grammar
   return its result. *)
 val dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
 
-
-
-
-
-
-
+(** {2 Misc} *)
 
 val iter : 'a grammar grammar -> 'a grammar
   (* = fun g -> dependent_sequence g (fun x -> x) *)
 
-(** [option a p]: parses input with [p], if and only if it fails return [a] consuming no input *)
+(** [option v g] tries to parse the input as [g], and returns [v] in case of
+  failure. *)
 val option : 'a -> 'a grammar -> 'a grammar
 
-(** [fixpoint a p] : repetition 0 or more time *)
+(** [fixpoint v g] parses a repetition of zero or more times the input parsed
+  by [g]. The value [v] is used as the initial value (i.e. to finish the
+  sequence). *)
 val fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
 
-(** [alternatives [p1;...;pn]] : parses as all [pi], and keep only the first success *)
+(** [alternatives [g1;...;gn]] tries to parse using all the grammars
+  [[g1;...;gn]] and keeps only the first success. *)
 val alternatives : 'a grammar list -> 'a grammar
 
 (** the ony difference between the next function and the previous one
@@ -219,74 +218,92 @@ val option' : 'a -> 'a grammar -> 'a grammar
 val fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
 val alternatives' : 'a grammar list -> 'a grammar
 
-(** [apply f grammar]: apply [f] to the value returned by the given grammar *)
+(** [apply f g] applies function [f] to the value returned by the grammar
+  [g]. *)
 val apply : ('a -> 'b) -> 'a grammar -> 'b grammar
 
-(** [position], tranform a given grammar to add the position of the parsed text *)
+(** [apply_position f g] applies function [f] to the value returned by the
+  grammar [g] and the positions at the beginning and at the end of the
+  input parsed input. *)
+val apply_position : ('a -> buffer -> int -> buffer -> int -> 'b)
+                     -> 'a grammar -> 'b grammar
+
+(** [position g] tranforms the grammar [g] to add information about the
+  position of the parsed text. *)
 val position : 'a grammar -> (string * int * int * int * int * 'a) grammar
 
-(** [apply_position f gr]: a variant of the previous function, giving directly the buffer and position
-    at the beginning and end of the parsed input. You may then get the position (filename, line number ...)
-    using the Input module. *)
-val apply_position : ('a -> buffer -> int -> buffer -> int -> 'b) -> 'a grammar -> 'b grammar
-
-(* [delim l] will prevent backtracking beyond grammar l *)
+(* [delim g] behaves the same as [g], but backtraching is prevented beyond
+  grammar [g]. *)
 val delim : 'a grammar -> 'a grammar
 
-(* [lists gr] lists all the parse tree produced by the first argument. The parse-tree do
-   not need to correspond to the same initial segment of the input. *)
+(* [lists g] lists all the possible parse-trees produced by grammar [g].
+  The parse-trees do not need to correspond to the same initial segment of
+  the input. *)
 val lists : 'a grammar -> 'a list grammar
 
 val merge : ('a -> 'b) -> ('b -> 'b -> 'b) -> 'a grammar -> 'b grammar
 
-(** [declare_grammar name] return a new grammar, that can be used to define other grammar, but that
-    can not be used yet. The name is used in error messages *)
+(** {2 Support for recursive grammars} *)
+
+(** [declare_grammar name] returns a new grammar that can be used in the
+  definition of other grammars, but that cannot be used before it is
+  initialized with the function [set_grammar]. The argument [name] is used to
+  provide better error messages by naming the grammar. *)
 val declare_grammar : string -> 'a grammar
 
-(** [set_grammar p p']: defines a previously declared grammar p using p' *)
+(** [set_grammar g g'] set the definiton of grammar [g] (that was previously
+  declared using [declare_grammar]), to be [g']. *)
 val set_grammar : 'a grammar -> 'a grammar -> unit
-(** The too previous function allow for recursive grammar, but left recursion is
-    forbidden (trigger a [Failure] exception).
 
-    For instance the following code is incorrect:
+(** The too previous function allow for recursive grammar, but left recursion
+  is forbidden and triggers a [Failure] exception.
 
-{[
+  For instance the following code is incorrect:
+
+  {[
     let p = declare_grammar ()
     let p' = sequence (sequence (option (string "a" ["a"])) p) (string "b" "b") (fun l x -> x::l)
     let _ = set_grammar p p'
-]}
+  ]}
 *)
 
-val grammar_family : ?param_to_string:('a -> string) -> string -> ('a -> 'b grammar) * (('a -> 'b grammar) -> unit)
+(** [grammar_familly to_str name] returns a pair [(gs, set_gs)], where [gs]
+  is a finite family of grammars parametrized by a value of type ['a]. A name
+  [name] is to be provided for the family, and an optional function [to_str]
+  can be provided to print the parameter and display better error messages. *)
+val grammar_family : ?param_to_string:('a -> string) -> string
+                     -> ('a -> 'b grammar) * (('a -> 'b grammar) -> unit)
+
 (**
-  [grammar_family seeds] return a pair [(gr, set_gr)] where gr is a finite family of
-  grammars parametrized by value of type 'a the type of the elments of the list seeds.
+  {[
+    (* Declare the grammar family *)
+    let (gr, set_gr) = grammar_family to_str name in
 
-  You use this function in this way:
-{[
-  let (gr, set_gr) = grammar_family seeds in
+    ... code using grammars of gr to define mutually recursive grammars ...
+    ... the grammars in gr cannot be used in "left position" ...
+    ... (same restriction as for declare_grammar ...
 
-  ... code that uses all this grammar to define new mutually recursive grammars ...
-  ... here you can not use the grammar in "left position" (same restriction ...
-  ... as for declare grammar (1) ...
+    (* Define the grammar family *)
+    let _ = set_gr the_grammars
 
-  (* once you really set the value of the family *)
-  let _ = set_gr the_grammars
-
-  ... now you can really use the new family ...
-]}
-
-  The [seeds] list are somahow the entry point of your family, any member of the
-  family used in (1) must be reachable by the recursive definitions in (1) from
-  [gr s] where [s] is member of the list [seeds]. Most of the time one seed in
-  enough.
+    ... now the new family can be used ...
+  ]}
 *)
 
-(** To useful functions to manipulate the exceptions raised by cpspc *)
+(** {2 Exception handling and debuging} *)
+
+(** [print_exception e] displays the DeCaP exception [e] in a human-readable
+  way. *)
 val print_exception : exn -> unit
+
+(** [handle_exception f x] applies the function [f] to [x] while handling
+  DeCaP exceptions. In particular it notifies parse errors. *)
 val handle_exception : ('a -> 'b) -> 'a -> 'b
 
-
-(** for debugging (mainly) *)
+(** [accept_empty g] returns [true] if the grammar [g] accepts the empty input
+  and [false] otherwise. *)
 val accept_empty : 'a grammar -> bool
+
+(** [firsts g] returns the set of characters that are accepted as first
+  characters for the grammar [g]. *)
 val firsts : 'a grammar -> charset
