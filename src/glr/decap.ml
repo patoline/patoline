@@ -274,12 +274,12 @@ let fail : string -> 'a grammar = fun msg ->
              parse_error grouped (~~ msg) str pos }
 
 let  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool -> string -> 'a grammar =
-  (fun fn set empty msg ->
+  (fun fn set empty name ->
    { firsts = lazy set;
-    first_sym = lazy (~~ msg);
+     first_sym = lazy (~~ name);
      accept_empty = lazy empty;
      parse = fun grouped str pos next g ->
-             let a, str', pos' = try fn str pos with Error | Give_up _ -> parse_error grouped (~~ msg) str pos in
+             let a, str', pos' = try fn str pos with Give_up msg -> parse_error grouped (~~ msg) str pos in
              let str'', pos'' = apply_blank grouped str' pos' in
              g str pos str' pos' str'' pos'' a })
 

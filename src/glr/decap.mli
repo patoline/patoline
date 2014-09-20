@@ -99,18 +99,18 @@ val debug : string -> unit grammar
   list of messages to be reported by [Parse_error]. *)
 val fail : string -> 'a grammar
 
-(** [black_box fn cs accept_empty] is a grammar that parses the input buffer
-  using the the provided function [fn]. [fn buf pos] should start parsing
-  [buf] at position [pos], and return a couple containing the new buffer and
-  the position of the first unread character. The character set [cs] should
-  contain at least the characters that are accepted as first character by the
-  parser, and no less. The boolean [accept_empty] shoud be set to [true] if
-  the parsing function [fn] accepts the empty string, and to false otherwise.
-  In case of parse error, the function [fn] should raise the exception
-  [Give_up msg], where [msg] is an explicit error message. *)
-(* FIXME the string argument should be removed since error message will be handled by Give_up *)
-val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool -> string
-                 -> 'a grammar
+(** [black_box fn cs accept_empty name] is a grammar that parses the input
+  buffer using the the provided function [fn]. [fn buf pos] should start
+  parsing [buf] at position [pos], and return a couple containing the new
+  buffer and the position of the first unread character. The character set
+  [cs] should contain at least the characters that are accepted as first
+  character by the parser, and no less. The boolean [accept_empty] shoud be
+  set to [true] if the parsing function [fn] accepts the empty string, and to
+  false otherwise. The [name] argument is used to give more readable error
+  messages. In case of parse error, the function [fn] should raise the
+  exception [Give_up msg], where [msg] is an explicit error message. *)
+val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool
+                 -> string -> 'a grammar
 
 (** [char c v] is a grammar that parses the character [c] and returns [v]. *)
 val char : char -> 'a -> 'a grammar
