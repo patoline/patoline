@@ -223,11 +223,11 @@ let next_exp = function
 
   let structure =
     parser
-      l : {s:(delim structure_item)}** -> List.flatten l
+      l : {s:structure_item}** -> List.flatten l
 
   let signature =
     parser
-      l : {s:(delim signature_item)}** -> List.flatten l
+      l : {s:signature_item}** -> List.flatten l
 
   type type_prio = TopType | As | Arr | ProdType | DashType | AppType | AtomType
 

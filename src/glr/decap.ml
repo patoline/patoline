@@ -164,7 +164,10 @@ let apply : ('a -> 'b) -> 'a grammar -> 'b grammar
       accept_empty = lazy (accept_empty l);
       parse =
         fun grouped str pos next g ->
-          l.parse grouped str pos next (fun l c l' c' l'' c'' x -> g l c l' c' l'' c'' (f x));
+        l.parse grouped str pos next 
+	   (fun l c l' c' l'' c'' x -> 
+	    let r = try f x with Give_up msg -> parse_error grouped (~~msg) l' c' in
+	    g l c l' c' l'' c'' r);
     }
 
 let delim : 'a grammar -> 'a grammar
@@ -188,10 +191,11 @@ let merge : ('a -> 'b) -> ('b -> 'b -> 'b) -> 'a grammar -> 'b grammar
         fun grouped str pos next g ->
         let m = ref PosMap.empty in
         let cont l c l' c' l'' c'' x =
-          let x = unit x in
+	  let x = try unit x with Give_up msg -> parse_error grouped (~~msg) l' c' in
           (try
               let (_,_,_,_,old) = PosMap.find (l'', c'') !m in
-              m := PosMap.add (l'', c'') (l, c, l', c', merge x old) !m
+	      let r = try merge x old with Give_up msg -> parse_error grouped (~~msg) l' c' in
+              m := PosMap.add (l'', c'') (l, c, l', c', r) !m
             with Not_found ->
               m := PosMap.add (l'', c'') (l, c, l', c', x) !m);
           raise Error
@@ -199,14 +203,14 @@ let merge : ('a -> 'b) -> ('b -> 'b -> 'b) -> 'a grammar -> 'b grammar
         try
           ignore (l.parse grouped str pos next cont);
           assert false
-        with Error | Give_up _ ->
+        with Error ->
           let res = ref None in
           PosMap.iter (fun (str'',pos'') (str, pos, str', pos', x) ->
                        try
                          res := Some (g str pos str' pos' str'' pos'' x);
                          raise Exit
                        with
-                         Error | Give_up _ -> ()) !m;
+                         Error -> ()) !m;
           match !res with
             None -> raise Error
           | Some x -> x
@@ -235,8 +239,9 @@ let apply_position : ('a -> buffer -> int -> buffer -> int -> 'b) -> 'a grammar 
       parse =
         fun grouped str pos next g ->
           l.parse grouped str pos next
-                  (fun l c l' c' l'' c'' x -> g l c l' c' l'' c'' (
-                   f x l c l' c'))
+                  (fun l c l' c' l'' c'' x -> 
+		   let r = try f x l c l' c' with Give_up msg -> parse_error grouped (~~msg) l' c' in
+		   g l c l' c' l'' c'' r)
     }
 
 let eof : 'a -> 'a grammar
@@ -354,7 +359,7 @@ let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
         if string_match r l pos then
           let f n = matched_group n l in
           let pos' = match_end () in
-          let res = a f in
+	  let res = try a f with Give_up msg -> parse_error grouped (~~msg) str pos' in
           let str'', pos'' = apply_blank grouped str pos' in
           g str pos str pos' str'' pos'' res
           else (
@@ -403,7 +408,8 @@ let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
                     l2.parse grouped str'' pos'' next
                              (fun str0 pos0 str' pos' str'' pos'' x ->
                               let str', pos' = if str' == str0 && pos' == pos0 then str0', pos0' else str', pos' in
-                              g str pos str' pos' str'' pos'' (f a x)))
+			      let res = try f a x with Give_up msg -> parse_error grouped (~~msg) str' pos' in
+                              g str pos str' pos' str'' pos'' res))
     }
 
 let sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -> buffer -> int -> 'c) -> 'c grammar
@@ -419,7 +425,8 @@ let sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -
                     l2.parse grouped str'' pos'' next
                              (fun str0 pos0 str' pos' str'' pos'' b ->
                               let str', pos' = if str' == str0 && pos' == pos0 then str0', pos0' else str', pos' in
-                              g str pos str' pos' str'' pos'' (f a b str pos str' pos')))
+			      let res = try f a b str pos str' pos' with Give_up msg -> parse_error grouped (~~msg) str' pos' in
+                              g str pos str' pos' str'' pos'' res))
     }
 
 let fsequence : 'a grammar -> ('a -> 'b) grammar -> 'b grammar
@@ -449,7 +456,8 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
         fun grouped str pos next g ->
           l1.parse grouped str pos all_next
                    (fun str pos str0' pos0' str'' pos'' a ->
-                    (f2 a).parse grouped str'' pos'' next
+		    let g2 = try f2 a with Give_up msg -> parse_error grouped (~~msg) str0' pos0' in
+                    g2.parse grouped str'' pos'' next
                           (fun str0 pos0 str' pos' str'' pos'' b ->
                               let str', pos' = if str' == str0 && pos' == pos0 then str0', pos0' else str', pos' in
                               g str pos str' pos' str'' pos'' b))
@@ -498,7 +506,7 @@ let option : 'a -> 'a grammar -> 'a grammar
           try
             l.parse grouped str pos next g
           with
-          | Error | Give_up _ ->
+          | Error ->
             g str pos str pos str pos a
         else
           l.parse grouped str pos next g
@@ -516,7 +524,7 @@ let option' : 'a -> 'a grammar -> 'a grammar
             l.parse grouped str pos next
                     (fun s p s' p' s'' p'' x () -> g s p s' p' s'' p'' x)
           with
-          | Error | Give_up _ ->
+          | Error ->
             fun () -> g str pos str pos str pos a) ()
         else
           l.parse grouped str pos next g
@@ -535,13 +543,15 @@ let fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
               try
                 f1.parse grouped str'' pos'' next'
                          (fun _ _  str' pos' str'' pos'' f ->
-                          fn str' pos' str'' pos'' (f x))
+			  let res = try f x with Give_up msg -> parse_error grouped (~~msg) str' pos' in
+                          fn str' pos' str'' pos'' res)
               with
-              | Error | Give_up _ -> g str pos str' pos' str'' pos'' x
+              | Error -> g str pos str' pos' str'' pos'' x
             else
               f1.parse grouped str'' pos'' next'
                        (fun _ _ str' pos' str'' pos'' f ->
-                        fn str' pos' str'' pos'' (f x))
+			let res = try f x with Give_up msg -> parse_error grouped (~~msg) str' pos' in
+                        fn str' pos' str'' pos'' res)
           in fn str pos str pos a
     }
 
@@ -558,13 +568,15 @@ let fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
               try
                 f1.parse grouped str'' pos'' next'
                          (fun _ _ str' pos' str'' pos'' f ->
-                          fn str' pos' str'' pos'' (f x))
+			  let res = try f x with Give_up msg -> parse_error grouped (~~msg) str' pos' in
+                          fn str' pos' str'' pos'' res)
               with
-              | Error | Give_up _ -> fun () -> g str pos str' pos' str'' pos'' x
+              | Error -> fun () -> g str pos str' pos' str'' pos'' x
             else
               f1.parse grouped str'' pos'' next'
                        (fun _ _ str' pos' str'' pos'' f ->
-                        fn str' pos' str'' pos'' (f x))
+			let res = try f x with Give_up msg -> parse_error grouped (~~msg) str' pos' in
+                        fn str' pos' str'' pos'' res)
           in
           fn str pos str pos a ()
     }
@@ -586,7 +598,7 @@ let alternatives : 'a grammar list -> 'a grammar
               (try
                 l.parse grouped str pos next g
               with
-                Error | Give_up _ -> fn ls)
+                Error -> fn ls)
             | [] ->
                raise Error
           in
@@ -611,7 +623,7 @@ let alternatives' : 'a grammar list -> 'a grammar
                 l.parse grouped str pos next
                         (fun s p s' p' s'' p'' x () ->  g s p s' p' s'' p'' x)
               with
-                Error | Give_up _ -> fn ls)
+                Error -> fn ls)
             | [] ->
                raise Error
           in
@@ -630,7 +642,7 @@ let parse_buffer grammar blank str =
   let str, pos = apply_blank grouped str 0 in
   try
       grammar.parse grouped str pos all_next (fun _ _ _ _ _ _ x -> x)
-    with Error | Give_up _ ->
+    with Error ->
       let str = grouped.err_info.max_err_buf in
       let pos = grouped.err_info.max_err_col in
       let msgs = grouped.err_info.err_msgs in
@@ -648,7 +660,7 @@ let partial_parse_buffer grammar blank str pos =
   let str, pos = apply_blank grouped str pos in
   try
     grammar.parse grouped str pos all_next cont;
-  with Error | Give_up _ ->
+  with Error ->
     let str = grouped.err_info.max_err_buf in
     let pos = grouped.err_info.max_err_col in
     let msgs = grouped.err_info.err_msgs in
