@@ -132,10 +132,10 @@ struct
 		     let c,str',pos' = read str pos in
 		     if List.mem c non_special then
 		       let c',_,_ = read str' pos' in
-		       if c' = c then raise Give_up
+		       if c' = c then raise (Give_up "") (* FIXME *)
 		       else c, str', pos'
 		     else
-		       raise Give_up)
+		       raise (Give_up "")) (* FIXME *)
 		    (List.fold_left Charset.add Charset.empty_charset non_special) false
 		    (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
 
@@ -156,7 +156,7 @@ struct
              let w = String.concat "" cs in
              if String.length w >= 2 &&
 		  List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<";">>";"$>";]
-             then raise Give_up;
+             then raise (Give_up (w ^ "is not a word"));
              w
 	| c:special -> c
       ) no_blank
@@ -353,7 +353,8 @@ struct
     change_layout (
 	parser
 	  STR("\\") m:RE(lident) ->
-        if List.mem m reserved_macro then raise Give_up; m
+        if List.mem m reserved_macro then
+          raise (Give_up (m ^ "is a reserved macro")); m
       ) no_blank
 
   let macro =
@@ -463,7 +464,7 @@ struct
        ps:(change_layout paragraphs blank2)
        STR("\\end{") ide:RE(lident) STR("}") ->
          (fun indent_first ->
-           if idb <> ide then raise Give_up;
+           if idb <> ide then raise (Give_up "Non-matching begin / end");
            let m1 = freshUid () in
            let m2 = freshUid () in
 	   let _Env = "Env_" in
@@ -517,7 +518,7 @@ struct
 	 let numbered = match op.[0], cl.[0] with
 	     '=', '=' -> <:expr@_loc_op<newStruct>>
            | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
-           | _ -> raise Give_up
+           | _ -> raise (Give_up "Non-matching relative section markers")
          in
          true, lvl, <:structure< let _ = $numbered$ D.structure $title$;;
                      $(txt false (lvl+1))$;;
@@ -525,11 +526,12 @@ struct
 	  
     | op:RE(section) title:text_only cl:RE(section) txt:text ->
 	(fun _ lvl ->
-	 if String.length op <> String.length cl then raise Give_up;
+	 if String.length op <> String.length cl then
+     raise (Give_up "Non-matching absolute section marker");
          let numbered = match op.[0], cl.[0] with
              '=', '=' -> <:expr@_loc_op<newStruct>>
            | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
-           | _ -> raise Give_up
+           | _ -> raise (Give_up "Non-mathing section marker")
          in
          let l = String.length op - 1 in
          if l > lvl + 1 then failwith "Illegal level skip";
@@ -573,7 +575,7 @@ struct
           | "FORMAT"  -> patoline_format := a
           | "DRIVER"  -> patoline_driver := a
           | "PACKAGE" -> patoline_packages := a :: !patoline_packages;
-          | _         -> raise Give_up);
+          | _         -> raise (Give_up ("Unknown directive #"^n)));
          ())
       ) no_blank
 
@@ -661,7 +663,7 @@ struct
              | "FORMAT"  -> patoline_format := a
              | "DRIVER"  -> patoline_driver := a
              | "PACKAGE" -> patoline_packages := a :: !patoline_packages;
-             | _ -> raise Give_up);
+             | _ -> raise (Give_up ("Unknown directive #"^n)));
           <:structure<>>)
 
   let extra_structure = directive :: extra_structure	    

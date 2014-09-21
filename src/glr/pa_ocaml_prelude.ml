@@ -452,7 +452,7 @@ let push_pop_expression e =
 	 Expression e ->  e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_expression e =
     match Stack.top quote_stack with
@@ -468,7 +468,7 @@ let push_pop_expression_list e =
 	 Expression_list e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_expression_list e =
     match Stack.top quote_stack with
@@ -484,7 +484,7 @@ let push_pop_type e =
 	 Type e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_type e =
     match Stack.top quote_stack with
@@ -500,7 +500,7 @@ let push_pop_type_list e =
 	 Type_list e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_type_list e =
     match Stack.top quote_stack with
@@ -516,7 +516,7 @@ let push_pop_pattern e =
 	 Pattern e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_pattern e =
     match Stack.top quote_stack with
@@ -532,7 +532,7 @@ let push_pop_pattern_list e =
 	 Pattern_list e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_pattern_list e =
     match Stack.top quote_stack with
@@ -548,7 +548,7 @@ let push_pop_structure e =
 	 Structure e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_structure e =
     match Stack.top quote_stack with
@@ -564,7 +564,7 @@ let push_pop_signature e =
 	 Signature e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_signature e =
     match Stack.top quote_stack with
@@ -580,7 +580,7 @@ let push_pop_string e =
 	 String e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_string e =
     match Stack.top quote_stack with
@@ -596,7 +596,7 @@ let push_pop_int e =
 	 Int e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_int e =
     match Stack.top quote_stack with
@@ -612,7 +612,7 @@ let push_pop_int32 e =
 	 Int32 e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_int32 e =
     match Stack.top quote_stack with
@@ -628,7 +628,7 @@ let push_pop_int64 e =
 	 Int64 e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_int64 e =
     match Stack.top quote_stack with
@@ -644,7 +644,7 @@ let push_pop_natint e =
 	 Natint e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_natint e =
     match Stack.top quote_stack with
@@ -660,7 +660,7 @@ let push_pop_float e =
 	 Float e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_float e =
     match Stack.top quote_stack with
@@ -676,7 +676,7 @@ let push_pop_char e =
 	 Char e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_char e =
     match Stack.top quote_stack with
@@ -692,7 +692,7 @@ let push_pop_bool e =
 	 Bool e -> e
        | _ -> assert false
   with
-    Stack.Empty -> assert false
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
 let push_bool e =
     match Stack.top quote_stack with

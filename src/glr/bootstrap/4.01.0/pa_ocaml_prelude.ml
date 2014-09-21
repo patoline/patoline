@@ -374,7 +374,7 @@ module Initial =
         | First env -> (Stack.push ("push_expression", e) env; e)
         | Second env ->
             (match Stack.pop env with | Expression e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_expression e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -387,7 +387,7 @@ module Initial =
             (match Stack.pop env with
              | Expression_list e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_expression_list e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -399,7 +399,7 @@ module Initial =
             (Stack.push ("push_type", e) env; loc_typ e.pexp_loc Ptyp_any)
         | Second env ->
             (match Stack.pop env with | Type e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_type e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -410,7 +410,7 @@ module Initial =
         | First env -> (Stack.push ("push_type_list", e) env; [])
         | Second env ->
             (match Stack.pop env with | Type_list e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_type_list e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -422,7 +422,7 @@ module Initial =
             (Stack.push ("push_pattern", e) env; loc_pat e.pexp_loc Ppat_any)
         | Second env ->
             (match Stack.pop env with | Pattern e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_pattern e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -435,7 +435,7 @@ module Initial =
             (match Stack.pop env with
              | Pattern_list e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_pattern_list e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -446,7 +446,7 @@ module Initial =
         | First env -> (Stack.push ("push_structure", e) env; [])
         | Second env ->
             (match Stack.pop env with | Structure e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_structure e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -457,7 +457,7 @@ module Initial =
         | First env -> (Stack.push ("push_signature", e) env; [])
         | Second env ->
             (match Stack.pop env with | Signature e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_signature e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -468,7 +468,7 @@ module Initial =
         | First env -> (Stack.push ("push_string", e) env; "")
         | Second env ->
             (match Stack.pop env with | String e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_string e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -479,7 +479,7 @@ module Initial =
         | First env -> (Stack.push ("push_int", e) env; 0)
         | Second env ->
             (match Stack.pop env with | Int e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_int e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -490,7 +490,7 @@ module Initial =
         | First env -> (Stack.push ("push_int32", e) env; 0l)
         | Second env ->
             (match Stack.pop env with | Int32 e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_int32 e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -501,7 +501,7 @@ module Initial =
         | First env -> (Stack.push ("push_int64", e) env; 0L)
         | Second env ->
             (match Stack.pop env with | Int64 e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_int64 e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -512,7 +512,7 @@ module Initial =
         | First env -> (Stack.push ("push_natint", e) env; 0n)
         | Second env ->
             (match Stack.pop env with | Natint e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_natint e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -523,7 +523,7 @@ module Initial =
         | First env -> (Stack.push ("push_float", e) env; 0.0)
         | Second env ->
             (match Stack.pop env with | Float e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_float e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -534,7 +534,7 @@ module Initial =
         | First env -> (Stack.push ("push_char", e) env; ' ')
         | Second env ->
             (match Stack.pop env with | Char e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_char e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -545,7 +545,7 @@ module Initial =
         | First env -> (Stack.push ("push_bool", e) env; false)
         | Second env ->
             (match Stack.pop env with | Bool e -> e | _ -> assert false)
-      with | Stack.Empty  -> assert false
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_bool e =
       match Stack.top quote_stack with
       | First env -> assert false

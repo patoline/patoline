@@ -6,7 +6,7 @@ all: $(d)/pa_ocaml $(d)/decap.cmxa $(d)/decap.cma
 
 $(d)/pa_ocaml $(d)/decap.cmxa $(d)/decap.cma: export OCAMLOPT := $(OCAMLOPT_NOINTF)
 
-GLR_SRC=$(d)/umap.ml $(d)/charset.ml $(d)/input.ml $(d)/decap.ml
+GLR_SRC=$(d)/charset.ml $(d)/input.ml $(d)/decap.ml
 PA_OCAML_SRC=$(d)/pa_ocaml_prelude.ml $(d)/pa_parser.ml $(d)/pa_ocaml.ml $(d)/pa_compose.ml $(d)/pa_opt_main.ml
 $(GLR_SRC:.ml=.cmo): $(d)/decap.cma;
 $(GLR_SRC:.ml=.cmi): $(d)/decap.cmxa;
@@ -26,9 +26,9 @@ $(d)/pa_ocaml: $(d)/pa_*.ml $(d)/decap.cmxa
 	  $(MAKE) -e -C $(GLR_DIR) pa_ocaml; \
 	fi
 
-$(d)/decap.cmxa: $(d)/decap.ml $(d)/input.ml $(d)/input.mli $(d)/charset.ml $(d)/charset.mli $(d)/umap.ml $(d)/umap.mli
+$(d)/decap.cmxa: $(d)/decap.ml $(d)/input.ml $(d)/input.mli $(d)/charset.ml $(d)/charset.mli
 	$(MAKE) -e -C $(GLR_DIR) decap.cmxa
-$(d)/decap.cma: $(d)/decap.ml $(d)/input.ml $(d)/input.mli $(d)/charset.ml $(d)/charset.mli $(d)/umap.ml $(d)/umap.mli
+$(d)/decap.cma: $(d)/decap.ml $(d)/input.ml $(d)/input.mli $(d)/charset.ml $(d)/charset.mli
 	$(MAKE) -e -C $(GLR_DIR) decap.cma
 
 clean: clean-glr
