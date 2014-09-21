@@ -6,12 +6,13 @@ open Input
 
 (** {2 Exceptions} *)
 
-(** [Parse_error (fn, lnum, col, msgs)] is raised when the input cannot be
+(** [Parse_error (fn, lnum, col, msgs, expected)] is raised when the input cannot be
   parsed. It provides the file name [fn], line number [lnum] and column
   number [col] of the last succesfully parsed terminal. The list [msgs]
-  contains a description of the tokens that would have allowed the parsing
-  process to continue. *)
-exception Parse_error of string * int * int * string list
+  contains a list of error messages and [expected] contains a description of the tokens
+  that would have allowed the parsing process to continue. Normally at least [msgs]
+  of [expected] is non empty *)
+exception Parse_error of string * int * int * string list * string list
 
 (** [Give_up msg] can be raised when a parsing rule needs to be rejected. It
   is strongly advised to provide a very explicit message [msg] while raising

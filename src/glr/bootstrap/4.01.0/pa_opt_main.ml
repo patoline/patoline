@@ -29,13 +29,7 @@ let ast =
     | `Impl g -> `Struct (parse_channel ~filename g blank ch)
     | `Intf g -> `Sig (parse_channel ~filename g blank ch)
     | `Top -> assert false
-  with
-  | Parse_error (fname,l,n,msgs) ->
-      let msgs = String.concat " | " msgs in
-      (Printf.eprintf
-         "File %S, line %d, characters %d:\nError: Syntax error, %s expected\n"
-         fname l n msgs;
-       exit 1)
+  with | Decap.Parse_error _ as e -> (Decap.print_exception e; exit 1)
 let _ =
   if !ascii
   then

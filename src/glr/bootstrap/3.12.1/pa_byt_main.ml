@@ -27,11 +27,7 @@ let _ =
           partial_parse_buffer Main.top_phrase blank buffer 0 in
         ignore (Toploop.execute_phrase true Format.std_formatter ph)
       with | Main.Top_Exit  -> raise Main.Top_Exit
-      | Decap.Parse_error (_,line,col,msgs) ->
-          let msgs = String.concat " | " msgs in
-          Printf.eprintf
-            "line %d, characters %d:\nError: Syntax error, %s expected\n%!"
-            line col msgs
+      | Decap.Parse_error _ as e -> (Decap.print_exception e; exit 1)
       | e -> Errors.report_error Format.std_formatter e);
      loop () in
    try loop () with | Main.Top_Exit  -> exit 0)
@@ -45,13 +41,7 @@ let ast =
     | `Impl g -> `Struct (parse_channel ~filename g blank ch)
     | `Intf g -> `Sig (parse_channel ~filename g blank ch)
     | `Top -> assert false
-  with
-  | Parse_error (fname,l,n,msgs) ->
-      let msgs = String.concat " | " msgs in
-      (Printf.eprintf
-         "File %S, line %d, characters %d:\nError: Syntax error, %s expected\n"
-         fname l n msgs;
-       exit 1)
+  with | Decap.Parse_error _ as e -> (Decap.print_exception e; exit 1)
 let _ =
   if !ascii
   then

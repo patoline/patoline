@@ -31,11 +31,9 @@ let _ = if entry = `Top then
       with
       | Main.Top_Exit -> 
 	 raise Main.Top_Exit
-      | Decap.Parse_error(_,line,col,msgs) ->
-	 let msgs = String.concat " | " msgs in
-	 Printf.eprintf "line %d, characters %d:\n\
-			 Error: Syntax error, %s expected\n%!"
-			line col msgs;
+      | Decap.Parse_error _ as e ->
+	 Decap.print_exception e;
+	 exit 1
       | e ->  
 	 Errors.report_error Format.std_formatter e);
     loop ()
@@ -68,11 +66,8 @@ let ast =
     | `Intf g -> `Sig (parse_channel ~filename g blank ch)
     | `Top -> assert false
   with
-    Parse_error (fname,l,n,msgs) ->
-    let msgs = String.concat " | " msgs in
-    Printf.eprintf "File %S, line %d, characters %d:\n\
-                    Error: Syntax error, %s expected\n"
-                   fname l n msgs;
+    Decap.Parse_error _ as e ->
+    Decap.print_exception e;
     exit 1
 
 let _ = 
