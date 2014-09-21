@@ -181,46 +181,40 @@ reader should again refer to the file ##decap.mli## for more details. These
 functions can be used to implement a blank function using a parser, as was
 noted at the end of the section about blank functions.
 
--- Changing the layout of blanks --
+-- Writing parsers --
 
-On important feature if that the blank function can be changed using the function:
+The combinators provided by the ##DeCaP## library are not easy to use
+directly. That is why an ##OCaml## syntax extension called ##pa_parser## is
+distributed along ##pa_ocaml##. It allows the user to write parsers using a
+BNF-like syntax. ##OCaml## programs written using this syntax extension need
+to be compiled using the ##-pp pa_ocaml## option of ##ocamlc## or
+##ocamlopt##. The ##pa_parser## extension is enabled by default when using
+the ##pa_ocaml## parser, but this behavious can be changed.
 
-### OCaml
-change_layout : ?old_blank_before:bool -> ?new_blank_after:bool -> 
-  'a grammar -> blank -> 'a grammar
+The entry point of the ##pa_parser## syntax extension is a new expression
+delimited by the keyword ##parser##, which is followed by an optional ##*##
+symbol and the BNF rule for the grammar (which syntax will be given later).
+If there is no ##*## symbol, the parser will raise an exception in case of
+ambibuity. Otherwise, the list of every possible parse tree is returned by
+the parser, which will have a type of the form ##'a list grammar##.
+
+(*
+(* FIXME *) 
 ###
 
-The grammar returned by ##change_layout parser blank## will only use
-the provided blank function and ignore the old one. Since blank functions
-are called before every terminals, it is not clear whether the old blank
-function should be called before entering the scope of the ##change_layout##,
-and whether the new blank function should be called after leaving the scope of
-the ##change_layout##.
+<rule>     ::= <rule> "|"  <rule>
+             | <rule> "|?" <rule>
+             | <left> "->" <expr>
+<left>     ::= <let_binding> <left>
+             | "-" <left>
+             | <left> "->>" <left>
+             | ([<pattern> ":"] <parser> ["[" <expr> "]"] [<modifier>])+
+<parser>   ::= "ANY"
+             | 
+<modifier> ::= "?" | "??" | "*" | "**" | "+" | "++"
 
-The first optional argument ##old_blank_before## (##true## by default) will
-force using first the old blank function, and then the new one, before parsing
-the first terminal inside the scope of the ##change_layout##.
-
-Similarly, ##new_blank_after## (##false## by default) will forces to use the
-newly provided blank function once at the end of the parsed input, and then
-the old blank function will be used too as expected before the next terminal.
-
-== Writing parsers ==
-
-The combinators in the ``Glr`` library are not easy to use
-directly. An OCaml's syntax extension is provided to solve this problem.
-
-To use this syntax extension, you have to use the binary ``pa_ocaml``
-distributed with ``Glr`` as an OCaml preprocessor, using the 
-``-pp pa_ocaml`` option to ``ocamlc`` or ``ocamlopt``.
-
-A parser is declared using ``parser`` //rules// or 
-``parser*`` //rules//. The second form will return
-all the possible parse trees for the given grammar.
-This is therefore an expression of type ``'a list grammar``.
-
-The first form will raise the exception ``Ambiguity(...)`` when there
-are multiple parse trees for the same input.
+###
+*)
 
 We now give the BNF for the grammar, using the following convention:
 "|"  denotes alternatives, "[ … ]" optional elements, 
@@ -281,9 +275,31 @@ Limitation: the regexp can at most parse one line and can not parse newlines. Yo
 newline.
 \end{itemize}
 
-== Examples ==
+-- Changing the layout of blanks --
 
-=== The calculator ===
+On important feature if that the blank function can be changed using the function:
+
+### OCaml
+change_layout : ?old_blank_before:bool -> ?new_blank_after:bool -> 
+  'a grammar -> blank -> 'a grammar
+###
+
+The grammar returned by ##change_layout parser blank## will only use
+the provided blank function and ignore the old one. Since blank functions
+are called before every terminals, it is not clear whether the old blank
+function should be called before entering the scope of the ##change_layout##,
+and whether the new blank function should be called after leaving the scope of
+the ##change_layout##.
+
+The first optional argument ##old_blank_before## (##true## by default) will
+force using first the old blank function, and then the new one, before parsing
+the first terminal inside the scope of the ##change_layout##.
+
+Similarly, ##new_blank_after## (##false## by default) will forces to use the
+newly provided blank function once at the end of the parsed input, and then
+the old blank function will be used too as expected before the next terminal.
+
+-- Example of a calculator --
 
 Here is the most classical example: a calculator, including variables.
 
