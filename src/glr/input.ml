@@ -3,7 +3,7 @@ type buffer = buffer_aux Lazy.t
                   ; name         : string   (* The name of the buffer. *)
                   ; lnum         : int      (* Current line number. *)
                   ; bol          : int      (* Offset to current line. *)
-                  ; length       : int      (* Length of the buffer. *)
+                  ; length       : int      (* Length of the current line. *)
                   ; contents     : string   (* Contents of the line. *)
                   ; mutable next : buffer } (* Rest of the buffer. *)
 

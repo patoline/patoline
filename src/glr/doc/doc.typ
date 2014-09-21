@@ -1,99 +1,169 @@
 ==============================================================================
-  Documentation of the ##glr## library and the ##pa_ocaml## parser
+  Getting started writing parsers and syntax extensions using ##DeCaP## and
+  ##pa_ocaml##
 ------------------------------------------------------------------------------
   Rodolphe Lepigre & Christophe Raffalli
 ------------------------------------------------------------------------------
   Lama, UMR 5127 CNRS, Université Savoie Mont-Blanc
 ==============================================================================
 
-== Introduction ==
+\linesBefore(3)
+//Delimited Continuation Parser// (or ##DeCaP##) is a small parser combinator
+library written in ##OCaml##. Unlike most combinator libraries, its
+performance is close to that of ##ocamlyacc##, as it relies heavily on
+//continuation passing style// (CPS). ##DeCaP## provides a notion of //blank
+function// which is used to discard parts of the input that should be ignored
+(comments for example). Ambiguous grammars can be handled either by returning
+the list of all possible parse trees or by raising an error in case of
+ambiguity.
 
-The ##glr## library and ##pa_ocaml## parser provide a simple way to write
-parsers and extend the OCaml syntax. It is intended to be simpler to use than
-##camlp4##, moreover, no lexer is used, which gives more freedom to write
-syntax extensions.
+##DeCaP## has been used to write a full-featured ##OCaml## parser called
+##pa_ocaml##, which operates at more than twice the speed of ##camlp4##, and
+is only five times slower than the original ##OCaml## parser (written with
+##ocamlyacc##). When used in conjunction with ##DeCaP##, ##pa_ocaml## offers
+a simple and integrated way to write parsers, and even syntax extensions for
+the ##OCaml## language. It is intended to be simpler to use than ##camlp4##,
+and does not require the use of a lexer, which gives the user more freedom to
+write syntax extensions. A quotation and anti-quotation mechanism similar to
+that of ##camlp4## is provided, which greatly simplifies the writing of syntax
+extensions.
 
-This software provides the following:
-\begin{itemize}
-\item ##input##: a module allowing to transforms an input channel or string
-      into an //input buffer//.
-\item ##glr##: a minimalist parser combinator library, which is probably too
-      small to be usable directly. It provides a notion of "blank" function
-      which is used to discard the part of the input that should be ignored,
-      and that can be changed dynamicaly. Ambiguous grammars can be handled
-      in two ways: either by returning the list of all possible parse tree or
-      by raising an error in case of ambiguity.
-\item ##pa_ocaml##: a parser for the OCaml languages implemented using glr. It
-      can be invoked using the "##-pp##" option of the standard OCaml tools.
-\item ##pa_parser##: an extension of the OCaml syntax to write parsers. The
-      syntax is BNF like with one main restriction: //left recursive//
-      grammars are forbidden.
-\item A quotation and anti-quotation mecanism similar to ##camlp4## that can
-      be used to extend the OCaml syntax.
-\end{itemize}
+This document is not intended as a full documentation of ##DeCaP## and
+##pa_ocaml##, but rather as a quick description of their main features,
+illustrated with simple examples. It should contain enough material to get
+started writing parsers and syntax extensions, while providing an overall
+idea of the working principles of ##DeCaP## and ##pa_ocaml##.
 
-== The main types and functions ==
+Even though ##DeCaP## can be used directly, a ##pa_ocaml## syntax extension
+called ##pa_parser## allows the user to write parsers using a BNF-like
+syntax. There is, however, one main restriction: //left recursive// grammars
+are forbidden.
 
-The main type proposed by the library is ##'a Glr.grammar## which is the type
-of a function parsing a //buffer// and returning some data of type ##'a##. The
-data to be parsed is provided in a data structure of type ##Input.buffer##.
-Here are that main functions related to these types, we encourage the reader 
-to consult the corresponding interface file for a complete list.
+-- Input buffer and pre-processing --
 
---- Buffer related functions ---
+The ##Input## module exports an abstract type ##buffer##, on which ##DeCaP##
+relies for parsing. Several functions are provided for creating a buffer from
+a file, an input channel or a ##string##. The reader can refer to the
+interface file ##input.mli## (or to the associated generated ##ocamldoc##
+file) for the full details.
 
-\begin{itemize}
-\item ##input_from_file : string -> buffer## to read a file
-\item ##buffer_from_channel : ?filename:string -> in_channel -> buffer##
-to read an input channel (the //filename// is used in 
-exceptions only and defaults to ##""##).
-\item ##buffer_from_string : ?filename:string -> string -> buffer##
-to read a string. (the first string also plays a role of a //file name// used
-in exceptions, the data to parse is therefore in the second string).
-\item ##read : buffer -> int -> char * buffer * int## to manually read the
-content of a buffer at a given position and return a buffer and position that
-can be used to read the rest of the input. In the current implementation, the
-buffer is a lazy stream of lines and the position is therefore the position in
-the line. This might change in the futur.
-\end{itemize}
+We give bellow the type of the three main buffer-creating functions, but we do
+not describe them in detail since their names and types should be explicit
+enough for the reader to guess the usage. Note, however, that the functions
+##buffer_from_string## and ##buffer_from_channel## have an optional argument
+##filename## which is used to report better error messages.
 
---- Parsing functions ---
+###
+  buffer_from_file : string -> buffer
+  buffer_from_channel : ?filename:string -> in_channel -> buffer
+  buffer_from_string : ?filename:string -> string -> buffer
+###
 
-Here are the function used to parse data. They either succeed in parsing all
-of the input, or return an exception. Functions to parse parts of the input
-are also provided (see the file ##glr.mli##).
+We will see later that in some case it might be useful to manually read input
+from the ##buffer##. This can be done with the function ##read##, which takes
+as input a buffer and a position, and returns a triple containing the
+character read, the new state of the buffer, and the position of the next
+character.
 
-\begin{itemize}
-\item ##parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a##
-Parses a string, given a parser and a //blank// function (see below).
-\item ##parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a##
-Similar to the previous function, but uses a channel as input.
-\item ##parse_file : 'a grammar -> blank -> string -> 'a##
-Opens the file and parses it using the previous function.
-\item ##parse_buffer : 'a grammar -> blank -> buffer -> 'a##
-The lowest level function to call a parser.
-\item ##handle_exception : ('a -> 'b) -> 'a -> 'b##: apply the function to its argument
-and handle eventual ##Glr## exceptions (##Parse_error## or ##Amiguity##).
-\end{itemize}
+###
+  read : buffer -> int -> char * buffer * int
+###
 
-== Blank function ==
+In the current implementation, the ##Input## module comes with a built-in
+C-like pre-processor which is very useful to support several versions of
+##OCaml##. In the near future, this feature will be disabled by default, as
+it might be harmful and prevent the parsing of some languages.
+
+-- Blank functions --
 
 While a string or file is being parsed, it is required to differentiate parts
 of the input that are meaningful, from those that need to be ignored.
-This part of the work is usually handled by a lexer, but ##glr## relies on
+This part of the work is usually handled by a lexer, but ##DeCaP## relies on
 another mechanism: blank functions.
 
 A blank function inspects the input buffer at a given position, and returns
-the position of the next meaningful data (i.e. the next character that is not
-to be ignored. The type of a blank function is the following:
+the position of the next meaningful character (i.e. the next character that is
+not to be ignored). The type of a blank function is the following:
 
 ### OCaml
 blank = buffer -> int -> buffer * int
 ###
 
+The simplest possible blank function is a function that ignores no character.
+It simply returns the position and buffer that it was given as an argument:
+
+### OCaml "blank0.ml"
+let no_blank buffer position = buffer, position
+###
+
+It is possible to eliminate blanks according to a regual expression. To do so,
+the function ##blank_regexp : Str.regexp -> blank## may be used. In the
+following example, the blank function ignores an arbitrary number of spaces,
+tabulations, newline and carriage return characters:
+
+### OCaml
+let blank = blank_regexp (Str.regexp "[ \t\n\r]*")
+###
+
+Important remark: due to the fact that ##OCaml##'s ##Str## module does not
+allow to match other data type than string, a blank function using regular
+expression that matches newline will be applied successively to lines that
+contain only blank. This means that only regexp that are idempotent should 
+be used when they match newline.
+
+Otherwise, you may read yourself the input buffer using the ##Input.read##
+function. Here is for instance a blank function parsing at most one newline
+and all blank characters:
+
+### OCaml "blank1.ml"
+let blank = 
+  let rec fn accept_newline buffer pos =
+    let (c, buffer', pos') = Input.read buffer pos in
+    match c with
+    | '\n' when accept_newline -> fn false buffer' pos'
+    | ' ' | '\t' | '\r'        -> fn accept_newline buffer' pos'
+    | _                        -> buffer, pos
+  in fn true
+###
+
+Remark: by using the function ##partial_parse_buffer## (see ##decap.mli##),
+it is even possible to use a parser to write a blank functions.
+
+-- Parsing functions --
+
+The ##DeCaP## library exports an abstract type ##'a grammar## which is the
+type of a function parsing a ##buffer## and returning data of type ##'a##.
+Given a blank function and a grammar (i.e. an object of type ##'a grammar##),
+input is parsed from a ##string##, input channel, file or ##buffer## using one
+of the following functions.
+
+### OCaml
+  parse_string  : ?filename:string -> 'a grammar -> blank -> string -> 'a
+  parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a
+  parse_file    : 'a grammar -> blank -> string -> 'a
+  parse_buffer  : 'a grammar -> blank -> buffer -> 'a
+###
+
+Note that the functions ##parse_string## and ##parse_channel## have an
+optional argument ##filename## which is used to report better error messages.
+The reader should refer to the file ##decap.mli## (or its associated generated
+##ocamldoc## documentation) for more details. For instance, functions for
+parsing only part of the input are also provided.
+
+All of the parsing functions either succeed in parsing all the input, or
+fail with an exception (##Parse_error for example##). The function
+##handle_exception## is provided for this reason: it handles exceptions and
+displays a human-readable error message.
+
+###
+  handle_exception : ('a -> 'b) -> 'a -> 'b
+###
+
 When a parser is invoked (using the function ##parse_string## for example), a
 default blank function needs to be provided. It will then be used to discard
 characters before every terminal is parsed.
+
+-- Changing the layout of blanks --
 
 On important feature if that the blank function can be changed using the function:
 
@@ -116,44 +186,6 @@ the first terminal inside the scope of the ##change_layout##.
 Similarly, ##new_blank_after## (##false## by default) will forces to use the
 newly provided blank function once at the end of the parsed input, and then
 the old blank function will be used too as expected before the next terminal.
-
-To parse no blank, use the following definition:
-
-### OCaml "blank0.ml"
-let no_blank buffer position = buffer, position
-###
-
-If you want to parses blanks according to a regexp, you may use
-the function ##blank_regexp : Str.regexp -> blank## as in:
-
-### OCaml
-let blank = blank_regexp (Str.regexp "[ \t\n\r]*")
-###
-
-Important remark: due to the fact that OCaml's ##Str## module
-does not allow to match other data type than string,
-a blank function using regexp that matches newline will be
-applied successively to lines that contains only blank.
-This means that only regexp that are idempotent should 
-be used when they match newline.
-
-Otherwise, you may read yourself the input buffer
-using the ##Input.read## function. Here is for instance
-a blank function parsing at most one newline and all blank characters:
-
-### OCaml "blank1.ml"
-let blank = 
-  let rec fn accept_newline buffer pos =
-    let c,buffer',pos' = Input.read buffer pos in
-    match c with
-      '\n' when accept_newline -> fn false buffer' pos'
-    | ' ' | '\t' | '\r' ->  fn accept_newline buffer' pos'
-    | _ -> buffer, pos
-  in fn true
-###
-
-Remark: using the function ``Glr.partial_parse_buffer``,
-it is possible to use a parser to write blank functions.
 
 == Writing parsers ==
 
