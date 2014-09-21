@@ -212,13 +212,13 @@ module Initial =
         (Decap.apply List.rev
            (Decap.fixpoint' []
               (Decap.apply (fun x  l  -> x :: l)
-                 (Decap.apply (fun s  -> s) (delim structure_item)))))
+                 (Decap.apply (fun s  -> s) structure_item))))
     let signature =
       Decap.apply (fun l  -> List.flatten l)
         (Decap.apply List.rev
            (Decap.fixpoint' []
               (Decap.apply (fun x  l  -> x :: l)
-                 (Decap.apply (fun s  -> s) (delim signature_item)))))
+                 (Decap.apply (fun s  -> s) signature_item))))
     type type_prio =  
       | TopType
       | As
@@ -408,7 +408,7 @@ module Initial =
         | First env -> (Stack.push ("push_expression", e) env; e)
         | Second env ->
             (match Stack.pop env with | Expression e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_expression e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -421,7 +421,7 @@ module Initial =
             (match Stack.pop env with
              | Expression_list e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_expression_list e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -433,7 +433,7 @@ module Initial =
             (Stack.push ("push_type", e) env; loc_typ e.pexp_loc Ptyp_any)
         | Second env ->
             (match Stack.pop env with | Type e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_type e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -444,7 +444,7 @@ module Initial =
         | First env -> (Stack.push ("push_type_list", e) env; [])
         | Second env ->
             (match Stack.pop env with | Type_list e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_type_list e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -456,7 +456,7 @@ module Initial =
             (Stack.push ("push_pattern", e) env; loc_pat e.pexp_loc Ppat_any)
         | Second env ->
             (match Stack.pop env with | Pattern e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_pattern e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -469,7 +469,7 @@ module Initial =
             (match Stack.pop env with
              | Pattern_list e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_pattern_list e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -480,7 +480,7 @@ module Initial =
         | First env -> (Stack.push ("push_structure", e) env; [])
         | Second env ->
             (match Stack.pop env with | Structure e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_structure e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -491,7 +491,7 @@ module Initial =
         | First env -> (Stack.push ("push_signature", e) env; [])
         | Second env ->
             (match Stack.pop env with | Signature e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_signature e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -502,7 +502,7 @@ module Initial =
         | First env -> (Stack.push ("push_string", e) env; "")
         | Second env ->
             (match Stack.pop env with | String e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_string e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -513,7 +513,7 @@ module Initial =
         | First env -> (Stack.push ("push_int", e) env; 0)
         | Second env ->
             (match Stack.pop env with | Int e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_int e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -524,7 +524,7 @@ module Initial =
         | First env -> (Stack.push ("push_int32", e) env; 0l)
         | Second env ->
             (match Stack.pop env with | Int32 e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_int32 e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -535,7 +535,7 @@ module Initial =
         | First env -> (Stack.push ("push_int64", e) env; 0L)
         | Second env ->
             (match Stack.pop env with | Int64 e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_int64 e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -546,7 +546,7 @@ module Initial =
         | First env -> (Stack.push ("push_natint", e) env; 0n)
         | Second env ->
             (match Stack.pop env with | Natint e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_natint e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -557,7 +557,7 @@ module Initial =
         | First env -> (Stack.push ("push_float", e) env; 0.0)
         | Second env ->
             (match Stack.pop env with | Float e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_float e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -568,7 +568,7 @@ module Initial =
         | First env -> (Stack.push ("push_char", e) env; ' ')
         | Second env ->
             (match Stack.pop env with | Char e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_char e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -579,7 +579,7 @@ module Initial =
         | First env -> (Stack.push ("push_bool", e) env; false)
         | Second env ->
             (match Stack.pop env with | Bool e -> e | _ -> assert false)
-      with | Stack.Empty  -> raise Give_up
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
     let push_bool e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -797,7 +797,11 @@ module Initial =
     let is_reserved_id w = List.mem w (!reserved_ident)
     let ident =
       Decap.alternatives'
-        [Decap.apply (fun id  -> if is_reserved_id id then raise Give_up; id)
+        [Decap.apply
+           (fun id  ->
+              if is_reserved_id id
+              then raise (Give_up (id ^ " is a keyword..."));
+              id)
            (Decap.regexp ~name:"ident" ident_re (fun groupe  -> groupe 0));
         Decap.fsequence (Decap.char '$' '$')
           (Decap.fsequence (Decap.string "ident" "ident")
@@ -832,7 +836,8 @@ module Initial =
                        else raise Exit in
                    push_location id'
                with | Exit  -> ());
-              if is_reserved_id id then raise Give_up;
+              if is_reserved_id id
+              then raise (Give_up (id ^ " is a keyword..."));
               id)
            (Decap.regexp ~name:"lident" lident_re (fun groupe  -> groupe 0));
         Decap.fsequence (Decap.char '$' '$')
@@ -891,13 +896,21 @@ module Initial =
       "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)\\|\\([-+][.]?\\)"
     let infix_symbol =
       Decap.apply
-        (fun sym  -> if is_reserved_symb sym then raise Give_up; sym)
+        (fun sym  ->
+           if is_reserved_symb sym
+           then
+             raise (Give_up ("The infix sybol " ^ (sym ^ "is reserved...")));
+           sym)
         (Decap.regexp ~name:"infix_symb" infix_symb_re
            (fun groupe  -> groupe 0))
     let prefix_symbol =
       Decap.apply
         (fun sym  ->
-           if (is_reserved_symb sym) || (sym = "!=") then raise Give_up; sym)
+           if (is_reserved_symb sym) || (sym = "!=")
+           then
+             raise
+               (Give_up ("The prefix symbol " ^ (sym ^ "is reserved...")));
+           sym)
         (Decap.regexp ~name:"prefix_symb" prefix_symb_re
            (fun groupe  -> groupe 0))
     let key_word s =
@@ -909,14 +922,17 @@ module Initial =
            let pos' = ref pos in
            for i = 0 to len_s - 1 do
              (let (c,_str',_pos') = read (!str') (!pos') in
-              if c <> (s.[i]) then raise Give_up;
+              if c <> (s.[i])
+              then
+                raise (Give_up ("The keyword " ^ (s ^ " was expected...")));
               str' := _str';
               pos' := _pos')
            done;
            (let str' = !str' and pos' = !pos' in
             let (c,_,_) = read str' pos' in
             match c with
-            | 'a'|'b'..'z'|'A'..'Z'|'0'..'9'|'_'|'\'' -> raise Give_up
+            | 'a'|'b'..'z'|'A'..'Z'|'0'..'9'|'_'|'\'' ->
+                raise (Give_up ("The keyword " ^ (s ^ " was expected...")))
             | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) false s
     let mutable_kw = key_word "mutable"
     let mutable_flag =

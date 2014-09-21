@@ -784,7 +784,7 @@ module Make(Initial:Extension) =
                        let l = push_pop_type_list e in
                        (match str with
                         | "tuple" -> loc_typ _loc (Ptyp_tuple l)
-                        | _ -> raise Give_up))))]
+                        | _ -> raise (Give_up "")))))]
     let typexpr_suit_aux:
       type_prio ->
         type_prio ->
@@ -1043,14 +1043,14 @@ module Make(Initial:Extension) =
                   match te with
                   | None  -> (pri, None)
                   | Some (Private ,te) ->
-                      (if pri = Private then raise Give_up;
+                      (if pri = Private then raise (Give_up "");
                        (Private, (Some te)))
                   | Some (_,te) -> (pri, (Some te)) in
                 let tps =
                   List.map
                     (function
                      | (Some s,t) -> (s, t)
-                     | (None ,_) -> raise Give_up) tps in
+                     | (None ,_) -> raise (Give_up "")) tps in
                 ((id_loc tcn _loc_tcn),
                   (type_declaration _loc (id_loc (filter tcn) _loc_tcn) tps
                      cstrs tkind pri te))))
@@ -1500,7 +1500,7 @@ module Make(Initial:Extension) =
                                                  let slab =
                                                    match lab with
                                                    | Lident s -> s
-                                                   | _ -> raise Give_up in
+                                                   | _ -> raise (Give_up "") in
                                                  (lab,
                                                    (loc_pat _loc
                                                       (Ppat_var slab))) in
@@ -1599,7 +1599,7 @@ module Make(Initial:Extension) =
                             (AtomPat,
                               (parse_string ~filename:("ENV:" ^ c) pattern
                                  blank str))
-                          with | Not_found  -> raise Give_up);
+                          with | Not_found  -> raise (Give_up ""));
                      Decap.fsequence_position (Decap.char '$' '$')
                        (Decap.fsequence
                           (Decap.option None
@@ -1634,7 +1634,7 @@ module Make(Initial:Extension) =
                                            (loc_pat _loc (Ppat_array l)))
                                      | "list" ->
                                          (AtomPat, (ppat_list _loc l))
-                                     | _ -> raise Give_up))))] in
+                                     | _ -> raise (Give_up "")))))] in
                    if lvl <= ConstrPat
                    then
                      (Decap.sequence_position tag_name
@@ -3068,7 +3068,7 @@ module Make(Initial:Extension) =
                                                   | Some (Ptyp_package 
                                                       (n,l)) ->
                                                       Pexp_pack (me, (n, l))
-                                                  | _ -> raise Give_up in
+                                                  | _ -> raise (Give_up "") in
                                                 (Atom, (loc_expr _loc desc))))));
                                   Decap.fsequence (Decap.string "<:" "<:")
                                     (Decap.fsequence
@@ -3133,7 +3133,8 @@ module Make(Initial:Extension) =
                                                    ~filename:("ENV:" ^ c)
                                                    expression blank str
                                                with
-                                               | Not_found  -> raise Give_up))));
+                                               | Not_found  ->
+                                                   raise (Give_up "")))));
                                   Decap.fsequence_position
                                     (Decap.char '$' '$')
                                     (Decap.fsequence
@@ -3191,7 +3192,7 @@ module Make(Initial:Extension) =
                                                       (Atom,
                                                         (loc_expr _loc
                                                            (pexp_list _loc l).pexp_desc))
-                                                  | _ -> raise Give_up))));
+                                                  | _ -> raise (Give_up "")))));
                                   Decap.iter
                                     (Decap.apply
                                        (fun p  ->
@@ -3393,8 +3394,8 @@ module Make(Initial:Extension) =
            if c = ';'
            then
              let (c',_,_) = read str' pos' in
-             (if c' = ';' then raise Give_up else ((), str', pos'))
-           else raise Give_up) (Charset.singleton ';') false ";"
+             (if c' = ';' then raise (Give_up "") else ((), str', pos'))
+           else raise (Give_up "")) (Charset.singleton ';') false ";"
     let double_semi_col =
       black_box
         (fun str  pos  ->
@@ -3402,8 +3403,8 @@ module Make(Initial:Extension) =
            if c = ';'
            then
              let (c',_,_) = read str' pos' in
-             (if c' <> ';' then raise Give_up else ((), str', pos'))
-           else raise Give_up) (Charset.singleton ';') false ";;"
+             (if c' <> ';' then raise (Give_up "") else ((), str', pos'))
+           else raise (Give_up "")) (Charset.singleton ';') false ";;"
     let expression_suit_aux =
       memoize2
         (fun lvl'  lvl  ->
@@ -3877,7 +3878,7 @@ module Make(Initial:Extension) =
                         match pt with
                         | Some (Ptyp_package (n,l)) ->
                             Pmod_unpack (e, (n, l))
-                        | _ -> raise Give_up in
+                        | _ -> raise (Give_up "") in
                       mexpr_loc _loc e))))]
     let _ =
       set_grammar module_expr
@@ -3982,7 +3983,7 @@ module Make(Initial:Extension) =
                           List.map
                             (function
                              | (Some s,t) -> (s, t)
-                             | (None ,_) -> raise Give_up) tps in
+                             | (None ,_) -> raise (Give_up "")) tps in
                         let td =
                           type_declaration _loc (id_loc tcn _loc_tcn) tps []
                             Ptype_abstract Public (Some te) in
@@ -4042,7 +4043,7 @@ module Make(Initial:Extension) =
                          let (_loc_n,n) = n in
                          fun _  ->
                            let l = List.length ls in
-                           if (l < 1) || (l > 3) then raise Give_up;
+                           if (l < 1) || (l > 3) then raise (Give_up "");
                            Pstr_primitive
                              ((id_loc n _loc_n),
                                { pval_type = ty; pval_prim = ls }))))));
@@ -4226,7 +4227,7 @@ module Make(Initial:Extension) =
                                 locate2 __loc__start__buf __loc__start__pos
                                   __loc__end__buf __loc__end__pos in
                               let l = List.length ls in
-                              if (l < 1) || (l > 3) then raise Give_up;
+                              if (l < 1) || (l > 3) then raise (Give_up "");
                               psig_value ~attributes:a _loc (id_loc n _loc_n)
                                 ty ls))))));
         Decap.apply (fun td  -> Psig_type td) type_definition;

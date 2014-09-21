@@ -332,8 +332,11 @@ module Ext(In:Extension) =
            if c = '-'
            then
              let (c',_,_) = Input.read str' pos' in
-             (if c' = '>' then raise Decap.Give_up else ((), str', pos'))
-           else raise Decap.Give_up) (Charset.singleton '-') false "-"
+             (if c' = '>'
+              then raise (Decap.Give_up "'-' expected")
+              else ((), str', pos'))
+           else raise (Decap.Give_up "'-' expexted")) (Charset.singleton '-')
+        false "-"
     let glr_left_member =
       Decap.sequence
         (Decap.fsequence glr_ident
