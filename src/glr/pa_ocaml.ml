@@ -136,7 +136,7 @@ let float_re = union_re [float_lit_no_dec; float_lit_dec]
 let float_literal =
   parser
     f:RE(float_re)   -> f
-  | CHR('$') STR("float") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> string_of_float (push_pop_float e)
+  | CHR('$') - STR("float") CHR(':') e:(expression_lvl App) - CHR('$') -> string_of_float (push_pop_float e)
 
 (* Character literals *)
 let char_regular = "[^\\']"
@@ -174,7 +174,7 @@ let char_literal =
     r:(change_layout (
       parser CHR('\'') c:(one_char true) CHR('\'') -> c
     ) no_blank) -> r
-  | CHR('$') STR("char") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_char e  
+  | CHR('$') - STR("char") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_char e  
 
 (* String literals *)
 let interspace = "[ \t]*"
@@ -222,7 +222,7 @@ let string_literal =
 	    | c:ANY r:string_literal_suit -> c::r)
 	  in r:string_literal_suit -> char_list_to_string r) no_blank) -> r
 
-  | CHR('$') STR("string") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
+  | CHR('$') - STR("string") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_string e
 
 let quotation = declare_grammar "quotation"
 let _ = set_grammar quotation (
@@ -607,8 +607,7 @@ let typexpr_base : core_type grammar =
       let cp = id_loc cp _loc_cp in
       loc_typ _loc (Ptyp_class (cp, te::tes, o))
 #endif
- | CHR('$') t:{t:{STR("tuple") -> "tuple"}   CHR(':') }? 
-       e:(expression_lvl (next_exp App)) CHR('$') ->
+ | CHR('$') - t:{t:{STR("tuple") -> "tuple"} CHR(':') }? e:(expression_lvl App) - CHR('$') ->
 	 (match t with
 	   None ->
 	   push_pop_type e
@@ -715,13 +714,26 @@ let field_decl =
   | m:mutable_flag fn:field_name STR(":") pte:poly_typexpr ->
       label_declaration _loc (id_loc fn _loc_fn) m pte
 
+let constr_decl_list = declare_grammar "constr_decl_list"
+let _ = set_grammar constr_decl_list (
+  parser
+  | STR("|")? cd:constr_decl cds:{STR("|") cd:constr_decl -> cd}* ls:constr_decl_list -> (cd::cds) @ ls
+  | CHR('$') - e:(expression_lvl App) - CHR('$') ls:constr_decl_list -> push_pop_constr_decl e @ ls
+  | EMPTY -> []
+  )
+
+let field_decl_list = declare_grammar "field_decl_list"
+let _ = set_grammar field_decl_list (
+  parser
+  | fd:field_decl fds:{STR(";") fd:field_decl -> fd}* STR(";")? ls:field_decl_list -> (fd::fds) @ ls
+  | CHR('$') - e:(expression_lvl App) - CHR('$') ls:field_decl_list -> push_pop_field_decl e @ ls
+  | EMPTY -> []
+  )
+
 let type_representation =
   parser
-  | STR("|")? cd:constr_decl cds:{STR("|") cd:constr_decl -> cd}* ->
-      Ptype_variant (cd::cds)
-  | STR("{") fd:field_decl fds:{STR(";") fd:field_decl -> fd}* STR(";")?
-    STR("}") ->
-      Ptype_record (fd::fds)
+  | STR("{") fds:field_decl_list STR("}") -> Ptype_record fds
+  | cds:constr_decl_list -> if cds = [] then raise (Give_up "Illegal empty constructors declaration"); Ptype_variant (cds)
 
 let type_information =
   parser
@@ -1066,15 +1078,15 @@ let pattern_base = memoize1 (fun lvl ->
       in
       (AtomPat, loc_pat _loc pat)
 #endif
-  | CHR('$') c:capitalized_ident ->
+  | CHR('$') - c:capitalized_ident ->
      (try let str = Sys.getenv c in
 	  AtomPat, parse_string ~filename:("ENV:"^c) pattern blank str
       with Not_found -> raise (Give_up "" (* FIXME *)))
 
-  | CHR('$') t:{t:{ STR("tuple") -> "tuple" | 
+  | CHR('$') - t:{t:{ STR("tuple") -> "tuple" | 
 		    STR("list") -> "list" |
 		    STR("array") -> "array" } CHR(':') }? 
-       e:(expression_lvl (next_exp App)) CHR('$') ->
+       e:(expression_lvl App) - CHR('$') ->
 	 (match t with
 	   None ->
 	   (AtomPat, push_pop_pattern e)
@@ -1632,11 +1644,13 @@ let expression_base = memoize1 (fun lvl ->
       in
       (Atom, loc_expr _loc desc)
   | STR("<:") name:{ STR("expr") -> "expression" | STR("type") -> "type" | STR("pat") -> "pattern"
-		  | STR("structure") -> "structure" | STR("signature") -> "signature" } 
+		  | STR("structure") -> "structure" | STR("signature") -> "signature"
+		  | STR("constr_decl_list") -> "constr_decl_list" 
+		  | STR("field_decl_list") -> "field_decl_list" }
        loc:{CHR('@') e:(expression_lvl (next_exp App))}? CHR('<') q:quotation ->
        if loc = None then push_location "";
        (Atom, quote_expression _loc_q loc q name)
-  | CHR('$') c:capitalized_ident -> 
+  | CHR('$') - c:capitalized_ident -> 
      Atom, (match c with
       | "FILE" -> 
 	 loc_expr _loc (Pexp_constant (const_string ((start_pos _loc).Lexing.pos_fname)))
@@ -1646,10 +1660,10 @@ let expression_base = memoize1 (fun lvl ->
 	 try let str = Sys.getenv c in
 	     parse_string ~filename:("ENV:"^c) expression blank str
 	 with Not_found -> raise (Give_up "" (* FIXME *)))
-  | CHR('$') t:{t:{ STR("tuple") -> "tuple" | 
+  | CHR('$') - t:{t:{ STR("tuple") -> "tuple" | 
 		    STR("list") -> "list" |
 		    STR("array") -> "array" } CHR(':') }? 
-       e:(expression_lvl (next_exp App)) CHR('$') ->
+       e:(expression_lvl App) - CHR('$') ->
 	 (match t with
 	   None ->
 	   (Atom, push_pop_expression e)
@@ -1946,7 +1960,7 @@ let structure_item_base =
 let _ = set_grammar structure_item (
   parser
   | e:(alternatives extra_structure) -> e
-  | CHR('$') e:(expression_lvl (next_exp App)) CHR('$') STR(";;")? -> push_pop_structure e
+  | CHR('$') - e:(expression_lvl App) - CHR('$') STR(";;")? -> push_pop_structure e
   | s:structure_item_base STR(";;")? -> [loc_str _loc_s s]
   )
 
@@ -2021,7 +2035,7 @@ let signature_item_base =
 let _ = set_grammar signature_item (
   parser
   | e:(alternatives extra_signature) -> e
-  | CHR('$') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_signature e
+  | CHR('$') - e:(expression_lvl App) - CHR('$') -> push_pop_signature e
   | s:signature_item_base STR(";;")? -> [loc_sig _loc s]
   )
 

@@ -387,6 +387,8 @@ module Initial =
       | Type_list of Parsetree.core_type list
       | Structure of Parsetree.structure_item list
       | Signature of Parsetree.signature_item list
+      | Constr_decl of constructor_declaration list
+      | Field_decl of label_declaration list
       | String of string
       | Int of int
       | Int32 of int32
@@ -426,6 +428,30 @@ module Initial =
       match Stack.top quote_stack with
       | First env -> assert false
       | Second env -> Stack.push (Expression_list e) env
+    let push_pop_constr_decl e =
+      try
+        match Stack.top quote_stack with
+        | First env -> (Stack.push ("push_constr_decl", e) env; [])
+        | Second env ->
+            (match Stack.pop env with
+             | Constr_decl e -> e
+             | _ -> assert false)
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+    let push_constr_decl e =
+      match Stack.top quote_stack with
+      | First env -> assert false
+      | Second env -> Stack.push (Constr_decl e) env
+    let push_pop_field_decl e =
+      try
+        match Stack.top quote_stack with
+        | First env -> (Stack.push ("push_field_decl", e) env; [])
+        | Second env ->
+            (match Stack.pop env with | Field_decl e -> e | _ -> assert false)
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+    let push_field_decl e =
+      match Stack.top quote_stack with
+      | First env -> assert false
+      | Second env -> Stack.push (Field_decl e) env
     let push_pop_type e =
       try
         match Stack.top quote_stack with

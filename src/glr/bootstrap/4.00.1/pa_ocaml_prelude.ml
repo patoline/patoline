@@ -294,7 +294,15 @@ module Initial =
       { pmty_desc = desc; pmty_loc = _loc }
     let id_loc txt loc = { txt; loc }
     let const_string s = Const_string s
+    type constructor_declaration =
+      (string Asttypes.loc* Parsetree.core_type list* Parsetree.core_type
+        option* Location.t)
+      
     let constructor_declaration _loc name args res = (name, args, res, _loc)
+    type label_declaration =
+      (string Asttypes.loc* Asttypes.mutable_flag* Parsetree.core_type*
+        Location.t)
+      
     let label_declaration _loc name mut ty = (name, mut, ty, _loc)
     let type_declaration _loc name params cstrs kind priv manifest =
       let (params,variance) = List.split params in
@@ -353,6 +361,8 @@ module Initial =
       | Type_list of Parsetree.core_type list
       | Structure of Parsetree.structure_item list
       | Signature of Parsetree.signature_item list
+      | Constr_decl of constructor_declaration list
+      | Field_decl of label_declaration list
       | String of string
       | Int of int
       | Int32 of int32
@@ -392,6 +402,30 @@ module Initial =
       match Stack.top quote_stack with
       | First env -> assert false
       | Second env -> Stack.push (Expression_list e) env
+    let push_pop_constr_decl e =
+      try
+        match Stack.top quote_stack with
+        | First env -> (Stack.push ("push_constr_decl", e) env; [])
+        | Second env ->
+            (match Stack.pop env with
+             | Constr_decl e -> e
+             | _ -> assert false)
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+    let push_constr_decl e =
+      match Stack.top quote_stack with
+      | First env -> assert false
+      | Second env -> Stack.push (Constr_decl e) env
+    let push_pop_field_decl e =
+      try
+        match Stack.top quote_stack with
+        | First env -> (Stack.push ("push_field_decl", e) env; [])
+        | Second env ->
+            (match Stack.pop env with | Field_decl e -> e | _ -> assert false)
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+    let push_field_decl e =
+      match Stack.top quote_stack with
+      | First env -> assert false
+      | Second env -> Stack.push (Field_decl e) env
     let push_pop_type e =
       try
         match Stack.top quote_stack with

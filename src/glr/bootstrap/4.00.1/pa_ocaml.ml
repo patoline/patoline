@@ -98,10 +98,11 @@ module Make(Initial:Extension) =
       Decap.alternatives'
         [Decap.apply (fun f  -> f)
            (Decap.regexp ~name:"float" float_re (fun groupe  -> groupe 0));
-        Decap.fsequence (Decap.char '$' '$')
+        Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
           (Decap.fsequence (Decap.string "float" "float")
              (Decap.fsequence (Decap.char ':' ':')
-                (Decap.sequence (expression_lvl (next_exp App))
+                (Decap.sequence
+                   (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
                    (fun e  _  _  _  _  -> string_of_float (push_pop_float e)))))]
     let char_regular = "[^\\']"
@@ -163,10 +164,11 @@ module Make(Initial:Extension) =
               (Decap.fsequence (Decap.char '\'' '\'')
                  (Decap.sequence (one_char true) (Decap.char '\'' '\'')
                     (fun c  _  _  -> c))) no_blank);
-        Decap.fsequence (Decap.char '$' '$')
+        Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
           (Decap.fsequence (Decap.string "char" "char")
              (Decap.fsequence (Decap.char ':' ':')
-                (Decap.sequence (expression_lvl (next_exp App))
+                (Decap.sequence
+                   (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
                    (fun e  _  _  _  _  -> push_pop_char e))))]
     let interspace = "[ \t]*"
@@ -230,10 +232,11 @@ module Make(Initial:Extension) =
                                   (fun c  r  -> c :: r)]) in
                          Decap.apply (fun r  -> char_list_to_string r)
                            string_literal_suit)))) no_blank);
-        Decap.fsequence (Decap.char '$' '$')
+        Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
           (Decap.fsequence (Decap.string "string" "string")
              (Decap.fsequence (Decap.char ':' ':')
-                (Decap.sequence (expression_lvl (next_exp App))
+                (Decap.sequence
+                   (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
                    (fun e  _  _  _  _  -> push_pop_string e))))]
     let quotation = declare_grammar "quotation"
@@ -816,7 +819,8 @@ module Make(Initial:Extension) =
                                   __loc__end__buf __loc__end__pos in
                               let cp = id_loc cp _loc_cp in
                               loc_typ _loc (Ptyp_class (cp, (te :: tes), o))))))));
-        Decap.fsequence_position (Decap.char '$' '$')
+        Decap.fsequence_position
+          (Decap.ignore_next_blank (Decap.char '$' '$'))
           (Decap.fsequence
              (Decap.option None
                 (Decap.apply (fun x  -> Some x)
@@ -824,7 +828,7 @@ module Make(Initial:Extension) =
                       (Decap.apply (fun _  -> "tuple")
                          (Decap.string "tuple" "tuple")) (Decap.char ':' ':')
                       (fun t  _  -> t))))
-             (Decap.sequence (expression_lvl (next_exp App))
+             (Decap.sequence (Decap.ignore_next_blank (expression_lvl App))
                 (Decap.char '$' '$')
                 (fun e  _  t  _  __loc__start__buf  __loc__start__pos 
                    __loc__end__buf  __loc__end__pos  ->
@@ -1049,31 +1053,57 @@ module Make(Initial:Extension) =
                      locate2 __loc__start__buf __loc__start__pos
                        __loc__end__buf __loc__end__pos in
                    label_declaration _loc (id_loc fn _loc_fn) m pte)))
+    let constr_decl_list = declare_grammar "constr_decl_list"
+    let _ =
+      set_grammar constr_decl_list
+        (Decap.alternatives'
+           [Decap.fsequence
+              (Decap.option None
+                 (Decap.apply (fun x  -> Some x) (Decap.string "|" "|")))
+              (Decap.fsequence constr_decl
+                 (Decap.sequence
+                    (Decap.apply List.rev
+                       (Decap.fixpoint []
+                          (Decap.apply (fun x  l  -> x :: l)
+                             (Decap.sequence (Decap.string "|" "|")
+                                constr_decl (fun _  cd  -> cd)))))
+                    constr_decl_list
+                    (fun cds  ls  cd  _  -> (cd :: cds) @ ls)));
+           Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
+             (Decap.fsequence (Decap.ignore_next_blank (expression_lvl App))
+                (Decap.sequence (Decap.char '$' '$') constr_decl_list
+                   (fun _  ls  e  _  -> (push_pop_constr_decl e) @ ls)));
+           Decap.apply (fun _  -> []) (Decap.empty ())])
+    let field_decl_list = declare_grammar "field_decl_list"
+    let _ =
+      set_grammar field_decl_list
+        (Decap.alternatives'
+           [Decap.fsequence field_decl
+              (Decap.fsequence
+                 (Decap.apply List.rev
+                    (Decap.fixpoint []
+                       (Decap.apply (fun x  l  -> x :: l)
+                          (Decap.sequence (Decap.string ";" ";") field_decl
+                             (fun _  fd  -> fd)))))
+                 (Decap.sequence
+                    (Decap.option None
+                       (Decap.apply (fun x  -> Some x) (Decap.string ";" ";")))
+                    field_decl_list (fun _  ls  fds  fd  -> (fd :: fds) @ ls)));
+           Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
+             (Decap.fsequence (Decap.ignore_next_blank (expression_lvl App))
+                (Decap.sequence (Decap.char '$' '$') field_decl_list
+                   (fun _  ls  e  _  -> (push_pop_field_decl e) @ ls)));
+           Decap.apply (fun _  -> []) (Decap.empty ())])
     let type_representation =
       Decap.alternatives'
-        [Decap.fsequence
-           (Decap.option None
-              (Decap.apply (fun x  -> Some x) (Decap.string "|" "|")))
-           (Decap.sequence constr_decl
-              (Decap.apply List.rev
-                 (Decap.fixpoint []
-                    (Decap.apply (fun x  l  -> x :: l)
-                       (Decap.sequence (Decap.string "|" "|") constr_decl
-                          (fun _  cd  -> cd)))))
-              (fun cd  cds  _  -> Ptype_variant (cd :: cds)));
-        Decap.fsequence (Decap.string "{" "{")
-          (Decap.fsequence field_decl
-             (Decap.fsequence
-                (Decap.apply List.rev
-                   (Decap.fixpoint []
-                      (Decap.apply (fun x  l  -> x :: l)
-                         (Decap.sequence (Decap.string ";" ";") field_decl
-                            (fun _  fd  -> fd)))))
-                (Decap.sequence
-                   (Decap.option None
-                      (Decap.apply (fun x  -> Some x) (Decap.string ";" ";")))
-                   (Decap.string "}" "}")
-                   (fun _  _  fds  fd  _  -> Ptype_record (fd :: fds)))))]
+        [Decap.fsequence (Decap.string "{" "{")
+           (Decap.sequence field_decl_list (Decap.string "}" "}")
+              (fun fds  _  _  -> Ptype_record fds));
+        Decap.apply
+          (fun cds  ->
+             if cds = []
+             then raise (Give_up "Illegal empty constructors declaration");
+             Ptype_variant cds) constr_decl_list]
     let type_information =
       Decap.fsequence
         (Decap.option None (Decap.apply (fun x  -> Some x) type_equation))
@@ -1697,7 +1727,9 @@ module Make(Initial:Extension) =
                                              Ppat_constraint
                                                ((loc_pat _loc_mn unpack), pt) in
                                        (AtomPat, (loc_pat _loc pat))))));
-                     Decap.sequence (Decap.char '$' '$') capitalized_ident
+                     Decap.sequence
+                       (Decap.ignore_next_blank (Decap.char '$' '$'))
+                       capitalized_ident
                        (fun _  c  ->
                           try
                             let str = Sys.getenv c in
@@ -1705,7 +1737,8 @@ module Make(Initial:Extension) =
                               (parse_string ~filename:("ENV:" ^ c) pattern
                                  blank str))
                           with | Not_found  -> raise (Give_up ""));
-                     Decap.fsequence_position (Decap.char '$' '$')
+                     Decap.fsequence_position
+                       (Decap.ignore_next_blank (Decap.char '$' '$'))
                        (Decap.fsequence
                           (Decap.option None
                              (Decap.apply (fun x  -> Some x)
@@ -1718,7 +1751,8 @@ module Make(Initial:Extension) =
                                       Decap.apply (fun _  -> "array")
                                         (Decap.string "array" "array")])
                                    (Decap.char ':' ':') (fun t  _  -> t))))
-                          (Decap.sequence (expression_lvl (next_exp App))
+                          (Decap.sequence
+                             (Decap.ignore_next_blank (expression_lvl App))
                              (Decap.char '$' '$')
                              (fun e  _  t  _  __loc__start__buf 
                                 __loc__start__pos  __loc__end__buf 
@@ -3252,7 +3286,15 @@ module Make(Initial:Extension) =
                                                "structure");
                                           Decap.apply (fun _  -> "signature")
                                             (Decap.string "signature"
-                                               "signature")])
+                                               "signature");
+                                          Decap.apply
+                                            (fun _  -> "constr_decl_list")
+                                            (Decap.string "constr_decl_list"
+                                               "constr_decl_list");
+                                          Decap.apply
+                                            (fun _  -> "field_decl_list")
+                                            (Decap.string "field_decl_list"
+                                               "field_decl_list")])
                                        (Decap.fsequence
                                           (Decap.option None
                                              (Decap.apply (fun x  -> Some x)
@@ -3273,7 +3315,9 @@ module Make(Initial:Extension) =
                                                     (quote_expression _loc_q
                                                        loc q name))))));
                                   Decap.sequence_position
-                                    (Decap.char '$' '$') capitalized_ident
+                                    (Decap.ignore_next_blank
+                                       (Decap.char '$' '$'))
+                                    capitalized_ident
                                     (fun _  c  __loc__start__buf 
                                        __loc__start__pos  __loc__end__buf 
                                        __loc__end__pos  ->
@@ -3303,7 +3347,8 @@ module Make(Initial:Extension) =
                                                | Not_found  ->
                                                    raise (Give_up "")))));
                                   Decap.fsequence_position
-                                    (Decap.char '$' '$')
+                                    (Decap.ignore_next_blank
+                                       (Decap.char '$' '$'))
                                     (Decap.fsequence
                                        (Decap.option None
                                           (Decap.apply (fun x  -> Some x)
@@ -3324,7 +3369,8 @@ module Make(Initial:Extension) =
                                                 (Decap.char ':' ':')
                                                 (fun t  _  -> t))))
                                        (Decap.sequence
-                                          (expression_lvl (next_exp App))
+                                          (Decap.ignore_next_blank
+                                             (expression_lvl App))
                                           (Decap.char '$' '$')
                                           (fun e  _  t  _  __loc__start__buf 
                                              __loc__start__pos 
@@ -4359,8 +4405,8 @@ module Make(Initial:Extension) =
       set_grammar structure_item
         (Decap.alternatives'
            [Decap.apply (fun e  -> e) (alternatives extra_structure);
-           Decap.fsequence (Decap.char '$' '$')
-             (Decap.fsequence (expression_lvl (next_exp App))
+           Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
+             (Decap.fsequence (Decap.ignore_next_blank (expression_lvl App))
                 (Decap.sequence (Decap.char '$' '$')
                    (Decap.option None
                       (Decap.apply (fun x  -> Some x)
@@ -4518,8 +4564,8 @@ module Make(Initial:Extension) =
       set_grammar signature_item
         (Decap.alternatives'
            [Decap.apply (fun e  -> e) (alternatives extra_signature);
-           Decap.fsequence (Decap.char '$' '$')
-             (Decap.sequence (expression_lvl (next_exp App))
+           Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
+             (Decap.sequence (Decap.ignore_next_blank (expression_lvl App))
                 (Decap.char '$' '$') (fun e  _  _  -> push_pop_signature e));
            Decap.sequence_position signature_item_base
              (Decap.option None
