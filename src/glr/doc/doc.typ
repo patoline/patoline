@@ -54,9 +54,11 @@ enough for the reader to guess the usage. Note, however, that the functions
 ##filename## which is used to report better error messages.
 
 ###
+
   buffer_from_file : string -> buffer
   buffer_from_channel : ?filename:string -> in_channel -> buffer
   buffer_from_string : ?filename:string -> string -> buffer
+
 ###
 
 We will see later that in some case it might be useful to manually read input
@@ -66,7 +68,9 @@ character read, the new state of the buffer, and the position of the next
 character.
 
 ###
+
   read : buffer -> int -> char * buffer * int
+
 ###
 
 In the current implementation, the ##Input## module comes with a built-in
@@ -83,17 +87,14 @@ another mechanism: blank functions.
 
 A blank function inspects the input buffer at a given position, and returns
 the position of the next meaningful character (i.e. the next character that is
-not to be ignored). The type of a blank function is the following:
+not to be ignored). The type of a blank function is
+##blank = buffer -> int -> buffer * int##. The simplest possible blank
+function is one that does not ignore any character:
 
 ### OCaml
-blank = buffer -> int -> buffer * int
-###
 
-The simplest possible blank function is a function that ignores no character.
-It simply returns the position and buffer that it was given as an argument:
+  let no_blank buf pos = (buf, pos)
 
-### OCaml "blank0.ml"
-let no_blank buffer position = buffer, position
 ###
 
 It is possible to eliminate blanks according to a regual expression. To do so,
@@ -102,32 +103,40 @@ following example, the blank function ignores an arbitrary number of spaces,
 tabulations, newline and carriage return characters:
 
 ### OCaml
-let blank = blank_regexp (Str.regexp "[ \t\n\r]*")
+
+  let blank_re = blank_regexp (Str.regexp "[ \t\n\r]*")
+
+###
+//Important remark: due to a limitation of the ##Str## module (which can only
+match regular expressions against strings), the current implementation of
+##DeCaP## does not behave well on regular expressions containing the new line
+symbol (since the ##Input## module is implemented using a stream of lines). A
+blank function using a regular expression containing a new line symbol will be
+applied to several lines in turn if they are matched completely. This means
+that a regular expression containing a new line symbol will behave correctly
+only if it is idempotent.//
+
+Another way to build a blank function is to directly read the input buffer
+using the ##Input.read## function. For example, the following blank function
+ignores any number of spaces, tabulations, and carriage return symbols, but
+at most one new line symbol:
+
+### OCaml
+
+  let blank_custom = 
+    let rec fn accept_newline buffer pos =
+      let (c, buffer', pos') = Input.read buffer pos in
+      match c with
+      | '\n' when accept_newline -> fn false buffer' pos'
+      | ' ' | '\t' | '\r'        -> fn accept_newline buffer' pos'
+      | _                        -> buffer, pos
+    in fn true
+
 ###
 
-Important remark: due to the fact that ##OCaml##'s ##Str## module does not
-allow to match other data type than string, a blank function using regular
-expression that matches newline will be applied successively to lines that
-contain only blank. This means that only regexp that are idempotent should 
-be used when they match newline.
-
-Otherwise, you may read yourself the input buffer using the ##Input.read##
-function. Here is for instance a blank function parsing at most one newline
-and all blank characters:
-
-### OCaml "blank1.ml"
-let blank = 
-  let rec fn accept_newline buffer pos =
-    let (c, buffer', pos') = Input.read buffer pos in
-    match c with
-    | '\n' when accept_newline -> fn false buffer' pos'
-    | ' ' | '\t' | '\r'        -> fn accept_newline buffer' pos'
-    | _                        -> buffer, pos
-  in fn true
-###
-
-Remark: by using the function ##partial_parse_buffer## (see ##decap.mli##),
-it is even possible to use a parser to write a blank functions.
+As there is no limitation as to what can be used to write a blank function,
+one could even decide to use the function ##partial_parse_buffer## (see
+##decap.mli##) and use a ##DeCaP## parser to parse blanks.
 
 -- Parsing functions --
 
@@ -135,33 +144,42 @@ The ##DeCaP## library exports an abstract type ##'a grammar## which is the
 type of a function parsing a ##buffer## and returning data of type ##'a##.
 Given a blank function and a grammar (i.e. an object of type ##'a grammar##),
 input is parsed from a ##string##, input channel, file or ##buffer## using one
-of the following functions.
+of the following functions:
 
 ### OCaml
+
   parse_string  : ?filename:string -> 'a grammar -> blank -> string -> 'a
   parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a
   parse_file    : 'a grammar -> blank -> string -> 'a
   parse_buffer  : 'a grammar -> blank -> buffer -> 'a
+
 ###
+
+Every parsing function take as input a default blank function that will be
+used to discard blank characters before every terminal is parsed. This
+blank function can be changed at any time by calling the function
+##change_layout## in a grammar (see ##decap.mli## and the next sections).
 
 Note that the functions ##parse_string## and ##parse_channel## have an
 optional argument ##filename## which is used to report better error messages.
-The reader should refer to the file ##decap.mli## (or its associated generated
-##ocamldoc## documentation) for more details. For instance, functions for
-parsing only part of the input are also provided.
+The reader should refer to the file ##decap.mli## (or to the associated
+generated ##ocamldoc## file) for more details.
 
-All of the parsing functions either succeed in parsing all the input, or
-fail with an exception (##Parse_error for example##). The function
+All of the parsing functions above either succeed in parsing all the input,
+or fail with an exception (##Parse_error## for example). The function
 ##handle_exception## is provided for this reason: it handles exceptions and
 displays a human-readable error message.
 
 ###
+
   handle_exception : ('a -> 'b) -> 'a -> 'b
+
 ###
 
-When a parser is invoked (using the function ##parse_string## for example), a
-default blank function needs to be provided. It will then be used to discard
-characters before every terminal is parsed.
+Parsing functions working on only part of the input are also provided. The
+reader should again refer to the file ##decap.mli## for more details. These
+functions can be used to implement a blank function using a parser, as was
+noted at the end of the section about blank functions.
 
 -- Changing the layout of blanks --
 

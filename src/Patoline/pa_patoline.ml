@@ -277,7 +277,7 @@ struct
 		      (* FIXME: the fact to have a line name and line number are orthogonal *)
 		      match filename with
 		      | None -> 
-			 <:expr<verb_counter "" @ line >>
+			 <:expr< line >>
 		      | Some name ->
 			 <:expr<verb_counter $string:("verb_file_"^name)$ @ line >>
 		    in
