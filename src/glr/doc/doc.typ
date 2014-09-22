@@ -193,50 +193,104 @@ the ##pa_ocaml## parser, but this behavious can be changed.
 
 The entry point of the ##pa_parser## syntax extension is a new expression
 delimited by the keyword ##parser##, which is followed by an optional ##*##
-symbol and the BNF rule for the grammar (which syntax will be given later).
-If there is no ##*## symbol, the parser will raise an exception in case of
-ambibuity. Otherwise, the list of every possible parse tree is returned by
-the parser, which will have a type of the form ##'a list grammar##.
+symbol and the BNF rule for the grammar. If there is no ##*## symbol, the
+parser will raise an exception in case of ambibuity. Otherwise, the list of
+every possible parse tree is returned by the parser, which will have a type of
+the form ##'a list grammar##.
 
-(*
-(* FIXME *) 
+We give bellow the BNF specification of the ##pa_parser## syntax extension,
+using the following convention: ##|## sepatates alternatives, ##[…]##
+delimits optional elements and ##(…)+## elements repeated one or more
+times. Terminal symbols are wrapped into double quotes, and entry points are
+wrapped into chevrons. Several entry points of the ##OCaml## language are
+used: ##<expr>##, ##<expr_atom>## and ##<let_binding>##. They refer to
+expressions (any priority level), expression at the level of atoms (for
+example constants, identifiers, projections and anything between parenthesis)
+and ##let ... in## bindings respectively.
+
+###
+
+<expr>     ::= ...
+             | "parser" ["*"] ["|"] <rule>
+             | "parser_locate" <expr> <expr>
+
+###
+
 ###
 
 <rule>     ::= <rule> "|"  <rule>
              | <rule> "|?" <rule>
              | <left> "->" <expr>
+
 <left>     ::= <let_binding> <left>
              | "-" <left>
              | <left> "->>" <left>
-             | ([<pattern> ":"] <parser> ["[" <expr> "]"] [<modifier>])+
-<parser>   ::= "ANY"
-             | 
+             | ([<pattern> ":"] <parser> [<option>] [<modifier>])+
+
+<parser>   ::= <terminal>
+             | <atom_expr>
+             | "{" <rule> "}"
+
+<terminal> ::= "ANY" | "EOF" | "EMPTY" | "FAIL"
+             | "CHR"   <atom_expr>
+             | "STR"   <atom_expr>
+             | "RE"    <atom_expr>
+             | "DEBUG" <atom_expr>
+
+<option>   ::= "[" <expr> "]"
 <modifier> ::= "?" | "??" | "*" | "**" | "+" | "++"
 
 ###
-*)
 
-We now give the BNF for the grammar, using the following convention:
-"|"  denotes alternatives, "[ … ]" optional elements, 
-"(…)*" repetition 0 or more times and "(…)+" 
-repetition 1 or more times. When one of the symbol above
-is used in the grammar being described, it is embraced by simple quotes.
- 
+Before entering into the details of the composition of parsers using modifiers
+or the alternative marker ##|## and ##|?##, we will describe the action of
+each terminal:
 \begin{itemize}
-\item //rules// ::= //rules// '##|##' //rules// | //rules// '##| |##' //rules// | //left// ##->## //expression//
-\item //left//  ::= //let_binding// //left// | - //left// | //left// ##->>## //left// | ([//pattern//##:## ] //parser// [//option//] [//modifier//])+
-\item //parser// ::= //terminal// | //atom_expression// | ##{## //rules// ##}##
-\item //terminal// ::= ##ANY## | ##CHR## //atom_expression// | ##STR## //atom_expression// | ##RE## //atom_expression//
-| ##EOF##
+\item ##ANY## parses one character (that is not the end of file character),
+      and the result of the parsing is the parse character. The type of this
+      atomic parser is hence ##char grammar##.
+\item ##EOF## parses the end of file character, and returns the expression
+      contained in the option field, or unit if it is abscent. This terminal
+      is almost always useless because all the parsing functions that parse
+      the whole input automatically append ##EOF## at the end of the given
+      grammar (this is not the case for ##partial_parse_string## for example).
+\item ##EMPTY## parses nothing and and always succeeds. It returns the
+      expression contained in the option field, or unit if it is abscent.
+\item ##FAIL## fails immediately. If there is an option field, the value of
+      The given expression will appear in the error message.
+\item ##DEGUG msg## parses nothing but print debuging information including
+      the given string ##msg## to ##stderr##.
+\item ##CHR c## parses the character ##c## and returns the expression
+      contained in the option field, or the parsed character if the option
+      is abscent.
+\item ##STR s## parses the string ##s## an returns the expression contained
+      in the option field, or the parsed string if the option is abscent.
+\item ##RE r## parses the input according to the regular expression ##r##,
+      which should be a ##string## formated as described in the documentation
+      of the ##Str## module. If the option filed is not provided, the value
+      returned by the parser if the ##string## that was matched. Otherwise,
+      the value of the optional field is returnd. Note that the identifier
+      ##group## is bound in the optional field, and can be used to compute
+      the return value of the parser. It corresponds to a function that
+      maps the natural integer ##n## to the ##n##-th matched group of the
+      regular expression.
 
-| ##EMPTY## | ##FAIL## | ##DEBUG## //atom_expression//
-\item //option// ::= '##[##' //expression// '##]##'
-\item //modifier// ::= ##?## | ##??## | ##*## | ##**## | ##+## | ##++##
+      \begin{noindent}
+      //Important remark: due to a limitation of the ##Str## module (which can
+      only match regular expressions against strings), the current
+      implementation of ##DeCaP## does not behave well on regular expressions
+      containing the new line symbol (since the ##Input## module is
+      implemented using a stream of lines). Hence, regular expression in the
+      ##RE## terminal should not contain the new line symbol.//
+      \end{noindent}
 \end{itemize}
 
-In this grammar, //let_binding// and //expression// correspond to their equivalent in OCaml.
-//atom_expression//, mean an expression with the priority level just before function application, which means 
-that we can use, without parenthesis, identifiers and projection.
+
+
+
+
+
+
 
 We also see every constructor that is not a terminal in two versions. The version were the symbol is
 doubled will not explore all possibilities: once a parse tree has been found it does not backtrack.
@@ -245,35 +299,18 @@ We will come back to this later.
 
 Lets give a first small example, a calcultor with just the addition and substraction:
 
-### OCaml "example1.ml"
-  let int = parser n:RE("[0-9]+") -> int_of_string n
-  let op  = parser CHR('+') -> (+) | CHR('-') -> (-)
+### OCaml
+
+  let int = parser
+    | n:RE("[0-9]+") -> int_of_string n
+  let op = parser
+    | CHR('+') -> (+)
+    | CHR('-') -> (-)
   let expression = parser
-    n:int l:{ op:op m:int -> (op,m) }* ->
-      List.fold_left (fun acc (op,f) -> op acc f) n l
+    | n:int l:{op:op m:int -> (op,m)}* ->
+        List.fold_left (fun acc (op,f) -> op acc f) n l
+
 ###
-
-Let us first details the terminal with the meaning of their option when option are available:
-
-\begin{itemize}
-\item ##ANY##: parses one char, except end of file but including newline and returns this char.
-\item ##EOF##: parses end of file only and returns the given expression, unit if the option is not given. This is almost always useless because the function calling the parser (except ##partial_parse_XXX##)
-automaticaly add ##EOF## at the end of the given grammar.
-\item ##EMPTY[##//result//##]##: parses nothing and returns //result//, unit if //result// is not given.
-\item ##FAIL[##//message//##]##: fail immediately. The given expression will appear in the error //message//.
-\item ##DEGUG## //message//: parses nothing but print information on ##stderr##, including the given //message//.
-\item ##CHR## //char// [//result//]:
-parses only the given //char// and return the given //result//. Returns the parsed //char// if the option was not given.
-\item ##STR## //string// [//result//]:
-parses only the given //string// and return the given //result//. Returns the parsed //string// if the option was not given.
-\item ##RE## //regexp// [//result//]:
-parses only the given //regexp// of type ##Str.regexp## and returns the given //result//.
-The identifier ##group## is bound in //result// and ##group## //n//
-will return the corresponding matched group. 
-
-Limitation: the regexp can at most parse one line and can not parse newlines. You must use the other terminal if you want to parse 
-newline.
-\end{itemize}
 
 -- Changing the layout of blanks --
 
