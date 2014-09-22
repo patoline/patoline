@@ -11,7 +11,7 @@ open Input
   number [col] of the last succesfully parsed terminal. The list [msgs]
   contains a list of error messages and [expected] contains a description of the tokens
   that would have allowed the parsing process to continue. Normally at least [msgs]
-  of [expected] is non empty *)
+  or [expected] is non empty *)
 exception Parse_error of string * int * int * string list * string list
 
 (** [Give_up msg] can be raised when a parsing rule needs to be rejected. It
