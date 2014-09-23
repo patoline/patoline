@@ -441,6 +441,16 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_symbol{\bbX}(MathFonts.ams "\\bbX" 89)
 \Add_symbol{\bbY}(MathFonts.ams "\\bbY" 90)
 \Add_symbol{\bbZ ℤ}(MathFonts.ams "ℤ" 91)
+\Add_symbol{\bb0 𝟘}(MathFonts.asana "𝟘" 2664)
+\Add_symbol{\bb1 𝟙}(MathFonts.asana "𝟙" 2665)
+\Add_symbol{\bb2 𝟚}(MathFonts.asana "𝟚" 2666)
+\Add_symbol{\bb3 𝟛}(MathFonts.asana "𝟛" 2667)
+\Add_symbol{\bb4 𝟜}(MathFonts.asana "𝟜" 2668)
+\Add_symbol{\bb5 𝟝}(MathFonts.asana "𝟝" 2669)
+\Add_symbol{\bb6 𝟞}(MathFonts.asana "𝟞" 2670)
+\Add_symbol{\bb7 𝟟}(MathFonts.asana "𝟟" 2671)
+\Add_symbol{\bb8 𝟠}(MathFonts.asana "𝟠" 2672)
+\Add_symbol{\bb9 𝟡}(MathFonts.asana "𝟡" 2673)
 
 =<
 
