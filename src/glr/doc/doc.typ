@@ -285,32 +285,71 @@ each terminal:
       \end{noindent}
 \end{itemize}
 
-
-
-
-
-
-
-
-We also see every constructor that is not a terminal in two versions. The version were the symbol is
-doubled will not explore all possibilities: once a parse tree has been found it does not backtrack.
-We also have to kind of alternatives in the same spirit (more or less backtracking).
-We will come back to this later.
-
-Lets give a first small example, a calcultor with just the addition and substraction:
-
-### OCaml
-
-  let int = parser
-    | n:RE("[0-9]+") -> int_of_string n
-  let op = parser
-    | CHR('+') -> (+)
-    | CHR('-') -> (-)
-  let expression = parser
-    | n:int l:{op:op m:int -> (op,m)}* ->
-        List.fold_left (fun acc (op,f) -> op acc f) n l
+(* FIXME hack for correct indentation... *)
+###
 
 ###
+
+The usual BNF modifiers for optionality (##?##), repetition zero or more
+times (##*##) and repetition one or more times (##+##) come in two versions.
+The ususal symbols (i.e. the ones that are not doubled) behave in the usual
+way, in the sense that once a parse tree has been found, no backtracking is
+done to explore the other possibilities. The symbols that are doubled (##??##,
+##*##, ##+##) lead to an exploration of every possible parse tree by relying
+on backtracking. We also have two kinds of alternative symbols: The usual
+##|## symbol stops backtracking when one alternative is successfully parsed.
+The alternative symbol ##|?## does a lot more backtracking and explores every
+possibility. Note that there should be no difference on grammars that are not
+ambiguous.
+
+Let us now give a first example of a parser, implementing a very simplistic
+calculator having as only operations addition and substraction. The BNF
+grammar of the parsed language will be the following, where ##<int>##
+designates a regual expression matchin integers:
+
+###
+
+<op>   ::= "+" | "-"
+<expr> ::= <int> (<op> <int>)*
+
+###
+
+This grammar is translated to ##pa_parser## syntax in a straight forward
+way. The following ##OCaml## program will parse and compute the result of
+any valid string it receives as a command-line argument.
+
+###
+
+###
+### OCaml "calc_base.ml"
+open Decap
+
+let int = parser
+  | n:RE("[0-9]+") -> int_of_string n
+let op = parser
+  | CHR('+') -> (+)
+  | CHR('-') -> (-)
+let expr = parser
+  | n:int l:{op:op m:int -> (op,m)}* ->
+      List.fold_left (fun acc (op,f) -> op acc f) n l
+
+let parse =
+  let blank = blank_regexp (Str.regexp "[ \t]*") in
+  handle_exception (parse_string ~filename:"arg" expr blank)
+
+let _ =
+  let cmd = Sys.argv.(0) in
+  match Sys.argv with
+  | [|_;s|] -> Printf.printf "%s = %i\n" s (parse s)
+  | _       -> Printf.fprintf stderr "Usage: %s \"1 + 2 - 4\"\n" cmd
+###
+
+(* TODO:
+   - more explanations on the syntax of the first example
+   - declare_grammar
+   - grammar_family
+   - ->> syntax
+*)
 
 -- Changing the layout of blanks --
 
