@@ -10,7 +10,7 @@ open Longident
 
 include Pa_ocaml_prelude
 
-let _ = parser_locate locate (*merge*) locate2
+let _ = parser_locate locate locate2
 
 module Make = functor (Initial:Extension) -> struct
 
@@ -136,7 +136,7 @@ let float_re = union_re [float_lit_no_dec; float_lit_dec]
 let float_literal =
   parser
     f:RE(float_re)   -> f
-  | CHR('$') - STR("float") CHR(':') e:(expression_lvl App) - CHR('$') -> string_of_float (push_pop_float e)
+  | dol:CHR('$') - STR("float") CHR(':') e:(expression_lvl App) - CHR('$') -> string_of_float (push_pop_float (start_pos _loc_dol).Lexing.pos_cnum e)
 
 (* Character literals *)
 let char_regular = "[^\\']"
@@ -174,7 +174,7 @@ let char_literal =
     r:(change_layout (
       parser CHR('\'') c:(one_char true) CHR('\'') -> c
     ) no_blank) -> r
-  | CHR('$') - STR("char") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_char e  
+  | dol:CHR('$') - STR("char") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_char (start_pos _loc_dol).Lexing.pos_cnum e  
 
 (* String literals *)
 let interspace = "[ \t]*"
@@ -222,7 +222,7 @@ let string_literal =
 	    | c:ANY r:string_literal_suit -> c::r)
 	  in r:string_literal_suit -> char_list_to_string r) no_blank) -> r
 
-  | CHR('$') - STR("string") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_string e
+  | dol:CHR('$') - STR("string") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e
 
 let quotation = declare_grammar "quotation"
 let _ = set_grammar quotation (
@@ -607,12 +607,12 @@ let typexpr_base : core_type grammar =
       let cp = id_loc cp _loc_cp in
       loc_typ _loc (Ptyp_class (cp, te::tes, o))
 #endif
- | CHR('$') - t:{t:{STR("tuple") -> "tuple"} CHR(':') }? e:(expression_lvl App) - CHR('$') ->
+ | dol:CHR('$') - t:{t:{STR("tuple") -> "tuple"} CHR(':') }? e:(expression_lvl App) - CHR('$') ->
 	 (match t with
 	   None ->
-	   push_pop_type e
+	   push_pop_type (start_pos _loc_dol).Lexing.pos_cnum e
 	 | Some str ->
-	    let l = push_pop_type_list e in
+	    let l = push_pop_type_list (start_pos _loc_dol).Lexing.pos_cnum e in
 	    match str with
 	    | "tuple" -> loc_typ _loc (Ptyp_tuple l)
 	    | _ -> raise (Give_up "" (* FIXME *)))
@@ -714,19 +714,17 @@ let field_decl =
   | m:mutable_flag fn:field_name STR(":") pte:poly_typexpr ->
       label_declaration _loc (id_loc fn _loc_fn) m pte
 
-let constr_decl_list = declare_grammar "constr_decl_list"
 let _ = set_grammar constr_decl_list (
   parser
   | STR("|")? cd:constr_decl cds:{STR("|") cd:constr_decl -> cd}* ls:constr_decl_list -> (cd::cds) @ ls
-  | CHR('$') - e:(expression_lvl App) - CHR('$') ls:constr_decl_list -> push_pop_constr_decl e @ ls
+  | STR("|")? dol:CHR('$') - e:(expression_lvl App) - CHR('$') ls:constr_decl_list -> push_pop_constr_decl (start_pos _loc_dol).Lexing.pos_cnum e @ ls
   | EMPTY -> []
   )
 
-let field_decl_list = declare_grammar "field_decl_list"
 let _ = set_grammar field_decl_list (
   parser
   | fd:field_decl fds:{STR(";") fd:field_decl -> fd}* STR(";")? ls:field_decl_list -> (fd::fds) @ ls
-  | CHR('$') - e:(expression_lvl App) - CHR('$') ls:field_decl_list -> push_pop_field_decl e @ ls
+  | dol:CHR('$') - e:(expression_lvl App) - CHR('$') STR(";")? ls:field_decl_list -> push_pop_field_decl (start_pos _loc_dol).Lexing.pos_cnum e @ ls
   | EMPTY -> []
   )
 
@@ -1083,15 +1081,15 @@ let pattern_base = memoize1 (fun lvl ->
 	  AtomPat, parse_string ~filename:("ENV:"^c) pattern blank str
       with Not_found -> raise (Give_up "" (* FIXME *)))
 
-  | CHR('$') - t:{t:{ STR("tuple") -> "tuple" | 
+  | dol:CHR('$') - t:{t:{ STR("tuple") -> "tuple" | 
 		    STR("list") -> "list" |
 		    STR("array") -> "array" } CHR(':') }? 
        e:(expression_lvl App) - CHR('$') ->
 	 (match t with
 	   None ->
-	   (AtomPat, push_pop_pattern e)
+	   (AtomPat, push_pop_pattern (start_pos _loc_dol).Lexing.pos_cnum e)
 	 | Some str ->
-	    let l = push_pop_pattern_list e in
+	    let l = push_pop_pattern_list (start_pos _loc_dol).Lexing.pos_cnum e in
 	    match str with
 	    | "tuple" -> (AtomPat, loc_pat _loc (Ppat_tuple l))
 	    | "array" -> (AtomPat, loc_pat _loc (Ppat_array l))
@@ -1310,13 +1308,17 @@ let _ = set_grammar let_binding (
     in
     value_binding ~attributes:a (merge2 _loc_vn _loc_e) pat e::l
 #endif
+  | dol:CHR('$') - STR("bindings") CHR(':') e:(expression_lvl App) - CHR('$') l:{and_kw l:let_binding}?[[]] ->
+     push_pop_let_binding (start_pos _loc_dol).Lexing.pos_cnum e @ l
   )
 
-let match_cases = memoize1 (fun lvl ->
+let _ = set_match_cases (fun lvl ->
   parser
-  | l:{STR"|"? pat:pattern w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) 
-      l:{STR"|" pat:pattern  w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) -> (pat,e,w)}* -> 
-               map_cases ((pat,e,w)::l)}?[[]] -> l
+  | CHR('|')? pat:pattern w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) 
+      l:{CHR'|' pat:pattern  w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) -> (pat,e,w)}*
+        ls:(match_cases lvl) -> map_cases ((pat,e,w)::l) @ ls
+  | CHR('|')? dol:CHR('$') - STR("cases") CHR(':') e:(expression_lvl App) - CHR('$') ls:(match_cases lvl) -> push_pop_cases (start_pos _loc_dol).Lexing.pos_cnum e @ ls
+  | EMPTY -> []
   )
 
 let type_coercion =
@@ -1643,11 +1645,12 @@ let expression_base = memoize1 (fun lvl ->
 #endif
       in
       (Atom, loc_expr _loc desc)
-  | STR("<:") name:{ STR("expr") -> "expression" | STR("type") -> "type" | STR("pat") -> "pattern"
-		  | STR("structure") -> "structure" | STR("signature") -> "signature"
-		  | STR("constr_decl_list") -> "constr_decl_list" 
-		  | STR("field_decl_list") -> "field_decl_list" }
-       loc:{CHR('@') e:(expression_lvl (next_exp App))}? CHR('<') q:quotation ->
+  | STR("<:") name:{ STR("expr") -> "expression"     | STR("type") -> "type" | STR("pat") -> "pattern"
+ 		   | STR("structure") -> "structure" | STR("signature") -> "signature"
+		   | STR("constructors") -> "constructors" 
+		   | STR("fields") -> "fields"
+		   | STR("bindings") -> "let_binding" }
+       loc:{CHR('@') e:(expression_lvl (next_exp App)) }? CHR('<') q:quotation ->
        if loc = None then push_location "";
        (Atom, quote_expression _loc_q loc q name)
   | CHR('$') - c:capitalized_ident -> 
@@ -1660,15 +1663,15 @@ let expression_base = memoize1 (fun lvl ->
 	 try let str = Sys.getenv c in
 	     parse_string ~filename:("ENV:"^c) expression blank str
 	 with Not_found -> raise (Give_up "" (* FIXME *)))
-  | CHR('$') - t:{t:{ STR("tuple") -> "tuple" | 
+  | dol:CHR('$') - t:{t:{ STR("tuple") -> "tuple" | 
 		    STR("list") -> "list" |
 		    STR("array") -> "array" } CHR(':') }? 
        e:(expression_lvl App) - CHR('$') ->
 	 (match t with
 	   None ->
-	   (Atom, push_pop_expression e)
+	   (Atom, push_pop_expression (start_pos _loc_dol).Lexing.pos_cnum e)
 	 | Some str ->
-	    let l = push_pop_expression_list e in
+	    let l = push_pop_expression_list (start_pos _loc_dol).Lexing.pos_cnum e in
 	    match str with
 	    | "tuple" -> (Atom, loc_expr _loc (Pexp_tuple l))
 	    | "array" -> (Atom, loc_expr _loc (Pexp_array l))
@@ -1960,7 +1963,7 @@ let structure_item_base =
 let _ = set_grammar structure_item (
   parser
   | e:(alternatives extra_structure) -> e
-  | CHR('$') - e:(expression_lvl App) - CHR('$') STR(";;")? -> push_pop_structure e
+  | dol:CHR('$') - e:(expression_lvl App) - CHR('$') STR(";;")? -> push_pop_structure (start_pos _loc_dol).Lexing.pos_cnum e
   | s:structure_item_base STR(";;")? -> [loc_str _loc_s s]
   )
 
@@ -2035,7 +2038,7 @@ let signature_item_base =
 let _ = set_grammar signature_item (
   parser
   | e:(alternatives extra_signature) -> e
-  | CHR('$') - e:(expression_lvl App) - CHR('$') -> push_pop_signature e
+  | dol:CHR('$') - e:(expression_lvl App) - CHR('$') -> push_pop_signature (start_pos _loc_dol).Lexing.pos_cnum e
   | s:signature_item_base STR(";;")? -> [loc_sig _loc s]
   )
 

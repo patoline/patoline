@@ -146,6 +146,8 @@ let locate2 str pos str' pos' =
     let e = Input.lexing_position str' pos' in
     Location.({loc_start = s; loc_end = e; loc_ghost = false}))
 
+let _ = parser_locate locate locate2
+
 let rec merge = function
   | [] -> assert false
   | [loc] -> loc
@@ -251,11 +253,10 @@ let next_exp = function
   let (pattern_lvl : pattern_prio -> pattern grammar), set_pattern_lvl = grammar_family "pattern_lvl"
   let pattern = pattern_lvl TopPat
 
-#ifversion >= 4.02
-  let let_binding : value_binding list grammar = declare_grammar "let_binding"
-#else
-  let let_binding : (Parsetree.pattern * Parsetree.expression) list grammar = declare_grammar "let_binding"
+#ifversion < 4.02
+  type value_binding = Parsetree.pattern * Parsetree.expression
 #endif
+  let let_binding : value_binding list grammar = declare_grammar "let_binding"
   let class_body : Parsetree.class_structure grammar = declare_grammar "class_body"
   let class_expr : Parsetree.class_expr grammar = declare_grammar "class_expr"
 
@@ -361,6 +362,7 @@ let next_exp = function
   let constructor_declaration _loc name args res = (name, args, _loc)
   type label_declaration = string * Asttypes.mutable_flag * Parsetree.core_type * Location.t
 #endif
+  type case = pattern * expression
   let label_declaration _loc name mut ty =
     (name, mut, ty, _loc)
   let type_declaration _loc name params cstrs kind priv manifest =
@@ -411,11 +413,16 @@ let next_exp = function
   let pexp_fun(label, opt, pat, expr) =
     Pexp_function(label,opt,[pat,expr])
 #endif
+
+  let constr_decl_list : constructor_declaration list grammar = declare_grammar "constr_decl_list"
+  let field_decl_list : label_declaration list grammar = declare_grammar "field_decl_list"
+  let (match_cases : expression_lvl -> case list grammar), set_match_cases = grammar_family "match_cases"
+
 (****************************************************************************
  * Quotation and anti-quotation code                                        *
  ****************************************************************************)
 
-type quote_env1 = (string * Parsetree.expression) Stack.t
+type quote_env1 = (int * string * Parsetree.expression) list ref
 
 type quote_env2_data = 
   | Expression of Parsetree.expression
@@ -428,6 +435,8 @@ type quote_env2_data =
   | Signature of Parsetree.signature_item list 
   | Constr_decl of constructor_declaration list
   | Field_decl of label_declaration list
+  | Let_binding of value_binding list
+  | Cases of case list
   | String of string
   | Int of int 
   | Int32 of int32 
@@ -437,7 +446,7 @@ type quote_env2_data =
   | Char of char 
   | Bool of bool 
 
-type quote_env2 = quote_env2_data Stack.t
+type quote_env2 = (int * quote_env2_data) list ref
 
 type quote_env =
     First of quote_env1 | Second of quote_env2
@@ -445,297 +454,330 @@ type quote_env =
 let quote_stack : quote_env Stack.t =
   Stack.create ()
 
-let empty_quote_env1 () = First (Stack.create ())
+let empty_quote_env1 () = First (ref [])
 
-let empty_quote_env2 () = Second (Stack.create ())
+let empty_quote_env2 () = Second (ref [])
 
-let push_pop_expression e =
+let push_pop_expression pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_expression", e) env; e
+    | First env -> env := (pos,"push_expression", e) :: !env; e
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Expression e ->  e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
+  | Not_found -> assert false
 
-let push_expression e =
+let push_expression pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Expression e) env
+    | Second env -> env := (pos, Expression e) :: !env
 
-let push_pop_expression_list e =
+let push_pop_expression_list pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_expression_list", e) env; []
+    | First env -> env := (pos,"push_expression_list", e) :: !env; []
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Expression_list e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_expression_list e =
+let push_expression_list pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Expression_list e) env
+    | Second env -> env := (pos,Expression_list e) :: !env
 
-let push_pop_constr_decl e =
+let push_pop_constr_decl pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_constr_decl", e) env; []
+    | First env -> env := (pos,"push_constr_decl", e) :: !env; []
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Constr_decl e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_constr_decl e =
+let push_constr_decl pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Constr_decl e) env
+    | Second env -> env := (pos,Constr_decl e) :: !env
 
-let push_pop_field_decl e =
+let push_pop_field_decl pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_field_decl", e) env; []
+    | First env -> env := (pos,"push_field_decl", e) :: !env; []
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Field_decl e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_field_decl e =
+let push_field_decl pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Field_decl e) env
+    | Second env -> env := (pos,Field_decl e) :: !env
 
-let push_pop_type e =
+let push_pop_cases pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_type", e) env; loc_typ e.pexp_loc Ptyp_any; 
+    | First env -> env := (pos,"push_cases", e) :: !env; []
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
+	 Cases e -> e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
+
+let push_cases pos e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env -> env := (pos,Cases e) :: !env
+
+let push_pop_let_binding pos e =
+  try
+    match Stack.top quote_stack with
+    | First env -> env := (pos,"push_let_binding", e) :: !env; []
+    | Second env ->
+       match List.assoc pos !env with
+	 Let_binding e -> e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
+
+let push_let_binding pos e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env -> env := (pos,Let_binding e) :: !env
+
+let push_pop_type pos e =
+  try
+    match Stack.top quote_stack with
+    | First env -> env := (pos,"push_type", e) :: !env; loc_typ e.pexp_loc Ptyp_any; 
+    | Second env ->
+       match List.assoc pos !env with
 	 Type e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_type e =
+let push_type pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Type e) env
+    | Second env -> env := (pos,Type e) :: !env
 
-let push_pop_type_list e =
+let push_pop_type_list pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_type_list", e) env; []
+    | First env -> env := (pos,"push_type_list", e) :: !env; []
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Type_list e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_type_list e =
+let push_type_list pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Type_list e) env
+    | Second env -> env := (pos,Type_list e) :: !env
 
-let push_pop_pattern e =
+let push_pop_pattern pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_pattern", e) env; loc_pat e.pexp_loc Ppat_any
+    | First env -> env := (pos,"push_pattern", e) :: !env; loc_pat e.pexp_loc Ppat_any
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Pattern e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_pattern e =
+let push_pattern pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Pattern e) env
+    | Second env -> env := (pos,Pattern e) :: !env
 
-let push_pop_pattern_list e =
+let push_pop_pattern_list pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_pattern_list", e) env; []
+    | First env -> env := (pos,"push_pattern_list", e) :: !env; []
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Pattern_list e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_pattern_list e =
+let push_pattern_list pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Pattern_list e) env
+    | Second env -> env := (pos,Pattern_list e) :: !env
 
-let push_pop_structure e =
+let push_pop_structure pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_structure", e) env; []
+    | First env -> env := (pos,"push_structure", e) :: !env; []
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Structure e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_structure e =
+let push_structure pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Structure e) env
+    | Second env -> env := (pos,Structure e) :: !env
 
-let push_pop_signature e =
+let push_pop_signature pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_signature", e) env; []
+    | First env -> env := (pos,"push_signature", e) :: !env; []
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Signature e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_signature e =
+let push_signature pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Signature e) env
+    | Second env -> env := (pos,Signature e) :: !env
 
-let push_pop_string e =
+let push_pop_string pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_string", e) env; ""
+    | First env -> env := (pos,"push_string", e) :: !env; ""
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 String e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_string e =
+let push_string pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (String e) env
+    | Second env -> env := (pos,String e) :: !env
 
-let push_pop_int e =
+let push_pop_int pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_int", e) env; 0
+    | First env -> env := (pos,"push_int", e) :: !env; 0
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Int e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_int e =
+let push_int pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Int e) env
+    | Second env -> env := (pos,Int e) :: !env
 
-let push_pop_int32 e =
+let push_pop_int32 pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_int32", e) env; 0l
+    | First env -> env := (pos,"push_int32", e) :: !env; 0l
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Int32 e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_int32 e =
+let push_int32 pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Int32 e) env
+    | Second env -> env := (pos,Int32 e) :: !env
 
-let push_pop_int64 e =
+let push_pop_int64 pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_int64", e) env; 0L
+    | First env -> env := (pos,"push_int64", e) :: !env; 0L
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Int64 e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_int64 e =
+let push_int64 pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Int64 e) env
+    | Second env -> env := (pos,Int64 e) :: !env
 
-let push_pop_natint e =
+let push_pop_natint pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_natint", e) env; 0n
+    | First env -> env := (pos,"push_natint", e) :: !env; 0n
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Natint e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_natint e =
+let push_natint pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Natint e) env
+    | Second env -> env := (pos,Natint e) :: !env
 
-let push_pop_float e =
+let push_pop_float pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_float", e) env; 0.0
+    | First env -> env := (pos,"push_float", e) :: !env; 0.0
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Float e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_float e =
+let push_float pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Float e) env
+    | Second env -> env := (pos,Float e) :: !env
 
-let push_pop_char e =
+let push_pop_char pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_char", e) env; ' '
+    | First env -> env := (pos,"push_char", e) :: !env; ' '
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Char e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_char e =
+let push_char pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Char e) env
+    | Second env -> env := (pos,Char e) :: !env
 
-let push_pop_bool e =
+let push_pop_bool pos e =
   try
     match Stack.top quote_stack with
-    | First env -> Stack.push ("push_bool", e) env; false
+    | First env -> env := (pos,"push_bool", e) :: !env; false
     | Second env ->
-       match Stack.pop env with
+       match List.assoc pos !env with
 	 Bool e -> e
        | _ -> assert false
   with
     Stack.Empty -> raise (Give_up "Illegal anti-quotation")
 
-let push_bool e =
+let push_bool pos e =
     match Stack.top quote_stack with
     | First env -> assert false
-    | Second env -> Stack.push (Bool e) env
+    | Second env -> env := (pos,Bool e) :: !env
 
 let localise _loc e =
   let len = String.length e in
@@ -765,16 +807,19 @@ let parse_string' g e' =
 
 let quote_expression _loc loc e name =
   Stack.push (empty_quote_env1 ()) quote_stack ;
-  let e' = localise _loc e in
-  let e = e' in
+  let e = localise _loc e in
   let _ = match name with
-    | "expression" -> ignore (parse_string' expression e')
-    | "type"  -> ignore (parse_string' typexpr e')
-    | "pattern"  -> ignore (parse_string' pattern e')
-    | "str_item"  -> ignore (parse_string' structure_item e')
-    | "sig_item"  -> ignore (parse_string' signature_item e')
-    | "structure"  -> ignore (parse_string' structure e')
-    | "signature"  -> ignore (parse_string' signature e')
+    | "expression" -> ignore (parse_string' expression e)
+    | "type"  -> ignore (parse_string' typexpr e)
+    | "pattern"  -> ignore (parse_string' pattern e)
+    | "str_item"  -> ignore (parse_string' structure_item e)
+    | "sig_item"  -> ignore (parse_string' signature_item e)
+    | "structure"  -> ignore (parse_string' structure e)
+    | "signature"  -> ignore (parse_string' signature e)
+    | "contructors"  -> ignore (parse_string' constr_decl_list e)
+    | "fields"  -> ignore (parse_string' field_decl_list e)
+    | "cases"  -> ignore (parse_string' (match_cases Top) e)
+    | "let_binding"  -> ignore (parse_string' let_binding e)
     | _ -> assert false
     in
   let env = match Stack.pop quote_stack with
@@ -792,22 +837,16 @@ let quote_expression _loc loc e name =
 		    "", loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Pa_ocaml_prelude","quote_stack")) _loc ))]))
   in
   (* on empile les valeurs de toutes les anti-quotations *)
-  let rec stack_fold fn acc stack =
-    try 
-      stack_fold fn (fn acc (Stack.pop stack)) stack
-    with
-      Stack.Empty -> acc
-  in
   let push_expr = 
-    stack_fold
-      (fun acc (name, e) ->
+    List.fold_left
+      (fun acc (pos,name, e) ->
        let push_e =
 	 loc_expr _loc (Pexp_apply(
 			    loc_expr _loc (Pexp_ident( id_loc (Ldot(Lident "Pa_ocaml_prelude",name)) _loc )),
-			    ["", e]))
+			    ["", loc_expr _loc (Pexp_constant (Const_int pos));"", e]))
        in
        loc_expr _loc (Pexp_sequence(acc, push_e)))
-      push_expr env
+      push_expr !env
   in
   (* on dépile la frame *)
   let pop_expr =    loc_expr _loc (Pexp_apply(loc_expr _loc (Pexp_ident(id_loc (Lident "ignore") _loc )),
@@ -828,32 +867,34 @@ let quote_expression _loc loc e name =
 											      (loc_pat _loc (Ppat_var(id_loc "quote_res" _loc ))) parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident(id_loc (Lident "quote_res") _loc ))))))))
 
 let quote_expression_2 loc e =
-  let e = localise loc e in
   parse_string' expression e
 
 let quote_type_2 loc e =
-  let e = localise loc e in
   parse_string' typexpr e
 
 let quote_pattern_2 loc e =
-  let e = localise loc e in
   parse_string' pattern e
 
 let quote_str_item_2 loc e =
-  let e = localise loc e in
   parse_string' structure_item e
 
 let quote_sig_item_2 loc e =
-  let e = localise loc e in
   parse_string' signature_item e
 
 let quote_structure_2 loc e =
-  let e = localise loc e in
   parse_string' structure e
  
 let quote_signature_2 loc e =
-  let e = localise loc e in
   parse_string' signature e 
+
+let quote_constructors_2 loc e =
+  parse_string' constr_decl_list e 
+
+let quote_fields_2 loc e =
+  parse_string' field_decl_list e 
+
+let quote_bindings_2 loc e =
+  parse_string' let_binding e 
 
 (****************************************************************************
  * Basic syntactic elements (identifiers and literals)                      *
@@ -885,12 +926,12 @@ let is_reserved_id w =
 let ident =
   parser
     id:RE(ident_re) -> (if is_reserved_id id then raise (Give_up (id^" is a keyword...")); id)
-  | CHR('$') STR("ident") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
+  | dol:CHR('$') - STR("ident") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e
 
 let capitalized_ident =
   parser
     id:RE(cident_re) -> id
-  | CHR('$') STR("uid") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
+  | dol:CHR('$') - STR("uid") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e
 
 let lowercase_ident =
   parser
@@ -906,7 +947,7 @@ let lowercase_ident =
 	     push_location id'
 	 with Exit -> ());
        if is_reserved_id id then raise (Give_up (id^" is a keyword...")); id
-  | CHR('$') STR("lid") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
+  | dol:CHR('$') - STR("lid") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e
 
 (* Prefix and infix symbols *)
 let reserved_symbols = ref
@@ -1046,28 +1087,28 @@ let natint_re = par_re int_pos_re ^ "n"
 let integer_literal =
   parser
     i:RE(int_pos_re) -> int_of_string i
-  | CHR('$') STR("int") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_int e
+  | dol:CHR('$') - STR("int") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_int (start_pos _loc_dol).Lexing.pos_cnum e
 
 let int32_lit =
   parser
     i:RE(int32_re)[groupe 1] -> Int32.of_string i
-  | CHR('$') STR("int32") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_int32 e
+  | dol:CHR('$') - STR("int32") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_int32 (start_pos _loc_dol).Lexing.pos_cnum e
 
 let int64_lit =
   parser
     i:RE(int64_re)[groupe 1] -> Int64.of_string i
-  | CHR('$') STR("int64") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_int64 e
+  | dol:CHR('$') - STR("int64") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_int64 (start_pos _loc_dol).Lexing.pos_cnum e
 
 let nat_int_lit =
   parser
     i:RE(natint_re)[groupe 1] -> Nativeint.of_string i
-  | CHR('$') STR("natint") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_natint e
+  | dol:CHR('$') - STR("natint") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_natint (start_pos _loc_dol).Lexing.pos_cnum e
 
 let bool_lit =
   parser
     false_kw -> "false"
   | true_kw -> "true"
-  | CHR('$') STR("bool") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> if push_pop_bool e then "true" else "false"
+  | dol:CHR('$') - STR("bool") CHR(':') e:(expression_lvl App) - CHR('$') -> if push_pop_bool (start_pos _loc_dol).Lexing.pos_cnum e then "true" else "false"
 
   let entry_points : (string *
             [ `Impl of Parsetree.structure_item list Decap.grammar

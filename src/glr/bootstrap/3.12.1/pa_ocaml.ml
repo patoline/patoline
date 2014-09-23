@@ -45,13 +45,18 @@ module Make(Initial:Extension) =
       Decap.alternatives'
         [Decap.apply (fun f  -> f)
            (Decap.regexp ~name:"float" float_re (fun groupe  -> groupe 0));
-        Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
+        Decap.fsequence
+          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "float" "float")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
                    (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
-                   (fun e  _  _  _  _  -> string_of_float (push_pop_float e)))))]
+                   (fun e  _  _  _  dol  ->
+                      let (_loc_dol,dol) = dol in
+                      string_of_float
+                        (push_pop_float (start_pos _loc_dol).Lexing.pos_cnum
+                           e)))))]
     let char_regular = "[^\\']"
     let string_regular = "[^\\\"]"
     let char_escaped = "[\\\\][\\\\\\\"\\'ntbrs ]"
@@ -111,13 +116,16 @@ module Make(Initial:Extension) =
               (Decap.fsequence (Decap.char '\'' '\'')
                  (Decap.sequence (one_char true) (Decap.char '\'' '\'')
                     (fun c  _  _  -> c))) no_blank);
-        Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
+        Decap.fsequence
+          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "char" "char")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
                    (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
-                   (fun e  _  _  _  _  -> push_pop_char e))))]
+                   (fun e  _  _  _  dol  ->
+                      let (_loc_dol,dol) = dol in
+                      push_pop_char (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let interspace = "[ \t]*"
     let string_literal =
       let char_list_to_string lc =
@@ -179,13 +187,16 @@ module Make(Initial:Extension) =
                                   (fun c  r  -> c :: r)]) in
                          Decap.apply (fun r  -> char_list_to_string r)
                            string_literal_suit)))) no_blank);
-        Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
+        Decap.fsequence
+          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "string" "string")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
                    (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
-                   (fun e  _  _  _  _  -> push_pop_string e))))]
+                   (fun e  _  _  _  dol  ->
+                      let (_loc_dol,dol) = dol in
+                      push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let quotation = declare_grammar "quotation"
     let _ =
       set_grammar quotation
@@ -767,7 +778,7 @@ module Make(Initial:Extension) =
                               let cp = id_loc cp _loc_cp in
                               loc_typ _loc (Ptyp_class (cp, (te :: tes), o))))))));
         Decap.fsequence_position
-          (Decap.ignore_next_blank (Decap.char '$' '$'))
+          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence
              (Decap.option None
                 (Decap.apply (fun x  -> Some x)
@@ -777,18 +788,23 @@ module Make(Initial:Extension) =
                       (fun t  _  -> t))))
              (Decap.sequence (Decap.ignore_next_blank (expression_lvl App))
                 (Decap.char '$' '$')
-                (fun e  _  t  _  __loc__start__buf  __loc__start__pos 
-                   __loc__end__buf  __loc__end__pos  ->
-                   let _loc =
-                     locate2 __loc__start__buf __loc__start__pos
-                       __loc__end__buf __loc__end__pos in
-                   match t with
-                   | None  -> push_pop_type e
-                   | Some str ->
-                       let l = push_pop_type_list e in
-                       (match str with
-                        | "tuple" -> loc_typ _loc (Ptyp_tuple l)
-                        | _ -> raise (Give_up "")))))]
+                (fun e  _  t  dol  ->
+                   let (_loc_dol,dol) = dol in
+                   fun __loc__start__buf  __loc__start__pos  __loc__end__buf 
+                     __loc__end__pos  ->
+                     let _loc =
+                       locate2 __loc__start__buf __loc__start__pos
+                         __loc__end__buf __loc__end__pos in
+                     match t with
+                     | None  ->
+                         push_pop_type (start_pos _loc_dol).Lexing.pos_cnum e
+                     | Some str ->
+                         let l =
+                           push_pop_type_list
+                             (start_pos _loc_dol).Lexing.pos_cnum e in
+                         (match str with
+                          | "tuple" -> loc_typ _loc (Ptyp_tuple l)
+                          | _ -> raise (Give_up "")))))]
     let typexpr_suit_aux:
       type_prio ->
         type_prio ->
@@ -985,7 +1001,6 @@ module Make(Initial:Extension) =
                      locate2 __loc__start__buf __loc__start__pos
                        __loc__end__buf __loc__end__pos in
                    label_declaration _loc (id_loc fn _loc_fn) m pte)))
-    let constr_decl_list = declare_grammar "constr_decl_list"
     let _ =
       set_grammar constr_decl_list
         (Decap.alternatives'
@@ -1001,12 +1016,21 @@ module Make(Initial:Extension) =
                                 constr_decl (fun _  cd  -> cd)))))
                     constr_decl_list
                     (fun cds  ls  cd  _  -> (cd :: cds) @ ls)));
-           Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
-             (Decap.fsequence (Decap.ignore_next_blank (expression_lvl App))
-                (Decap.sequence (Decap.char '$' '$') constr_decl_list
-                   (fun _  ls  e  _  -> (push_pop_constr_decl e) @ ls)));
+           Decap.fsequence
+             (Decap.option None
+                (Decap.apply (fun x  -> Some x) (Decap.string "|" "|")))
+             (Decap.fsequence
+                (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
+                (Decap.fsequence
+                   (Decap.ignore_next_blank (expression_lvl App))
+                   (Decap.sequence (Decap.char '$' '$') constr_decl_list
+                      (fun _  ls  e  dol  ->
+                         let (_loc_dol,dol) = dol in
+                         fun _  ->
+                           (push_pop_constr_decl
+                              (start_pos _loc_dol).Lexing.pos_cnum e)
+                             @ ls))));
            Decap.apply (fun _  -> []) (Decap.empty ())])
-    let field_decl_list = declare_grammar "field_decl_list"
     let _ =
       set_grammar field_decl_list
         (Decap.alternatives'
@@ -1021,10 +1045,19 @@ module Make(Initial:Extension) =
                     (Decap.option None
                        (Decap.apply (fun x  -> Some x) (Decap.string ";" ";")))
                     field_decl_list (fun _  ls  fds  fd  -> (fd :: fds) @ ls)));
-           Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
+           Decap.fsequence
+             (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
              (Decap.fsequence (Decap.ignore_next_blank (expression_lvl App))
-                (Decap.sequence (Decap.char '$' '$') field_decl_list
-                   (fun _  ls  e  _  -> (push_pop_field_decl e) @ ls)));
+                (Decap.fsequence (Decap.char '$' '$')
+                   (Decap.sequence
+                      (Decap.option None
+                         (Decap.apply (fun x  -> Some x)
+                            (Decap.string ";" ";"))) field_decl_list
+                      (fun _  ls  _  e  dol  ->
+                         let (_loc_dol,dol) = dol in
+                         (push_pop_field_decl
+                            (start_pos _loc_dol).Lexing.pos_cnum e)
+                           @ ls))));
            Decap.apply (fun _  -> []) (Decap.empty ())])
     let type_representation =
       Decap.alternatives'
@@ -1633,7 +1666,7 @@ module Make(Initial:Extension) =
                                  blank str))
                           with | Not_found  -> raise (Give_up ""));
                      Decap.fsequence_position
-                       (Decap.ignore_next_blank (Decap.char '$' '$'))
+                       (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
                        (Decap.fsequence
                           (Decap.option None
                              (Decap.apply (fun x  -> Some x)
@@ -1649,26 +1682,35 @@ module Make(Initial:Extension) =
                           (Decap.sequence
                              (Decap.ignore_next_blank (expression_lvl App))
                              (Decap.char '$' '$')
-                             (fun e  _  t  _  __loc__start__buf 
-                                __loc__start__pos  __loc__end__buf 
-                                __loc__end__pos  ->
-                                let _loc =
-                                  locate2 __loc__start__buf __loc__start__pos
-                                    __loc__end__buf __loc__end__pos in
-                                match t with
-                                | None  -> (AtomPat, (push_pop_pattern e))
-                                | Some str ->
-                                    let l = push_pop_pattern_list e in
-                                    (match str with
-                                     | "tuple" ->
-                                         (AtomPat,
-                                           (loc_pat _loc (Ppat_tuple l)))
-                                     | "array" ->
-                                         (AtomPat,
-                                           (loc_pat _loc (Ppat_array l)))
-                                     | "list" ->
-                                         (AtomPat, (ppat_list _loc l))
-                                     | _ -> raise (Give_up "")))))] in
+                             (fun e  _  t  dol  ->
+                                let (_loc_dol,dol) = dol in
+                                fun __loc__start__buf  __loc__start__pos 
+                                  __loc__end__buf  __loc__end__pos  ->
+                                  let _loc =
+                                    locate2 __loc__start__buf
+                                      __loc__start__pos __loc__end__buf
+                                      __loc__end__pos in
+                                  match t with
+                                  | None  ->
+                                      (AtomPat,
+                                        (push_pop_pattern
+                                           (start_pos _loc_dol).Lexing.pos_cnum
+                                           e))
+                                  | Some str ->
+                                      let l =
+                                        push_pop_pattern_list
+                                          (start_pos _loc_dol).Lexing.pos_cnum
+                                          e in
+                                      (match str with
+                                       | "tuple" ->
+                                           (AtomPat,
+                                             (loc_pat _loc (Ppat_tuple l)))
+                                       | "array" ->
+                                           (AtomPat,
+                                             (loc_pat _loc (Ppat_array l)))
+                                       | "list" ->
+                                           (AtomPat, (ppat_list _loc l))
+                                       | _ -> raise (Give_up "")))))] in
                    if lvl <= ConstrPat
                    then
                      (Decap.sequence_position tag_name
@@ -2196,28 +2238,42 @@ module Make(Initial:Extension) =
                                          ty)) in
                                 (value_binding ~attributes:a
                                    (merge2 _loc_vn _loc_e) pat e)
-                                  :: l)))))])
-    let match_cases =
-      memoize1
+                                  :: l)))));
+           Decap.fsequence
+             (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
+             (Decap.fsequence (Decap.string "bindings" "bindings")
+                (Decap.fsequence (Decap.char ':' ':')
+                   (Decap.fsequence
+                      (Decap.ignore_next_blank (expression_lvl App))
+                      (Decap.sequence (Decap.char '$' '$')
+                         (Decap.option []
+                            (Decap.sequence and_kw let_binding
+                               (fun _  l  -> l)))
+                         (fun _  l  e  _  _  dol  ->
+                            let (_loc_dol,dol) = dol in
+                            (push_pop_let_binding
+                               (start_pos _loc_dol).Lexing.pos_cnum e)
+                              @ l)))))])
+    let _ =
+      set_match_cases
         (fun lvl  ->
-           Decap.apply (fun l  -> l)
-             (Decap.option []
-                (Decap.fsequence
-                   (Decap.option None
-                      (Decap.apply (fun x  -> Some x) (Decap.string "|" "|")))
-                   (Decap.fsequence pattern
-                      (Decap.fsequence
-                         (Decap.option None
-                            (Decap.apply (fun x  -> Some x)
-                               (Decap.sequence when_kw expression
-                                  (fun _  e  -> e))))
-                         (Decap.fsequence (Decap.string "->" "->")
-                            (Decap.sequence (expression_lvl lvl)
+           Decap.alternatives'
+             [Decap.fsequence
+                (Decap.option None
+                   (Decap.apply (fun x  -> Some x) (Decap.char '|' '|')))
+                (Decap.fsequence pattern
+                   (Decap.fsequence
+                      (Decap.option None
+                         (Decap.apply (fun x  -> Some x)
+                            (Decap.sequence when_kw expression
+                               (fun _  e  -> e))))
+                      (Decap.fsequence (Decap.string "->" "->")
+                         (Decap.fsequence (expression_lvl lvl)
+                            (Decap.sequence
                                (Decap.apply List.rev
                                   (Decap.fixpoint []
                                      (Decap.apply (fun x  l  -> x :: l)
-                                        (Decap.fsequence
-                                           (Decap.string "|" "|")
+                                        (Decap.fsequence (Decap.char '|' '|')
                                            (Decap.fsequence pattern
                                               (Decap.fsequence
                                                  (Decap.option None
@@ -2231,8 +2287,27 @@ module Make(Initial:Extension) =
                                                     (expression_lvl lvl)
                                                     (fun _  e  w  pat  _  ->
                                                        (pat, e, w)))))))))
-                               (fun e  l  _  w  pat  _  ->
-                                  map_cases ((pat, e, w) :: l)))))))))
+                               (match_cases lvl)
+                               (fun l  ls  e  _  w  pat  _  ->
+                                  (map_cases ((pat, e, w) :: l)) @ ls))))));
+             Decap.fsequence
+               (Decap.option None
+                  (Decap.apply (fun x  -> Some x) (Decap.char '|' '|')))
+               (Decap.fsequence
+                  (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
+                  (Decap.fsequence (Decap.string "cases" "cases")
+                     (Decap.fsequence (Decap.char ':' ':')
+                        (Decap.fsequence
+                           (Decap.ignore_next_blank (expression_lvl App))
+                           (Decap.sequence (Decap.char '$' '$')
+                              (match_cases lvl)
+                              (fun _  ls  e  _  _  dol  ->
+                                 let (_loc_dol,dol) = dol in
+                                 fun _  ->
+                                   (push_pop_cases
+                                      (start_pos _loc_dol).Lexing.pos_cnum e)
+                                     @ ls))))));
+             Decap.apply (fun _  -> []) (Decap.empty ())])
     let type_coercion =
       Decap.alternatives'
         [Decap.fsequence (Decap.string ":" ":")
@@ -3121,13 +3196,15 @@ module Make(Initial:Extension) =
                                             (Decap.string "signature"
                                                "signature");
                                           Decap.apply
-                                            (fun _  -> "constr_decl_list")
-                                            (Decap.string "constr_decl_list"
-                                               "constr_decl_list");
+                                            (fun _  -> "constructors")
+                                            (Decap.string "constructors"
+                                               "constructors");
+                                          Decap.apply (fun _  -> "fields")
+                                            (Decap.string "fields" "fields");
                                           Decap.apply
-                                            (fun _  -> "field_decl_list")
-                                            (Decap.string "field_decl_list"
-                                               "field_decl_list")])
+                                            (fun _  -> "let_binding")
+                                            (Decap.string "bindings"
+                                               "bindings")])
                                        (Decap.fsequence
                                           (Decap.option None
                                              (Decap.apply (fun x  -> Some x)
@@ -3180,8 +3257,9 @@ module Make(Initial:Extension) =
                                                | Not_found  ->
                                                    raise (Give_up "")))));
                                   Decap.fsequence_position
-                                    (Decap.ignore_next_blank
-                                       (Decap.char '$' '$'))
+                                    (locate
+                                       (Decap.ignore_next_blank
+                                          (Decap.char '$' '$')))
                                     (Decap.fsequence
                                        (Decap.option None
                                           (Decap.apply (fun x  -> Some x)
@@ -3205,40 +3283,47 @@ module Make(Initial:Extension) =
                                           (Decap.ignore_next_blank
                                              (expression_lvl App))
                                           (Decap.char '$' '$')
-                                          (fun e  _  t  _  __loc__start__buf 
-                                             __loc__start__pos 
-                                             __loc__end__buf  __loc__end__pos
-                                              ->
-                                             let _loc =
-                                               locate2 __loc__start__buf
-                                                 __loc__start__pos
-                                                 __loc__end__buf
-                                                 __loc__end__pos in
-                                             match t with
-                                             | None  ->
-                                                 (Atom,
-                                                   (push_pop_expression e))
-                                             | Some str ->
-                                                 let l =
-                                                   push_pop_expression_list e in
-                                                 (match str with
-                                                  | "tuple" ->
-                                                      (Atom,
-                                                        (loc_expr _loc
-                                                           (Pexp_tuple l)))
-                                                  | "array" ->
-                                                      (Atom,
-                                                        (loc_expr _loc
-                                                           (Pexp_array l)))
-                                                  | "list" ->
-                                                      let l =
-                                                        List.map
-                                                          (fun x  ->
-                                                             (x, _loc)) l in
-                                                      (Atom,
-                                                        (loc_expr _loc
-                                                           (pexp_list _loc l).pexp_desc))
-                                                  | _ -> raise (Give_up "")))));
+                                          (fun e  _  t  dol  ->
+                                             let (_loc_dol,dol) = dol in
+                                             fun __loc__start__buf 
+                                               __loc__start__pos 
+                                               __loc__end__buf 
+                                               __loc__end__pos  ->
+                                               let _loc =
+                                                 locate2 __loc__start__buf
+                                                   __loc__start__pos
+                                                   __loc__end__buf
+                                                   __loc__end__pos in
+                                               match t with
+                                               | None  ->
+                                                   (Atom,
+                                                     (push_pop_expression
+                                                        (start_pos _loc_dol).Lexing.pos_cnum
+                                                        e))
+                                               | Some str ->
+                                                   let l =
+                                                     push_pop_expression_list
+                                                       (start_pos _loc_dol).Lexing.pos_cnum
+                                                       e in
+                                                   (match str with
+                                                    | "tuple" ->
+                                                        (Atom,
+                                                          (loc_expr _loc
+                                                             (Pexp_tuple l)))
+                                                    | "array" ->
+                                                        (Atom,
+                                                          (loc_expr _loc
+                                                             (Pexp_array l)))
+                                                    | "list" ->
+                                                        let l =
+                                                          List.map
+                                                            (fun x  ->
+                                                               (x, _loc)) l in
+                                                        (Atom,
+                                                          (loc_expr _loc
+                                                             (pexp_list _loc
+                                                                l).pexp_desc))
+                                                    | _ -> raise (Give_up "")))));
                                   Decap.iter
                                     (Decap.apply
                                        (fun p  ->
@@ -4229,13 +4314,17 @@ module Make(Initial:Extension) =
       set_grammar structure_item
         (Decap.alternatives'
            [Decap.apply (fun e  -> e) (alternatives extra_structure);
-           Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
+           Decap.fsequence
+             (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
              (Decap.fsequence (Decap.ignore_next_blank (expression_lvl App))
                 (Decap.sequence (Decap.char '$' '$')
                    (Decap.option None
                       (Decap.apply (fun x  -> Some x)
                          (Decap.string ";;" ";;")))
-                   (fun _  _  e  _  -> push_pop_structure e)));
+                   (fun _  _  e  dol  ->
+                      let (_loc_dol,dol) = dol in
+                      push_pop_structure (start_pos _loc_dol).Lexing.pos_cnum
+                        e)));
            Decap.sequence (locate structure_item_base)
              (Decap.option None
                 (Decap.apply (fun x  -> Some x) (Decap.string ";;" ";;")))
@@ -4388,9 +4477,13 @@ module Make(Initial:Extension) =
       set_grammar signature_item
         (Decap.alternatives'
            [Decap.apply (fun e  -> e) (alternatives extra_signature);
-           Decap.fsequence (Decap.ignore_next_blank (Decap.char '$' '$'))
+           Decap.fsequence
+             (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
              (Decap.sequence (Decap.ignore_next_blank (expression_lvl App))
-                (Decap.char '$' '$') (fun e  _  _  -> push_pop_signature e));
+                (Decap.char '$' '$')
+                (fun e  _  dol  ->
+                   let (_loc_dol,dol) = dol in
+                   push_pop_signature (start_pos _loc_dol).Lexing.pos_cnum e));
            Decap.sequence_position signature_item_base
              (Decap.option None
                 (Decap.apply (fun x  -> Some x) (Decap.string ";;" ";;")))

@@ -150,6 +150,15 @@ boot:
 	export BYTE=1 ;\
 	./pa_ocaml --ascii pa_main.ml > bootstrap/$(OCAMLVERSION)/pa_byt_main.ml
 
+examples/pa_test_ext.cmx: examples/pa_test_ext.ml pa_ocaml
+	$(OCAMLOPT) -pp ./pa_ocaml -c $<
+
+examples/pa_test_ext: decap.cmxa pa_ocaml_prelude.cmx examples/pa_test_ext.cmx pa_ocaml.cmx pa_compose.cmx pa_opt_main.cmx 
+	$(OCAMLOPT) $(COMPILER_INC)  -o $@ unix.cmxa str.cmxa $(COMPILER_LIBO) $^
+
+examples/bug: examples/bug.ml decap.cmxa
+	$(OCAMLOPT) -pp ./pa_ocaml str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
+
 examples/calc: examples/calc.cmx decap.cmxa
 	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
 
