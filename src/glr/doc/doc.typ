@@ -293,14 +293,13 @@ each terminal:
 The usual BNF modifiers for optionality (##?##), repetition zero or more
 times (##*##) and repetition one or more times (##+##) come in two versions.
 The ususal symbols (i.e. the ones that are not doubled) behave in the usual
-way, in the sense that once a parse tree has been found, no backtracking is
-done to explore the other possibilities. The symbols that are doubled (##??##,
-##*##, ##+##) lead to an exploration of every possible parse tree by relying
-on backtracking. We also have two kinds of alternative symbols: The usual
-##|## symbol stops backtracking when one alternative is successfully parsed.
-The alternative symbol ##|?## does a lot more backtracking and explores every
-possibility. Note that there should be no difference on grammars that are not
-ambiguous.
+way, in the sense that backtracking is used to explore every possible parse
+tree. The symbols that are doubled (##??##, ##*##, ##+##) backtrack less, and
+stop backtracking when one parse tree has been found. We also have two kinds
+of alternative symbols: The usual ##|## symbol stops backtracking when one
+alternative is successfully parsed. The alternative symbol ##|?## does a lot
+more backtracking and explores every possibility. Note that there should be
+no difference on grammars that are not ambiguous.
 
 Let us now give a first example of a parser, implementing a very simplistic
 calculator having as only operations addition and substraction. The BNF
@@ -380,7 +379,7 @@ the old blank function will be used too as expected before the next terminal.
 Here is the most classical example: a calculator, including variables.
 
 ### OCaml "calc_prio.ml"
-open Glr
+open Decap
 
 (* Two regexps + a blank function created from a regexp *)
 let float_re = {|[0-9]+\([.][0-9]+\)?\([eE][-+]?[0-9]+\)?|}
