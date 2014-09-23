@@ -296,10 +296,10 @@ The ususal symbols (i.e. the ones that are not doubled) behave in the usual
 way, in the sense that backtracking is used to explore every possible parse
 tree. The symbols that are doubled (##??##, ##*##, ##+##) backtrack less, and
 stop backtracking when one parse tree has been found. We also have two kinds
-of alternative symbols: The usual ##|## symbol stops backtracking when one
-alternative is successfully parsed. The alternative symbol ##|?## does a lot
-more backtracking and explores every possibility. Note that there should be
-no difference on grammars that are not ambiguous.
+of alternative symbols: The usual ##|## symbol backtracks and explores every
+alternative, while the alternative symbol ##|?## backtracks less, and only
+explores the alternative that parses the more input. Note that there should be
+no difference on non-ambiguous grammars.
 
 Let us now give a first example of a parser, implementing a very simplistic
 calculator having as only operations addition and substraction. The BNF
@@ -313,7 +313,7 @@ designates a regual expression matchin integers:
 
 ###
 
-This grammar is translated to ##pa_parser## syntax in a straight forward
+This grammar can be translated to ##pa_parser## syntax in a straight forward
 way. The following ##OCaml## program will parse and compute the result of
 any valid string it receives as a command-line argument.
 
@@ -345,12 +345,76 @@ let _ =
 
 (* TODO:
    - more explanations on the syntax of the first example
-   - declare_grammar
-   - grammar_family
    - ->> syntax
 *)
 
--- Changing the layout of blanks --
+-- Declaration of grammars and grammar families --
+
+Until now, we never wrote any recursive grammar and rather handled repetition
+using modifiers such as ##+## or ##*##. In order to define a recursive
+grammar, one should first declare it using the function ##declare_grammar##,
+which take as input a ##string##, which is to refer to the grammar in error
+messages.
+
+###
+
+declare_grammar : string -> 'a grammar
+
+###
+
+After the grammar has been declared, it can be use in the definition of any
+other grammar. The definition of the grammar should the be given by calling
+the function ##set_grammar##, which takes as first argument the grammar that
+was returned by the ##declare_grammar## function, and as second argument
+another grammar that will be take as its definition.
+
+###
+
+set_grammar : 'a grammar -> 'a grammar -> unit
+
+###
+
+As a first very simple example of recursive grammar, we can construct a
+parser that accepts the following the following BNF grammar, where ##<empty>##
+designates the empty input:
+
+###
+
+<aabb> ::= "a" <aabb> "b"
+         | <empty>
+
+###
+
+The following program takes its input from ##stdin##, and terminates if the
+contents of the input can be parsed by the grammar. In case of error, the
+program fails and prints an error message.
+
+###
+
+###
+### OCaml "aabb.ml"
+open Decap
+
+let aabb = declare_grammar "aabb"
+
+let _ = set_grammar aabb (
+  parser
+  | CHR('a') aabb CHR('b')
+  | EMPTY)
+
+let aabb_eof =
+  parser
+  | aabb EOF
+
+let _ =
+  let no_blank buf pos = (buf, pos) in
+  handle_exception (parse_channel aabb_eof no_blank) stdin
+###
+(* TODO:
+   - grammar_family
+*)
+
+-- Advanced use of blank functions --
 
 On important feature if that the blank function can be changed using the function:
 
