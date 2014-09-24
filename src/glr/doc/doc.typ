@@ -480,6 +480,10 @@ let _ =
   done with End_of_file -> ()
 ###
 
+(* TODO
+   - memoized grammars
+*)
+
 -- Dependent sequence --
 
 (* TODO:
@@ -517,8 +521,10 @@ let _ =
 On important feature if that the blank function can be changed using the function:
 
 ### OCaml
+
 change_layout : ?old_blank_before:bool -> ?new_blank_after:bool -> 
   'a grammar -> blank -> 'a grammar
+
 ###
 
 The grammar returned by ##change_layout parser blank## will only use
@@ -535,3 +541,53 @@ the first terminal inside the scope of the ##change_layout##.
 Similarly, ##new_blank_after## (##false## by default) will forces to use the
 newly provided blank function once at the end of the parsed input, and then
 the old blank function will be used too as expected before the next terminal.
+
+As an example, we provide the following program which parses a file containing
+text, and counts the number of paragraphs. A paragraph consists in a sequence
+of lines containing at least one non-blank character. A paragraph is ended by
+leaving a line empty.
+
+###
+
+###
+### OCaml "text.ml"
+open Decap
+
+let blank1 str pos =
+  let rec fn flag str pos =
+    let (c, str', pos') = Input.read str pos in
+    match c with
+    | ' ' | '\t'         -> fn flag str' pos'
+    | '\n' when not flag -> fn true str' pos'
+    | _                  -> (str, pos)
+  in fn false str pos
+
+let blank2 str pos =
+  let rec fn str pos =
+    let (c, str', pos') = Input.read str pos in
+    match c with
+    | ' ' | '\t' | '\n' -> fn str' pos'
+    | _                 -> (str, pos)
+  in fn str pos
+
+let word =
+  let word_re = "[^ \t\r\n]+" in
+  parser
+  | w:RE(word_re) -> w
+
+let paragraph =
+  change_layout (
+    parser
+    | ws:word+ -> ws
+  ) blank1
+
+let text =
+  parser
+  | ps:paragraph* EOF -> ps
+
+let _ =
+  let ps = handle_exception (parse_channel text blank2) stdin in
+  let nb = List.length ps in
+  Printf.printf "%i paragraphs read.\n" nb
+###
+
