@@ -918,13 +918,13 @@ let quote_expression _loc loc e name =
 											      (loc_pat _loc (Ppat_var(id_loc "quote_res" _loc ))) parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident(id_loc (Lident "quote_res") _loc ))))))))
 
 let quote_expression_2 loc e =
-  parse_string' expression e
+  loc_expr loc (parse_string' expression e).pexp_desc
 
 let quote_type_2 loc e =
-  parse_string' typexpr e
+  loc_typ loc (parse_string' typexpr e).ptyp_desc
 
 let quote_pattern_2 loc e =
-  parse_string' pattern e
+  loc_pat loc (parse_string' pattern e).ppat_desc
 
 let quote_str_item_2 loc e =
   parse_string' structure_item e
@@ -948,10 +948,10 @@ let quote_let_binding_2 loc e =
   parse_string' let_binding e 
 
 let quote_module_expr_2 loc e =
-  parse_string' module_expr e 
+  mexpr_loc loc (parse_string' module_expr e).pmod_desc
 
 let quote_module_type_2 loc e =
-  parse_string' module_type e 
+  mtyp_loc loc (parse_string' module_type e).pmty_desc
 
 let quote_cases_2 loc e =
   parse_string' (match_cases Top) e 

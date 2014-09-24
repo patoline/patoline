@@ -824,9 +824,11 @@ module Initial =
                               (loc_expr _loc
                                  (Pexp_ident
                                     (id_loc (Lident "quote_res") _loc))))))))))))
-    let quote_expression_2 loc e = parse_string' expression e
-    let quote_type_2 loc e = parse_string' typexpr e
-    let quote_pattern_2 loc e = parse_string' pattern e
+    let quote_expression_2 loc e =
+      loc_expr loc (parse_string' expression e).pexp_desc
+    let quote_type_2 loc e = loc_typ loc (parse_string' typexpr e).ptyp_desc
+    let quote_pattern_2 loc e =
+      loc_pat loc (parse_string' pattern e).ppat_desc
     let quote_str_item_2 loc e = parse_string' structure_item e
     let quote_sig_item_2 loc e = parse_string' signature_item e
     let quote_structure_2 loc e = parse_string' structure e
@@ -834,8 +836,10 @@ module Initial =
     let quote_constructors_2 loc e = parse_string' constr_decl_list e
     let quote_fields_2 loc e = parse_string' field_decl_list e
     let quote_let_binding_2 loc e = parse_string' let_binding e
-    let quote_module_expr_2 loc e = parse_string' module_expr e
-    let quote_module_type_2 loc e = parse_string' module_type e
+    let quote_module_expr_2 loc e =
+      mexpr_loc loc (parse_string' module_expr e).pmod_desc
+    let quote_module_type_2 loc e =
+      mtyp_loc loc (parse_string' module_type e).pmty_desc
     let quote_cases_2 loc e = parse_string' (match_cases Top) e
     let par_re s = "\\(" ^ (s ^ "\\)")
     let union_re l =

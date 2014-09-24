@@ -1146,8 +1146,7 @@ let _ = set_pattern_lvl (fun lvl ->
 let expression_lvls = [ Top; Let; Seq; Coerce; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
 
 let let_prio lvl = if !modern then lvl else Let
-let let_re = if !modern then "\\(let\\)\\|\\(val\\)\\b" else "let\\b"
-
+let let_re = "\\(let\\)\\|\\(val\\)\\b"
 
 type assoc = NoAssoc | Left | Right
 

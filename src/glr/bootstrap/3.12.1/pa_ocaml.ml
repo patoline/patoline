@@ -1923,7 +1923,7 @@ module Make(Initial:Extension) =
       Prefix;
       Atom]
     let let_prio lvl = if !modern then lvl else Let
-    let let_re = if !modern then "\\(let\\)\\|\\(val\\)\\b" else "let\\b"
+    let let_re = "\\(let\\)\\|\\(val\\)\\b"
     type assoc =  
       | NoAssoc
       | Left
