@@ -456,7 +456,7 @@ struct
 	 let _Item = "Item" in
          <:structure< module $uid:m1$ =
                      struct
-                       module $uid:m2$ = $uid : _Item $ ;;
+                       module $uid:m2$ = $uid : _Item$ ;;
                        let _ = $uid:m2$.do_begin_env () ;;
                        let _ = $uid:m2$.do_end_env ()
                      end>>))
@@ -673,7 +673,8 @@ struct
 	STR("<<") par:text_only STR(">>") -> Atom, par
       | STR("<$") mat:math_toplevel STR("$>") -> Atom, mat
 
-  let _ = reserved_symbols := "<<" :: "<$" :: !reserved_symbols
+  let _ = add_reserved_symb "<<"
+  let _ = add_reserved_symb "<$"
 
   let extra_expressions = patoline_quotations :: extra_expressions
 
