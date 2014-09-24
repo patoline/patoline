@@ -237,16 +237,26 @@ install: uninstall decap.mli decap.cmxa decap.cma
 uninstall:
 	- ocamlfind remove -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr
 	- rm -f $(DESTDIR)/$(BINDIR)/pa_ocaml
+
 clean:
 	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa 
 	- rm -f bootstrap/*/*.cm* bootstrap/*/*.o bootstrap/*/*.a
 	- cd examples; rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa calc calc_strict text text_opt test_merge
-	- cd html; rm -f *
+	- rm -rf html
+	- rm -rf doc/_patobuild/
 
 distclean: clean
 	- rm -f pa_ocaml pa_ocaml.byt
+	- rm -f doc/doc.pdf doc/*.ml
 
 doc: decap.mli charset.mli input.mli
+	mkdir -p html
 	ocamldoc -d html -html decap.mli
 	ocamldoc -d html -html charset.mli
 	ocamldoc -d html -html input.mli
+
+doc/doc.pdf: doc/doc.typ
+	patoline doc/doc.typ
+
+archive: doc/doc.pdf
+	tar  --transform 's,^,/decap/,' -cvf decap.tar *.ml *.mli Makefile all_boot.sh bootstrap/*/*.ml doc/*.ml doc/doc.pdf
