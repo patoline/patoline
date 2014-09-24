@@ -5,7 +5,7 @@ OCAMLOPT = $(FINDLIB) ocamlopt.opt $(CAMLFLAGS)
 BINDIR = /usr/local/bin
 LIBDIR = /$(shell ocamlc -where)/glr
 
-all: decap.cmxa decap.cma decap.cmi doc pa_ocaml
+all: decap.cmxa decap.cma decap.cmi ocamldoc pa_ocaml
 
 %.cmi: %.mli
 	$(OCAMLC) -c $< 
@@ -242,18 +242,16 @@ clean:
 	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa 
 	- rm -f bootstrap/*/*.cm* bootstrap/*/*.o bootstrap/*/*.a
 	- cd examples; rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa calc calc_strict text text_opt test_merge
-	- rm -rf html
+	- rm -rf www/ocamldoc
 	- rm -rf doc/_patobuild/
 
 distclean: clean
 	- rm -f pa_ocaml pa_ocaml.byt
 	- rm -f doc/doc.pdf doc/*.ml
 
-doc: decap.mli charset.mli input.mli
-	mkdir -p html
-	ocamldoc -d html -html decap.mli
-	ocamldoc -d html -html charset.mli
-	ocamldoc -d html -html input.mli
+ocamldoc: decap.mli charset.mli input.mli
+	mkdir -p www/ocamldoc
+	ocamldoc -d www/ocamldoc -html decap.mli charset.mli input.mli
 
 doc/doc.pdf: doc/doc.typ
 	patoline doc/doc.typ
