@@ -486,10 +486,28 @@ let _ =
 
 -- Dependent sequence --
 
-(* TODO:
-   - explanations
-*)
+It is sometimes necessary to build a parser, which parses input depending on
+the result of the parsing of previous input. For example, one could want to
+parse the representation of an integer ##n## followed by a whitespace, and
+then parse exactly ##n## characters. This kind of behavious can be achieved
+by using the ##dependent_sequence## combinator, which corresponds to the
+//bind// operation of the underlying monad.
 
+###
+
+dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
+
+###
+
+A specific syntax is provided for this combinator by the ##pa_parser## syntax
+extension: ##<left> "->>" <left>## (see the BNF specification of
+##pa_parser##). It is used in the following example, which test whether a word
+entered on ##stdin## belongs to the most famous example of a contextual
+grammar, which accepts for example the words ##""##, ##"abc"## or ##"aabbcc"##.
+
+###
+
+###
 ### OCaml "aabbcc.ml"
 open Decap
 
@@ -590,4 +608,3 @@ let _ =
   let nb = List.length ps in
   Printf.printf "%i paragraphs read.\n" nb
 ###
-
