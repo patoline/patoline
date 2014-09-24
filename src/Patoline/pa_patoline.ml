@@ -101,22 +101,22 @@ struct
 
   let wrapped_caml_structure = 
     parser
-    | CHR('(') l:structure CHR(')') -> l
+    | | CHR('(') l:structure CHR(')') -> l
 
   (* Parse a caml "expr" wrapped with parentheses *)
   let wrapped_caml_expr = 
     parser
-    | CHR('(') e:expression CHR(')') -> e
+    | | CHR('(') e:expression CHR(')') -> e
 
   (* Parse a list of caml "expr" *)
   let wrapped_caml_list =
     parser
-    | CHR('[') l:{e:expression l:{ CHR(';') e:expression }** CHR(';')?? -> e::l}??[[]] CHR(']') -> l
+    | | CHR('[') l:{e:expression l:{ CHR(';') e:expression }** CHR(';')?? -> e::l}??[[]] CHR(']') -> l
 
   (* Parse an array of caml "expr" *)
   let wrapped_caml_array =
     parser
-    | STR("[|") l:{e:expression l:{ CHR(';') e:expression }** CHR(';')?? -> e::l}??[[]] STR("|]") -> l
+    | | STR("[|") l:{e:expression l:{ CHR(';') e:expression }** CHR(';')?? -> e::l}??[[]] STR("|]") -> l
 
 (****************************************************************************
  * Words.                                                                   *
@@ -141,10 +141,10 @@ struct
 
   let character =
     parser
-    | c:RE(char_re) -> c
-    | s:RE(escaped_re) ->
+    | | c:RE(char_re) -> c
+    | | s:RE(escaped_re) ->
 	String.escaped (String.sub s 1 (String.length s - 1))
-    | c:char_alone -> String.make 1 c
+    | | c:char_alone -> String.make 1 c
 
   let special = parser
       s:RE(special_re) -> s
@@ -152,13 +152,13 @@ struct
   let word =
     change_layout (
 	parser
-        | cs:character++ ->
+        | | cs:character++ ->
              let w = String.concat "" cs in
              if String.length w >= 2 &&
 		  List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<";">>";"$>";]
              then raise (Give_up (w ^ "is not a word"));
              w
-	| c:special -> c
+	| | c:special -> c
       ) no_blank
 		  
   let rec rem_hyphen = function
@@ -311,7 +311,7 @@ struct
 
   let math_toplevel =
     parser
-    | STR("x") -> <:expr@_loc<Maths.noad (Maths.glyphs "x")>>
+    | | STR("x") -> <:expr@_loc<Maths.noad (Maths.glyphs "x")>>
 		    (* TODO *)
 
 (*************************************************************
@@ -341,9 +341,9 @@ struct
   let macro_argument =
     parser
       STR("{") l:(paragraph_basic_text TagSet.empty) STR("}") -> l
-    | e:wrapped_caml_expr  -> e
-    | e:wrapped_caml_array -> <:expr<$array:e$>>
-    | e:wrapped_caml_list  -> <:expr<$list:e$>>
+    | | e:wrapped_caml_expr  -> e
+    | | e:wrapped_caml_array -> <:expr<$array:e$>>
+    | | e:wrapped_caml_list  -> <:expr<$list:e$>>
 
   let lident = "[_a-z][_a-zA-Z0-9']*"
 
@@ -359,10 +359,10 @@ struct
 
   let macro =
     parser
-    | m:macro_name args:macro_argument** ->
+    | | m:macro_name args:macro_argument** ->
 			(let fn = fun acc r -> <:expr@_loc_args<$acc$ $r$>> in
 			 List.fold_left fn <:expr@_loc_m<$lid:m$>> args)
-    | m:verbatim_macro -> m
+    | | m:verbatim_macro -> m
 
 (****************************)
 
@@ -370,38 +370,38 @@ struct
     parser
       m:macro -> m
 		   
-    | STR("//") - p:(paragraph_basic_text (addTag Italic tags)) - STR("//") when allowed Italic tags ->
+    | | STR("//") - p:(paragraph_basic_text (addTag Italic tags)) - STR("//") when allowed Italic tags ->
          <:expr@_loc_p<toggleItalic $p$>>
-    | STR("**") - p:(paragraph_basic_text (addTag Bold tags)) - STR("**") when allowed Bold tags ->
+    | | STR("**") - p:(paragraph_basic_text (addTag Bold tags)) - STR("**") when allowed Bold tags ->
          <:expr@_loc_p<bold $p$>>
-    | STR("||") - p:(paragraph_basic_text (addTag SmallCap tags)) - STR("||") when allowed SmallCap tags ->
+    | | STR("||") - p:(paragraph_basic_text (addTag SmallCap tags)) - STR("||") when allowed SmallCap tags ->
          <:expr@_loc_p<sc $p$>>
-(*    | STR("__") - p:(paragraph_basic_text ("__"::tags)) - STR("__") when not (List.mem "__" tags) ->
+(*    | | STR("__") - p:(paragraph_basic_text ("__"::tags)) - STR("__") when not (List.mem "__" tags) ->
          <:expr@_loc_p<underline $p$>>
-    | STR("--") - p:(paragraph_basic_text ("--"::tags)) - STR("--") when not (List.mem "--" tags) ->
+    | | STR("--") - p:(paragraph_basic_text ("--"::tags)) - STR("--") when not (List.mem "--" tags) ->
          <:expr@_loc_p<strike $p$>>*)
 
-    | v:verbatim_bquote -> <:expr@_loc_v<$v$>>
-    | v:verbatim_sharp  -> <:expr@_loc_v<$v$>>
+    | | v:verbatim_bquote -> <:expr@_loc_v<$v$>>
+    | | v:verbatim_sharp  -> <:expr@_loc_v<$v$>>
 
-    | STR("(") p:(paragraph_basic_text tags) STR(")") ->
+    | | STR("(") p:(paragraph_basic_text tags) STR(")") ->
          <:expr@_loc_p<tT $string:"("$ :: $p$ @ [tT $string:")"$]>>
 
-    | STR("\"") p:(paragraph_basic_text (addTag Quote tags)) STR("\"") when allowed Quote tags ->
+    | | STR("\"") p:(paragraph_basic_text (addTag Quote tags)) STR("\"") when allowed Quote tags ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
          <:expr@_loc_p<tT($string:opening$) :: $p$ @ [tT($string:closing$)]>>)
 
-    | STR("$") m:math_toplevel STR("$") ->
+    | | STR("$") m:math_toplevel STR("$") ->
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         [Maths.Ordinary $m$])]>>
-    | STR("[$") m:math_toplevel STR("$]") ->
+    | | STR("[$") m:math_toplevel STR("$]") ->
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle [Maths.Ordinary $m$]))]>>
 
-    | l:word -> <:expr@_loc_l<[tT $string:l$]>>
+    | | l:word -> <:expr@_loc_l<[tT $string:l$]>>
 
 
   let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
@@ -448,9 +448,9 @@ struct
 
   let paragraph_elt =
     parser
-    | verb:verbatim_environment -> (fun _ -> verb)
-    | STR("\\Caml") s:wrapped_caml_structure -> (fun _ -> s)
-    | STR("\\item") -> (fun _ ->
+    | | verb:verbatim_environment -> (fun _ -> verb)
+    | | STR("\\Caml") s:wrapped_caml_structure -> (fun _ -> s)
+    | | STR("\\item") -> (fun _ ->
         (let m1 = freshUid () in
          let m2 = freshUid () in
 	 let _Item = "Item" in
@@ -460,7 +460,7 @@ struct
                        let _ = $uid:m2$.do_begin_env () ;;
                        let _ = $uid:m2$.do_end_env ()
                      end>>))
-    | STR("\\begin{") idb:RE(lident) STR("}")
+    | | STR("\\begin{") idb:RE(lident) STR("}")
        ps:(change_layout paragraphs blank2)
        STR("\\end{") ide:RE(lident) STR("}") ->
          (fun indent_first ->
@@ -476,7 +476,7 @@ struct
                          $(ps indent_first)$ ;;
                          let _ = $uid:m2$ . do_end_env ()
                         end>>)
-    | STR("$$") m:math_toplevel STR("$$") ->
+    | | STR("$$") m:math_toplevel STR("$$") ->
          (fun _ ->
            <:structure<let _ = newPar D.structure
                         ~environment:(fun x -> {x with par_indent = []})
@@ -484,7 +484,7 @@ struct
                         [bB (fun env0 -> Maths.kdraw
                           [ { env0 with mathStyle = Mathematical.Display } ]
                           [Maths.Ordinary $m$])];;>>)
-    | l:paragraph_basic_text -> l
+    | | l:paragraph_basic_text -> l
 
   let _ = set_grammar paragraph (
 			change_layout (
@@ -524,7 +524,7 @@ struct
                      $(txt false (lvl+1))$;;
                      let _ = go_up D.structure >>)
 	  
-    | op:RE(section) title:text_only cl:RE(section) txt:text ->
+    | | op:RE(section) title:text_only cl:RE(section) txt:text ->
 	(fun _ lvl ->
 	 if String.length op <> String.length cl then
      raise (Give_up "Non-matching absolute section marker");
@@ -542,7 +542,7 @@ struct
          true, lvl, <:structure< $!res$ let _ = ($numbered$) D.structure $title$;;
                      $(txt false l)$>>)
 	  
-    | ps:paragraphs -> 
+    | | ps:paragraphs -> 
 	 (fun indent lvl -> indent, lvl, ps indent)
 
   let _ = set_grammar text (
