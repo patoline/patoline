@@ -410,9 +410,82 @@ let _ =
   let no_blank buf pos = (buf, pos) in
   handle_exception (parse_channel aabb_eof no_blank) stdin
 ###
-(* TODO:
-   - grammar_family
-*)
+###
+
+###
+
+One often needs to define a family of mutually recursive grammars depending on
+a parameter. This can be used, for example, to parse a grammar of expressions
+havind different precedence levels. In order to define a grammar family, one
+first needs to call the function ##grammar_family##, which takes as argument
+an optional function for printing the argument type into a string, and a name
+for the grammar. These two arguments are used to provide better error
+messages. The function then returns a couple of a family of grammars (in the
+form of a function from the parameter type ##'a## to grammars returing a
+value of type ##'b##), and a function to be called to define the grammar
+family in the end (it more or less plays the same role as the function
+##set_grammar## for grammars declared using ##declare_grammar##).
+
+###
+
+grammar_family : ?param_to_string:('a -> string) -> string
+                 -> ('a -> 'b grammar) * (('a -> 'b grammar) -> unit)
+
+###
+
+We give bellow the example of a calculator with addition, substraction,
+multiplication and division. The ususal priority of operation is respected
+and implemented using a ##grammar_familly##.
+
+###
+
+###
+### OCaml "calc_prio.ml"
+open Decap
+
+type calc_prio = Sum | Prod | Pow | Atom
+let expr, set_expr = grammar_family "expr" 
+
+let float_num =
+  let float_re = "[0-9]+\([.][0-9]+\)?\([eE][-+]?[0-9]+\)?" in
+  parser
+  | f:RE(float_re) -> float_of_string f
+
+let prod_sym =
+  parser
+  | CHR('*') -> ( *. )
+  | CHR('/') -> ( /. )
+
+let sum_sym =
+  parser
+  | CHR('+') -> ( +. )
+  | CHR('-') -> ( -. )
+
+(* we define the main parser, parametrised by priority *)
+let _ = set_expr (fun prio ->
+  parser
+  | f:RE(float_re) when prio = Atom -> float_of_string f
+  | CHR('(') e:(expr Sum) CHR(')') when prio = Atom -> e
+  | CHR('-') e:(expr Pow) when prio = Pow -> -. e
+  | CHR('+') e:(expr Pow) when prio = Pow -> e
+  | e:(expr Atom) e':{STR("**") e':(expr Pow)}? when prio = Pow ->
+         (match e' with None -> e | Some e' -> e ** e')
+  | e:(expr Pow) l:{fn:products e':(expr Pow)}* when prio = Prod ->
+      List.fold_left ( fun acc (fn, e') -> fn acc e') e l
+  | e:(expr Prod) l:{fn:sums e':(expr Prod)}* when prio = Sum ->
+      List.fold_left ( fun acc (fn, e') -> fn acc e') e l)
+
+(* The main loop *)
+let _ =
+  let blank = blank_regexp (Str.regexp "[ \t]*") in
+  try while true do (* we use the Glr function provided to handle exception *)
+    handle_exception (fun () ->
+      Printf.printf ">> %!";
+      (* we call the parser with the choosen blank function *)
+      let x = parse_string (expr Sum) blank (input_line stdin) in
+      Printf.printf "=> %f\n%!" x) ()
+  done with End_of_file -> ()
+###
 
 -- Advanced use of blank functions --
 
@@ -438,6 +511,7 @@ Similarly, ##new_blank_after## (##false## by default) will forces to use the
 newly provided blank function once at the end of the parsed input, and then
 the old blank function will be used too as expected before the next terminal.
 
+(*
 -- Example of a calculator --
 
 Here is the most classical example: a calculator, including variables.
@@ -497,3 +571,4 @@ let _ =
   done with End_of_file -> ()
 ###
 
+*)
