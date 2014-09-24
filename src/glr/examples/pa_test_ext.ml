@@ -11,13 +11,18 @@ struct
 
   let test = parser
   | STR("let") STR("try") b:let_binding STR("in") e:(expr) STR("with") c:(match_cases Top) ->
+(* missing quotation in pattern yet *)
+#ifversion >= 4.02
+      let c = Parsetree.(List.map (fun ({ pc_rhs = e; _ } as b) ->  { b with pc_rhs = <:expr< fun () -> $e$ >> }) c) in
+#else
       let c = List.map (fun (pat, e) -> (pat, <:expr< fun () -> $e$ >>)) c in
+#endif
       (Let, <:expr<(try let $bindings:b$ in fun () -> $e$ with $cases:c$) ()>>)
   | STR("do") e:(expr) STR("where") r:STR("rec")? b:let_binding ->
       (Let, if r<>None then <:expr<let rec $bindings:b$ in $e$>> else <:expr<let $bindings:b$ in $e$>>)
 								     
   let extra_expressions = test::extra_expressions
-  let _ = reserved_ident := "where"::!reserved_ident
+  let _ = add_reserved_id "where"
 
 end
 

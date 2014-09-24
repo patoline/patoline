@@ -384,6 +384,8 @@ module Initial =
       declare_grammar "field_decl_list"
     let ((match_cases : expression_lvl -> case list grammar),set_match_cases)
       = grammar_family "match_cases"
+    let module_expr: module_expr grammar = declare_grammar "module_expr"
+    let module_type: module_type grammar = declare_grammar "module_type"
     type quote_env1 = (int* string* Parsetree.expression) list ref 
     type quote_env2_data =  
       | Expression of Parsetree.expression
@@ -397,6 +399,8 @@ module Initial =
       | Constr_decl of constructor_declaration list
       | Field_decl of label_declaration list
       | Let_binding of value_binding list
+      | Module_expr of module_expr
+      | Module_type of module_type
       | Cases of case list
       | String of string
       | Int of int
@@ -427,6 +431,40 @@ module Initial =
       match Stack.top quote_stack with
       | First env -> assert false
       | Second env -> env := ((pos, (Expression e)) :: (!env))
+    let push_pop_module_expr pos e =
+      try
+        match Stack.top quote_stack with
+        | First env ->
+            (env := ((pos, "push_module_expr", e) :: (!env));
+             mexpr_loc Location.none
+               (Pmod_ident (id_loc (Lident "") Location.none)))
+        | Second env ->
+            (match List.assoc pos (!env) with
+             | Module_expr e -> e
+             | _ -> assert false)
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      | Not_found  -> assert false
+    let push_module_expr pos e =
+      match Stack.top quote_stack with
+      | First env -> assert false
+      | Second env -> env := ((pos, (Module_expr e)) :: (!env))
+    let push_pop_module_type pos e =
+      try
+        match Stack.top quote_stack with
+        | First env ->
+            (env := ((pos, "push_module_type", e) :: (!env));
+             mtyp_loc Location.none
+               (Pmty_ident (id_loc (Lident "") Location.none)))
+        | Second env ->
+            (match List.assoc pos (!env) with
+             | Module_type e -> e
+             | _ -> assert false)
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      | Not_found  -> assert false
+    let push_module_type pos e =
+      match Stack.top quote_stack with
+      | First env -> assert false
+      | Second env -> env := ((pos, (Module_type e)) :: (!env))
     let push_pop_expression_list pos e =
       try
         match Stack.top quote_stack with
@@ -716,11 +754,13 @@ module Initial =
          | "sig_item" -> ignore (parse_string' signature_item e)
          | "structure" -> ignore (parse_string' structure e)
          | "signature" -> ignore (parse_string' signature e)
-         | "contructors" -> ignore (parse_string' constr_decl_list e)
+         | "constructors" -> ignore (parse_string' constr_decl_list e)
          | "fields" -> ignore (parse_string' field_decl_list e)
          | "cases" -> ignore (parse_string' (match_cases Top) e)
          | "let_binding" -> ignore (parse_string' let_binding e)
-         | _ -> assert false in
+         | "module_expr" -> ignore (parse_string' module_expr e)
+         | "module_type" -> ignore (parse_string' module_type e)
+         | _ -> (Printf.eprintf "unexpected %s\n%!" name; assert false) in
        let env =
          match Stack.pop quote_stack with
          | First e -> e
@@ -824,15 +864,32 @@ module Initial =
     let quote_signature_2 loc e = parse_string' signature e
     let quote_constructors_2 loc e = parse_string' constr_decl_list e
     let quote_fields_2 loc e = parse_string' field_decl_list e
-    let quote_bindings_2 loc e = parse_string' let_binding e
+    let quote_let_binding_2 loc e = parse_string' let_binding e
+    let quote_module_expr_2 loc e = parse_string' module_expr e
+    let quote_module_type_2 loc e = parse_string' module_type e
+    let quote_cases_2 loc e = parse_string' (match_cases Top) e
     let par_re s = "\\(" ^ (s ^ "\\)")
     let union_re l =
       let l = List.map (fun s  -> par_re s) l in String.concat "\\|" l
     let lident_re = "\\([a-z][a-zA-Z0-9_']*\\)\\|\\([_][a-zA-Z0-9_']+\\)"
     let cident_re = "[A-Z][a-zA-Z0-9_']*"
     let ident_re = "[A-Za-z_][a-zA-Z0-9_']*"
-    let reserved_ident =
-      ref
+    let make_reserved l =
+      let reserved = ref (List.sort (fun s  s'  -> - (compare s s')) l) in
+      let re_from_list l =
+        Str.regexp
+          (String.concat "\\|"
+             (List.map (fun s  -> "\\(" ^ ((Str.quote s) ^ "\\)")) l)) in
+      let re = ref (re_from_list (!reserved)) in
+      ((fun s  ->
+          (Str.string_match (!re) s 0) &&
+            ((Str.match_end ()) = (String.length s))),
+        (fun s  ->
+           reserved :=
+             (List.sort (fun s  s'  -> - (compare s s')) (s :: (!reserved)));
+           re := (re_from_list (!reserved))))
+    let (is_reserved_id,add_reserved_id) =
+      make_reserved
         ["and";
         "as";
         "assert";
@@ -849,9 +906,9 @@ module Initial =
         "external";
         "false";
         "for";
-        "fun";
         "function";
         "functor";
+        "fun";
         "if";
         "in";
         "include";
@@ -888,9 +945,8 @@ module Initial =
         "when";
         "while";
         "with"]
-    let is_reserved_id w = List.mem w (!reserved_ident)
     let ident =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply
            (fun id  ->
               if is_reserved_id id
@@ -908,7 +964,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let capitalized_ident =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun id  -> id)
            (Decap.regexp ~name:"cident" cident_re (fun groupe  -> groupe 0));
         Decap.fsequence
@@ -922,7 +978,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let lowercase_ident =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply
            (fun id  ->
               let len = String.length id in
@@ -952,8 +1008,8 @@ module Initial =
                    (fun e  _  _  _  dol  ->
                       let (_loc_dol,dol) = dol in
                       push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e))))]
-    let reserved_symbols =
-      ref
+    let (is_reserved_symb,add_reserved_symb) =
+      make_reserved
         ["#";
         "'";
         "(";
@@ -983,7 +1039,6 @@ module Initial =
         "|]";
         "}";
         "~"]
-    let is_reserved_symb s = List.mem s (!reserved_symbols)
     let infix_symb_re =
       union_re
         ["[=<>@^|&+*/$%-][!$%&*+./:<=>?@^|~-]*";
@@ -1042,28 +1097,28 @@ module Initial =
             | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) false s
     let mutable_kw = key_word "mutable"
     let mutable_flag =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun _  -> Mutable) mutable_kw;
         Decap.apply (fun _  -> Immutable) (Decap.empty ())]
     let private_kw = key_word "private"
     let private_flag =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun _  -> Private) private_kw;
         Decap.apply (fun _  -> Public) (Decap.empty ())]
     let virtual_kw = key_word "virtual"
     let virtual_flag =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun _  -> Virtual) virtual_kw;
         Decap.apply (fun _  -> Concrete) (Decap.empty ())]
     let rec_kw = key_word "rec"
     let rec_flag =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun _  -> Recursive) rec_kw;
         Decap.apply (fun _  -> Nonrecursive) (Decap.empty ())]
     let to_kw = key_word "to"
     let downto_kw = key_word "downto"
     let downto_flag =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun _  -> Upto) to_kw;
         Decap.apply (fun _  -> Downto) downto_kw]
     let method_kw = key_word "method"
@@ -1119,7 +1174,7 @@ module Initial =
     let int64_re = (par_re int_pos_re) ^ "L"
     let natint_re = (par_re int_pos_re) ^ "n"
     let integer_literal =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun i  -> int_of_string i)
            (Decap.regexp ~name:"int_pos" int_pos_re (fun groupe  -> groupe 0));
         Decap.fsequence
@@ -1133,7 +1188,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_int (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let int32_lit =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun i  -> Int32.of_string i)
            (Decap.regexp ~name:"int32" int32_re (fun groupe  -> groupe 1));
         Decap.fsequence
@@ -1147,7 +1202,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_int32 (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let int64_lit =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun i  -> Int64.of_string i)
            (Decap.regexp ~name:"int64" int64_re (fun groupe  -> groupe 1));
         Decap.fsequence
@@ -1161,7 +1216,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_int64 (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let nat_int_lit =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun i  -> Nativeint.of_string i)
            (Decap.regexp ~name:"natint" natint_re (fun groupe  -> groupe 1));
         Decap.fsequence
@@ -1175,7 +1230,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_natint (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let bool_lit =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun _  -> "false") false_kw;
         Decap.apply (fun _  -> "true") true_kw;
         Decap.fsequence

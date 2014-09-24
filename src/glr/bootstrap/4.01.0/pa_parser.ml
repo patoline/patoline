@@ -181,7 +181,7 @@ module Ext(In:Extension) =
     let glr_rule = Decap.declare_grammar "glr_rule"
     let location_name_re = "_loc\\([a-zA-Z0-9_']*\\)"
     let glr_parser =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.fsequence_position
            (Decap.string "parser_locate" "parser_locate")
            (Decap.sequence (expression_lvl (next_exp App))
@@ -222,7 +222,7 @@ module Ext(In:Extension) =
                  (Decap.sequence expression (Decap.char ']' ']')
                     (fun e  -> fun _  -> fun _  -> e)))))
     let glr_option =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.fsequence (Decap.char '*' '*')
            (Decap.sequence
               (Decap.option None
@@ -246,7 +246,7 @@ module Ext(In:Extension) =
                 fun e  -> fun _  -> `Option ((strict <> None), e)));
         Decap.apply (fun _  -> `Once) (Decap.empty ())]
     let glr_sequence =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.fsequence (Decap.char '{' '{')
            (Decap.sequence glr_rules (Decap.char '}' '}')
               (fun r  -> fun _  -> fun _  -> r));
@@ -382,7 +382,7 @@ module Ext(In:Extension) =
                                   [e; exp_fun _loc "groupe" opt]));
         Decap.apply (fun e  -> e) (expression_lvl Atom)]
     let glr_ident =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.sequence (pattern_lvl ConstrPat) (Decap.char ':' ':')
            (fun p  ->
               fun _  ->
@@ -412,7 +412,7 @@ module Ext(In:Extension) =
         (Decap.apply List.rev
            (Decap.fixpoint []
               (Decap.apply (fun x  -> fun l  -> x :: l)
-                 (Decap.alternatives'
+                 (Decap.alternatives
                     [Decap.fsequence glr_ident
                        (Decap.sequence glr_sequence glr_option
                           (fun s  ->
@@ -422,7 +422,7 @@ module Ext(In:Extension) =
     let glr_let = Decap.declare_grammar "glr_let"
     let _ =
       Decap.set_grammar glr_let
-        (Decap.alternatives'
+        (Decap.alternatives
            [Decap.fsequence_position (Decap.string "let" "let")
               (Decap.fsequence rec_flag
                  (Decap.fsequence let_binding
@@ -445,12 +445,12 @@ module Ext(In:Extension) =
                                               (Pexp_let (r, lbs, (l x)))))));
            Decap.apply (fun _  -> fun x  -> x) (Decap.empty ())])
     let glr_cond =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.sequence (Decap.string "when" "when") expression
            (fun _  -> fun e  -> Some e);
         Decap.apply (fun _  -> None) (Decap.empty ())]
     let glr_action =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.sequence (Decap.string "->>" "->>") glr_rule
            (fun _  -> fun (def,cond,r)  -> DepSeq (def, cond, r));
         Decap.sequence (Decap.string "->" "->") expression
@@ -600,10 +600,7 @@ module Ext(In:Extension) =
               (Decap.fixpoint []
                  (Decap.apply (fun x  -> fun l  -> x :: l)
                     (Decap.fsequence (Decap.char '|' '|')
-                       (Decap.sequence
-                          (Decap.option None
-                             (Decap.apply (fun x  -> Some x)
-                                (Decap.char '|' '|'))) glr_rule
+                       (Decap.sequence (Decap.char '|' '|') glr_rule
                           (fun _  -> fun r  -> fun _  -> r))))))
            (fun r  ->
               fun rs  ->

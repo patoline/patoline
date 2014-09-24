@@ -1544,9 +1544,6 @@ let class_definition =
   parser
   | cb:class_binding cbs:{and_kw cb:class_binding}* -> (cb::cbs)
 
-let module_expr = declare_grammar "module_expr"
-let module_type = declare_grammar "module_type"
-
 let pexp_list _loc ?loc_cl l =
   if l = [] then
     loc_expr _loc (pexp_construct(id_loc (Lident "[]") _loc, None))
@@ -1649,8 +1646,12 @@ let expression_base = memoize1 (fun lvl ->
  		   | STR("structure") -> "structure" | STR("signature") -> "signature"
 		   | STR("constructors") -> "constructors" 
 		   | STR("fields") -> "fields"
-		   | STR("bindings") -> "let_binding" }
-       loc:{CHR('@') e:(expression_lvl (next_exp App)) }? CHR('<') q:quotation ->
+		   | STR("bindings") -> "let_binding"
+		   | STR("cases") -> "cases"
+		   | STR("module") -> "module_expr"
+		   | STR("module") STR("type") -> "module_type"
+		   }
+       loc:{CHR('@') e:(expression_lvl App) }? CHR('<') q:quotation ->
        if loc = None then push_location "";
        (Atom, quote_expression _loc_q loc q name)
   | CHR('$') - c:capitalized_ident -> 
@@ -1814,7 +1815,8 @@ let module_expr_base =
 #endif
       in
       mexpr_loc _loc e
-
+  | dol:CHR('$') - e:(expression_lvl App) - CHR('$') -> push_pop_module_expr (start_pos _loc_dol).Lexing.pos_cnum e
+		     
 let _ = set_grammar module_expr (
   parser
     m:module_expr_base l:{STR("(") m:module_expr STR(")") -> (_loc, m)}* ->
@@ -1836,6 +1838,7 @@ let module_type_base =
      STR("->") me:module_type -> mtyp_loc _loc (Pmty_functor(id_loc mn _loc_mn, mt, me))
   | STR("(") mt:module_type STR(")") -> mt
   | module_kw type_kw of_kw me:module_expr -> mtyp_loc _loc (Pmty_typeof me)
+  | dol:CHR('$') - e:(expression_lvl App) - CHR('$') -> push_pop_module_type (start_pos _loc_dol).Lexing.pos_cnum e
 
 let mod_constraint = 
   parser

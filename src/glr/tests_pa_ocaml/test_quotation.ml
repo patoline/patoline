@@ -14,3 +14,15 @@ let j a b c d e f g h = <:expr<$bool:a$, $int:b$, $int32:c$, $int64:d$, $natint:
 let k a b c1 c2 = <:structure<type ('$ident:a$) $lid:b$ = $uid:c1$ | $uid:c2$ of '$ident:a$>>
 
 let l a b = <:type<[ `$ident:a$ | `$ident:b$ ]>> 
+
+let fc x = <:constructors< $x$ >>
+
+let ff x = <:fields< $x$ >>
+
+let fb x = <:bindings< $bindings:x$ >>
+
+let fc x = <:cases< $cases:x$ >>
+
+let fm x = <:module< $x$ >>
+
+let ft x = <:module type< $x$ >>

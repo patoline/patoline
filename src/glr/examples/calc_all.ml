@@ -28,32 +28,29 @@ let arith_prod =
       -> f a
 
 let _ = set_grammar arith_sum
-  parser*
+  parser
     a:arith_prod
     f:{op:RE"[+]\\|-" b:arith_prod
            -> fun f x -> if op = "+" then f x +. b else f x -. b}*[fun x -> x]
       -> f a
 
+let main = parser* s:arith_sum -> s
+
 let _ =
   if Unix.((fstat (descr_of_in_channel Pervasives.stdin)).st_kind = S_REG)
-  then
-      try
-	let x = parse_channel arith_sum blank stdin in
+  then handle_exception (fun () ->
+	let x = parse_channel main blank stdin in
 	match x with
 	  [x] -> Printf.printf "=> %f\n" x
-	| _ -> Printf.printf "%d parse trees\n" (List.length x)
-      with
-	Parse_error (fname,l,n,msg) -> Printf.fprintf stderr "%s: Parse error %d:%d, '%s' expected\n%!" fname l n (String.concat "|" msg)
+	| _ -> Printf.printf "%d parse trees\n" (List.length x)) ()
   else
     try
       while true do
-	try
+	handle_exception (fun () ->
 	  Printf.printf ">> %!";
-	  let x = parse_string arith_sum blank (input_line stdin) in
+	  let x = parse_string main blank (input_line stdin) in
 	  match x with
 	    [x] -> Printf.printf "=> %f\n" x
-	  | _ -> Printf.printf "%d parse trees\n" (List.length x)
-	with
-	  Parse_error(fname,l,n,msg) -> Printf.fprintf stderr "Parse error after char %d, '%s' expected\n%!" n (String.concat "|" msg)
+	  | _ -> Printf.printf "%d parse trees\n" (List.length x)) ()
       done
   with End_of_file -> ()

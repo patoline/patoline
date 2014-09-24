@@ -11,17 +11,15 @@ let rec read (lazy b as b0) i =
   if b.is_empty then ('\255', b0, 0) else
   match compare i b.length with
   | -1 -> b.contents.[i], b0, i+1
-  | 0  -> '\n', b.next, 0
-  (*| 0  -> let n = b.next in
-          ((if (Lazy.force n).is_empty then '\255' else '\n'), n, 0)*)
+  | 0  -> let n = b.next in
+          if (Lazy.force n).is_empty then ('\255',b0,i) else ('\n', n, 0)
   | _  -> read b.next (b.length - i - 1)
 
 let rec get (lazy b) i =
   if b.is_empty then '\255' else
   match compare i b.length with
   | -1 -> b.contents.[i]
-  | 0  -> '\n'
-  (*| 0  -> if (Lazy.force b.next).is_empty then '\255' else '\n'*)
+  | 0  -> if (Lazy.force b.next).is_empty then '\255' else '\n'
   | _  -> get b.next (b.length - i - 1)
 
 let empty_buffer fn lnum bol =

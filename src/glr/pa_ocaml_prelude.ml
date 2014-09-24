@@ -417,6 +417,9 @@ let next_exp = function
   let constr_decl_list : constructor_declaration list grammar = declare_grammar "constr_decl_list"
   let field_decl_list : label_declaration list grammar = declare_grammar "field_decl_list"
   let (match_cases : expression_lvl -> case list grammar), set_match_cases = grammar_family "match_cases"
+  let module_expr : module_expr grammar = declare_grammar "module_expr"
+  let module_type : module_type grammar = declare_grammar "module_type"
+
 
 (****************************************************************************
  * Quotation and anti-quotation code                                        *
@@ -436,6 +439,8 @@ type quote_env2_data =
   | Constr_decl of constructor_declaration list
   | Field_decl of label_declaration list
   | Let_binding of value_binding list
+  | Module_expr of module_expr
+  | Module_type of module_type
   | Cases of case list
   | String of string
   | Int of int 
@@ -461,7 +466,9 @@ let empty_quote_env2 () = Second (ref [])
 let push_pop_expression pos e =
   try
     match Stack.top quote_stack with
-    | First env -> env := (pos,"push_expression", e) :: !env; e
+    | First env ->
+       env := (pos,"push_expression", e) :: !env;
+       (* dummy value of the correct type *) e
     | Second env ->
        match List.assoc pos !env with
 	 Expression e ->  e
@@ -474,6 +481,44 @@ let push_expression pos e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env -> env := (pos, Expression e) :: !env
+
+let push_pop_module_expr pos e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+       env := (pos,"push_module_expr", e) :: !env; 
+       (* dummy value of the correct type *) mexpr_loc Location.none (Pmod_ident (id_loc (Lident "") Location.none))
+    | Second env ->
+       match List.assoc pos !env with
+	 Module_expr e ->  e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
+  | Not_found -> assert false
+
+let push_module_expr pos e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env -> env := (pos, Module_expr e) :: !env
+
+let push_pop_module_type pos e =
+  try
+    match Stack.top quote_stack with
+    | First env -> 
+       env := (pos,"push_module_type", e) :: !env; 
+       (* dummy value of the correct type *) mtyp_loc Location.none (Pmty_ident (id_loc (Lident "") Location.none))
+    | Second env ->
+       match List.assoc pos !env with
+	 Module_type e ->  e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
+  | Not_found -> assert false
+
+let push_module_type pos e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env -> env := (pos, Module_type e) :: !env
 
 let push_pop_expression_list pos e =
   try
@@ -558,7 +603,9 @@ let push_let_binding pos e =
 let push_pop_type pos e =
   try
     match Stack.top quote_stack with
-    | First env -> env := (pos,"push_type", e) :: !env; loc_typ e.pexp_loc Ptyp_any; 
+    | First env ->
+       env := (pos,"push_type", e) :: !env;
+       (* dummy value of the correct type *) loc_typ e.pexp_loc Ptyp_any; 
     | Second env ->
        match List.assoc pos !env with
 	 Type e -> e
@@ -590,7 +637,9 @@ let push_type_list pos e =
 let push_pop_pattern pos e =
   try
     match Stack.top quote_stack with
-    | First env -> env := (pos,"push_pattern", e) :: !env; loc_pat e.pexp_loc Ppat_any
+    | First env -> 
+       env := (pos,"push_pattern", e) :: !env;
+       (* dummy value of the correct type *) loc_pat e.pexp_loc Ppat_any
     | Second env ->
        match List.assoc pos !env with
 	 Pattern e -> e
@@ -816,11 +865,13 @@ let quote_expression _loc loc e name =
     | "sig_item"  -> ignore (parse_string' signature_item e)
     | "structure"  -> ignore (parse_string' structure e)
     | "signature"  -> ignore (parse_string' signature e)
-    | "contructors"  -> ignore (parse_string' constr_decl_list e)
+    | "constructors"  -> ignore (parse_string' constr_decl_list e)
     | "fields"  -> ignore (parse_string' field_decl_list e)
     | "cases"  -> ignore (parse_string' (match_cases Top) e)
     | "let_binding"  -> ignore (parse_string' let_binding e)
-    | _ -> assert false
+    | "module_expr"  -> ignore (parse_string' module_expr e)
+    | "module_type"  -> ignore (parse_string' module_type e)
+    | _ -> Printf.eprintf "unexpected %s\n%!" name; assert false
     in
   let env = match Stack.pop quote_stack with
       First e -> e | Second _ -> assert false
@@ -893,8 +944,17 @@ let quote_constructors_2 loc e =
 let quote_fields_2 loc e =
   parse_string' field_decl_list e 
 
-let quote_bindings_2 loc e =
+let quote_let_binding_2 loc e =
   parse_string' let_binding e 
+
+let quote_module_expr_2 loc e =
+  parse_string' module_expr e 
+
+let quote_module_type_2 loc e =
+  parse_string' module_type e 
+
+let quote_cases_2 loc e =
+  parse_string' (match_cases Top) e 
 
 (****************************************************************************
  * Basic syntactic elements (identifiers and literals)                      *
@@ -910,18 +970,22 @@ let lident_re = "\\([a-z][a-zA-Z0-9_']*\\)\\|\\([_][a-zA-Z0-9_']+\\)"
 let cident_re = "[A-Z][a-zA-Z0-9_']*"
 let ident_re = "[A-Za-z_][a-zA-Z0-9_']*"
 
-let reserved_ident = ref
-  [ "and" ; "as" ; "assert" ; "asr" ; "begin" ; "class" ; "constraint" ; "do"
-  ; "done" ; "downto" ; "else" ; "end" ; "exception" ; "external" ; "false"
-  ; "for" ; "fun" ; "function" ; "functor" ; "if" ; "in" ; "include"
-  ; "inherit" ; "initializer" ; "land" ; "lazy" ; "let" ; "lor" ; "lsl"
-  ; "lsr" ; "lxor" ; "match" ; "method" ; "mod" ; "module" ; "mutable" ; "new"
-  ; "object" ; "of" ; "open" ; "or" ; "private" ; "rec" ; "sig" ; "struct"
-  ; "then" ; "to" ; "true" ; "try" ; "type" ; "val" ; "virtual" ; "when"
-  ; "while" ; "with" ]
+let make_reserved l =
+  let reserved = ref (List.sort (fun s s' -> - compare s s') l) in
+  let re_from_list l = Str.regexp (String.concat "\\|" (List.map (fun s -> "\\(" ^ Str.quote s ^ "\\)") l)) in
+  let re = ref (re_from_list !reserved) in
+  (fun s -> Str.string_match !re s 0 && Str.match_end () = String.length s),
+  (fun s -> reserved := List.sort (fun s s' -> - compare s s') (s::!reserved); re := re_from_list !reserved)
 
-let is_reserved_id w =
-  List.mem w !reserved_ident
+let is_reserved_id, add_reserved_id =
+  make_reserved [ "and" ; "as" ; "assert" ; "asr" ; "begin" ; "class" ; "constraint" ; "do"
+			   ; "done" ; "downto" ; "else" ; "end" ; "exception" ; "external" ; "false"
+			   ; "for" ; "function" ; "functor" ; "fun" ; "if" ; "in" ; "include"
+			   ; "inherit" ; "initializer" ; "land" ; "lazy" ; "let" ; "lor" ; "lsl"
+			   ; "lsr" ; "lxor" ; "match" ; "method" ; "mod" ; "module" ; "mutable" ; "new"
+			   ; "object" ; "of" ; "open" ; "or" ; "private" ; "rec" ; "sig" ; "struct"
+			   ; "then" ; "to" ; "true" ; "try" ; "type" ; "val" ; "virtual" ; "when"
+			   ; "while" ; "with" ]
 
 let ident =
   parser
@@ -950,12 +1014,8 @@ let lowercase_ident =
   | dol:CHR('$') - STR("lid") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e
 
 (* Prefix and infix symbols *)
-let reserved_symbols = ref
-  [ "#" ; "'" ; "(" ; ")" ; "," ; "->" ; "." ; ".." ; ":" ; ":>" ; ";" ; ";;" ; "<-"
+let is_reserved_symb, add_reserved_symb = make_reserved  [ "#" ; "'" ; "(" ; ")" ; "," ; "->" ; "." ; ".." ; ":" ; ":>" ; ";" ; ";;" ; "<-"
   ; ">]" ; ">}" ; "?" ; "[" ; "[<" ; "[>" ; "[|" ; "]" ; "_" ; "`" ; "{" ; "{<" ; "|" ; "|]" ; "}" ; "~" ]
-
-let is_reserved_symb s =
-  List.mem s !reserved_symbols
 
 let infix_symb_re  = union_re [
  "[=<>@^|&+*/$%-][!$%&*+./:<=>?@^|~-]*";

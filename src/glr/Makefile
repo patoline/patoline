@@ -34,7 +34,7 @@ OCAMLVERSION=$(shell ocamlc -version)
 
 ifeq ($(OCAMLVERSION),3.12.1)
 COMPILER_INC = -I +compiler-libs/parsing -I +compiler-libs/typing -I +compiler-libs/utils
-COMPILER_LIBS = misc.cmo config.cmo longident.cmo printast.cmo
+COMPILER_LIBS = misc.cmo config.cmo longident.cmo printast.cmo linenum.cmo warnings.cmo location.cmo 
 COMPILER_TOP = toplevellib.cma
 else
 COMPILER_INC = -I +compiler-libs
@@ -151,12 +151,12 @@ boot:
 	./pa_ocaml --ascii pa_main.ml > bootstrap/$(OCAMLVERSION)/pa_byt_main.ml
 
 examples/pa_test_ext.cmx: examples/pa_test_ext.ml pa_ocaml
-	$(OCAMLOPT) -pp ./pa_ocaml -c $<
+	$(OCAMLOPT) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
 examples/pa_test_ext: decap.cmxa pa_ocaml_prelude.cmx examples/pa_test_ext.cmx pa_ocaml.cmx pa_compose.cmx pa_opt_main.cmx 
 	$(OCAMLOPT) $(COMPILER_INC)  -o $@ unix.cmxa str.cmxa $(COMPILER_LIBO) $^
 
-examples/bug: examples/bug.ml decap.cmxa
+examples/test: examples/test.ml decap.cmxa
 	$(OCAMLOPT) -pp ./pa_ocaml str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
 
 examples/calc: examples/calc.cmx decap.cmxa

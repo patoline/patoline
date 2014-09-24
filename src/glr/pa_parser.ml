@@ -360,7 +360,7 @@ struct
 
   let glr_rules_aux = 
     parser
-    | {CHR('|') CHR('|')}? r:glr_rule rs:{ CHR('|') CHR('|')? r:glr_rule}* -> 
+    | {CHR('|') CHR('|')}? r:glr_rule rs:{ CHR('|') CHR('|') r:glr_rule}* -> 
       (match rs with
       | [] -> r
       | l ->
