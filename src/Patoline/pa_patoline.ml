@@ -446,10 +446,17 @@ struct
   let paragraph = declare_grammar "paragraph"
   let paragraphs = declare_grammar "paragraphs"
 
+  let nb_includes = ref 0
+
   let paragraph_elt =
     parser
     | | verb:verbatim_environment -> (fun _ -> verb)
     | | STR("\\Caml") s:wrapped_caml_structure -> (fun _ -> s)
+    | | STR("\\Include") CHR('{') id:capitalized_ident CHR('}') -> (fun _ ->
+	 incr nb_includes;
+	 let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
+         <:structure< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output)(D)
+                      open $uid:temp_id$>>)
     | | STR("\\item") -> (fun _ ->
         (let m1 = freshUid () in
          let m2 = freshUid () in

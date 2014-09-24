@@ -638,7 +638,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
           let deps0=make_deps hs source in
           let mut,m=objects in
           Mutex.lock mut;
-          m:=StrMap.singleton h deps0;
+          m:=StrMap.add h deps0 !m;
           Mutex.unlock mut;
           let tar=List.map
             (fun dep->Thread.create (Build.build_with_rule (patoline_rule objects)) (dep::hs))
@@ -704,7 +704,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
             let deps0=make_deps hs source in
             let mut,m=objects in
             Mutex.lock mut;
-            m:=StrMap.singleton h deps0;
+            m:=StrMap.add h deps0 !m;
             Mutex.unlock mut;
             let tar=List.map
               (fun x->Thread.create (Build.build_with_rule (patoline_rule objects)) (x::hs)) (main_obj::deps0)

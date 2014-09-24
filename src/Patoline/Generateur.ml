@@ -39,7 +39,6 @@ open BuildDir
 let edit_link = ref false
 let line_directive = ref true
 
-let includeList = ref []
 let moduleCounter=ref 0
 
 
@@ -86,7 +85,6 @@ let env_stack=ref []
 
 let do_include buf name=
   incr moduleCounter;
-  includeList := name :: !includeList;
   Printf.bprintf buf
     "module TEMP%d=%s.Document(Patoline_Output)(D);;\nopen TEMP%d;;\n" !moduleCounter name !moduleCounter
 
