@@ -30,17 +30,17 @@ all: $(PA_PATOLINE)
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(PA_OCAML)
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -linkpkg -package patutil,imagelib,dynlink,str -I $(PA_OCAML_DIR) $(COMPILER_INC) $(COMPILER_LIBO) -o $@ \
-		      $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/pa_ocaml_prelude.cmx \
+	$(Q)$(OCAMLOPT) -linkpkg -package patutil,imagelib,dynlink,str,decap -I $(PA_OCAML_DIR) $(COMPILER_INC) $(COMPILER_LIBO) -o $@ \
+		      $(PA_OCAML_DIR)/pa_ocaml_prelude.cmx \
           $(PA_OCAML_DIR)/pa_parser.cmx $< $(PA_OCAML_DIR)/pa_ocaml.cmx $(PA_OCAML_DIR)/pa_compose.cmx $(PA_OCAML_DIR)/pa_opt_main.cmx
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_OCAML) $(PA_OCAML_DIR)/decap.cmxa 
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_OCAML) -c -package patutil -I $(PA_OCAML_DIR) -I $(PA_OCAML_DIR) $(COMPILER_INC) -o $@ $< 
+	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_OCAML) -c -package patutil,decap $(COMPILER_INC) -o $@ $< 
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml $(PA_OCAML) $(PA_OCAML_DIR)/pa_ocaml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) -package patutil -I $(PA_OCAML_DIR) $< > $@
+	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) -package patutil,decap $< > $@
 
 #$(d)/patolineGL: $(UTIL_DIR)/util.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
 #	$(ECHO) "[OPT]    $(lastword $^) -> $@"

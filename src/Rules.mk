@@ -14,12 +14,12 @@ IMAGELIB_DIR := $(d)/imagelib
 RBUFFER_DIR := $(d)/rbuffer
 LIBFONTS_DIR := $(d)/patfonts
 CESURE_DIR := $(d)/cesure
-PA_OCAML_DIR := $(d)/pa_ocaml
+PA_OCAML_DIR := $(d)/decap
 UNICODE_DIR := $(d)/unicodelib
 PA_OCAML := $(PA_OCAML_DIR)/pa_ocaml
 
 # Visit subdirectories
-MODULES := unicodelib rbuffer patutil imagelib patfonts pa_ocaml \
+MODULES := unicodelib rbuffer patutil imagelib patfonts decap \
   Typography Drivers Patoline Pdf cesure Format \
   $(OCAML_BIBI) plot proof plugins
 
