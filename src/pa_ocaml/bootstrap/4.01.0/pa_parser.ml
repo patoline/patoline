@@ -2,10 +2,10 @@ open Asttypes
 open Parsetree
 open Longident
 open Pa_ocaml_prelude
-type action =  
+type action =
   | Default
   | Normal of expression
-  | DepSeq of (expression -> expression)* expression option* expression 
+  | DepSeq of (expression -> expression)* expression option* expression
 let exp_int _loc n = loc_expr _loc (Pexp_constant (Const_int n))
 let exp_string _loc n = loc_expr _loc (Pexp_constant (const_string n))
 let exp_None _loc =
@@ -107,24 +107,28 @@ let rec build_action _loc occur_loc ids e =
                                  exp_ident _loc "__loc__end__pos"])], e))))))
     | _ -> e in
   List.fold_left
-    (fun e  ((id,x),visible)  ->
-       match ((find_locate ()), visible) with
-       | (Some _,true ) ->
-           loc_expr _loc
-             (pexp_fun
-                ("", None, (mkpatt _loc (id, x)),
-                  (loc_expr _loc
-                     (Pexp_let
-                        (Nonrecursive,
-                          [value_binding _loc
-                             (loc_pat _loc
-                                (Ppat_tuple
-                                   [loc_pat _loc
-                                      (Ppat_var (id_loc ("_loc_" ^ id) _loc));
-                                   loc_pat _loc (Ppat_var (id_loc id _loc))]))
-                             (loc_expr _loc
-                                (Pexp_ident (id_loc (Lident id) _loc)))], e)))))
-       | _ -> loc_expr _loc (pexp_fun ("", None, (mkpatt' _loc (id, x)), e)))
+    (fun e  ->
+       fun ((id,x),visible)  ->
+         match ((find_locate ()), visible) with
+         | (Some _,true ) ->
+             loc_expr _loc
+               (pexp_fun
+                  ("", None, (mkpatt _loc (id, x)),
+                    (loc_expr _loc
+                       (Pexp_let
+                          (Nonrecursive,
+                            [value_binding _loc
+                               (loc_pat _loc
+                                  (Ppat_tuple
+                                     [loc_pat _loc
+                                        (Ppat_var
+                                           (id_loc ("_loc_" ^ id) _loc));
+                                     loc_pat _loc (Ppat_var (id_loc id _loc))]))
+                               (loc_expr _loc
+                                  (Pexp_ident (id_loc (Lident id) _loc)))],
+                            e)))))
+         | _ ->
+             loc_expr _loc (pexp_fun ("", None, (mkpatt' _loc (id, x)), e)))
     e (List.rev ids)
 let apply_option _loc opt visible e =
   filter _loc visible
@@ -193,15 +197,21 @@ module Ext(In:Extension) =
     let location_name_re = "_loc\\([a-zA-Z0-9_']*\\)"
     let glr_parser =
       Decap.alternatives
-        [Decap.sequence parser_kw glr_rules (fun _  p  -> (Atom, p));
+        [Decap.sequence parser_kw glr_rules (fun _  -> fun p  -> (Atom, p));
         Decap.fsequence_position parser_kw
           (Decap.sequence (Decap.char '*' '*') glr_rules
-             (fun _  p  _  __loc__start__buf  __loc__start__pos 
-                __loc__end__buf  __loc__end__pos  ->
-                let _loc =
-                  locate __loc__start__buf __loc__start__pos __loc__end__buf
-                    __loc__end__pos in
-                (Atom, (exp_apply _loc (exp_glr_fun _loc "lists") [p]))))]
+             (fun _  ->
+                fun p  ->
+                  fun _  ->
+                    fun __loc__start__buf  ->
+                      fun __loc__start__pos  ->
+                        fun __loc__end__buf  ->
+                          fun __loc__end__pos  ->
+                            let _loc =
+                              locate __loc__start__buf __loc__start__pos
+                                __loc__end__buf __loc__end__pos in
+                            (Atom,
+                              (exp_apply _loc (exp_glr_fun _loc "lists") [p]))))]
     let extra_expressions = glr_parser :: extra_expressions
     let glr_opt_expr =
       Decap.apply (fun e  -> e)
@@ -209,7 +219,7 @@ module Ext(In:Extension) =
            (Decap.apply (fun x  -> Some x)
               (Decap.fsequence (Decap.char '[' '[')
                  (Decap.sequence expression (Decap.char ']' ']')
-                    (fun e  _  _  -> e)))))
+                    (fun e  -> fun _  -> fun _  -> e)))))
     let glr_option =
       Decap.alternatives
         [Decap.fsequence (Decap.char '*' '*')
@@ -217,144 +227,197 @@ module Ext(In:Extension) =
               (Decap.option None
                  (Decap.apply (fun x  -> Some x) (Decap.char '*' '*')))
               glr_opt_expr
-              (fun strict  e  _  -> `Fixpoint ((strict <> None), e)));
+              (fun strict  ->
+                 fun e  -> fun _  -> `Fixpoint ((strict <> None), e)));
         Decap.fsequence (Decap.char '+' '+')
           (Decap.sequence
              (Decap.option None
                 (Decap.apply (fun x  -> Some x) (Decap.char '+' '+')))
              glr_opt_expr
-             (fun strict  e  _  -> `Fixpoint1 ((strict <> None), e)));
+             (fun strict  ->
+                fun e  -> fun _  -> `Fixpoint1 ((strict <> None), e)));
         Decap.fsequence (Decap.char '?' '?')
           (Decap.sequence
              (Decap.option None
                 (Decap.apply (fun x  -> Some x) (Decap.char '?' '?')))
              glr_opt_expr
-             (fun strict  e  _  -> `Option ((strict <> None), e)));
+             (fun strict  ->
+                fun e  -> fun _  -> `Option ((strict <> None), e)));
         Decap.apply (fun _  -> `Once) (Decap.empty ())]
     let glr_sequence =
       Decap.alternatives
         [Decap.fsequence (Decap.char '{' '{')
-           (Decap.sequence glr_rules (Decap.char '}' '}') (fun r  _  _  -> r));
+           (Decap.sequence glr_rules (Decap.char '}' '}')
+              (fun r  -> fun _  -> fun _  -> r));
         Decap.sequence_position (Decap.string "EOF" "EOF") glr_opt_expr
-          (fun _  opt  __loc__start__buf  __loc__start__pos  __loc__end__buf 
-             __loc__end__pos  ->
-             let _loc =
-               locate __loc__start__buf __loc__start__pos __loc__end__buf
-                 __loc__end__pos in
-             let e = match opt with | None  -> exp_unit _loc | Some e -> e in
-             exp_apply _loc (exp_glr_fun _loc "eof") [e]);
+          (fun _  ->
+             fun opt  ->
+               fun __loc__start__buf  ->
+                 fun __loc__start__pos  ->
+                   fun __loc__end__buf  ->
+                     fun __loc__end__pos  ->
+                       let _loc =
+                         locate __loc__start__buf __loc__start__pos
+                           __loc__end__buf __loc__end__pos in
+                       let e =
+                         match opt with
+                         | None  -> exp_unit _loc
+                         | Some e -> e in
+                       exp_apply _loc (exp_glr_fun _loc "eof") [e]);
         Decap.sequence_position (Decap.string "EMPTY" "EMPTY") glr_opt_expr
-          (fun _  opt  __loc__start__buf  __loc__start__pos  __loc__end__buf 
-             __loc__end__pos  ->
-             let _loc =
-               locate __loc__start__buf __loc__start__pos __loc__end__buf
-                 __loc__end__pos in
-             let e = match opt with | None  -> exp_unit _loc | Some e -> e in
-             exp_apply _loc (exp_glr_fun _loc "empty") [e]);
+          (fun _  ->
+             fun opt  ->
+               fun __loc__start__buf  ->
+                 fun __loc__start__pos  ->
+                   fun __loc__end__buf  ->
+                     fun __loc__end__pos  ->
+                       let _loc =
+                         locate __loc__start__buf __loc__start__pos
+                           __loc__end__buf __loc__end__pos in
+                       let e =
+                         match opt with
+                         | None  -> exp_unit _loc
+                         | Some e -> e in
+                       exp_apply _loc (exp_glr_fun _loc "empty") [e]);
         Decap.sequence_position (Decap.string "FAIL" "FAIL")
           (expression_lvl (next_exp App))
-          (fun _  e  __loc__start__buf  __loc__start__pos  __loc__end__buf 
-             __loc__end__pos  ->
-             let _loc =
-               locate __loc__start__buf __loc__start__pos __loc__end__buf
-                 __loc__end__pos in
-             exp_apply _loc (exp_glr_fun _loc "fail") [e]);
+          (fun _  ->
+             fun e  ->
+               fun __loc__start__buf  ->
+                 fun __loc__start__pos  ->
+                   fun __loc__end__buf  ->
+                     fun __loc__end__pos  ->
+                       let _loc =
+                         locate __loc__start__buf __loc__start__pos
+                           __loc__end__buf __loc__end__pos in
+                       exp_apply _loc (exp_glr_fun _loc "fail") [e]);
         Decap.sequence_position (Decap.string "DEBUG" "DEBUG")
           (expression_lvl (next_exp App))
-          (fun _  e  __loc__start__buf  __loc__start__pos  __loc__end__buf 
-             __loc__end__pos  ->
-             let _loc =
-               locate __loc__start__buf __loc__start__pos __loc__end__buf
-                 __loc__end__pos in
-             exp_apply _loc (exp_glr_fun _loc "debug") [e]);
+          (fun _  ->
+             fun e  ->
+               fun __loc__start__buf  ->
+                 fun __loc__start__pos  ->
+                   fun __loc__end__buf  ->
+                     fun __loc__end__pos  ->
+                       let _loc =
+                         locate __loc__start__buf __loc__start__pos
+                           __loc__end__buf __loc__end__pos in
+                       exp_apply _loc (exp_glr_fun _loc "debug") [e]);
         Decap.apply_position
-          (fun _  __loc__start__buf  __loc__start__pos  __loc__end__buf 
-             __loc__end__pos  ->
-             let _loc =
-               locate __loc__start__buf __loc__start__pos __loc__end__buf
-                 __loc__end__pos in
-             exp_glr_fun _loc "any") (Decap.string "ANY" "ANY");
+          (fun _  ->
+             fun __loc__start__buf  ->
+               fun __loc__start__pos  ->
+                 fun __loc__end__buf  ->
+                   fun __loc__end__pos  ->
+                     let _loc =
+                       locate __loc__start__buf __loc__start__pos
+                         __loc__end__buf __loc__end__pos in
+                     exp_glr_fun _loc "any") (Decap.string "ANY" "ANY");
         Decap.fsequence_position (Decap.string "CHR" "CHR")
           (Decap.sequence (expression_lvl (next_exp App)) glr_opt_expr
-             (fun e  opt  _  __loc__start__buf  __loc__start__pos 
-                __loc__end__buf  __loc__end__pos  ->
-                let _loc =
-                  locate __loc__start__buf __loc__start__pos __loc__end__buf
-                    __loc__end__pos in
-                let opt = match opt with | None  -> e | Some e -> e in
-                exp_apply _loc (exp_glr_fun _loc "char") [e; opt]));
+             (fun e  ->
+                fun opt  ->
+                  fun _  ->
+                    fun __loc__start__buf  ->
+                      fun __loc__start__pos  ->
+                        fun __loc__end__buf  ->
+                          fun __loc__end__pos  ->
+                            let _loc =
+                              locate __loc__start__buf __loc__start__pos
+                                __loc__end__buf __loc__end__pos in
+                            let opt =
+                              match opt with | None  -> e | Some e -> e in
+                            exp_apply _loc (exp_glr_fun _loc "char") [e; opt]));
         Decap.fsequence_position (Decap.string "STR" "STR")
           (Decap.sequence (expression_lvl (next_exp App)) glr_opt_expr
-             (fun e  opt  _  __loc__start__buf  __loc__start__pos 
-                __loc__end__buf  __loc__end__pos  ->
-                let _loc =
-                  locate __loc__start__buf __loc__start__pos __loc__end__buf
-                    __loc__end__pos in
-                let opt = match opt with | None  -> e | Some e -> e in
-                exp_apply _loc (exp_glr_fun _loc "string") [e; opt]));
+             (fun e  ->
+                fun opt  ->
+                  fun _  ->
+                    fun __loc__start__buf  ->
+                      fun __loc__start__pos  ->
+                        fun __loc__end__buf  ->
+                          fun __loc__end__pos  ->
+                            let _loc =
+                              locate __loc__start__buf __loc__start__pos
+                                __loc__end__buf __loc__end__pos in
+                            let opt =
+                              match opt with | None  -> e | Some e -> e in
+                            exp_apply _loc (exp_glr_fun _loc "string")
+                              [e; opt]));
         Decap.fsequence_position (Decap.string "RE" "RE")
           (Decap.sequence (expression_lvl (next_exp App)) glr_opt_expr
-             (fun e  opt  _  __loc__start__buf  __loc__start__pos 
-                __loc__end__buf  __loc__end__pos  ->
-                let _loc =
-                  locate __loc__start__buf __loc__start__pos __loc__end__buf
-                    __loc__end__pos in
-                let opt =
-                  match opt with
-                  | None  ->
-                      exp_apply _loc (exp_ident _loc "groupe")
-                        [exp_int _loc 0]
-                  | Some e -> e in
-                match e.pexp_desc with
-                | Pexp_ident { txt = Lident id } ->
-                    let id =
-                      let l = String.length id in
-                      if (l > 3) && ((String.sub id (l - 3) 3) = "_re")
-                      then String.sub id 0 (l - 3)
-                      else id in
-                    exp_lab_apply _loc (exp_glr_fun _loc "regexp")
-                      [("name", (exp_string _loc id));
-                      ("", e);
-                      ("", (exp_fun _loc "groupe" opt))]
-                | _ ->
-                    exp_apply _loc (exp_glr_fun _loc "regexp")
-                      [e; exp_fun _loc "groupe" opt]));
+             (fun e  ->
+                fun opt  ->
+                  fun _  ->
+                    fun __loc__start__buf  ->
+                      fun __loc__start__pos  ->
+                        fun __loc__end__buf  ->
+                          fun __loc__end__pos  ->
+                            let _loc =
+                              locate __loc__start__buf __loc__start__pos
+                                __loc__end__buf __loc__end__pos in
+                            let opt =
+                              match opt with
+                              | None  ->
+                                  exp_apply _loc (exp_ident _loc "groupe")
+                                    [exp_int _loc 0]
+                              | Some e -> e in
+                            match e.pexp_desc with
+                            | Pexp_ident { txt = Lident id } ->
+                                let id =
+                                  let l = String.length id in
+                                  if
+                                    (l > 3) &&
+                                      ((String.sub id (l - 3) 3) = "_re")
+                                  then String.sub id 0 (l - 3)
+                                  else id in
+                                exp_lab_apply _loc
+                                  (exp_glr_fun _loc "regexp")
+                                  [("name", (exp_string _loc id));
+                                  ("", e);
+                                  ("", (exp_fun _loc "groupe" opt))]
+                            | _ ->
+                                exp_apply _loc (exp_glr_fun _loc "regexp")
+                                  [e; exp_fun _loc "groupe" opt]));
         Decap.apply (fun e  -> e) (expression_lvl Atom)]
     let glr_ident =
       Decap.alternatives
         [Decap.sequence (pattern_lvl ConstrPat) (Decap.char ':' ':')
-           (fun p  _  ->
-              match p.ppat_desc with
-              | Ppat_alias (p,{ txt = id }) -> (id, (Some p))
-              | Ppat_var { txt = id } -> (id, None)
-              | _ -> ("_", (Some p)));
+           (fun p  ->
+              fun _  ->
+                match p.ppat_desc with
+                | Ppat_alias (p,{ txt = id }) -> (id, (Some p))
+                | Ppat_var { txt = id } -> (id, None)
+                | _ -> ("_", (Some p)));
         Decap.apply (fun _  -> ("_", None)) (Decap.empty ())]
     let dash =
       Decap.black_box
-        (fun str  pos  ->
-           let (c,str',pos') = Input.read str pos in
-           if c = '-'
-           then
-             let (c',_,_) = Input.read str' pos' in
-             (if c' = '>'
-              then raise (Decap.Give_up "'-' expected")
-              else ((), str', pos'))
-           else raise (Decap.Give_up "'-' expexted")) (Charset.singleton '-')
-        false "-"
+        (fun str  ->
+           fun pos  ->
+             let (c,str',pos') = Input.read str pos in
+             if c = '-'
+             then
+               let (c',_,_) = Input.read str' pos' in
+               (if c' = '>'
+                then raise (Decap.Give_up "'-' expected")
+                else ((), str', pos'))
+             else raise (Decap.Give_up "'-' expexted"))
+        (Charset.singleton '-') false "-"
     let glr_left_member =
       Decap.sequence
         (Decap.fsequence glr_ident
            (Decap.sequence glr_sequence glr_option
-              (fun s  opt  id  -> `Normal (id, s, opt))))
+              (fun s  -> fun opt  -> fun id  -> `Normal (id, s, opt))))
         (Decap.apply List.rev
            (Decap.fixpoint []
-              (Decap.apply (fun x  l  -> x :: l)
+              (Decap.apply (fun x  -> fun l  -> x :: l)
                  (Decap.alternatives
                     [Decap.fsequence glr_ident
                        (Decap.sequence glr_sequence glr_option
-                          (fun s  opt  id  -> `Normal (id, s, opt)));
+                          (fun s  ->
+                             fun opt  -> fun id  -> `Normal (id, s, opt)));
                     Decap.apply (fun _  -> `Ignore) dash]))))
-        (fun i  l  -> i :: l)
+        (fun i  -> fun l  -> i :: l)
     let glr_let = Decap.declare_grammar "glr_let"
     let _ =
       Decap.set_grammar glr_let
@@ -363,166 +426,222 @@ module Ext(In:Extension) =
               (Decap.fsequence rec_flag
                  (Decap.fsequence let_binding
                     (Decap.sequence (Decap.string "in" "in") glr_let
-                       (fun _  l  lbs  r  _  __loc__start__buf 
-                          __loc__start__pos  __loc__end__buf  __loc__end__pos
-                           ->
-                          let _loc =
-                            locate __loc__start__buf __loc__start__pos
-                              __loc__end__buf __loc__end__pos in
-                          fun x  -> loc_expr _loc (Pexp_let (r, lbs, (l x)))))));
-           Decap.apply (fun _  x  -> x) (Decap.empty ())])
+                       (fun _  ->
+                          fun l  ->
+                            fun lbs  ->
+                              fun r  ->
+                                fun _  ->
+                                  fun __loc__start__buf  ->
+                                    fun __loc__start__pos  ->
+                                      fun __loc__end__buf  ->
+                                        fun __loc__end__pos  ->
+                                          let _loc =
+                                            locate __loc__start__buf
+                                              __loc__start__pos
+                                              __loc__end__buf __loc__end__pos in
+                                          fun x  ->
+                                            loc_expr _loc
+                                              (Pexp_let (r, lbs, (l x)))))));
+           Decap.apply (fun _  -> fun x  -> x) (Decap.empty ())])
     let glr_cond =
       Decap.alternatives
         [Decap.sequence (Decap.string "when" "when") expression
-           (fun _  e  -> Some e);
+           (fun _  -> fun e  -> Some e);
         Decap.apply (fun _  -> None) (Decap.empty ())]
     let glr_action =
       Decap.alternatives
         [Decap.sequence (Decap.string "->>" "->>") glr_rule
-           (fun _  (def,cond,r)  -> DepSeq (def, cond, r));
+           (fun _  -> fun (def,cond,r)  -> DepSeq (def, cond, r));
         Decap.sequence (Decap.string "->" "->") expression
-          (fun _  action  -> Normal action);
+          (fun _  -> fun action  -> Normal action);
         Decap.apply (fun _  -> Default) (Decap.empty ())]
     let _ =
       Decap.set_grammar glr_rule
         (Decap.iter
            (Decap.fsequence glr_let
               (Decap.sequence glr_left_member glr_cond
-                 (fun l  condition  def  ->
-                    let _ = push_frame () in
-                    Decap.apply_position
-                      (fun action  __loc__start__buf  __loc__start__pos 
-                         __loc__end__buf  __loc__end__pos  ->
-                         let _loc =
-                           locate __loc__start__buf __loc__start__pos
-                             __loc__end__buf __loc__end__pos in
-                         let (iter,action) =
-                           match action with
-                           | Normal a -> (false, a)
-                           | Default  -> (false, (default_action _loc l))
-                           | DepSeq (def,cond,a) ->
-                               (true,
-                                 ((match cond with
-                                   | None  -> def a
-                                   | Some cond ->
-                                       def
-                                         (loc_expr _loc
-                                            (Pexp_ifthenelse
-                                               (cond, a,
-                                                 (Some
-                                                    (exp_apply _loc
-                                                       (exp_glr_fun _loc
-                                                          "fail")
-                                                       [exp_string _loc ""])))))))) in
-                         let occur_loc = pop_location "" in
-                         let rec fn first ids l =
-                           match l with
-                           | [] -> assert false
-                           | `Ignore::ls -> assert false
-                           | (`Normal (id,e,opt))::`Ignore::ls ->
-                               let e =
-                                 exp_apply _loc
-                                   (exp_glr_fun _loc "ignore_next_blank") 
-                                   [e] in
-                               fn first ids ((`Normal (id, e, opt)) :: ls)
-                           | (`Normal (id,e,opt))::[] ->
-                               let occur_loc_id =
-                                 ((fst id) <> "_") && (pop_location (fst id)) in
-                               let e = apply_option _loc opt occur_loc_id e in
-                               let f =
-                                 match ((find_locate ()),
-                                         (first && occur_loc))
-                                 with
-                                 | (Some _,true ) -> "apply_position"
-                                 | _ -> "apply" in
-                               exp_apply _loc (exp_glr_fun _loc f)
-                                 [build_action _loc occur_loc
-                                    ((id, occur_loc_id) :: ids) action;
-                                 e]
-                           | (`Normal (id,e,opt))::(`Normal (id',e',opt'))::[]
-                               ->
-                               let occur_loc_id =
-                                 ((fst id) <> "_") && (pop_location (fst id)) in
-                               let occur_loc_id' =
-                                 ((fst id') <> "_") &&
-                                   (pop_location (fst id')) in
-                               let e = apply_option _loc opt occur_loc_id e in
-                               let e' =
-                                 apply_option _loc opt' occur_loc_id' e' in
-                               let f =
-                                 match ((find_locate ()),
-                                         (first && occur_loc))
-                                 with
-                                 | (Some _,true ) -> "sequence_position"
-                                 | _ -> "sequence" in
-                               exp_apply _loc (exp_glr_fun _loc f)
-                                 [e;
-                                 e';
-                                 build_action _loc occur_loc
-                                   ((id, occur_loc_id) ::
-                                   (id', occur_loc_id') :: ids) action]
-                           | (`Normal (id,e,opt))::ls ->
-                               let occur_loc_id =
-                                 ((fst id) <> "_") && (pop_location (fst id)) in
-                               let e = apply_option _loc opt occur_loc_id e in
-                               let f =
-                                 match ((find_locate ()),
-                                         (first && occur_loc))
-                                 with
-                                 | (Some _,true ) -> "fsequence_position"
-                                 | _ -> "fsequence" in
-                               exp_apply _loc (exp_glr_fun _loc f)
-                                 [e; fn false ((id, occur_loc_id) :: ids) ls] in
-                         let res = fn true [] l in
-                         pop_frame ();
-                         (let res =
-                            if iter
-                            then
-                              exp_apply _loc (exp_glr_fun _loc "iter") [res]
-                            else res in
-                          (def, condition, res))) glr_action))))
+                 (fun l  ->
+                    fun condition  ->
+                      fun def  ->
+                        let _ = push_frame () in
+                        Decap.apply_position
+                          (fun action  ->
+                             fun __loc__start__buf  ->
+                               fun __loc__start__pos  ->
+                                 fun __loc__end__buf  ->
+                                   fun __loc__end__pos  ->
+                                     let _loc =
+                                       locate __loc__start__buf
+                                         __loc__start__pos __loc__end__buf
+                                         __loc__end__pos in
+                                     let (iter,action) =
+                                       match action with
+                                       | Normal a -> (false, a)
+                                       | Default  ->
+                                           (false, (default_action _loc l))
+                                       | DepSeq (def,cond,a) ->
+                                           (true,
+                                             ((match cond with
+                                               | None  -> def a
+                                               | Some cond ->
+                                                   def
+                                                     (loc_expr _loc
+                                                        (Pexp_ifthenelse
+                                                           (cond, a,
+                                                             (Some
+                                                                (exp_apply
+                                                                   _loc
+                                                                   (exp_glr_fun
+                                                                    _loc
+                                                                    "fail")
+                                                                   [exp_string
+                                                                    _loc ""])))))))) in
+                                     let occur_loc = pop_location "" in
+                                     let rec fn first ids l =
+                                       match l with
+                                       | [] -> assert false
+                                       | `Ignore::ls -> assert false
+                                       | (`Normal (id,e,opt))::`Ignore::ls ->
+                                           let e =
+                                             exp_apply _loc
+                                               (exp_glr_fun _loc
+                                                  "ignore_next_blank") 
+                                               [e] in
+                                           fn first ids
+                                             ((`Normal (id, e, opt)) :: ls)
+                                       | (`Normal (id,e,opt))::[] ->
+                                           let occur_loc_id =
+                                             ((fst id) <> "_") &&
+                                               (pop_location (fst id)) in
+                                           let e =
+                                             apply_option _loc opt
+                                               occur_loc_id e in
+                                           let f =
+                                             match ((find_locate ()),
+                                                     (first && occur_loc))
+                                             with
+                                             | (Some _,true ) ->
+                                                 "apply_position"
+                                             | _ -> "apply" in
+                                           exp_apply _loc
+                                             (exp_glr_fun _loc f)
+                                             [build_action _loc occur_loc
+                                                ((id, occur_loc_id) :: ids)
+                                                action;
+                                             e]
+                                       | (`Normal (id,e,opt))::(`Normal
+                                                                  (id',e',opt'))::[]
+                                           ->
+                                           let occur_loc_id =
+                                             ((fst id) <> "_") &&
+                                               (pop_location (fst id)) in
+                                           let occur_loc_id' =
+                                             ((fst id') <> "_") &&
+                                               (pop_location (fst id')) in
+                                           let e =
+                                             apply_option _loc opt
+                                               occur_loc_id e in
+                                           let e' =
+                                             apply_option _loc opt'
+                                               occur_loc_id' e' in
+                                           let f =
+                                             match ((find_locate ()),
+                                                     (first && occur_loc))
+                                             with
+                                             | (Some _,true ) ->
+                                                 "sequence_position"
+                                             | _ -> "sequence" in
+                                           exp_apply _loc
+                                             (exp_glr_fun _loc f)
+                                             [e;
+                                             e';
+                                             build_action _loc occur_loc
+                                               ((id, occur_loc_id) ::
+                                               (id', occur_loc_id') :: ids)
+                                               action]
+                                       | (`Normal (id,e,opt))::ls ->
+                                           let occur_loc_id =
+                                             ((fst id) <> "_") &&
+                                               (pop_location (fst id)) in
+                                           let e =
+                                             apply_option _loc opt
+                                               occur_loc_id e in
+                                           let f =
+                                             match ((find_locate ()),
+                                                     (first && occur_loc))
+                                             with
+                                             | (Some _,true ) ->
+                                                 "fsequence_position"
+                                             | _ -> "fsequence" in
+                                           exp_apply _loc
+                                             (exp_glr_fun _loc f)
+                                             [e;
+                                             fn false ((id, occur_loc_id) ::
+                                               ids) ls] in
+                                     let res = fn true [] l in
+                                     pop_frame ();
+                                     (let res =
+                                        if iter
+                                        then
+                                          exp_apply _loc
+                                            (exp_glr_fun _loc "iter") 
+                                            [res]
+                                        else res in
+                                      (def, condition, res))) glr_action))))
     let glr_rules_aux =
       Decap.fsequence_position
         (Decap.option None
            (Decap.apply (fun x  -> Some x)
               (Decap.sequence (Decap.char '|' '|') (Decap.char '|' '|')
-                 (fun _  _  -> ()))))
+                 (fun _  -> fun _  -> ()))))
         (Decap.sequence glr_rule
            (Decap.apply List.rev
               (Decap.fixpoint []
-                 (Decap.apply (fun x  l  -> x :: l)
+                 (Decap.apply (fun x  -> fun l  -> x :: l)
                     (Decap.fsequence (Decap.char '|' '|')
                        (Decap.sequence (Decap.char '|' '|') glr_rule
-                          (fun _  r  _  -> r))))))
-           (fun r  rs  _  __loc__start__buf  __loc__start__pos 
-              __loc__end__buf  __loc__end__pos  ->
-              let _loc =
-                locate __loc__start__buf __loc__start__pos __loc__end__buf
-                  __loc__end__pos in
-              match rs with
-              | [] -> r
-              | l ->
-                  let l =
-                    List.fold_right
-                      (fun (def,cond,x)  y  ->
-                         match cond with
-                         | None  -> def (exp_Cons _loc x y)
-                         | Some c ->
-                             def
-                               (loc_expr _loc
-                                  (Pexp_let
-                                     (Nonrecursive,
-                                       [value_binding _loc
-                                          (pat_ident _loc "y") y],
-                                       (loc_expr _loc
-                                          (Pexp_ifthenelse
-                                             (c,
-                                               (exp_Cons _loc x
-                                                  (exp_ident _loc "y")),
-                                               (Some (exp_ident _loc "y")))))))))
-                      (r :: l) (exp_Nil _loc) in
-                  (((fun x  -> x)), None,
-                    (exp_apply _loc (exp_glr_fun _loc "alternatives'") [l]))))
+                          (fun _  -> fun r  -> fun _  -> r))))))
+           (fun r  ->
+              fun rs  ->
+                fun _  ->
+                  fun __loc__start__buf  ->
+                    fun __loc__start__pos  ->
+                      fun __loc__end__buf  ->
+                        fun __loc__end__pos  ->
+                          let _loc =
+                            locate __loc__start__buf __loc__start__pos
+                              __loc__end__buf __loc__end__pos in
+                          match rs with
+                          | [] -> r
+                          | l ->
+                              let l =
+                                List.fold_right
+                                  (fun (def,cond,x)  ->
+                                     fun y  ->
+                                       match cond with
+                                       | None  -> def (exp_Cons _loc x y)
+                                       | Some c ->
+                                           def
+                                             (loc_expr _loc
+                                                (Pexp_let
+                                                   (Nonrecursive,
+                                                     [value_binding _loc
+                                                        (pat_ident _loc "y")
+                                                        y],
+                                                     (loc_expr _loc
+                                                        (Pexp_ifthenelse
+                                                           (c,
+                                                             (exp_Cons _loc x
+                                                                (exp_ident
+                                                                   _loc "y")),
+                                                             (Some
+                                                                (exp_ident
+                                                                   _loc "y")))))))))
+                                  (r :: l) (exp_Nil _loc) in
+                              (((fun x  -> x)), None,
+                                (exp_apply _loc
+                                   (exp_glr_fun _loc "alternatives'") 
+                                   [l]))))
     let _ =
       Decap.set_grammar glr_rules
         (Decap.fsequence_position
@@ -532,46 +651,60 @@ module Ext(In:Extension) =
            (Decap.sequence glr_rules_aux
               (Decap.apply List.rev
                  (Decap.fixpoint []
-                    (Decap.apply (fun x  l  -> x :: l)
+                    (Decap.apply (fun x  -> fun l  -> x :: l)
                        (Decap.sequence
                           (Decap.apply (fun _  -> ()) (Decap.char '|' '|'))
-                          glr_rules_aux (fun _  r  -> r)))))
-              (fun r  rs  _  __loc__start__buf  __loc__start__pos 
-                 __loc__end__buf  __loc__end__pos  ->
-                 let _loc =
-                   locate __loc__start__buf __loc__start__pos __loc__end__buf
-                     __loc__end__pos in
-                 match (r, rs) with
-                 | ((def,cond,e),[]) ->
-                     (match cond with
-                      | None  -> def e
-                      | Some c ->
-                          loc_expr _loc
-                            (Pexp_ifthenelse
-                               (c, e,
-                                 (Some
-                                    (exp_apply _loc (exp_glr_fun _loc "fail")
-                                       [exp_string _loc ""])))))
-                 | (r,l) ->
-                     let l =
-                       List.fold_right
-                         (fun (def,cond,x)  y  ->
-                            match cond with
-                            | None  -> def (exp_Cons _loc x y)
-                            | Some c ->
-                                def
-                                  (loc_expr _loc
-                                     (Pexp_let
-                                        (Nonrecursive,
-                                          [value_binding _loc
-                                             (pat_ident _loc "y") y],
-                                          (loc_expr _loc
-                                             (Pexp_ifthenelse
-                                                (c,
-                                                  (exp_Cons _loc x
-                                                     (exp_ident _loc "y")),
-                                                  (Some (exp_ident _loc "y")))))))))
-                         (r :: l) (exp_Nil _loc) in
-                     exp_apply _loc (exp_glr_fun _loc "alternatives") [l])))
+                          glr_rules_aux (fun _  -> fun r  -> r)))))
+              (fun r  ->
+                 fun rs  ->
+                   fun _  ->
+                     fun __loc__start__buf  ->
+                       fun __loc__start__pos  ->
+                         fun __loc__end__buf  ->
+                           fun __loc__end__pos  ->
+                             let _loc =
+                               locate __loc__start__buf __loc__start__pos
+                                 __loc__end__buf __loc__end__pos in
+                             match (r, rs) with
+                             | ((def,cond,e),[]) ->
+                                 (match cond with
+                                  | None  -> def e
+                                  | Some c ->
+                                      loc_expr _loc
+                                        (Pexp_ifthenelse
+                                           (c, e,
+                                             (Some
+                                                (exp_apply _loc
+                                                   (exp_glr_fun _loc "fail")
+                                                   [exp_string _loc ""])))))
+                             | (r,l) ->
+                                 let l =
+                                   List.fold_right
+                                     (fun (def,cond,x)  ->
+                                        fun y  ->
+                                          match cond with
+                                          | None  -> def (exp_Cons _loc x y)
+                                          | Some c ->
+                                              def
+                                                (loc_expr _loc
+                                                   (Pexp_let
+                                                      (Nonrecursive,
+                                                        [value_binding _loc
+                                                           (pat_ident _loc
+                                                              "y") y],
+                                                        (loc_expr _loc
+                                                           (Pexp_ifthenelse
+                                                              (c,
+                                                                (exp_Cons
+                                                                   _loc x
+                                                                   (exp_ident
+                                                                    _loc "y")),
+                                                                (Some
+                                                                   (exp_ident
+                                                                    _loc "y")))))))))
+                                     (r :: l) (exp_Nil _loc) in
+                                 exp_apply _loc
+                                   (exp_glr_fun _loc "alternatives") 
+                                   [l])))
   end
-let _ = register_extension (module Ext : FExt )
+let _ = register_extension (module Ext : FExt)

@@ -97,19 +97,12 @@ let no_blank str pos = (str, pos)
 let ghost loc = let open Location in { loc with loc_ghost = true }
 let start_pos loc = loc.Location.loc_start
 let end_pos loc = loc.Location.loc_end
-let locate g =
-  apply_position
-    (fun x  str  pos  str'  pos'  ->
-       let s = Input.lexing_position str pos in
-       let e = Input.lexing_position str' pos' in
-       let open Location in
-         ({ loc_start = s; loc_end = e; loc_ghost = false }, x)) g
-let locate2 str pos str' pos' =
+let locate str pos str' pos' =
   let open Lexing in
     let s = Input.lexing_position str pos in
     let e = Input.lexing_position str' pos' in
     let open Location in { loc_start = s; loc_end = e; loc_ghost = false }
-let _ = ()
+let locate2 = locate
 let rec merge =
   function
   | [] -> assert false
@@ -958,7 +951,9 @@ module Initial =
               id)
            (Decap.regexp ~name:"ident" ident_re (fun groupe  -> groupe 0));
         Decap.fsequence
-          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
+          (Decap.apply_position
+             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "ident" "ident")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
@@ -972,7 +967,9 @@ module Initial =
         [Decap.apply (fun id  -> id)
            (Decap.regexp ~name:"cident" cident_re (fun groupe  -> groupe 0));
         Decap.fsequence
-          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
+          (Decap.apply_position
+             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "uid" "uid")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
@@ -1003,7 +1000,9 @@ module Initial =
               id)
            (Decap.regexp ~name:"lident" lident_re (fun groupe  -> groupe 0));
         Decap.fsequence
-          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
+          (Decap.apply_position
+             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "lid" "lid")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
@@ -1182,7 +1181,9 @@ module Initial =
         [Decap.apply (fun i  -> int_of_string i)
            (Decap.regexp ~name:"int_pos" int_pos_re (fun groupe  -> groupe 0));
         Decap.fsequence
-          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
+          (Decap.apply_position
+             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "int" "int")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
@@ -1196,7 +1197,9 @@ module Initial =
         [Decap.apply (fun i  -> Int32.of_string i)
            (Decap.regexp ~name:"int32" int32_re (fun groupe  -> groupe 1));
         Decap.fsequence
-          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
+          (Decap.apply_position
+             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "int32" "int32")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
@@ -1210,7 +1213,9 @@ module Initial =
         [Decap.apply (fun i  -> Int64.of_string i)
            (Decap.regexp ~name:"int64" int64_re (fun groupe  -> groupe 1));
         Decap.fsequence
-          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
+          (Decap.apply_position
+             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "int64" "int64")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
@@ -1224,7 +1229,9 @@ module Initial =
         [Decap.apply (fun i  -> Nativeint.of_string i)
            (Decap.regexp ~name:"natint" natint_re (fun groupe  -> groupe 1));
         Decap.fsequence
-          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
+          (Decap.apply_position
+             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "natint" "natint")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
@@ -1238,7 +1245,9 @@ module Initial =
         [Decap.apply (fun _  -> "false") false_kw;
         Decap.apply (fun _  -> "true") true_kw;
         Decap.fsequence
-          (locate (Decap.ignore_next_blank (Decap.char '$' '$')))
+          (Decap.apply_position
+             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "bool" "bool")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence

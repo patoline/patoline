@@ -8,14 +8,10 @@ $(d)/pa_ocaml $(d)/decap.cmxa $(d)/decap.cma: export OCAMLOPT := $(OCAMLOPT_NOIN
 
 PA_OCAML_SRC=$(d)/charset.ml $(d)/input.ml $(d)/decap.ml
 PA_OCAML_SRC=$(d)/pa_ocaml_prelude.ml $(d)/pa_parser.ml $(d)/pa_ocaml.ml $(d)/pa_compose.ml $(d)/pa_opt_main.ml
-$(PA_OCAML_SRC:.ml=.cmo): $(d)/decap.cma;
-$(PA_OCAML_SRC:.ml=.cmi): $(d)/decap.cmxa;
-$(PA_OCAML_SRC:.ml=.cmx): $(d)/decap.cmxa;
-
+$(PA_OCAML_SRC:.ml=.cmo): $(d)/decap.cma $(d)/pa_ocaml.byt;
+$(PA_OCAML_SRC:.ml=.cmi): $(d)/decap.cmxa $(d)/pa_ocaml;
+$(PA_OCAML_SRC:.ml=.cmx): $(d)/decap.cmxa $(d)/pa_ocaml;
 $(d)/pa_ocaml: $(d)/decap.cmxa
-$(PA_OCAML_SRC:.ml=.cmi): $(d)/pa_ocaml;
-$(PA_OCAML_SRC:.ml=.cmx): $(d)/pa_ocaml;
-$(PA_OCAML_SRC:.ml=.cmo): $(d)/pa_ocaml.byt;
 
 # possibly make pa_ocaml twice to make sure we have .cmx in src/decap.
 $(d)/pa_ocaml: $(d)/pa_*.ml $(d)/decap.cmxa

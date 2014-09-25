@@ -2,12 +2,10 @@ open Asttypes
 open Parsetree
 open Longident
 open Pa_ocaml_prelude
-let _ = ()
 type action =  
   | Default
   | Normal of expression
   | DepSeq of (expression -> expression)* expression option* expression 
-let do_locate = ref None
 let exp_int _loc n = loc_expr _loc (Pexp_constant (Const_int n))
 let exp_string _loc n = loc_expr _loc (Pexp_constant (const_string n))
 let exp_None _loc =
@@ -60,8 +58,11 @@ let exp_Cons_rev_fun _loc =
           (exp_apply _loc (exp_list_fun _loc "rev") [exp_ident _loc "l"])))
 let ppat_alias _loc p id =
   if id = "_" then p else loc_pat _loc (Ppat_alias (p, (id_loc id _loc)))
+let find_locate () =
+  try Some (exp_ident Location.none (Sys.getenv "LOCATE"))
+  with | Not_found  -> None
 let mkpatt _loc (id,p) =
-  match (p, (!do_locate)) with
+  match (p, (find_locate ())) with
   | (None ,_) -> pat_ident _loc id
   | (Some p,None ) -> ppat_alias _loc p id
   | (Some p,Some _) ->
@@ -70,13 +71,27 @@ let mkpatt _loc (id,p) =
 let mkpatt' _loc (id,p) =
   match p with | None  -> pat_ident _loc id | Some p -> ppat_alias _loc p id
 let filter _loc visible r =
-  match ((!do_locate), visible) with
-  | (Some (f,_),true ) -> loc_expr _loc (Pexp_apply (f, [("", r)]))
+  match ((find_locate ()), visible) with
+  | (Some f2,true ) ->
+      let f =
+        exp_fun _loc "x"
+          (exp_fun _loc "str"
+             (exp_fun _loc "pos"
+                (exp_fun _loc "str'"
+                   (exp_fun _loc "pos'"
+                      (exp_tuple _loc
+                         [exp_apply _loc f2
+                            [exp_ident _loc "str";
+                            exp_ident _loc "pos";
+                            exp_ident _loc "str'";
+                            exp_ident _loc "pos'"];
+                         exp_ident _loc "x"]))))) in
+      exp_apply _loc (exp_glr_fun _loc "apply_position") [f; r]
   | _ -> r
 let rec build_action _loc occur_loc ids e =
   let e =
-    match ((!do_locate), occur_loc) with
-    | (Some (_,locate2),true ) ->
+    match ((find_locate ()), occur_loc) with
+    | (Some locate2,true ) ->
         exp_fun _loc "__loc__start__buf"
           (exp_fun _loc "__loc__start__pos"
              (exp_fun _loc "__loc__end__buf"
@@ -93,7 +108,7 @@ let rec build_action _loc occur_loc ids e =
     | _ -> e in
   List.fold_left
     (fun e  ((id,x),visible)  ->
-       match ((!do_locate), visible) with
+       match ((find_locate ()), visible) with
        | (Some _,true ) ->
            loc_expr _loc
              (pexp_fun
@@ -178,24 +193,13 @@ module Ext(In:Extension) =
     let location_name_re = "_loc\\([a-zA-Z0-9_']*\\)"
     let glr_parser =
       Decap.alternatives
-        [Decap.fsequence_position
-           (Decap.string "parser_locate" "parser_locate")
-           (Decap.sequence (expression_lvl (next_exp App))
-              (expression_lvl (next_exp App))
-              (fun filter2  merge2  _  __loc__start__buf  __loc__start__pos 
-                 __loc__end__buf  __loc__end__pos  ->
-                 let _loc =
-                   locate2 __loc__start__buf __loc__start__pos
-                     __loc__end__buf __loc__end__pos in
-                 do_locate := (Some (filter2, merge2));
-                 (Atom, (exp_unit _loc))));
-        Decap.sequence parser_kw glr_rules (fun _  p  -> (Atom, p));
+        [Decap.sequence parser_kw glr_rules (fun _  p  -> (Atom, p));
         Decap.fsequence_position parser_kw
           (Decap.sequence (Decap.char '*' '*') glr_rules
              (fun _  p  _  __loc__start__buf  __loc__start__pos 
                 __loc__end__buf  __loc__end__pos  ->
                 let _loc =
-                  locate2 __loc__start__buf __loc__start__pos __loc__end__buf
+                  locate __loc__start__buf __loc__start__pos __loc__end__buf
                     __loc__end__pos in
                 (Atom, (exp_apply _loc (exp_glr_fun _loc "lists") [p]))))]
     let extra_expressions = glr_parser :: extra_expressions
@@ -235,7 +239,7 @@ module Ext(In:Extension) =
           (fun _  opt  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
-               locate2 __loc__start__buf __loc__start__pos __loc__end__buf
+               locate __loc__start__buf __loc__start__pos __loc__end__buf
                  __loc__end__pos in
              let e = match opt with | None  -> exp_unit _loc | Some e -> e in
              exp_apply _loc (exp_glr_fun _loc "eof") [e]);
@@ -243,7 +247,7 @@ module Ext(In:Extension) =
           (fun _  opt  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
-               locate2 __loc__start__buf __loc__start__pos __loc__end__buf
+               locate __loc__start__buf __loc__start__pos __loc__end__buf
                  __loc__end__pos in
              let e = match opt with | None  -> exp_unit _loc | Some e -> e in
              exp_apply _loc (exp_glr_fun _loc "empty") [e]);
@@ -252,7 +256,7 @@ module Ext(In:Extension) =
           (fun _  e  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
-               locate2 __loc__start__buf __loc__start__pos __loc__end__buf
+               locate __loc__start__buf __loc__start__pos __loc__end__buf
                  __loc__end__pos in
              exp_apply _loc (exp_glr_fun _loc "fail") [e]);
         Decap.sequence_position (Decap.string "DEBUG" "DEBUG")
@@ -260,14 +264,14 @@ module Ext(In:Extension) =
           (fun _  e  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
-               locate2 __loc__start__buf __loc__start__pos __loc__end__buf
+               locate __loc__start__buf __loc__start__pos __loc__end__buf
                  __loc__end__pos in
              exp_apply _loc (exp_glr_fun _loc "debug") [e]);
         Decap.apply_position
           (fun _  __loc__start__buf  __loc__start__pos  __loc__end__buf 
              __loc__end__pos  ->
              let _loc =
-               locate2 __loc__start__buf __loc__start__pos __loc__end__buf
+               locate __loc__start__buf __loc__start__pos __loc__end__buf
                  __loc__end__pos in
              exp_glr_fun _loc "any") (Decap.string "ANY" "ANY");
         Decap.fsequence_position (Decap.string "CHR" "CHR")
@@ -275,7 +279,7 @@ module Ext(In:Extension) =
              (fun e  opt  _  __loc__start__buf  __loc__start__pos 
                 __loc__end__buf  __loc__end__pos  ->
                 let _loc =
-                  locate2 __loc__start__buf __loc__start__pos __loc__end__buf
+                  locate __loc__start__buf __loc__start__pos __loc__end__buf
                     __loc__end__pos in
                 let opt = match opt with | None  -> e | Some e -> e in
                 exp_apply _loc (exp_glr_fun _loc "char") [e; opt]));
@@ -284,7 +288,7 @@ module Ext(In:Extension) =
              (fun e  opt  _  __loc__start__buf  __loc__start__pos 
                 __loc__end__buf  __loc__end__pos  ->
                 let _loc =
-                  locate2 __loc__start__buf __loc__start__pos __loc__end__buf
+                  locate __loc__start__buf __loc__start__pos __loc__end__buf
                     __loc__end__pos in
                 let opt = match opt with | None  -> e | Some e -> e in
                 exp_apply _loc (exp_glr_fun _loc "string") [e; opt]));
@@ -293,7 +297,7 @@ module Ext(In:Extension) =
              (fun e  opt  _  __loc__start__buf  __loc__start__pos 
                 __loc__end__buf  __loc__end__pos  ->
                 let _loc =
-                  locate2 __loc__start__buf __loc__start__pos __loc__end__buf
+                  locate __loc__start__buf __loc__start__pos __loc__end__buf
                     __loc__end__pos in
                 let opt =
                   match opt with
@@ -363,7 +367,7 @@ module Ext(In:Extension) =
                           __loc__start__pos  __loc__end__buf  __loc__end__pos
                            ->
                           let _loc =
-                            locate2 __loc__start__buf __loc__start__pos
+                            locate __loc__start__buf __loc__start__pos
                               __loc__end__buf __loc__end__pos in
                           fun x  -> loc_expr _loc (Pexp_let (r, lbs, (l x)))))));
            Decap.apply (fun _  x  -> x) (Decap.empty ())])
@@ -390,7 +394,7 @@ module Ext(In:Extension) =
                       (fun action  __loc__start__buf  __loc__start__pos 
                          __loc__end__buf  __loc__end__pos  ->
                          let _loc =
-                           locate2 __loc__start__buf __loc__start__pos
+                           locate __loc__start__buf __loc__start__pos
                              __loc__end__buf __loc__end__pos in
                          let (iter,action) =
                            match action with
@@ -426,7 +430,8 @@ module Ext(In:Extension) =
                                  ((fst id) <> "_") && (pop_location (fst id)) in
                                let e = apply_option _loc opt occur_loc_id e in
                                let f =
-                                 match ((!do_locate), (first && occur_loc))
+                                 match ((find_locate ()),
+                                         (first && occur_loc))
                                  with
                                  | (Some _,true ) -> "apply_position"
                                  | _ -> "apply" in
@@ -445,7 +450,8 @@ module Ext(In:Extension) =
                                let e' =
                                  apply_option _loc opt' occur_loc_id' e' in
                                let f =
-                                 match ((!do_locate), (first && occur_loc))
+                                 match ((find_locate ()),
+                                         (first && occur_loc))
                                  with
                                  | (Some _,true ) -> "sequence_position"
                                  | _ -> "sequence" in
@@ -460,7 +466,8 @@ module Ext(In:Extension) =
                                  ((fst id) <> "_") && (pop_location (fst id)) in
                                let e = apply_option _loc opt occur_loc_id e in
                                let f =
-                                 match ((!do_locate), (first && occur_loc))
+                                 match ((find_locate ()),
+                                         (first && occur_loc))
                                  with
                                  | (Some _,true ) -> "fsequence_position"
                                  | _ -> "fsequence" in
@@ -490,7 +497,7 @@ module Ext(In:Extension) =
            (fun r  rs  _  __loc__start__buf  __loc__start__pos 
               __loc__end__buf  __loc__end__pos  ->
               let _loc =
-                locate2 __loc__start__buf __loc__start__pos __loc__end__buf
+                locate __loc__start__buf __loc__start__pos __loc__end__buf
                   __loc__end__pos in
               match rs with
               | [] -> r
@@ -532,8 +539,8 @@ module Ext(In:Extension) =
               (fun r  rs  _  __loc__start__buf  __loc__start__pos 
                  __loc__end__buf  __loc__end__pos  ->
                  let _loc =
-                   locate2 __loc__start__buf __loc__start__pos
-                     __loc__end__buf __loc__end__pos in
+                   locate __loc__start__buf __loc__start__pos __loc__end__buf
+                     __loc__end__pos in
                  match (r, rs) with
                  | ((def,cond,e),[]) ->
                      (match cond with
