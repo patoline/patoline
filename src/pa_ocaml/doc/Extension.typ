@@ -45,7 +45,7 @@ variable name (which must be a capital letter). The value of the variable is not
 To extend OCaml's grammar, you must write a functor, that 
 takes as input some a structure containing some entry points of the OCaml grammar and some other usefull functions and extends the OCaml grammar by calling provided function. After the definition of the function, you must register the extension.
 
-Here as an exemple adding the ##do ... where ...### and ##let ... try ... ## constructs to OCaml. Note: this exemple use quotation as in Camlp4 (remark, quotation are not yet available for patterns, this is why this code depends upon OCaml's version:
+Here as an exemple adding the ##do ... where ...## and ##let ... try ... ## constructs to OCaml. Note: this exemple use quotation as in Camlp4 (remark, quotation are not yet available for patterns, this is why this code depends upon OCaml's version:
 
 ### OCaml "pa_do_try.ml"
 
