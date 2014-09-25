@@ -1,0 +1,20 @@
+This software depends on:
+  - OCaml
+  - Findlib
+  - Compiler libs (only for 3.12)
+  - GNU Make (install)
+
+The following versions of OCaml are supported:
+  - 3.12.1 (can be installed, but cannot be used to bootstrap)
+  - 4.00.1
+  - 4.01.0
+  - 4.02.0 (grammar not fully implemented in pa_ocaml)
+
+Installation procedure:
+  tar -xvf decap.tar.gz
+  cd decap
+  make
+  make
+  sudo make install
+
+Note: the "make" command needs to be run twice due to the bootstrap procedure. 
