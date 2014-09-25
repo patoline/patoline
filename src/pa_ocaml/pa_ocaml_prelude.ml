@@ -134,19 +134,15 @@ let start_pos loc =
 let end_pos loc =
   loc.Location.loc_end
 
-let locate g =
-  apply_position (fun x str pos str' pos' ->
-		  let s = Input.lexing_position str pos in
-		  let e = Input.lexing_position str' pos' in
-		  Location.({loc_start = s; loc_end = e; loc_ghost = false}, x)) g
-
-let locate2 str pos str' pos' =
+let locate str pos str' pos' =
   Lexing.(
     let s = Input.lexing_position str pos in
     let e = Input.lexing_position str' pos' in
     Location.({loc_start = s; loc_end = e; loc_ghost = false}))
 
-let _ = parser_locate locate locate2
+let locate2 = locate
+
+#define LOCATE locate
 
 let rec merge = function
   | [] -> assert false

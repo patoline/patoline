@@ -29,7 +29,6 @@ and ##let ... in## bindings respectively.
 
 <expr>     ::= ...
              | "parser" ["*"] ["|"] <rule>
-             | "parser_locate" <expr> <expr>
 
 ###
 
@@ -424,4 +423,54 @@ let _ =
   let ps = handle_exception (parse_channel text blank2) stdin in
   let nb = List.length ps in
   Printf.printf "%i paragraphs read.\n" nb
+###
+
+== Position in parsers ==
+
+To give error messages, it is important to get the positions of the element in the parse tree. To do this, you can write a function ##locate## with the following type:
+
+### OCaml
+
+val locate : buffer -> int -> buffer -> int -> position
+
+###
+
+Where ##position## is the type you want to use to represent position.
+the two first arguments of ##locate## will be the buffer and position at the beggining of the text being parsed and the to last argument give the information at the end.
+
+You may use the following function from the input module to convert position to the data type use by the lexing module:
+
+### OCaml
+
+val lexing_position : buffer -> int -> Lexing.position
+
+###
+ 
+Therefore, a possible implementation for ##locate## could be
+
+### OCaml "position.ml"
+
+type position = Lexing.position * Lexing.position
+
+let locate buf_begin pos_begin buf_end pos_end =
+  (Input.lexing_position bug_begin pos_begin,
+   Input.lexing_position bug_end pos_end)
+
+###
+
+Then, to us position when defining parser, you may define 
+the environment variable ##LOCATE## to be the name of your locate function. Then, in the action rule of a parser, you
+can access position using ##_loc## for the global position
+and ##_loc_id## for the position of a left member of the rule named
+##id##.
+
+Here is a more complete example (which need the above lines defining ##locate##):
+
+### OCaml "position.ml"
+
+#define LOCATE locate
+
+let tmp = parser
+  STR("ints") l:{ i:RE("[0-9]+") -> (_loc, i) }* -> (_loc_l, l) 
+
 ###

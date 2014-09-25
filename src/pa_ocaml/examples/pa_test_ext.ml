@@ -1,6 +1,6 @@
 open Pa_ocaml_prelude
 
-let _ = parser_locate locate (*merge*) locate2
+#define LOCATE locate
 
 module Ext = functor(In:Extension) -> 
 struct

@@ -30,8 +30,7 @@ let _ = spec := !spec @
 		     "Package to link.")
 		  ]
 
-
-let _ = parser_locate locate locate2
+#define LOCATE locate
 
 (****************************************************************************
  * Things that have to do with comments and things to be ignored            *

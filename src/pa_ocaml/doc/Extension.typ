@@ -51,7 +51,7 @@ Here as an exemple adding the ##do ... where ...### and ##let ... try ... ## con
 
  open Pa_ocaml_prelude
 
- let _ = parser_locate locate locate2
+ #define LOCATE locate
 
  module Ext = functor(In:Extension) -> 
  struct
