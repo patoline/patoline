@@ -243,10 +243,10 @@ struct
 			 if new_pos > pos then
 			   begin
 			     Hashtbl.add files_contents name new_pos;
-			     let mode = if pos >= 0 then
-					  [Open_creat; Open_append ]
+			     let mode,msg = if pos >= 0 then
+					  [Open_creat; Open_append ], "Appending to"
 					else
-					  [Open_creat; Open_trunc; Open_wronly ]
+					  [Open_creat; Open_trunc; Open_wronly ], "Creating"
 			     in
 			     let name = if Filename.is_relative name then
 					  match !file with
@@ -255,7 +255,7 @@ struct
 					     Filename.concat (Filename.dirname file) name
 					else name
 			     in
-			     Printf.eprintf "Creating file: %s\n%!" name;
+			     Printf.eprintf "%s file: %s\n%!" msg name;
 			     let ch = open_out_gen mode 0o600 name in
 			     (* FIXME: not all language accept the next line: *)
 			     Printf.fprintf ch "#%d \"%s\"\n" (start_pos _loc_lines).Lexing.pos_lnum (start_pos _loc_lines).Lexing.pos_fname;

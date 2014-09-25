@@ -35,7 +35,7 @@ and ##let ... in## bindings respectively.
 ###
 
 <rule>     ::= <rule> "|"  <rule>
-             | <rule> "|?" <rule>
+             | <rule> "||" <rule>
              | <left> "->" <expr>
 
 <left>     ::= <let_binding> <left>
@@ -59,7 +59,7 @@ and ##let ... in## bindings respectively.
 ###
 
 Before entering into the details of the composition of parsers using modifiers
-or the alternative marker ##|## and ##|?##, we will describe the action of
+or the alternative marker ##|## and ##||##, we will describe the action of
 each terminal:
 \begin{itemize}
 \item ##ANY## parses one character (that is not the end of file character),
@@ -113,7 +113,7 @@ way, in the sense that backtracking is used to explore every possible parse
 tree. The symbols that are doubled (##??##, ##*##, ##+##) backtrack less, and
 stop backtracking when one parse tree has been found. We also have two kinds
 of alternative symbols: The usual ##|## symbol backtracks and explores every
-alternative, while the alternative symbol ##|?## backtracks less, and only
+alternative, while the alternative symbol ##||## backtracks less, and only
 explores the alternative that parses the more input. Note that there should be
 no difference on non-ambiguous grammars.
 
@@ -352,27 +352,27 @@ let _ =
 
 == Advanced use of blank functions ==
 
-On important feature if that the blank function can be changed using the function:
+On important feature is that the blank function can be changed using the function:
 
 ### OCaml
 
-change_layout : ?old_blank_before:bool -> ?new_blank_after:bool -> 
+change_layout : ?new_blank_before:bool -> ?old_blank_after:bool -> 
   'a grammar -> blank -> 'a grammar
 
 ###
 
 The grammar returned by ##change_layout parser blank## will only use
 the provided blank function and ignore the old one. Since blank functions
-are called before every terminals, it is not clear whether the old blank
+are called after every terminals, it is not clear whether the new blank
 function should be called before entering the scope of the ##change_layout##,
-and whether the new blank function should be called after leaving the scope of
+and whether the old blank function should be called after leaving the scope of
 the ##change_layout##.
 
-The first optional argument ##old_blank_before## (##true## by default) will
+The first optional argument ##new_blank_before## (##true## by default) will
 force using first the old blank function, and then the new one, before parsing
 the first terminal inside the scope of the ##change_layout##.
 
-Similarly, ##new_blank_after## (##false## by default) will forces to use the
+Similarly, ##old_blank_after## (##true## by default) will force to use the
 newly provided blank function once at the end of the parsed input, and then
 the old blank function will be used too as expected before the next terminal.
 
@@ -423,7 +423,50 @@ let _ =
   let ps = handle_exception (parse_channel text blank2) stdin in
   let nb = List.length ps in
   Printf.printf "%i paragraphs read.\n" nb
+
 ###
+
+Another control for blank is possible using the combinator
+##ignore_next_blank : 'a grammar -> 'a grammar##. This combinator will prevent using any blank just after the next grammar. This is accessible in the BNF syntax by using a minus after some left member of a rule with the syntax ##<left> -##. This is a postfix operator and it can really be used at the end of a rule.
+
+For instance, by changing two lines in the calculator example you may forbid the use of blank characters just after a unary minus or plus:
+
+### OCaml
+
+  | CHR('-') - e:(expr Atom)         when prio = Atom -> -. e
+  | CHR('+') - e:(expr Atom)         when prio = Atom -> e
+
+###
+
+== Optimisation and delimited grammars ==
+
+The grammar given above for paragraph is not very efficient (try to parse a text with a few thousand paragraphs of a few hundred word each ...
+
+This is because BNF operator ##|##, ##?##, ##*## and ##+## have the intended semantics. when parsing ##"a"* <h>##, one may need to leave some of the "a" for h, for instance if ##<h> ::= "a" "a" "b"##.
+This means that the parsing of ##<g>*## for a given grammar ##<g>##
+will keep an exception handler around the parsing of the rest of the stream to be able to backtrack. This is done using a //continuation passing style// approach to parsing combinator. 
+
+This may leads to numerous failed partial parsing attempts which takes a lot of time. It may also leads to a reasonably fast parser, but using a lot of stack and at risk of 
+raising a ##Stack_overflow## exception. In general the above operator are not tail rec.
+
+To prevent this to append, our parsing combinator are computing the set of allowed characters for the rest of the input stream. 
+This means that if one consider the grammar ##"a"* "b"##, and we parse the string "aaaab", the parser will know that it is useless not to parse all "a" at first. This predictor is sometimes enough to avoir high complexity ... But not always. It is completely useless in the case of the sequence of paragraph as we wrote it.
+
+Another way to prevent this is to use the ##delim : 'a grammar -> 'a grammar## combinator. ##delim g## will not backtrack at all if the grammar ##g## successfully parse an initial segment of the input.
+
+The operators ##||##, ##??##, ##**## and ##++## of the BNF syntax are delimited version of ##|##, ##?##, ##*## and ##+##. This means that
+##g**## is equivalent to ##(delim g)**##, with a similar equation for the other operators.
+
+Beware that this ca be tricky! the following grammar ##g1## will not parse the string "ab" while ##g2## will:
+
+###
+
+let g1 = parser                            let g2 = parser
+|| "a"     -> ()                           || "a" "b" -> ()
+|| "a" "b" -> ()                           || "a"     -> ()
+
+###
+
 
 == Position in parsers ==
 
@@ -435,10 +478,10 @@ val locate : buffer -> int -> buffer -> int -> position
 
 ###
 
-Where ##position## is the type you want to use to represent position.
-the two first arguments of ##locate## will be the buffer and position at the beggining of the text being parsed and the to last argument give the information at the end.
+Here ##position## is the type you want to use to represent positions.
+the two first arguments of ##locate## will be the buffer and position at the beggining of the text being parsed and the two last arguments give this information at the end.
 
-You may use the following function from the input module to convert position to the data type use by the lexing module:
+You may use the following function from the ##Input## module to produce positions using the data type provided by OCaml's ##Lexing## module:
 
 ### OCaml
 
@@ -446,19 +489,21 @@ val lexing_position : buffer -> int -> Lexing.position
 
 ###
  
-Therefore, a possible implementation for ##locate## could be
+Therefore, a possible implementation for ##locate## could be:
 
 ### OCaml
+
+open Decap
 
 type position = Lexing.position * Lexing.position
 
 let locate buf_begin pos_begin buf_end pos_end =
-  (Input.lexing_position bug_begin pos_begin,
-   Input.lexing_position bug_end pos_end)
+  (Input.lexing_position buf_begin pos_begin,
+   Input.lexing_position buf_end pos_end)
 
 ###
 
-Then, to us position when defining parser, you may define 
+Then, to use position when defining a parser in BNF syntax, you may define 
 the environment variable ##LOCATE## to be the name of your locate function. Then, in the action rule of a parser, you
 can access position using ##_loc## for the global position
 and ##_loc_id## for the position of a left member of the rule named
@@ -468,7 +513,10 @@ Here is a more complete example (which need the above lines defining ##locate##)
 
 ### OCaml
 
- #define LOCATE locate
+#define LOCATE locate
+
+let tmp = parser
+  STR("ints") l:{ i:RE("[0-9]+") -> (_loc, i) }* -> (_loc_l, l) 
 
  let tmp = parser
    STR("ints") l:{ i:RE("[0-9]+") -> (_loc, i) }* -> (_loc_l, l) 

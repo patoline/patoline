@@ -1,7 +1,7 @@
 DECAP_DIR = ..
 PA_OCAML = $(DECAP_DIR)/pa_ocaml
 
-all: calc_base calc_prio aabb aabbcc text
+all: calc_base calc_prio aabb aabbcc text position
 
 calc_base: calc_base.ml $(PA_OCAML) $(DECAP_DIR)/decap.cma
 	ocamlc -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) unix.cma str.cma decap.cma $<
@@ -16,6 +16,9 @@ aabbcc: aabbcc.ml $(PA_OCAML) $(DECAP_DIR)/decap.cma
 	ocamlc -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) unix.cma str.cma decap.cma $<
 
 text: text.ml $(PA_OCAML) $(DECAP_DIR)/decap.cma
+	ocamlc -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) unix.cma str.cma decap.cma $<
+
+position: position.ml $(PA_OCAML) $(DECAP_DIR)/decap.cma
 	ocamlc -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) unix.cma str.cma decap.cma $<
 
 clean:
