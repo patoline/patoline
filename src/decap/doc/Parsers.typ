@@ -513,11 +513,11 @@ Here is a more complete example (which need the above lines defining ##locate##)
 
 ### OCaml
 
-#define LOCATE locate
+ #define LOCATE locate
 
-let tmp = parser
-  STR("ints") l:{ i:RE("[0-9]+") -> (_loc, i) }* -> (_loc_l, l) 
+ let ints: (position * (position * int) list) grammar = 
+   parser
+     STR("ints") l:{ i:RE("[0-9]+") -> (_loc, int_of_string i) }*
+       -> (_loc_l, l) 
 
- let tmp = parser
-   STR("ints") l:{ i:RE("[0-9]+") -> (_loc, i) }* -> (_loc_l, l) 
 ###
