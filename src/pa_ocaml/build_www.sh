@@ -10,7 +10,7 @@ mkdir www/files
 
 # Creating release archive
 sh ./build_archive.sh
-cp decap.tar www/files/
+cp decap.tar.gz www/files/
 
 # Copying ocamldoc documentation
 cp html/* www/ocamldoc/
@@ -20,5 +20,6 @@ cp doc/doc.pdf www/files/decap_user_guide.pdf
 tar --transform 's,^doc/,/decap_user_guide/,' \
   -cvf www/files/decap_user_guide.tar \
   doc/*.ml doc/Makefile doc/doc.pdf
+gzip www/files/decap_user_guide.tar
 
 echo "Done!"
