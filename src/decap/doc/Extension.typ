@@ -47,8 +47,10 @@ takes as input some a structure containing some entry points of the OCaml gramma
 
 Here as an exemple adding the ##do ... where ...## and ##let ... try ... ## constructs to OCaml. Note: this exemple use quotation as in Camlp4 (remark, quotation are not yet available for patterns, this is why this code depends upon OCaml's version:
 
-### OCaml "pa_do_try.ml"
+###
 
+###
+### OCaml "pa_do_try.ml"
  open Pa_ocaml_prelude
 
  #define LOCATE locate
@@ -86,6 +88,5 @@ Here as an exemple adding the ##do ... where ...## and ##let ... try ... ## cons
  end
 
  let _ = register_extension (module Ext)
-
 ### 
 

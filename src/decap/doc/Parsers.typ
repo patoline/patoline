@@ -448,7 +448,7 @@ val lexing_position : buffer -> int -> Lexing.position
  
 Therefore, a possible implementation for ##locate## could be
 
-### OCaml "position.ml"
+### OCaml
 
 type position = Lexing.position * Lexing.position
 
@@ -466,11 +466,10 @@ and ##_loc_id## for the position of a left member of the rule named
 
 Here is a more complete example (which need the above lines defining ##locate##):
 
-### OCaml "position.ml"
+### OCaml
 
-#define LOCATE locate
+ #define LOCATE locate
 
-let tmp = parser
-  STR("ints") l:{ i:RE("[0-9]+") -> (_loc, i) }* -> (_loc_l, l) 
-
+ let tmp = parser
+   STR("ints") l:{ i:RE("[0-9]+") -> (_loc, i) }* -> (_loc_l, l) 
 ###
