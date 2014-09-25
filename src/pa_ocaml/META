@@ -1,5 +1,5 @@
 name="decap"
-requires="unix, str, bigarray"
+requires="unix, str"
 version="0.1"
 archive(native)="decap.cmxa"
 archive(byte)="decap.cma"
