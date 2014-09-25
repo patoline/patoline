@@ -37,19 +37,19 @@ $(d)/unicode_parse.ml.depends: $(d)/unicode_parse.ml $(PA_OCAML)
 
 $(d)/unicode_parse.cmo: $(d)/unicode_parse.ml $(PA_OCAML)
 	$(ECHO) "[OCAMLC]   ... -> $@"
-	$(Q)$(OCAMLC) -package glr -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
+	$(Q)$(OCAMLC) -package decap -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
 
 $(d)/unicode_parse.cmx: $(d)/unicode_parse.ml $(PA_OCAML)
 	$(ECHO) "[OPT]   ... -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -package glr -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
+	$(Q)$(OCAMLOPT_NOINTF) -package decap -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
 
-$(d)/unicode_parse: $(d)/UChar.cmx $(GLR_DIR)/glr.cmxa $(GLR_DIR)/pa_ocaml_prelude.cmx $(d)/unicode_type.cmx $(d)/unicode_parse.cmx $(GLR_DIR)/pa_parser.cmx $(GLR_DIR)/pa_ocaml.cmx $(GLR_DIR)/pa_compose.cmx $(GLR_DIR)/pa_opt_main.cmx
+$(d)/unicode_parse: $(d)/UChar.cmx $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/pa_ocaml_prelude.cmx $(d)/unicode_type.cmx $(d)/unicode_parse.cmx $(PA_OCAML_DIR)/pa_parser.cmx $(PA_OCAML_DIR)/pa_ocaml.cmx $(PA_OCAML_DIR)/pa_compose.cmx $(PA_OCAML_DIR)/pa_opt_main.cmx
 	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLOPT) -linkpkg -package glr $(COMPILER_INC) $(COMPILER_LIBO) $(GLR_DIR)/glr.cmxa -o $@ $^
+	$(Q)$(OCAMLOPT) -linkpkg -package decap $(COMPILER_INC) $(COMPILER_LIBO) $(PA_OCAML_DIR)/decap.cmxa -o $@ $^
 
 src/Patoline/UnicodeData.cmx: src/Patoline/UnicodeData.txt $(d)/unicode_parse $(d)/UChar.cmx $(d)/unicode_type.cmx
 	$(ECHO) "[OPT] ... -> ^@"
-	$(Q)$(OCAMLOPT_NOINTF) -package glr,str -pp $(UNICODE_DIR)/unicode_parse -impl $< $(UNICODELIB_INCLUDES) -c
+	$(Q)$(OCAMLOPT_NOINTF) -package decap,str -pp $(UNICODE_DIR)/unicode_parse -impl $< $(UNICODELIB_INCLUDES) -c
 
 $(d)/unicodelib.cma: $(UNICODELIB_CMO)
 	$(ECHO) "[LINK]   ... -> $@"

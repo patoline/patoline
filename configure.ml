@@ -138,8 +138,8 @@ let local_packages = [
     subdirs = [];
     has_meta = true;
   };
-  { package_name = "glr";
-    macro_suffix = "GLR";
+  { package_name = "pa_ocaml";
+    macro_suffix = "PA_OCAML";
     local_deps = [];
     extern_deps = [];
     subdirs = [];
@@ -612,7 +612,7 @@ let _=
   Printf.fprintf make "INSTALL_DLLS_DIR :=%s\n" !ocaml_dlls_dir;
   Printf.fprintf make "INSTALL_EMACS_DIR :=%s\n" emacsdir;
   Printf.fprintf make "INSTALL_RBUFFER_DIR :=%s/rbuffer\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_GLR_DIR :=%s/glr\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_PA_OCAML_DIR :=%s/decap\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_UTIL_DIR :=%s/patutil\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_IMGLIB_DIR :=%s/imagelib\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_UNICODELIB_DIR :=%s/unicodelib\n" !ocaml_lib_dir;
@@ -646,7 +646,7 @@ let _=
   (* Enable compilation of ocaml-bibi if sqlite3 is installed *)
   Printf.fprintf make "OCAML_BIBI := %s\n" (if has_sqlite3 then "ocaml-bibi" else "");
 
-  (* Enable compilation of pa_patoline if glr is installed *)
+  (* Enable compilation of pa_patoline if pa_ocaml is installed *)
   Printf.fprintf make "PA_PATOLINE := %s\n" "src/Patoline/pa_patoline";
 
   (* Tell make which ConfigFindFont (fontconfig or not) should be linked while
