@@ -1,4 +1,4 @@
-name="glr"
+name="decap"
 requires="unix, str, bigarray"
 version="0.1"
 archive(native)="decap.cmxa"

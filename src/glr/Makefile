@@ -1,11 +1,9 @@
-FINDLIB =
-CAMLFLAGS =
-OCAMLC = $(FINDLIB) ocamlc.opt $(CAMLFLAGS)
-OCAMLOPT = $(FINDLIB) ocamlopt.opt $(CAMLFLAGS)
-BINDIR = /usr/local/bin
-LIBDIR = /$(shell ocamlc -where)/glr
+OCAMLC = ocamlc.opt
+OCAMLOPT = ocamlopt.opt
+BINDIR = $(DESTDIR)/usr/local/bin
+LIBDIR = $(DESTDIR)$(shell ocamlc -where)/decap
 
-all: decap.cmxa decap.cma decap.cmi ocamldoc pa_ocaml
+all: decap.cmxa decap.cma decap.cmi doc pa_ocaml
 
 %.cmi: %.mli
 	$(OCAMLC) -c $< 
@@ -150,111 +148,24 @@ boot:
 	export BYTE=1 ;\
 	./pa_ocaml --ascii pa_main.ml > bootstrap/$(OCAMLVERSION)/pa_byt_main.ml
 
-examples/pa_test_ext.cmx: examples/pa_test_ext.ml pa_ocaml
-	$(OCAMLOPT) -pp ./pa_ocaml $(COMPILER_INC) -c $<
-
-examples/pa_test_ext: decap.cmxa pa_ocaml_prelude.cmx examples/pa_test_ext.cmx pa_ocaml.cmx pa_compose.cmx pa_opt_main.cmx 
-	$(OCAMLOPT) $(COMPILER_INC)  -o $@ unix.cmxa str.cmxa $(COMPILER_LIBO) $^
-
-examples/test: examples/test.ml decap.cmxa
-	$(OCAMLOPT) -pp ./pa_ocaml str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
-
-examples/calc: examples/calc.cmx decap.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
-
-examples/calc.cmx: examples/calc.ml decap.cmxa pa_ocaml
-	$(OCAMLOPT) -pp ./pa_ocaml -c $<
-
-examples/calc_all: examples/calc_all.cmx decap.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
-
-examples/calc_all.cmx: examples/calc_all.ml decap.cmxa pa_ocaml
-	$(OCAMLOPT) -pp ./pa_ocaml -c $<
-
-examples/calc_prio: examples/calc_prio.cmx decap.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
-
-examples/calc_prio.cmx: examples/calc_prio.ml decap.cmxa pa_ocaml
-	$(OCAMLOPT) -pp ./pa_ocaml -c $<
-
-examples/text: examples/text.cmx decap.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
-
-examples/text.cmx: examples/text.ml decap.cmxa pa_ocaml
-	$(OCAMLOPT) -pp ./pa_ocaml -c $<
-
-examples/text_opt: examples/text_opt.cmx decap.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
-
-examples/text_opt.cmx: examples/text_opt.ml decap.cmxa pa_ocaml
-	$(OCAMLOPT) -pp ./pa_ocaml -c $<
-
-examples/test_merge: examples/test_merge.cmx decap.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
-
-examples/test_merge.cmx: examples/test_merge.ml decap.cmxa
-	$(OCAMLOPT) -c $<
-
-examples/test_list: examples/test_list.cmx decap.cmxa
-	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa decap.cmxa $< -o $@
-
-examples/test_list.cmx: examples/test_list.ml decap.cmxa
-	$(OCAMLOPT) -pp ./pa_ocaml -c $<
-
-#check: examples/calc examples/calc_strict examples/calc_simple examples/text examples/text_opt examples/test_merge examples/test_list
-#	time examples/calc < benchmark/test3.txt
-#	time examples/calc < benchmark/test2.txt
-#	time examples/calc < benchmark/test1.txt
-##	time examples/calc < benchmark/test5.txt
-##	time examples/calc < benchmark/test4.txt
-#	time examples/calc_simple < benchmark/test3.txt
-#	time examples/calc_simple < benchmark/test2.txt
-#	time examples/calc_simple < benchmark/test1.txt
-#	time examples/calc_simple < benchmark/test5.txt
-#	time examples/calc_simple < benchmark/test4.txt
-#	time examples/calc_strict < benchmark/test3.txt
-#	time examples/calc_strict < benchmark/test2.txt
-#	time examples/calc_strict < benchmark/test1.txt
-#	time examples/calc_strict < benchmark/test5.txt
-#	time examples/calc_strict < benchmark/test4.txt
-#	time examples/text < benchmark/text0.txt
-#	time examples/text < benchmark/text1.txt
-#	time examples/text < benchmark/text2.txt
-#	time examples/text < benchmark/text3.txt
-#	time examples/text_opt < benchmark/text0.txt
-#	time examples/text_opt < benchmark/text1.txt
-#	time examples/text_opt < benchmark/text2.txt
-#	time examples/text_opt < benchmark/text3.txt
-#	time examples/test_merge 15
-#	time examples/test_list 12
-
 install: uninstall decap.mli decap.cmxa decap.cma
-	- mkdir $(DESTDIR)/$(LIBDIR)
-	- ocamlfind remove -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr
-	ocamlfind install -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr META decap.cmi decap.cmo decap.mli decap.cmx charset.cmi charset.cmo charset.mli charset.cmx decap.cma decap.cmxa decap.a
-	install pa_ocaml $(DESTDIR)/$(BINDIR)
+	install -m 755 -d $(LIBDIR)
+	install -m 755 -d $(BINDIR)
+	ocamlfind install -destdir $(dir $(LIBDIR)) decap META decap.cmi decap.cmo decap.mli decap.cmx charset.cmi charset.cmo charset.mli charset.cmx decap.cma decap.cmxa decap.a
+	install -m 755 pa_ocaml $(BINDIR)
 
 uninstall:
-	- ocamlfind remove -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr
-	- rm -f $(DESTDIR)/$(BINDIR)/pa_ocaml
+	ocamlfind remove -destdir $(dir $(LIBDIR)) decap
+	rm -rf $(LIBDIR)
+	rm -f $(BINDIR)/pa_ocaml
 
 clean:
-	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa 
+	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa
 	- rm -f bootstrap/*/*.cm* bootstrap/*/*.o bootstrap/*/*.a
-	- cd examples; rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa calc calc_strict text text_opt test_merge
-	- rm -rf www/ocamldoc
-	- rm -rf doc/_patobuild/
 
 distclean: clean
 	- rm -f pa_ocaml pa_ocaml.byt
-	- rm -f doc/doc.pdf doc/*.ml
 
-ocamldoc: decap.mli charset.mli input.mli
-	mkdir -p www/ocamldoc
-	ocamldoc -d www/ocamldoc -html decap.mli charset.mli input.mli
-
-doc/doc.pdf: doc/doc.typ
-	patoline doc/doc.typ
-
-archive: doc/doc.pdf
-	tar  --transform 's,^,/decap/,' -cvf decap.tar *.ml *.mli Makefile all_boot.sh bootstrap/*/*.ml doc/*.ml doc/doc.pdf
+doc: decap.mli charset.mli input.mli
+	mkdir -p html
+	ocamldoc -d html -html decap.mli charset.mli input.mli
