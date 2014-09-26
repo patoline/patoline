@@ -1,20 +1,25 @@
 == Extending the OCaml parser ==
 
-The syntax for BNF described in the previous sections is an OCaml extension written using
-this tool in itself. This means that Decap comes with an extensible OCaml parser 
-similar to what camlp4 provides.
-
-First our parser aims at a (almost) full compatibility with OCaml syntax together with the BNF extension.
-Here are some known differences with the original OCaml parser:
+The BNF-like syntax described in the previous sections is implemented as an
+OCaml extension written using the tool in itself. This means that Decap comes
+with an extensible OCaml parser similar to what Camlp4 provides. Our parser
+aims at being (almost) fully compatibility with OCaml syntax together, with
+the added BNF extension. Here is a list of some known (and deliberate)
+differences with the original OCaml parser:
 \begin{itemize}
-\item ##val## may be use in place of ##let## for struture fields.
-\item type coercion are allowed in expression and pattern without parenthesis. For expression the priority
-is between sequences and conditionals ##a ; if b then c else d : t## means ##a ; if b then c else (d : t)##.
-And for pattern, type coercion is at the lowest priority level: ##a , b : t## means ##(a, b) : t##.
-\item A preprocessor is available. This may break some code if a "#" symbol occurs at a beginning of a line.
+\item ##val## may be use in place of ##let## for struture fields,
+\item type coercion are allowed in expression and pattern without parenthesis.
+      The priority level used is between sequences and conditionals, which
+      means that ##a ; if b then c else d : t## is parsed as
+      ##a ; if b then c else (d : t)##.
+      For patterns, type coercion is at the lowest priority level:
+      ##a , b : t## means ##(a, b) : t##.
+\item A preprocessor is available. This may break some code if a "#" symbol
+      occurs at a beginning of a line.
 \end{itemize} 
 
-Here are the preprocessor directive, which all shoud have a "#" caractere as first character on the line:
+The supported preprocessor directives, are listed bellow. Note that the "#"
+character needs to be the first character on the line.
 
 \begin{itemize}
 \item The line number indication directive as in OCaml.
@@ -24,10 +29,12 @@ Here are the preprocessor directive, which all shoud have a "#" caractere as fir
 \item ``#endif``, ``#else`` and ``#elif ...`` to close the conditional directive.
 \end{itemize}
 
-Moreover, OCaml can access environment variables: ##$VARIABLE##, in an expression or a pattern, is
-replaced by the value of the given environment variable (there should
-be no space between the dollar sign and the first letter of the
-variable name (which must be a capital letter). The value of the variable is not considered as a string, it is parsed as an OCaml expression.or pattern. Exemple:
+Moreover, OCaml can access the environment variables ##VAR## with the syntax
+##$VAR##. In an expression or a pattern, it is replaced by the value of the
+given environment variable (there should be no space between the dollar sign
+and the first letter of the variable name (which must be a capital letter).
+The value of the variable is not considered as a string, it is parsed as an
+OCaml expression or pattern. Here is an exemple:
 
 ###
 
@@ -37,23 +44,28 @@ variable name (which must be a capital letter). The value of the variable is not
  let f x = match x with
    | $TRUE -> true
    | $FALSE -> false
-
 ###
 
 == Extending OCaml grammar ==
 
-To extend OCaml's grammar, you must write a functor, that 
-takes as input some a structure containing some entry points of the OCaml grammar and some other usefull functions and extends the OCaml grammar by calling provided function. After the definition of the function, you must register the extension.
+To extend OCaml's grammar, one should create a functor, taking as input some
+structure containing the entry points of the OCaml grammar and some other
+usefull functions, and extends the OCaml grammar by calling the provided
+function. After the definition of the function, the extension needs to be
+registered.
 
-Here as an exemple adding the ##do ... where ...## and ##let ... try ... ## constructs to OCaml. 
-Note: this exemple use quotation as in Camlp4.
+Here is an example adding the ##do ... where ...## and ##let ... try ... ##
+constructs to OCaml. Note that quotation are used, as with Camlp4.
 
-Warning: quotation are still being developped and are not complete yet: for instance, quotation patterns are not yet available and
-we must use directly the constructor of OCaml's ast to match and transform expressions. This implies that the following example
-depends upon OCaml's version.
+//Warning: quotation are still being developped and are not complete yet. For
+instance, quotation patterns are not yet available and the constructors of
+OCaml's AST have to be used directly to match and transform expressions. This
+implies that the following example depends upon OCaml's version.//
 
+###
+
+###
 ### OCaml "pa_do_try.ml"
-
  open Pa_ocaml_prelude
 
  #define LOCATE locate
@@ -91,8 +103,10 @@ depends upon OCaml's version.
  end
 
  let _ = register_extension (module Ext)
-
 ### 
+###
+
+###
 
 This file can be compiled with the following line:
 
@@ -104,22 +118,23 @@ ocamlfind ocamlopt -pp ../pa_ocaml -o pa_do_try -linkall -package decap
 
 ###
 
-The idea behind this file and command in that the module ##Pa_ocaml_prelude.Initial : Extension##, which is included
-inside ##decap.cmxa##, contains some entry point of the OCaml grammar, some data types related to priorities, ...
+The module ##Pa_ocaml_prelude.Initial : Extension##, which is included inside
+##decap.cmxa##, contains entry points of the OCaml grammar, data types related
+to priorities, ...
 
-Then, you must write a functor taking as input a module of type Extension, incuded it, so that the resulting module is
-of the same type. Then, we may extend the list ##extra_expressions## with one parser to add parsing rule for expressions.
-We may also use ##add_reserved_id## to add new keyword.
+The idea is to write a functor taking as input a module of type ##Extension##,
+and incude it so that the resulting module is of the same type. Then, the list
+##extra_expressions## can be extended with one parser, in order to add parsing
+rule for expressions. We may also use ##add_reserved_id## to add new keyword.
 
-Finally, the extension is registered. Then, the module inside ##decap_ocaml.cmxa## will build the ocaml grammar together with 
-all register extension.
+Finally, the extension is registered and the module inside ##decap_ocaml.cmxa##
+will build the ocaml grammar together with all register extension.
 
 == Non terminals, quotation and anti-quotations ==
 
 **We now list rapidely the available, non terminal entry points (extensible or not) available to write extensions, all quotations and anti-quotations. This documentation is very succinct and will be augmented when our software will be completed.**
 
-Here are the entry points available in the module ##Pa_ocaml_prelude.Initial : Extension## (this will be extended in the near future, to 
-allow for instance adding new infix construction in expression of pattern):
+Here are the entry points available in the module ##Pa_ocaml_prelude.Initial : Extension## (this will be extended in the near future, to allow for instance adding new infix construction in expression of pattern):
 
 \begin{itemize}
 \item ##expression_lvl : expression_prio -> expression grammar##

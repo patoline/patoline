@@ -526,7 +526,6 @@ positions using the data provided by OCaml's ##Lexing## module:
 val lexing_position : buffer -> int -> Lexing.position
 
 ###
- 
 Therefore, a possible implementation for ##locate## could be:
 
 ### OCaml
@@ -558,5 +557,4 @@ definition of ##locate##:
    parser
      STR("ints") l:{ i:RE("[0-9]+") -> (_loc, int_of_string i) }*
        -> (_loc_l, l) 
-
 ###
