@@ -43,8 +43,8 @@ let raw_notice = read_lines licence_file
 let header =
   let ls = match !comment with
            | None          -> raw_notice
-           | Single c      -> List.map (fun l -> c ^ " " ^ l) raw_notice
-           | Multi (lc,rc) -> lc :: (List.map (fun l -> "  " ^ l) raw_notice) @ [rc]
+           | Single c      -> List.map (fun l -> if l = "" then c else (c ^ " " ^ l)) raw_notice
+           | Multi (lc,rc) -> lc :: (List.map (fun l -> if l = "" then "" else ("  " ^ l)) raw_notice) @ [rc]
   in (String.concat "\n" ls) ^ "\n\n"
 
 let add_copyright file =
