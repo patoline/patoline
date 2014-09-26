@@ -48,8 +48,7 @@
 open Charset
 open Input
 
-(** DeCaP (Delimited Continuation Parser): a minimalist combinator library.
-  @author Christophe Raffalli *)
+(** DeCaP (Delimited Continuation Parser): a minimalist combinator library. *)
 
 (** {2 Exceptions} *)
 
