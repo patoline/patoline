@@ -120,7 +120,7 @@ no difference on non-ambiguous grammars.
 Let us now give a first example of a parser, implementing a very simplistic
 calculator having as only operations addition and substraction. The BNF
 grammar of the parsed language will be the following, where ##<int>##
-designates a regual expression matchin integers:
+matches any integer:
 
 ###
 
@@ -361,8 +361,8 @@ change_layout : ?new_blank_before:bool -> ?old_blank_after:bool ->
 
 ###
 
-The grammar returned by ##change_layout parser blank## will only use
-the provided blank function and ignore the old one. Since blank functions
+The grammar returned by ##change_layout parser blank## will use the provided
+blank function only and ignore the old one. Since blank functions
 are called after every terminals, it is not clear whether the new blank
 function should be called before entering the scope of the ##change_layout##,
 and whether the old blank function should be called after leaving the scope of
@@ -423,31 +423,49 @@ let _ =
   let ps = handle_exception (parse_channel text blank2) stdin in
   let nb = List.length ps in
   Printf.printf "%i paragraphs read.\n" nb
+###
+###
 
 ###
 
-Another control for blank is possible using the combinator
-##ignore_next_blank : 'a grammar -> 'a grammar##. This combinator will prevent using any blank just after the next grammar. This is accessible in the BNF syntax by using a minus after some left member of a rule with the syntax ##<left> -##. This is a postfix operator and it can really be used at the end of a rule.
+Blanks can also be controled using the combinator ##ignore_next_blank##, which
+prevents the parsing of blanks before entering the following grammar.
 
-For instance, by changing two lines in the calculator example you may forbid the use of blank characters just after a unary minus or plus:
+###
+
+ignore_next_blank : 'a grammar -> 'a grammar
+
+###
+This combinator is accessible in the BNF syntax by using a dash symbol after
+some left member of a rule (i.e. with the syntax ##<left> -##). This really
+is a postfix operator, hence it can be used at the end of a rule.
+
+As an example, the following change in the rules for the unary minus and plus
+symbol of the calculator example would forbid blanks to be used between unary
+symbols and the following expression:
 
 ### OCaml
 
   | CHR('-') - e:(expr Atom)         when prio = Atom -> -. e
   | CHR('+') - e:(expr Atom)         when prio = Atom -> e
-
 ###
 
 == Optimisation and delimited grammars ==
 
-The grammar given above for paragraph is not very efficient (try to parse a text with a few thousand paragraphs of a few hundred word each ...
+The grammar given above for paragraph is not very efficient (try to parse a
+text with a few thousand paragraphs of a few hundred word each...). This
+comes from the semantics of the BNF operator ##|##, ##?##, ##*## and ##+##
+(which is the usual one). When parsing ##"a"* <h>##, one may need to leave
+some characters ##"a"## for ##<h>## to consume (for example, we could have
+##<h> ::= "a" "a" "b"##). This means that the parsing of ##<g>*## for a
+given grammar ##<g>## will keep an exception handler around the parsing of
+the rest of the stream to be able to backtrack. This is done using a
+//continuation passing style// approach to parsing combinator. 
 
-This is because BNF operator ##|##, ##?##, ##*## and ##+## have the intended semantics. when parsing ##"a"* <h>##, one may need to leave some of the "a" for h, for instance if ##<h> ::= "a" "a" "b"##.
-This means that the parsing of ##<g>*## for a given grammar ##<g>##
-will keep an exception handler around the parsing of the rest of the stream to be able to backtrack. This is done using a //continuation passing style// approach to parsing combinator. 
-
-This may leads to numerous failed partial parsing attempts which takes a lot of time. It may also leads to a reasonably fast parser, but using a lot of stack and at risk of 
-raising a ##Stack_overflow## exception. In general the above operator are not tail rec.
+This may leads to numerous failed partial parsing attempts which may takes
+a lot of time. It may also create to a reasonably fast parser using a
+lot of stack, which could lead to a ##Stack_overflow## exception being
+raised. In general the above operator are not tail recursive.
 
 To prevent this to append, our parsing combinator are computing the set of allowed characters for the rest of the input stream. 
 This means that if one consider the grammar ##"a"* "b"##, and we parse the string "aaaab", the parser will know that it is useless not to parse all "a" at first. This predictor is sometimes enough to avoir high complexity ... But not always. It is completely useless in the case of the sequence of paragraph as we wrote it.
@@ -464,7 +482,7 @@ Beware that this ca be tricky! the following grammar ##g1## will not parse the s
 let g1 = parser                            let g2 = parser
 || "a"     -> ()                           || "a" "b" -> ()
 || "a" "b" -> ()                           || "a"     -> ()
-
+ a regual expression matchin integers:
 ###
 
 
