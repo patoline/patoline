@@ -6,7 +6,7 @@ let comment = ref None
 
 let files = ref []
 
-let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " [option] [LICENCE] [FILE1] [FILE2] ...\n%!"
+let usage_msg = "Usage: " ^ Sys.argv.(0) ^ " [option] [LICENCE] [FILE1] [FILE2] ...\n"
 
 let anon_fun s = files := !files @ [s]
 
@@ -22,7 +22,7 @@ let (licence_file, files) = match !files with
                             | l :: f :: fs -> (l, f :: fs)
                             | _            -> assert false
 
-let licence filename =
+let read_lines filename =
   let ic = open_in filename in
   let lines = ref [] in
   try
@@ -34,19 +34,23 @@ let licence filename =
   with
   | End_of_file -> close_in ic; List.rev !lines
 
-let raw_notice = licence licence_file
+let read_file filename =
+  let ls = read_lines filename in
+  String.concat "\n" ls
+
+let raw_notice = read_lines licence_file
 
 let header =
   let ls = match !comment with
            | None          -> raw_notice
            | Single c      -> List.map (fun l -> c ^ " " ^ l) raw_notice
            | Multi (lc,rc) -> lc :: (List.map (fun l -> "  " ^ l) raw_notice) @ [rc]
-  in (String.concat "\n" ls) ^ "\n"
+  in (String.concat "\n" ls) ^ "\n\n"
 
 let add_copyright file =
-  let oc = open_out_gen [Open_append] 0 file in
-  seek_out oc 0;
-  output_string oc header;
+  let content = read_file file in
+  let oc = open_out file in
+  output_string oc (header ^ content);
   close_out oc
 
 let _ =
