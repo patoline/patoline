@@ -467,28 +467,46 @@ a lot of time. It may also create to a reasonably fast parser using a
 lot of stack, which could lead to a ##Stack_overflow## exception being
 raised. In general the above operator are not tail recursive.
 
-To prevent this to append, our parsing combinator are computing the set of allowed characters for the rest of the input stream. 
-This means that if one consider the grammar ##"a"* "b"##, and we parse the string "aaaab", the parser will know that it is useless not to parse all "a" at first. This predictor is sometimes enough to avoir high complexity ... But not always. It is completely useless in the case of the sequence of paragraph as we wrote it.
+In order to prevent this, our parsing combinators systematically compute the
+set of allowed characters for the rest of the input stream. This means that if
+one consider the grammar ##"a"* "b"##, and parses the string ##"aaaab"##, the
+parser will know that it is useless not to parse every character ##"a"## in
+the first place. This prediction mechanism is sometimes enough to avoir high
+complexity, but not always. It is completely useless in the case of the
+sequence of paragraph as we wrote it.
 
-Another way to prevent this is to use the ##delim : 'a grammar -> 'a grammar## combinator. ##delim g## will not backtrack at all if the grammar ##g## successfully parse an initial segment of the input.
+Another way to prevent this is to use the ##delim## combinator. ##delim g##
+will not backtrack at all if the grammar ##g## successfully parses an initial
+segment of the input.
 
-The operators ##||##, ##??##, ##**## and ##++## of the BNF syntax are delimited version of ##|##, ##?##, ##*## and ##+##. This means that
-##g**## is equivalent to ##(delim g)**##, with a similar equation for the other operators.
+###
 
-Beware that this ca be tricky! the following grammar ##g1## will not parse the string "ab" while ##g2## will:
+delim : 'a grammar -> 'a grammar
+
+###
+
+The operators ##||##, ##??##, ##**## and ##++## of the BNF syntax simply
+correspond to delimited versions of ##|##, ##?##, ##*## and ##+##. This means
+for instance that ##g**## is equivalent to ##(delim g)**## (and similarly for
+the other operators).
+
+One should be especially careful with the ##||## alternative operator. For
+instance, the following grammar ##g1## will not parse the string  ##"ab"##
+while ##g2## will:
 
 ###
 
 let g1 = parser                            let g2 = parser
 || "a"     -> ()                           || "a" "b" -> ()
 || "a" "b" -> ()                           || "a"     -> ()
- a regual expression matchin integers:
 ###
-
 
 == Position in parsers ==
 
-To give error messages, it is important to get the positions of the element in the parse tree. To do this, you can write a function ##locate## with the following type:
+To provide error messages, it is important to be able to obtain the positions
+of an element in the parse tree. To do this, one can write a function
+##locate## having the following type, where ##position## is a user-defined
+type representing a position:
 
 ### OCaml
 
@@ -496,10 +514,12 @@ val locate : buffer -> int -> buffer -> int -> position
 
 ###
 
-Here ##position## is the type you want to use to represent positions.
-the two first arguments of ##locate## will be the buffer and position at the beggining of the text being parsed and the two last arguments give this information at the end.
+The two first arguments of ##locate## will be the buffer and position at the
+beggining of the text being parsed, and the two last arguments give the same
+informations for the end of the text.
 
-You may use the following function from the ##Input## module to produce positions using the data type provided by OCaml's ##Lexing## module:
+The following function from the ##Input## module can be used to produce
+positions using the data provided by OCaml's ##Lexing## module:
 
 ### OCaml
 
@@ -521,13 +541,14 @@ let locate buf_begin pos_begin buf_end pos_end =
 
 ###
 
-Then, to use position when defining a parser in BNF syntax, you may define 
-the environment variable ##LOCATE## to be the name of your locate function. Then, in the action rule of a parser, you
-can access position using ##_loc## for the global position
-and ##_loc_id## for the position of a left member of the rule named
-##id##.
+In order to use positions when defining a parser in //BNF// syntax, the
+environment variable ##LOCATE## can be set to contain the name of the user's
+locate function. The position are the accessible in the action rules of a
+parser by using the variable ##_loc## for the global position and ##_loc_id##
+for the position of the left member of the rule named ##id##.
 
-Here is a more complete example (which need the above lines defining ##locate##):
+We give bellow a more complete example, which should work with the above
+definition of ##locate##:
 
 ### OCaml
 
