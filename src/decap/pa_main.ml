@@ -65,7 +65,7 @@ let entry =
   | Toplvl, _  -> `Top
 
 #ifdef BYTE
-let _ = if entry = `Top then
+let _ = if entry = `Top then (
   printf "Pa_ocaml top level using OCaml %s%!" (Sys.ocaml_version);
   Toploop.initialize_toplevel_env ();
   let rec loop () =
@@ -89,7 +89,7 @@ let _ = if entry = `Top then
   try
     loop ()
   with
-  | Main.Top_Exit -> exit 0
+  | Main.Top_Exit -> exit 0)
 #else
 let _ = 
   if entry = `Top then (

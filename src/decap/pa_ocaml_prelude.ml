@@ -234,7 +234,7 @@ let push_frame, pop_frame, push_location, pop_location =
 
 (* declare expression soon for antiquotation *)
 module Initial = struct
-  type expression_lvl = Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
+  type expression_prio = Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
 
 let next_exp = function
     Top -> Let
@@ -260,7 +260,7 @@ let next_exp = function
   | Atom -> Atom
 
 
-  let (expression_lvl : expression_lvl -> expression grammar), set_expression_lvl = grammar_family "expression_lvl"
+  let (expression_lvl : expression_prio -> expression grammar), set_expression_lvl = grammar_family "expression_lvl"
   let expr = expression_lvl Top
   let expression= expr
   let structure_item : structure_item list grammar = declare_grammar "structure_item"
@@ -300,10 +300,10 @@ let next_exp = function
   type value_binding = Parsetree.pattern * Parsetree.expression
 #endif
   let let_binding : value_binding list grammar = declare_grammar "let_binding"
-  let class_body : Parsetree.class_structure grammar = declare_grammar "class_body"
-  let class_expr : Parsetree.class_expr grammar = declare_grammar "class_expr"
+  let class_body : class_structure grammar = declare_grammar "class_body"
+  let class_expr : class_expr grammar = declare_grammar "class_expr"
 
-  let extra_expressions = ([] : (expression_lvl * expression) grammar list)
+  let extra_expressions = ([] : (expression_prio * expression) grammar list)
   let extra_types = ([] : core_type grammar list)
   let extra_patterns = ([] : (pattern_prio * pattern) grammar list)
   let extra_structure = ([] : structure_item list grammar list)
@@ -459,7 +459,7 @@ let next_exp = function
 
   let constr_decl_list : constructor_declaration list grammar = declare_grammar "constr_decl_list"
   let field_decl_list : label_declaration list grammar = declare_grammar "field_decl_list"
-  let (match_cases : expression_lvl -> case list grammar), set_match_cases = grammar_family "match_cases"
+  let (match_cases : expression_prio -> case list grammar), set_match_cases = grammar_family "match_cases"
   let module_expr : module_expr grammar = declare_grammar "module_expr"
   let module_type : module_type grammar = declare_grammar "module_type"
 

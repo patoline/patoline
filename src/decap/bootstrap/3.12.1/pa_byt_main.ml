@@ -64,20 +64,21 @@ let entry =
   | (Toplvl ,_) -> `Top
 let _ =
   if entry = `Top
-  then printf "Pa_ocaml top level using OCaml %s%!" Sys.ocaml_version;
-  Toploop.initialize_toplevel_env ();
-  (let rec loop () =
-     Format.printf "\n> %!";
-     (try
-        let buffer = Input.buffer_from_channel ~filename:"stdin" stdin in
-        let (buffer,pos,ph) =
-          partial_parse_buffer Main.top_phrase blank buffer 0 in
-        ignore (Toploop.execute_phrase true Format.std_formatter ph)
-      with | Main.Top_Exit  -> raise Main.Top_Exit
-      | Decap.Parse_error _ as e -> (Decap.print_exception e; exit 1)
-      | e -> Errors.report_error Format.std_formatter e);
-     loop () in
-   try loop () with | Main.Top_Exit  -> exit 0)
+  then
+    (printf "Pa_ocaml top level using OCaml %s%!" Sys.ocaml_version;
+     Toploop.initialize_toplevel_env ();
+     (let rec loop () =
+        Format.printf "\n> %!";
+        (try
+           let buffer = Input.buffer_from_channel ~filename:"stdin" stdin in
+           let (buffer,pos,ph) =
+             partial_parse_buffer Main.top_phrase blank buffer 0 in
+           ignore (Toploop.execute_phrase true Format.std_formatter ph)
+         with | Main.Top_Exit  -> raise Main.Top_Exit
+         | Decap.Parse_error _ as e -> (Decap.print_exception e; exit 1)
+         | e -> Errors.report_error Format.std_formatter e);
+        loop () in
+      try loop () with | Main.Top_Exit  -> exit 0))
 let ast =
   let (filename,ch) =
     match !file with

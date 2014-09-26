@@ -195,7 +195,7 @@ let (push_frame,pop_frame,push_location,pop_location) =
        with | Stack.Empty  -> false))
 module Initial =
   struct
-    type expression_lvl =  
+    type expression_prio =  
       | Top
       | Let
       | Seq
@@ -240,7 +240,7 @@ module Initial =
       | Dot  -> Prefix
       | Prefix  -> Atom
       | Atom  -> Atom
-    let ((expression_lvl : expression_lvl -> expression grammar),set_expression_lvl)
+    let ((expression_lvl : expression_prio -> expression grammar),set_expression_lvl)
       = grammar_family "expression_lvl"
     let expr = expression_lvl Top
     let expression = expr
@@ -305,11 +305,9 @@ module Initial =
     type value_binding = (Parsetree.pattern* Parsetree.expression) 
     let let_binding: value_binding list grammar =
       declare_grammar "let_binding"
-    let class_body: Parsetree.class_structure grammar =
-      declare_grammar "class_body"
-    let class_expr: Parsetree.class_expr grammar =
-      declare_grammar "class_expr"
-    let extra_expressions: (expression_lvl* expression) grammar list = []
+    let class_body: class_structure grammar = declare_grammar "class_body"
+    let class_expr: class_expr grammar = declare_grammar "class_expr"
+    let extra_expressions: (expression_prio* expression) grammar list = []
     let extra_types: core_type grammar list = []
     let extra_patterns: (pattern_prio* pattern) grammar list = []
     let extra_structure: structure_item list grammar list = []
@@ -391,7 +389,7 @@ module Initial =
       declare_grammar "constr_decl_list"
     let field_decl_list: label_declaration list grammar =
       declare_grammar "field_decl_list"
-    let ((match_cases : expression_lvl -> case list grammar),set_match_cases)
+    let ((match_cases : expression_prio -> case list grammar),set_match_cases)
       = grammar_family "match_cases"
     let module_expr: module_expr grammar = declare_grammar "module_expr"
     let module_type: module_type grammar = declare_grammar "module_type"
