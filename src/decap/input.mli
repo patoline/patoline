@@ -45,7 +45,7 @@
   ======================================================================
 *)
 
-(** A module implementing and input buffer for the DECAP parser combinator
+(** A module implementing and input buffer for the DeCaP parser combinator
    library. *)
 
 (** {2 Type} *)
