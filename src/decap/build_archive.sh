@@ -1,7 +1,12 @@
 #!/bin/bash
 
 # Compile documentation
-patoline doc/doc.typ
+cd doc
+patoline doc.typ
+cd ..
+
+# Remove old archive
+rm decap.tar.gz
 
 # Create archive
 tar  --transform 's,^,/decap/,' -cvf decap.tar --exclude copyright.ml \
