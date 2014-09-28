@@ -214,11 +214,13 @@ let push_frame, pop_frame, push_location, pop_location =
   (fun () -> 
    Stack.push (Hashtbl.create 23) loc_tbl),
   (fun () ->
-   let h = try Stack.pop loc_tbl with Stack.Empty -> assert false in
-   Hashtbl.iter (fun l _ -> 
-		 try let h' = Stack.top loc_tbl in
-		     Hashtbl.replace h' l ()
-		 with Stack.Empty -> ()) h),
+   try 
+     let h = Stack.pop loc_tbl in
+     Hashtbl.iter (fun l _ -> 
+		   try let h' = Stack.top loc_tbl in
+		       Hashtbl.replace h' l ()
+		   with Stack.Empty -> ()) h
+   with Stack.Empty -> ()),
   (fun id -> 
    try 
      let h = Stack.top loc_tbl in

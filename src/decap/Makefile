@@ -62,7 +62,7 @@ COMPILER_LIBO := $(COMPILER_LIBO:.cmo=.cmx)
 
 ifeq ($(HAS_PA_OCAML),1)
 
-all: decap.cmxa decap.cma decap_ocaml.cmxa decap_ocaml.cma pa_parser.cmx pa_parsert.cmo
+all: decap.cmxa decap.cma decap_ocaml.cmxa decap_ocaml.cma pa_parser.cmx pa_parser.cmo
 
 pa_compose.cmo: pa_compose.ml decap.cmo pa_ocaml_prelude.cmo pa_ocaml.cmo decap.cma
 	$(OCAMLC) $(COMPILER_INC) -c $< 
