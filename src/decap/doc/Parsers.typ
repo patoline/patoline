@@ -16,7 +16,7 @@ every possible parse tree is returned by the parser, which will have a type of
 the form ##'a list grammar##.
 
 We give bellow the BNF specification of the ##pa_parser## syntax extension,
-using the following convention: ##|## sepatates alternatives, ##[…]##
+using the following convention: ##|## separates alternatives, ##[…]##
 delimits optional elements and ##(…)+## elements repeated one or more
 times. Terminal symbols are wrapped into double quotes, and entry points are
 wrapped into chevrons. Several entry points of the ##OCaml## language are
@@ -83,7 +83,7 @@ each terminal:
       in the option field, or the parsed string if the option is abscent.
 \item ##RE r## parses the input according to the regular expression ##r##,
       which should be a ##string## formated as described in the documentation
-      of the ##Str## module. If the option filed is not provided, the value
+      of the ##Str## module. If the option field is not provided, the value
       returned by the parser if the ##string## that was matched. Otherwise,
       the value of the optional field is returnd. Note that the identifier
       ##group## is bound in the optional field, and can be used to compute
@@ -110,7 +110,7 @@ The usual BNF modifiers for optionality (##?##), repetition zero or more
 times (##*##) and repetition one or more times (##+##) come in two versions.
 The ususal symbols (i.e. the ones that are not doubled) behave in the usual
 way, in the sense that backtracking is used to explore every possible parse
-tree. The symbols that are doubled (##??##, ##*##, ##+##) backtrack less, and
+tree. The symbols that are doubled (##??##, ##**##, ##++##) backtrack less, and
 stop backtracking when one parse tree has been found. We also have two kinds
 of alternative symbols: The usual ##|## symbol backtracks and explores every
 alternative, while the alternative symbol ##||## backtracks less, and only
@@ -227,7 +227,7 @@ let _ =
 
 One often needs to define a family of mutually recursive grammars depending on
 a parameter. This can be used, for example, to parse a grammar of expressions
-havind different precedence levels. In order to define a grammar family, one
+having different precedence levels. In order to define a grammar family, one
 first needs to call the function ##grammar_family##, which takes as argument
 an optional function for printing the argument type into a string, and a name
 for the grammar. These two arguments are used to provide better error
@@ -487,7 +487,7 @@ delim : 'a grammar -> 'a grammar
 
 The operators ##||##, ##??##, ##**## and ##++## of the BNF syntax simply
 correspond to delimited versions of ##|##, ##?##, ##*## and ##+##. This means
-for instance that ##g**## is equivalent to ##(delim g)**## (and similarly for
+for instance that ##g**## is equivalent to ##(delim (g*))## (and similarly for
 the other operators).
 
 One should be especially careful with the ##||## alternative operator. For
