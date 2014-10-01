@@ -128,8 +128,8 @@ let rec build_action _loc occur_loc ids e =
 let apply_option _loc opt visible e = 
   filter _loc visible (match opt with
     `Once -> e
-  | `Option(strict,d) ->
-     let f = if strict then "option'" else "option" in
+  | `Option(greedy,d) ->
+     let f = if greedy then "option'" else "option" in
     (match d with 
        None ->
        exp_apply _loc (exp_glr_fun _loc f)
@@ -138,8 +138,8 @@ let apply_option _loc opt visible e =
 	     [exp_Some_fun _loc; e]]
      | Some d ->
 	exp_apply _loc (exp_glr_fun _loc f) [d; e])
-  | `Fixpoint(strict,d) ->
-     let f = if strict then "fixpoint'" else "fixpoint" in
+  | `Fixpoint(greedy,d) ->
+     let f = if greedy then "fixpoint'" else "fixpoint" in
     (match d with None ->
        exp_apply _loc (exp_glr_fun _loc "apply")
 	  [exp_list_fun _loc "rev";
@@ -149,8 +149,8 @@ let apply_option _loc opt visible e =
 		[exp_Cons_fun _loc; e]]]
     | Some d ->
        exp_apply _loc (exp_glr_fun _loc f) [d; e])
-  | `Fixpoint1(strict,d) ->
-     let f = if strict then "fixpoint'" else "fixpoint" in
+  | `Fixpoint1(greedy,d) ->
+     let f = if greedy then "fixpoint'" else "fixpoint" in
    (match d with None ->
        exp_apply _loc (exp_glr_fun _loc "sequence")
 	  [e;
@@ -199,11 +199,26 @@ struct
     parser
       e:{ CHR('[') e:expression CHR(']') }? -> e
 
+  let is_greedy c = 
+    let greedy = try
+	ignore (Sys.getenv "GREEDY");
+	true
+      with Not_found -> false
+    in
+    parser
+      CHR('~') -> false
+    | CHR(c)   -> true
+    | EMPTY -> greedy
+
+  let fs = is_greedy '*'
+  let fp = is_greedy '+'
+  let fq = is_greedy '?'
+
   let glr_option =
     parser
-    | CHR('*') strict:CHR('*')? e:glr_opt_expr -> `Fixpoint(strict<>None,e)
-    | CHR('+') strict:CHR('+')? e:glr_opt_expr -> `Fixpoint1(strict<>None,e)
-    | CHR('?') strict:CHR('?')? e:glr_opt_expr -> `Option(strict<>None,e)
+    | CHR('*') s:fs e:glr_opt_expr -> `Fixpoint(s,e)
+    | CHR('+') s:fp e:glr_opt_expr -> `Fixpoint1(s,e)
+    | CHR('?') s:fq e:glr_opt_expr -> `Option(s,e)
     | EMPTY -> `Once
 
   let glr_sequence =
@@ -368,7 +383,7 @@ struct
 
   let _ = Decap.set_grammar glr_rules (
     parser
-    { CHR('|') }? r:glr_rules_aux rs:{ { CHR('|') } r:glr_rules_aux}* -> 
+      g:{ CHR('|') -> false | CHR('~') -> true }?[false] r:glr_rules_aux rs:{ CHR('|') r:glr_rules_aux}* -> 
       (match r,rs with
       | (def,cond,e),  [] ->
 	(match cond with
@@ -385,7 +400,14 @@ struct
 		   loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc 
 			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
 	) (r::l) (exp_Nil _loc) in
-	exp_apply _loc (exp_glr_fun _loc "alternatives") [l])
+	let f =
+	  if g then "alternatives" else
+	    (try
+		ignore (Sys.getenv "GREEDY");
+		"alternatives'"
+	      with Not_found -> "alternatives")
+	in
+	exp_apply _loc (exp_glr_fun _loc f) [l])
   )
 
 end

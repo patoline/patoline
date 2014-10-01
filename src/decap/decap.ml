@@ -653,6 +653,7 @@ let alternatives : 'a grammar list -> 'a grammar
                 l.parse grouped str pos next g
               with
                 Error -> fn ls)
+	    | _ -> assert false
           in
           fn ls
     }
@@ -680,6 +681,7 @@ let alternatives' : 'a grammar list -> 'a grammar
                         (fun s p s' p' s'' p'' x () ->  g s p s' p' s'' p'' x)
               with
                 Error -> fn ls)
+	    | _ -> assert false
           in
           fn ls ()
     }
