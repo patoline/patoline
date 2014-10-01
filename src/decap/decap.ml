@@ -150,7 +150,7 @@ let apply_blank grouped str p =
   grouped.blank str p
 
 let test grouped next str p =
-  let c, _, _ = read str p in
+  let c = get str p in
   let res = mem next.accepted_char c in
   if not res then
     begin
@@ -645,14 +645,14 @@ let alternatives : 'a grammar list -> 'a grammar
           let ls = List.filter (fun g ->
                                 (empty_ok && accept_empty g) ||
                                   test grouped (next_sym g) str pos) ls in
+	  if ls = [] then raise Error else
           let rec fn = function
+            | [l] -> l.parse grouped str pos next g
             | l::ls ->
               (try
                 l.parse grouped str pos next g
               with
                 Error -> fn ls)
-            | [] ->
-               raise Error
           in
           fn ls
     }
@@ -669,15 +669,17 @@ let alternatives' : 'a grammar list -> 'a grammar
           let ls = List.filter (fun g ->
                                 (empty_ok && accept_empty g) ||
                                   test grouped (next_sym g) str pos) ls in
+	  if ls = [] then raise Error else
           let rec fn = function
+            | [l] ->
+                l.parse grouped str pos next
+                        (fun s p s' p' s'' p'' x () ->  g s p s' p' s'' p'' x)
             | l::ls ->
               (try
                 l.parse grouped str pos next
                         (fun s p s' p' s'' p'' x () ->  g s p s' p' s'' p'' x)
               with
                 Error -> fn ls)
-            | [] ->
-               raise Error
           in
           fn ls ()
     }
