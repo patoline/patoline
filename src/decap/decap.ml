@@ -497,13 +497,9 @@ let all_next =
 
 let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
   = fun l1 f2 ->
-  let flag = ref false in
-    { firsts = lazy (firsts l1);
+    { firsts = lazy (if accept_empty l1 then firsts l1 else full_charset);
       first_sym = lazy (first_sym l1);
-      accept_empty = mk_empty flag (fun () ->
-        let res = accept_empty l1 in
-        if res then failwith "initial rule must not parse empty sequence in dependent sequence";
-        false);
+      accept_empty = lazy (accept_empty l1);
       parse =
         fun grouped str pos next g ->
           l1.parse grouped str pos all_next
