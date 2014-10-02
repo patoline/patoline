@@ -25,17 +25,17 @@ $(d)/pa_ocaml: $(d)/pa_*.ml $(d)/decap.cmxa
 $(d)/decap.cmxa: $(d)/decap.ml $(d)/input.ml $(d)/input.mli $(d)/charset.ml $(d)/charset.mli $(d)/pa_ocaml_prelude.ml
 	if [ ! -x $(PA_OCAML_DIR)/pa_ocaml ]; then \
 	  $(MAKE) -e -C $(PA_OCAML_DIR) pa_ocaml; \
-	  $(MAKE) -e -C $(PA_OCAML_DIR) decap.cmxa; \
+	  $(MAKE) -e -C $(PA_OCAML_DIR) decap.cmxa decap_ocaml.cmxa; \
 	else \
-	  $(MAKE) -e -C $(PA_OCAML_DIR) decap.cmxa; \
+	  $(MAKE) -e -C $(PA_OCAML_DIR) decap.cmxa decap_ocaml.cmxa; \
 	fi
 
 $(d)/decap.cma: $(d)/decap.ml $(d)/input.ml $(d)/input.mli $(d)/charset.ml $(d)/charset.mli $(d)/pa_ocaml_prelude.ml
 	if [ ! -x $(PA_OCAML_DIR)/pa_ocaml ]; then \
 	  $(MAKE) -e -C $(PA_OCAML_DIR) pa_ocaml; \
-	  $(MAKE) -e -C $(PA_OCAML_DIR) decap.cma; \
+	  $(MAKE) -e -C $(PA_OCAML_DIR) decap.cma decap_ocaml.cma; \
 	else \
-	  $(MAKE) -e -C $(PA_OCAML_DIR) decap.cma; \
+	  $(MAKE) -e -C $(PA_OCAML_DIR) decap.cma decap_ocaml.cma; \
 	fi
 
 clean: clean-decap
