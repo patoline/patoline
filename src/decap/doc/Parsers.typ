@@ -20,10 +20,11 @@ using the following convention: ##|## separates alternatives, ##[…]##
 delimits optional elements and ##(…)+## elements repeated one or more
 times. Terminal symbols are wrapped into double quotes, and entry points are
 wrapped into chevrons. Several entry points of the ##OCaml## language are
-used: ##<expr>##, ##<expr_atom>## and ##<let_binding>##. They refer to
-expressions (any priority level), expression at the level of atoms (for
-example constants, identifiers, projections and anything between parenthesis)
-and ##let ... in## bindings respectively.
+used: ##<expr>##, ##<expr_atom>##, ##<let_binding>##, ##char_literal## and
+##string_literal##. They refer to expressions (any priority level),
+expression at the level of atoms (for example constants, identifiers,
+projections and anything between parenthesis) and ##let ... in## bindings
+respectively.
 
 ###
 
@@ -49,7 +50,9 @@ and ##let ... in## bindings respectively.
 
 <terminal> ::= "ANY" | "EOF" | "EMPTY" | "FAIL"
              | "CHR"   <atom_expr>
+             | <char_literal>
              | "STR"   <atom_expr>
+             | <string_literal>
              | "RE"    <atom_expr>
              | "DEBUG" <atom_expr>
 
@@ -78,9 +81,10 @@ each terminal:
       the given string ##msg## to ##stderr##.
 \item ##CHR c## parses the character ##c## and returns the expression
       contained in the option field, or the parsed character if the option
-      is abscent.
+      is abscent. If ##c## is a character literal, ##CHR## can be ommited.
 \item ##STR s## parses the string ##s## an returns the expression contained
-      in the option field, or the parsed string if the option is abscent.
+      in the option field, or the parsed string if the option is abscent. If
+      ##s## is a string literal, ##STR## can be ommited.
 \item ##RE r## parses the input according to the regular expression ##r##,
       which should be a ##string## formated as described in the documentation
       of the ##Str## module. If the option field is not provided, the value
@@ -142,8 +146,8 @@ open Decap
 let int = parser
   | n:RE("[0-9]+") -> int_of_string n
 let op = parser
-  | CHR('+') -> (+)
-  | CHR('-') -> (-)
+  | '+' -> (+)
+  | '-' -> (-)
 let expr = parser
   | n:int l:{op:op m:int -> (op,m)}* ->
       List.fold_left (fun acc (op,f) -> op acc f) n l
@@ -210,7 +214,7 @@ let aabb = declare_grammar "aabb"
 
 let _ = set_grammar aabb (
   parser
-  | CHR('a') aabb CHR('b')
+  | 'a' aabb 'b'
   | EMPTY)
 
 let aabb_eof =
@@ -264,25 +268,25 @@ let float_num =
 
 let prod_sym =
   parser
-  | CHR('*') -> ( *. )
-  | CHR('/') -> ( /. )
+  | '*' -> ( *. )
+  | '/' -> ( /. )
 
 let sum_sym =
   parser
-  | CHR('+') -> ( +. )
-  | CHR('-') -> ( -. )
+  | '+' -> ( +. )
+  | '-' -> ( -. )
 
 let _ = set_expr (fun prio ->
   parser
-  | f:float_num                    when prio = Atom -> f
-  | CHR('(') e:(expr Sum) CHR(')') when prio = Atom -> e
-  | CHR('-') e:(expr Atom)         when prio = Atom -> -. e
-  | CHR('+') e:(expr Atom)         when prio = Atom -> e
+  | f:float_num          when prio = Atom -> f
+  | '(' e:(expr Sum) ')' when prio = Atom -> e
+  | '-' e:(expr Atom)    when prio = Atom -> -. e
+  | '+' e:(expr Atom)    when prio = Atom -> e
   | e:(expr Atom) l:{fn:prod_sym e':(expr Atom)}*
-                                   when prio = Prod ->
+                         when prio = Prod ->
       List.fold_left (fun acc (fn, e') -> fn acc e') e l
   | e:(expr Prod) l:{fn:sum_sym  e':(expr Prod)}*
-                                   when prio = Sum  ->
+                         when prio = Sum  ->
       List.fold_left (fun acc (fn, e') -> fn acc e') e l)
 
 (* The main loop *)
@@ -331,14 +335,14 @@ let (nb_cc, set_nb_cc) = grammar_family "nb_cc"
 
 let _ = set_nb_cc (fun nb ->
   parser
-  | CHR('c') (nb_cc (nb - 1))  when nb > 0
+  | 'c' (nb_cc (nb - 1))  when nb > 0
   | EMPTY                      when nb <= 0)
 
 let aabb = declare_grammar "aabb"
 
 let _ = set_grammar aabb (
   parser
-  | CHR('a') n:aabb CHR('b') -> n + 1
+  | 'a' n:aabb 'b' -> n + 1
   | EMPTY                    -> 0)
 
 let aabbcc =
@@ -446,8 +450,8 @@ symbols and the following expression:
 
 ### OCaml
 
-  | CHR('-') - e:(expr Atom)         when prio = Atom -> -. e
-  | CHR('+') - e:(expr Atom)         when prio = Atom -> e
+  | '-' - e:(expr Atom)         when prio = Atom -> -. e
+  | '+' - e:(expr Atom)         when prio = Atom -> e
 ###
 
 == Optimisation and delimited grammars ==

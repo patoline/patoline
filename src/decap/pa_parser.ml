@@ -239,7 +239,15 @@ struct
     | STR("CHR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
        let opt = match opt with None -> e | Some e -> e in
        exp_apply _loc (exp_glr_fun _loc "char") [e; opt]
+    | c:char_literal opt:glr_opt_expr ->
+       let e = loc_expr _loc_c (Pexp_constant (Const_char c)) in
+       let opt = match opt with None -> e | Some e -> e in
+       exp_apply _loc (exp_glr_fun _loc "char") [e; opt]
     | STR("STR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
+       let opt = match opt with None -> e | Some e -> e in
+       exp_apply _loc (exp_glr_fun _loc "string") [e; opt]
+    | s:string_literal opt:glr_opt_expr ->
+       let e = loc_expr _loc_s (Pexp_constant (Const_string s)) in
        let opt = match opt with None -> e | Some e -> e in
        exp_apply _loc (exp_glr_fun _loc "string") [e; opt]
     | STR("RE") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->

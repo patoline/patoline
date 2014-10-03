@@ -216,17 +216,18 @@ let one_char is_char =
                            let i = Scanf.sscanf str' "%i" (fun i -> i) in
                            char_of_int i)
 
-let char_literal =
+let _ = set_grammar char_literal (
   parser
     r:(change_layout (
       parser CHR('\'') c:(one_char true) CHR('\'') -> c
     ) no_blank) -> r
-  | dol:CHR('$') - STR("char") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_char (start_pos _loc_dol).Lexing.pos_cnum e  
+  | dol:CHR('$') - STR("char") CHR(':') e:(expression_lvl App) - CHR('$') ->
+      push_pop_char (start_pos _loc_dol).Lexing.pos_cnum e)
 
 (* String literals *)
 let interspace = "[ \t]*"
 
-let string_literal =
+let _ = set_grammar string_literal (
   let char_list_to_string lc =
     let len = List.length lc in
 #ifversion >= 4.02
@@ -269,7 +270,7 @@ let string_literal =
 	    | c:ANY r:string_literal_suit -> c::r)
 	  in r:string_literal_suit -> char_list_to_string r) no_blank) -> r
 
-  | dol:CHR('$') - STR("string") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e
+  | dol:CHR('$') - STR("string") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e)
 
 let quotation = declare_grammar "quotation"
 let _ = set_grammar quotation (
