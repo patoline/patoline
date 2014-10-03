@@ -100,22 +100,22 @@ struct
 
   let wrapped_caml_structure = 
     parser
-    | | CHR('(') l:structure CHR(')') -> l
+    | | '(' l:structure ')' -> l
 
   (* Parse a caml "expr" wrapped with parentheses *)
   let wrapped_caml_expr = 
     parser
-    | | CHR('(') e:expression CHR(')') -> e
+    | | '(' e:expression ')' -> e
 
   (* Parse a list of caml "expr" *)
   let wrapped_caml_list =
     parser
-    | | CHR('[') l:{e:expression l:{ CHR(';') e:expression }** CHR(';')?? -> e::l}??[[]] CHR(']') -> l
+    | | '[' l:{e:expression l:{ ';' e:expression }** ';'?? -> e::l}??[[]] ']' -> l
 
   (* Parse an array of caml "expr" *)
   let wrapped_caml_array =
     parser
-    | | STR("[|") l:{e:expression l:{ CHR(';') e:expression }** CHR(';')?? -> e::l}??[[]] STR("|]") -> l
+    | | "[|" l:{e:expression l:{ ';' e:expression }** ';'?? -> e::l}??[[]] "|]" -> l
 
 (****************************************************************************
  * Words.                                                                   *
@@ -189,8 +189,7 @@ struct
 	  RE("^###")
 	  lang:{RE("[ \t]+") id:RE(uid_coloring)}??
 	  filename:{RE("[ \t]+") fn:RE(string_filename)[groupe 1]}??
-	  RE("[ \t]*") CHR('\n')
-	  lines:{l:RE(verbatim_line) CHR('\n')}++
+	  RE("[ \t]*") '\n' lines:{l:RE(verbatim_line) '\n'}++
 	  RE("^###") -> (
 		    let lang = match lang with
 			None -> <:expr<lang_default>>
@@ -290,7 +289,7 @@ struct
     change_layout (
 	parser
 	  STR(st)
-	  ls:{l:RE(line_re) STR("\n")}**
+	  ls:{l:RE(line_re) '\n'}**
 	  l:RE(line_re)
 	      STR(nd) ->
             let lines = ls @ [l] in
@@ -310,7 +309,7 @@ struct
 
   let math_toplevel =
     parser
-    | | STR("x") -> <:expr@_loc<Maths.noad (Maths.glyphs "x")>>
+    | | 'x' -> <:expr@_loc<Maths.noad (Maths.glyphs "x")>>
 		    (* TODO *)
 
 (*************************************************************
@@ -339,7 +338,7 @@ struct
 (***** Patoline macros  *****)
   let macro_argument =
     parser
-      STR("{") l:(paragraph_basic_text TagSet.empty) STR("}") -> l
+      '{' l:(paragraph_basic_text TagSet.empty) '}' -> l
     | | e:wrapped_caml_expr  -> e
     | | e:wrapped_caml_array -> <:expr<$array:e$>>
     | | e:wrapped_caml_list  -> <:expr<$list:e$>>
@@ -351,7 +350,7 @@ struct
   let macro_name =
     change_layout (
 	parser
-	  STR("\\") m:RE(lident) ->
+	  "\\" m:RE(lident) ->
         if List.mem m reserved_macro then
           raise (Give_up (m ^ "is a reserved macro")); m
       ) no_blank
@@ -369,33 +368,33 @@ struct
     parser
       m:macro -> m
 		   
-    | | STR("//") - p:(paragraph_basic_text (addTag Italic tags)) - STR("//") when allowed Italic tags ->
+    | | "//" - p:(paragraph_basic_text (addTag Italic tags)) - "//" when allowed Italic tags ->
          <:expr@_loc_p<toggleItalic $p$>>
-    | | STR("**") - p:(paragraph_basic_text (addTag Bold tags)) - STR("**") when allowed Bold tags ->
+    | | "**" - p:(paragraph_basic_text (addTag Bold tags)) - "**" when allowed Bold tags ->
          <:expr@_loc_p<bold $p$>>
-    | | STR("||") - p:(paragraph_basic_text (addTag SmallCap tags)) - STR("||") when allowed SmallCap tags ->
+    | | "||" - p:(paragraph_basic_text (addTag SmallCap tags)) - "||" when allowed SmallCap tags ->
          <:expr@_loc_p<sc $p$>>
-(*    | | STR("__") - p:(paragraph_basic_text ("__"::tags)) - STR("__") when not (List.mem "__" tags) ->
+(*    | | "__" - p:(paragraph_basic_text ("__"::tags)) - "__" when not (List.mem "__" tags) ->
          <:expr@_loc_p<underline $p$>>
-    | | STR("--") - p:(paragraph_basic_text ("--"::tags)) - STR("--") when not (List.mem "--" tags) ->
+    | | "--" - p:(paragraph_basic_text ("--"::tags)) - "--" when not (List.mem "--" tags) ->
          <:expr@_loc_p<strike $p$>>*)
 
     | | v:verbatim_bquote -> <:expr@_loc_v<$v$>>
     | | v:verbatim_sharp  -> <:expr@_loc_v<$v$>>
 
-    | | STR("(") p:(paragraph_basic_text tags) STR(")") ->
+    | | '(' p:(paragraph_basic_text tags) ')' ->
          <:expr@_loc_p<tT $string:"("$ :: $p$ @ [tT $string:")"$]>>
 
-    | | STR("\"") p:(paragraph_basic_text (addTag Quote tags)) STR("\"") when allowed Quote tags ->
+    | | '"' p:(paragraph_basic_text (addTag Quote tags)) '"' when allowed Quote tags ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
          <:expr@_loc_p<tT($string:opening$) :: $p$ @ [tT($string:closing$)]>>)
 
-    | | STR("$") m:math_toplevel STR("$") ->
+    | | '$' m:math_toplevel '$' ->
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         [Maths.Ordinary $m$])]>>
-    | | STR("[$") m:math_toplevel STR("$]") ->
+    | | "[$" m:math_toplevel "$]" ->
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle [Maths.Ordinary $m$]))]>>
@@ -450,13 +449,13 @@ struct
   let paragraph_elt =
     parser
     | | verb:verbatim_environment -> (fun _ -> verb)
-    | | STR("\\Caml") s:wrapped_caml_structure -> (fun _ -> s)
-    | | STR("\\Include") CHR('{') id:capitalized_ident CHR('}') -> (fun _ ->
+    | | "\\Caml" s:wrapped_caml_structure -> (fun _ -> s)
+    | | "\\Include" '{' id:capitalized_ident '}' -> (fun _ ->
 	 incr nb_includes;
 	 let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
          <:structure< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output)(D)
                       open $uid:temp_id$>>)
-    | | STR("\\item") -> (fun _ ->
+    | | "\\item" -> (fun _ ->
         (let m1 = freshUid () in
          let m2 = freshUid () in
 	 let _Item = "Item" in
@@ -466,9 +465,9 @@ struct
                        let _ = $uid:m2$.do_begin_env () ;;
                        let _ = $uid:m2$.do_end_env ()
                      end>>))
-    | | STR("\\begin{") idb:RE(lident) STR("}")
+    | | "\\begin{" idb:RE(lident) '}'
        ps:(change_layout paragraphs blank2)
-       STR("\\end{") ide:RE(lident) STR("}") ->
+       "\\end{" ide:RE(lident) '}' ->
          (fun indent_first ->
            if idb <> ide then raise (Give_up "Non-matching begin / end");
            let m1 = freshUid () in
@@ -482,7 +481,7 @@ struct
                          $(ps indent_first)$ ;;
                          let _ = $uid:m2$ . do_end_env ()
                         end>>)
-    | | STR("$$") m:math_toplevel STR("$$") ->
+    | | "$$" m:math_toplevel "$$" ->
          (fun _ ->
            <:structure<let _ = newPar D.structure
                         ~environment:(fun x -> {x with par_indent = []})
@@ -575,15 +574,14 @@ struct
 		 
   let patoline_config : unit grammar =
     change_layout (
-	parser
-	  STR("#") n:RE(uident) STR(" ") a:RE(uident) ->
+      parser
+	      "#" n:RE(uident) ' ' a:RE(uident) ->
         ((match n with
           | "FORMAT"  -> patoline_format := a
           | "DRIVER"  -> patoline_driver := a
           | "PACKAGE" -> patoline_packages := a :: !patoline_packages;
           | _         -> raise (Give_up ("Unknown directive #"^n)));
-         ())
-      ) no_blank
+         ())) no_blank
 
   let header =
     parser
@@ -664,7 +662,7 @@ struct
 
   let directive =
     parser
-      CHR('#') n:capitalized_ident a:capitalized_ident ->
+      '#' n:capitalized_ident a:capitalized_ident ->
           ((match n with
              | "FORMAT"  -> patoline_format := a
              | "DRIVER"  -> patoline_driver := a
@@ -676,8 +674,8 @@ struct
 
   let patoline_quotations =
       parser
-	STR("<<") par:text_only STR(">>") -> Atom, par
-      | STR("<$") mat:math_toplevel STR("$>") -> Atom, mat
+      | "<<" par:text_only ">>" -> Atom, par
+      | "<$" mat:math_toplevel "$>" -> Atom, mat
 
   let _ = add_reserved_symb "<<"
   let _ = add_reserved_symb "<$"
