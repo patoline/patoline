@@ -184,25 +184,21 @@ let grammar_family ?(param_to_string=fun _ -> "<param>") name =
     while !seeds <> [] do
       let new_seeds = !seeds in
       seeds := [];
-      List.iter (fun k -> ignore (fn k)) new_seeds;
+      List.iter (fun key ->
+		 let g = Hashtbl.find tbl key in
+		 set_grammar g (fn key)) new_seeds;
     done;
-    Hashtbl.iter (fun key g -> set_grammar g (fn key)) tbl;
   in
   let gn = fun param ->
     try Hashtbl.find tbl param
     with Not_found ->
       record param;
-      let g = match !definition with
-          Some f ->
-          let g = declare_grammar (name ^ ":" ^ (param_to_string param)) in
-          Hashtbl.add tbl param g;
-          let _ = f param in
+      let g = declare_grammar (name ^ ":" ^ (param_to_string param)) in
+      Hashtbl.add tbl param g;
+      (match !definition with
+       | Some f ->
           do_fix f;
-          g
-        | None ->
-           declare_grammar (name ^ ":" ^ (param_to_string param))
-      in
-      Hashtbl.replace tbl param g;
+       | None -> ());
       g
   in gn,
   (fun fn ->
@@ -497,9 +493,10 @@ let all_next =
 
 let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
   = fun l1 f2 ->
-    { firsts = lazy (if accept_empty l1 then firsts l1 else full_charset);
+  let ae = lazy (accept_empty l1) in
+    { firsts = lazy (if Lazy.force ae then firsts l1 else full_charset);
       first_sym = lazy (first_sym l1);
-      accept_empty = lazy (accept_empty l1);
+      accept_empty = ae;
       parse =
         fun grouped str pos next g ->
           l1.parse grouped str pos all_next
