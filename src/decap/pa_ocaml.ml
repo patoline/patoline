@@ -58,6 +58,7 @@ open Longident
 include Pa_ocaml_prelude
 
 #define LOCATE locate
+#define GREEDY
 
 module Make = functor (Initial:Extension) -> struct
 
@@ -188,24 +189,41 @@ let float_literal =
 (* Character literals *)
 let char_regular = "[^\\']"
 let string_regular = "[^\\\"]"
+let re_regular = "[^']"
 let char_escaped = "[\\\\][\\\\\\\"\\\'ntbrs ]"
+let re_escaped = "[\\\\][ntbrs]"
 let char_dec     = "[\\\\][0-9][0-9][0-9]"
 let char_hex     = "[\\\\][x][0-9a-fA-F][0-9a-fA-F]"
 
 exception Illegal_escape of string
 
-let one_char is_char =
+type string_litteral_type = Char | String | Re
+
+let single_quote = black_box 
+  (fun str pos ->
+   let c,str',pos' = read str pos in
+   if c = '\'' then
+     let c',_,_ = read str' pos' in
+     if c' = '\'' then raise (Give_up "" (* FIXME *))
+     else (), str', pos'
+   else
+     raise (Give_up "" (* FIXME *)))
+  (Charset.singleton '\'') false ("'")
+
+let one_char slt =
   parser
-  | c:RE(char_regular) when is_char -> c.[0]
-  | c:CHR('\n') -> '\n' 
-  | c:RE(string_regular) when not is_char -> c.[0]
-  | c:RE(char_escaped) -> (match c.[1] with
-                            | 'n' -> '\n'
-                            | 't' -> '\t'
-                            | 'b' -> '\b'
-                            | 'r' -> '\r'
-                            | 's' -> ' '
-                            | c   -> c)
+  | '\n' -> '\n' 
+  | single_quote when slt = Re -> '\''
+  | c:RE(if slt = Re then re_escaped else char_escaped) ->
+      (match c.[1] with
+       | 'n' -> '\n'
+       | 't' -> '\t'
+       | 'b' -> '\b'
+       | 'r' -> '\r'
+       | 's' -> ' '
+       | c   -> c)
+  | c:RE(match slt with Char -> char_regular | String -> string_regular | Re -> re_regular)
+      -> c.[0]
   | c:RE(char_dec)     -> (let str = String.sub c 1 3 in
                            let i = Scanf.sscanf str "%i" (fun i -> i) in
                            if i > 255 then
@@ -219,7 +237,7 @@ let one_char is_char =
 let _ = set_grammar char_literal (
   parser
     r:(change_layout (
-      parser CHR('\'') c:(one_char true) CHR('\'') -> c
+      parser CHR('\'') c:(one_char Char) CHR('\'') -> c
     ) no_blank) -> r
   | dol:CHR('$') - STR("char") CHR(':') e:(expression_lvl App) - CHR('$') ->
       push_pop_char (start_pos _loc_dol).Lexing.pos_cnum e)
@@ -227,7 +245,6 @@ let _ = set_grammar char_literal (
 (* String literals *)
 let interspace = "[ \t]*"
 
-let _ = set_grammar string_literal (
   let char_list_to_string lc =
     let len = List.length lc in
 #ifversion >= 4.02
@@ -252,12 +269,13 @@ let _ = set_grammar string_literal (
 #else
     str
 #endif
-  in
+
+let _ = set_grammar string_literal (
   parser
   | r:(change_layout (
     parser
-      CHR('"') lc:(one_char false)*
-        lcs:(parser CHR('\\') CHR('\n') RE(interspace) lc:(one_char false)* -> lc)*
+      CHR('"') lc:(one_char String)*
+        lcs:(parser CHR('\\') CHR('\n') RE(interspace) lc:(one_char String)* -> lc)*
         CHR('"') -> char_list_to_string (List.flatten (lc::lcs))
     ) no_blank) -> r
 
@@ -272,13 +290,24 @@ let _ = set_grammar string_literal (
 
   | dol:CHR('$') - STR("string") CHR(':') e:(expression_lvl App) - CHR('$') -> push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e)
 
+
+let _ = set_grammar regexp_literal (
+  parser
+  | r:(change_layout (
+    parser
+      "''" lc:(one_char Re)*
+        lcs:(parser '\\' '\n' RE(interspace) lc:(one_char Re)* -> lc)*
+        "''" -> char_list_to_string (List.flatten (lc::lcs))
+    ) no_blank) -> r)
+
+
 let quotation = declare_grammar "quotation"
 let _ = set_grammar quotation (
   change_layout (parser
   | STR("<:") q:quotation q':quotation -> "<:" ^ q ^ ">>" ^ q'
   | s: string_literal q:quotation -> Printf.sprintf "%S" s ^ q
   | STR(">>") -> ""
-  | c:(one_char false) q:quotation -> String.make 1 c ^ q
+  | c:(one_char String) q:quotation -> String.make 1 c ^ q
   ) no_blank)
 
 (* Naming labels *)
@@ -993,6 +1022,7 @@ let constant =
     f:float_literal   -> Const_float f
   | c:char_literal    -> Const_char c
   | s:string_literal  -> const_string s
+  | s:regexp_literal  -> const_string s
   | i:int32_lit       -> Const_int32 i
   | i:int64_lit       -> Const_int64 i
   | i:nat_int_lit     -> Const_nativeint i
@@ -1695,8 +1725,7 @@ let expression_base = memoize1 (fun lvl ->
 		   | STR("fields") -> "fields"
 		   | STR("bindings") -> "let_binding"
 		   | STR("cases") -> "cases"
-		   | STR("module") -> "module_expr"
-		   | STR("module") STR("type") -> "module_type"
+		   | STR("module") ty:STR("type")? -> if ty = None then "module_expr" else "module_type"
 		   }
        loc:{CHR('@') e:(expression_lvl App) }? CHR('<') q:quotation ->
        if loc = None then push_location "";

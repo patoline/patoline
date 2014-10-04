@@ -28,10 +28,10 @@ decap.cmo: charset.cmi input.cmi
 
 decap.cmx: charset.cmx charset.cmi input.cmx input.cmi
 
-decap.cmxa: charset.cmx input.cmx decap.cmx pa_ocaml_prelude.cmx
+decap.cmxa: charset.cmx input.cmx decap.cmx pa_ocaml_prelude.cmx pa_ast.cmx
 	$(OCAMLOPT) -a -o $@ $^
 
-decap.cma: charset.cmo input.cmo decap.cmo pa_ocaml_prelude.cmo
+decap.cma: charset.cmo input.cmo decap.cmo pa_ocaml_prelude.cmo pa_ast.cmo
 	$(OCAMLC) -a -o $@ $^
 
 decap_ocaml.cmxa: pa_ocaml.cmx pa_compose.cmx pa_opt_main.cmx
@@ -109,10 +109,10 @@ pa_opt_main.ml: pa_main.ml
 pa_opt_main.cmx: pa_opt_main.ml pa_compose.cmx input.cmi input.cmx pa_ocaml.cmx 
 	$(OCAMLOPT) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
-pa_ocaml: decap.cmxa pa_ast.cmx pa_parser.cmx decap_ocaml.cmxa 
+pa_ocaml: decap.cmxa pa_parser.cmx decap_ocaml.cmxa 
 	$(OCAMLOPT) $(COMPILER_INC) -linkall -o $@ unix.cmxa str.cmxa $(COMPILER_LIBO) $^
 
-test_parsers: decap.cmxa pa_ast.cmx pa_parser.cmx pa_ocaml.cmx pa_compose.cmx test_parsers.ml
+test_parsers: decap.cmxa pa_parser.cmx pa_ocaml.cmx pa_compose.cmx test_parsers.ml
 	$(OCAMLOPT) $(COMPILER_INC) -I +camlp4 -I +camlp4/Camlp4Parsers -o $@ dynlink.cmxa unix.cmxa str.cmxa camlp4lib.cmxa Camlp4OCamlRevisedParser.cmx Camlp4OCamlParser.cmx	$(COMPILER_INC) $(COMPILER_LIBO) $^
 
 else

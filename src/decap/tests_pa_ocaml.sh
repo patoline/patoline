@@ -2,7 +2,7 @@
 
 ocaml=`ocamlc -where`
 local=./tests_pa_ocaml
-examples=./examples
+examples=./doc
 diff=./tests_pa_ocaml
 ocamlversion=`ocamlc -version`
 
@@ -54,8 +54,8 @@ done
 echo "test of the extensions to the syntax"
 /usr/bin/time --format="%C: %e" ocamlc -c -pp ./pa_ocaml $local/test_ext.ml
 /usr/bin/time --format="%C: %e" ocamlc -i -c -pp ./pa_ocaml -I +compiler-libs -I bootstrap/$ocamlversion $local/test_quotation.ml
-make $examples/pa_test_ext
-/usr/bin/time --format="%C: %e" ocamlc -i -c -pp $examples/pa_test_ext $local/test_extension.ml
+make $examples/pa_do_try
+/usr/bin/time --format="%C: %e" ocamlc -i -c -pp $examples/pa_do_try $local/test_extension.ml
 echo
 
 echo "test of parser extension"

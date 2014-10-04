@@ -55,6 +55,7 @@ let nb_tests = 10
 
 let with_time f x =
   Gc.full_major ();
+  let (minor_words, _, _) = Gc.counters () in
   let {Unix.tms_utime = ut;Unix.tms_stime = st} = Unix.times () in
   try
     for i = 1 to nb_tests do
@@ -62,7 +63,8 @@ let with_time f x =
     done;
     let r = f x in
     let {Unix.tms_utime = ut';Unix.tms_stime = st'} = Unix.times () in
-    (r, (ut' -. ut) +. (st' -. st))
+    let (minor_words', _, _) = Gc.counters () in
+    (r, (ut' -. ut) +. (st' -. st), minor_words' -. minor_words)
   with e ->
     let {Unix.tms_utime = ut';Unix.tms_stime = st'} = Unix.times () in
     Format.eprintf "exception after: %.2fs@." ((ut' -. ut) +. (st' -. st));
@@ -121,6 +123,9 @@ let _ =
   let time_sum_orig = ref 0.0 in
   let time_sum_camlp4 = ref 0.0 in
   let time_sum_pa_ocaml = ref 0.0 in
+  let mem_sum_orig = ref 0.0 in
+  let mem_sum_camlp4 = ref 0.0 in
+  let mem_sum_pa_ocaml = ref 0.0 in
 
   let print_times time_orig time_camlp4 time_pa_ocaml = 
     Format.eprintf "x%f x%f (original %f, camlp4 %f, pa_ocaml %f)@."
@@ -128,26 +133,41 @@ let _ =
       (time_pa_ocaml /. time_camlp4)
       time_orig time_camlp4 time_pa_ocaml
   in
+  let print_mem mem_orig mem_camlp4 mem_pa_ocaml = 
+    Format.eprintf "x%f x%f (original %f, camlp4 %f, pa_ocaml %f)@."
+      (mem_pa_ocaml /. mem_orig)
+      (mem_pa_ocaml /. mem_camlp4)
+      mem_orig mem_camlp4 mem_pa_ocaml
+  in
 
   Array.iteri (fun i path -> if i <> 0 then begin
     Format.eprintf "%s@." path;
-    if Filename.check_suffix path ".ml" then begin
-      let res, time_orig = with_time parse_implementation_orig path in
-      let p4res, time_camlp4 = with_time parse_implem_camlp4 path in
-      let plres, time_pa_ocaml = with_time parse_implementation path in
-      time_sum_orig := !time_sum_orig +. time_orig;
-      time_sum_camlp4 := !time_sum_camlp4 +. time_camlp4;
-      time_sum_pa_ocaml := !time_sum_pa_ocaml +. time_pa_ocaml;
-      print_times time_orig time_camlp4 time_pa_ocaml
-    end else if Filename.check_suffix path ".mli" then begin
-        let res, time_orig = with_time parse_interface_orig path in
-        let p4res, time_camlp4 = with_time parse_interf_camlp4 path in
-        let plres, time_pa_ocaml = with_time parse_interface path in
-        time_sum_orig := !time_sum_orig +. time_orig;
-        time_sum_camlp4 := !time_sum_camlp4 +. time_camlp4;
-        time_sum_pa_ocaml := !time_sum_pa_ocaml +. time_pa_ocaml;
-        print_times time_orig time_camlp4 time_pa_ocaml;
-    end;
+    let time_orig, mem_orig, time_camlp4, mem_camlp4, time_pa_ocaml, mem_pa_ocaml =
+      if Filename.check_suffix path ".ml" then
+	begin
+	  let res, time_orig, mem_orig = with_time parse_implementation_orig path in
+	  let p4res, time_camlp4, mem_camlp4 = with_time parse_implem_camlp4 path in
+	  let plres, time_pa_ocaml, mem_pa_ocaml = with_time parse_implementation path in
+	  time_orig, mem_orig, time_camlp4, mem_camlp4, time_pa_ocaml, mem_pa_ocaml
+	end
+      else if Filename.check_suffix path ".mli" then
+	begin
+	  let res, time_orig, mem_orig = with_time parse_interface_orig path in
+	  let p4res, time_camlp4, mem_camlp4 = with_time parse_interf_camlp4 path in
+          let plres, time_pa_ocaml, mem_pa_ocaml = with_time parse_interface path in
+	  time_orig, mem_orig, time_camlp4, mem_camlp4, time_pa_ocaml, mem_pa_ocaml
+	end
+      else assert false
+    in
+    time_sum_orig := !time_sum_orig +. time_orig;
+    time_sum_camlp4 := !time_sum_camlp4 +. time_camlp4;
+    time_sum_pa_ocaml := !time_sum_pa_ocaml +. time_pa_ocaml;
+    mem_sum_orig := !mem_sum_orig +. mem_orig;
+    mem_sum_camlp4 := !mem_sum_camlp4 +. mem_camlp4;
+    mem_sum_pa_ocaml := !mem_sum_pa_ocaml +. mem_pa_ocaml;
+    print_times time_orig time_camlp4 time_pa_ocaml;
+    print_mem mem_orig mem_camlp4 mem_pa_ocaml
   end) Sys.argv;
   prerr_endline "ALL TEST ENDED";
-  print_times !time_sum_orig !time_sum_camlp4 !time_sum_pa_ocaml
+  print_times !time_sum_orig !time_sum_camlp4 !time_sum_pa_ocaml;
+  print_mem !mem_sum_orig !mem_sum_camlp4 !mem_sum_pa_ocaml

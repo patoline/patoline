@@ -52,6 +52,7 @@ open Pa_ocaml_prelude
 open Pa_ast
 
 #define LOCATE locate
+#define GREEDY
 
 type action =
   | Default 
@@ -247,10 +248,11 @@ struct
        let opt = match opt with None -> e | Some e -> e in
        exp_apply _loc (exp_glr_fun _loc "string") [e; opt]
     | s:string_literal opt:glr_opt_expr ->
-       let e = loc_expr _loc_s (Pexp_constant (Const_string s)) in
+       let e = loc_expr _loc_s (Pexp_constant (const_string s)) in
        let opt = match opt with None -> e | Some e -> e in
        exp_apply _loc (exp_glr_fun _loc "string") [e; opt]
-    | STR("RE") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
+    | e:{ STR("RE") e:(expression_lvl (next_exp App)) | s:regexp_literal -> loc_expr _loc_s (Pexp_constant (const_string s))}
+       opt:glr_opt_expr ->
        let opt = match opt with
 	 | None -> exp_apply _loc (exp_ident _loc "groupe") [exp_int _loc 0]
 	 | Some e -> e
@@ -374,7 +376,7 @@ struct
 
   let glr_rules_aux = 
     parser
-    | {CHR('|') CHR('|')}? r:glr_rule rs:{ CHR('|') CHR('|') r:glr_rule}* -> 
+    | CHR('|')? r:glr_rule rs:{ CHR('|') CHR('|') r:glr_rule}* -> 
       (match rs with
       | [] -> r
       | l ->

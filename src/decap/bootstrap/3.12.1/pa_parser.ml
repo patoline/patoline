@@ -141,7 +141,7 @@ module Ext(In:Extension) =
     let glr_rule = Decap.declare_grammar "glr_rule"
     let location_name_re = "_loc\\([a-zA-Z0-9_']*\\)"
     let glr_parser =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.sequence parser_kw glr_rules (fun _  p  -> (Atom, p));
         Decap.fsequence_position parser_kw
           (Decap.sequence (Decap.char '*' '*') glr_rules
@@ -162,7 +162,7 @@ module Ext(In:Extension) =
     let is_greedy c =
       let greedy =
         try ignore (Sys.getenv "GREEDY"); true with | Not_found  -> false in
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun _  -> false) (Decap.char '~' '~');
         Decap.apply (fun _  -> true) (Decap.char c c);
         Decap.apply (fun _  -> greedy) (Decap.empty ())]
@@ -170,7 +170,7 @@ module Ext(In:Extension) =
     let fp = is_greedy '+'
     let fq = is_greedy '?'
     let glr_option =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.fsequence (Decap.char '*' '*')
            (Decap.sequence fs glr_opt_expr (fun s  e  _  -> `Fixpoint (s, e)));
         Decap.fsequence (Decap.char '+' '+')
@@ -179,7 +179,7 @@ module Ext(In:Extension) =
           (Decap.sequence fq glr_opt_expr (fun s  e  _  -> `Option (s, e)));
         Decap.apply (fun _  -> `Once) (Decap.empty ())]
     let glr_sequence =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.fsequence (Decap.char '{' '{')
            (Decap.sequence glr_rules (Decap.char '}' '}') (fun r  _  _  -> r));
         Decap.sequence_position (Decap.string "EOF" "EOF") glr_opt_expr
@@ -230,6 +230,20 @@ module Ext(In:Extension) =
                     __loc__end__pos in
                 let opt = match opt with | None  -> e | Some e -> e in
                 exp_apply _loc (exp_glr_fun _loc "char") [e; opt]));
+        Decap.sequence_position
+          (Decap.apply_position
+             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             char_literal) glr_opt_expr
+          (fun c  ->
+             let (_loc_c,c) = c in
+             fun opt  __loc__start__buf  __loc__start__pos  __loc__end__buf 
+               __loc__end__pos  ->
+               let _loc =
+                 locate __loc__start__buf __loc__start__pos __loc__end__buf
+                   __loc__end__pos in
+               let e = loc_expr _loc_c (Pexp_constant (Const_char c)) in
+               let opt = match opt with | None  -> e | Some e -> e in
+               exp_apply _loc (exp_glr_fun _loc "char") [e; opt]);
         Decap.fsequence_position (Decap.string "STR" "STR")
           (Decap.sequence (expression_lvl (next_exp App)) glr_opt_expr
              (fun e  opt  _  __loc__start__buf  __loc__start__pos 
@@ -239,36 +253,59 @@ module Ext(In:Extension) =
                     __loc__end__pos in
                 let opt = match opt with | None  -> e | Some e -> e in
                 exp_apply _loc (exp_glr_fun _loc "string") [e; opt]));
-        Decap.fsequence_position (Decap.string "RE" "RE")
-          (Decap.sequence (expression_lvl (next_exp App)) glr_opt_expr
-             (fun e  opt  _  __loc__start__buf  __loc__start__pos 
-                __loc__end__buf  __loc__end__pos  ->
-                let _loc =
-                  locate __loc__start__buf __loc__start__pos __loc__end__buf
-                    __loc__end__pos in
-                let opt =
-                  match opt with
-                  | None  ->
-                      exp_apply _loc (exp_ident _loc "groupe")
-                        [exp_int _loc 0]
-                  | Some e -> e in
-                match e.pexp_desc with
-                | Pexp_ident (Lident id) ->
-                    let id =
-                      let l = String.length id in
-                      if (l > 3) && ((String.sub id (l - 3) 3) = "_re")
-                      then String.sub id 0 (l - 3)
-                      else id in
-                    exp_lab_apply _loc (exp_glr_fun _loc "regexp")
-                      [("name", (exp_string _loc id));
-                      ("", e);
-                      ("", (exp_fun _loc "groupe" opt))]
-                | _ ->
-                    exp_apply _loc (exp_glr_fun _loc "regexp")
-                      [e; exp_fun _loc "groupe" opt]));
+        Decap.sequence_position
+          (Decap.apply_position
+             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             string_literal) glr_opt_expr
+          (fun s  ->
+             let (_loc_s,s) = s in
+             fun opt  __loc__start__buf  __loc__start__pos  __loc__end__buf 
+               __loc__end__pos  ->
+               let _loc =
+                 locate __loc__start__buf __loc__start__pos __loc__end__buf
+                   __loc__end__pos in
+               let e = loc_expr _loc_s (Pexp_constant (const_string s)) in
+               let opt = match opt with | None  -> e | Some e -> e in
+               exp_apply _loc (exp_glr_fun _loc "string") [e; opt]);
+        Decap.sequence_position
+          (Decap.alternatives'
+             [Decap.sequence (Decap.string "RE" "RE")
+                (expression_lvl (next_exp App)) (fun _  e  -> e);
+             Decap.apply
+               (fun s  ->
+                  let (_loc_s,s) = s in
+                  loc_expr _loc_s (Pexp_constant (const_string s)))
+               (Decap.apply_position
+                  (fun x  str  pos  str'  pos'  ->
+                     ((locate str pos str' pos'), x)) regexp_literal)])
+          glr_opt_expr
+          (fun e  opt  __loc__start__buf  __loc__start__pos  __loc__end__buf 
+             __loc__end__pos  ->
+             let _loc =
+               locate __loc__start__buf __loc__start__pos __loc__end__buf
+                 __loc__end__pos in
+             let opt =
+               match opt with
+               | None  ->
+                   exp_apply _loc (exp_ident _loc "groupe") [exp_int _loc 0]
+               | Some e -> e in
+             match e.pexp_desc with
+             | Pexp_ident (Lident id) ->
+                 let id =
+                   let l = String.length id in
+                   if (l > 3) && ((String.sub id (l - 3) 3) = "_re")
+                   then String.sub id 0 (l - 3)
+                   else id in
+                 exp_lab_apply _loc (exp_glr_fun _loc "regexp")
+                   [("name", (exp_string _loc id));
+                   ("", e);
+                   ("", (exp_fun _loc "groupe" opt))]
+             | _ ->
+                 exp_apply _loc (exp_glr_fun _loc "regexp")
+                   [e; exp_fun _loc "groupe" opt]);
         Decap.apply (fun e  -> e) (expression_lvl Atom)]
     let glr_ident =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.sequence (pattern_lvl ConstrPat) (Decap.char ':' ':')
            (fun p  _  ->
               match p.ppat_desc with
@@ -296,7 +333,7 @@ module Ext(In:Extension) =
         (Decap.apply List.rev
            (Decap.fixpoint []
               (Decap.apply (fun x  l  -> x :: l)
-                 (Decap.alternatives
+                 (Decap.alternatives'
                     [Decap.fsequence glr_ident
                        (Decap.sequence glr_sequence glr_option
                           (fun s  opt  id  -> `Normal (id, s, opt)));
@@ -305,7 +342,7 @@ module Ext(In:Extension) =
     let glr_let = Decap.declare_grammar "glr_let"
     let _ =
       Decap.set_grammar glr_let
-        (Decap.alternatives
+        (Decap.alternatives'
            [Decap.fsequence_position (Decap.string "let" "let")
               (Decap.fsequence rec_flag
                  (Decap.fsequence let_binding
@@ -319,12 +356,12 @@ module Ext(In:Extension) =
                           fun x  -> loc_expr _loc (Pexp_let (r, lbs, (l x)))))));
            Decap.apply (fun _  x  -> x) (Decap.empty ())])
     let glr_cond =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.sequence (Decap.string "when" "when") expression
            (fun _  e  -> Some e);
         Decap.apply (fun _  -> None) (Decap.empty ())]
     let glr_action =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.sequence (Decap.string "->>" "->>") glr_rule
            (fun _  (def,cond,r)  -> DepSeq (def, cond, r));
         Decap.sequence (Decap.string "->" "->") expression
@@ -431,9 +468,7 @@ module Ext(In:Extension) =
     let glr_rules_aux =
       Decap.fsequence_position
         (Decap.option None
-           (Decap.apply (fun x  -> Some x)
-              (Decap.sequence (Decap.char '|' '|') (Decap.char '|' '|')
-                 (fun _  _  -> ()))))
+           (Decap.apply (fun x  -> Some x) (Decap.char '|' '|')))
         (Decap.sequence glr_rule
            (Decap.apply List.rev
               (Decap.fixpoint []
@@ -474,7 +509,7 @@ module Ext(In:Extension) =
       Decap.set_grammar glr_rules
         (Decap.fsequence_position
            (Decap.option false
-              (Decap.alternatives
+              (Decap.alternatives'
                  [Decap.apply (fun _  -> false) (Decap.char '|' '|');
                  Decap.apply (fun _  -> true) (Decap.char '~' '~')]))
            (Decap.sequence glr_rules_aux

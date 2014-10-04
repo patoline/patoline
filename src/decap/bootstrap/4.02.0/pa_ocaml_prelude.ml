@@ -943,7 +943,7 @@ module Initial =
         "while";
         "with"]
     let ident =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply
            (fun id  ->
               if is_reserved_id id
@@ -963,7 +963,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let capitalized_ident =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun id  -> id)
            (Decap.regexp ~name:"cident" cident_re (fun groupe  -> groupe 0));
         Decap.fsequence
@@ -979,7 +979,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let lowercase_ident =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply
            (fun id  ->
               let len = String.length id in
@@ -1100,28 +1100,28 @@ module Initial =
             | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) false s
     let mutable_kw = key_word "mutable"
     let mutable_flag =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun _  -> Mutable) mutable_kw;
         Decap.apply (fun _  -> Immutable) (Decap.empty ())]
     let private_kw = key_word "private"
     let private_flag =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun _  -> Private) private_kw;
         Decap.apply (fun _  -> Public) (Decap.empty ())]
     let virtual_kw = key_word "virtual"
     let virtual_flag =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun _  -> Virtual) virtual_kw;
         Decap.apply (fun _  -> Concrete) (Decap.empty ())]
     let rec_kw = key_word "rec"
     let rec_flag =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun _  -> Recursive) rec_kw;
         Decap.apply (fun _  -> Nonrecursive) (Decap.empty ())]
     let to_kw = key_word "to"
     let downto_kw = key_word "downto"
     let downto_flag =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun _  -> Upto) to_kw;
         Decap.apply (fun _  -> Downto) downto_kw]
     let method_kw = key_word "method"
@@ -1166,6 +1166,9 @@ module Initial =
     let sig_kw = key_word "sig"
     let lazy_kw = key_word "lazy"
     let parser_kw = key_word "parser"
+    let char_literal: char grammar = declare_grammar "char_literal"
+    let string_literal: string grammar = declare_grammar "string_literal"
+    let regexp_literal: string grammar = declare_grammar "regexp_literal"
     let int_dec_re = "[0-9][0-9_]*"
     let int_hex_re = "[0][xX][0-9a-fA-F][0-9a-fA-F_]*"
     let int_oct_re = "[0][oO][0-7][0-7_]*"
@@ -1177,7 +1180,7 @@ module Initial =
     let int64_re = (par_re int_pos_re) ^ "L"
     let natint_re = (par_re int_pos_re) ^ "n"
     let integer_literal =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun i  -> int_of_string i)
            (Decap.regexp ~name:"int_pos" int_pos_re (fun groupe  -> groupe 0));
         Decap.fsequence
@@ -1193,7 +1196,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_int (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let int32_lit =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun i  -> Int32.of_string i)
            (Decap.regexp ~name:"int32" int32_re (fun groupe  -> groupe 1));
         Decap.fsequence
@@ -1209,7 +1212,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_int32 (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let int64_lit =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun i  -> Int64.of_string i)
            (Decap.regexp ~name:"int64" int64_re (fun groupe  -> groupe 1));
         Decap.fsequence
@@ -1225,7 +1228,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_int64 (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let nat_int_lit =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun i  -> Nativeint.of_string i)
            (Decap.regexp ~name:"natint" natint_re (fun groupe  -> groupe 1));
         Decap.fsequence
@@ -1241,7 +1244,7 @@ module Initial =
                       let (_loc_dol,dol) = dol in
                       push_pop_natint (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let bool_lit =
-      Decap.alternatives
+      Decap.alternatives'
         [Decap.apply (fun _  -> "false") false_kw;
         Decap.apply (fun _  -> "true") true_kw;
         Decap.fsequence

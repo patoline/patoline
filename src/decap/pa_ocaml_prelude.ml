@@ -190,6 +190,7 @@ let locate str pos str' pos' =
 let locate2 = locate
 
 #define LOCATE locate
+#define GREEDY
 
 let rec merge = function
   | [] -> assert false
@@ -1181,7 +1182,8 @@ let parser_kw = key_word "parser"
 
 (* Declaration of grammars for literals *)
 let char_literal : char grammar = declare_grammar "char_literal"
-let string_literal : string grammar = declare_grammar "char_literal"
+let string_literal : string grammar = declare_grammar "string_literal"
+let regexp_literal : string grammar = declare_grammar "regexp_literal"
 
 (* Integer literals *)
 let int_dec_re = "[0-9][0-9_]*"

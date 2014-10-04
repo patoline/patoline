@@ -103,6 +103,9 @@ each terminal:
       implemented using a stream of lines). Hence, regular expression in the
       ##RE## terminal should not contain the new line symbol.//
       \end{noindent}
+
+      You may yse ##''regexp''## for a constant regexp. This is a syntax for
+      string constant adapted for regular expression. No need to escape the "##\##" charactere.
 \end{itemize}
 
 (* FIXME hack for correct indentation... *)
@@ -144,7 +147,7 @@ any valid string it receives as a command-line argument.
 open Decap
 
 let int = parser
-  | n:RE("[0-9]+") -> int_of_string n
+  | n:''[0-9]+'' -> int_of_string n
 let op = parser
   | '+' -> (+)
   | '-' -> (-)
@@ -559,6 +562,6 @@ definition of ##locate##:
 
  let ints: (position * (position * int) list) grammar = 
    parser
-     STR("ints") l:{ i:RE("[0-9]+") -> (_loc, int_of_string i) }*
+     "ints" l:{ i:''[0-9]+'') -> (_loc, int_of_string i) }*
        -> (_loc_l, l) 
 ###
