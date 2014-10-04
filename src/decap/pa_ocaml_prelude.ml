@@ -190,7 +190,6 @@ let locate str pos str' pos' =
 let locate2 = locate
 
 #define LOCATE locate
-#define GREEDY
 
 let rec merge = function
   | [] -> assert false

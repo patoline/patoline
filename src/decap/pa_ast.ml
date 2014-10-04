@@ -131,6 +131,9 @@ let exp_Cons_fun _loc =
 let exp_Cons_rev_fun _loc =
   exp_fun _loc "x" (exp_fun _loc "l" (exp_Cons _loc (exp_ident _loc "x") (exp_apply _loc (exp_list_fun _loc "rev") [exp_ident _loc "l"])))
 
+let exp_apply_fun _loc =
+  exp_fun _loc "a" (exp_fun _loc "f" (exp_apply _loc (exp_ident _loc "f") [exp_ident _loc "a"]))
+
 let ppat_alias _loc p id =
   if id = "_" then p else
     loc_pat _loc (Ppat_alias (p, (id_loc (id) _loc)))

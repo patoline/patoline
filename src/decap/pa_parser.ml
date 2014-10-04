@@ -52,7 +52,6 @@ open Pa_ocaml_prelude
 open Pa_ast
 
 #define LOCATE locate
-#define GREEDY
 
 type action =
   | Default 
@@ -151,22 +150,16 @@ let apply_option _loc opt visible e =
     | Some d ->
        exp_apply _loc (exp_glr_fun _loc f) [d; e])
   | `Fixpoint1(greedy,d) ->
-     let f = if greedy then "fixpoint'" else "fixpoint" in
-   (match d with None ->
-       exp_apply _loc (exp_glr_fun _loc "sequence")
-	  [e;
+     let f = if greedy then "fixpoint1'" else "fixpoint1" in
+    (match d with None ->
+       exp_apply _loc (exp_glr_fun _loc "apply")
+	  [exp_list_fun _loc "rev";
 	   exp_apply _loc (exp_glr_fun _loc f)
 	     [exp_Nil _loc;
 	      exp_apply _loc (exp_glr_fun _loc "apply")
-		[exp_Cons_fun _loc; e]];
-	   exp_Cons_rev_fun _loc]
-   | Some d ->
-      exp_apply _loc (exp_glr_fun _loc "dependent_sequence")
-	 [e;
-	  exp_fun _loc "x"
-	    (exp_apply _loc (exp_glr_fun _loc f) 
-	       [exp_apply _loc (exp_ident _loc "x") [d];
-		e])])
+		[exp_Cons_fun _loc; e]]]
+    | Some d ->
+       exp_apply _loc (exp_glr_fun _loc f) [d; e])
    )
 
 let default_action _loc l =
@@ -376,7 +369,7 @@ struct
 
   let glr_rules_aux = 
     parser
-    | CHR('|')? r:glr_rule rs:{ CHR('|') CHR('|') r:glr_rule}* -> 
+    | { CHR('|') CHR('|')}? r:glr_rule rs:{ CHR('|') CHR('|') r:glr_rule}** -> 
       (match rs with
       | [] -> r
       | l ->
@@ -393,7 +386,7 @@ struct
 
   let _ = Decap.set_grammar glr_rules (
     parser
-      g:{ CHR('|') -> false | CHR('~') -> true }?[false] r:glr_rules_aux rs:{ CHR('|') r:glr_rules_aux}* -> 
+      g:{ CHR('|') -> false | CHR('~') -> true }?[false] r:glr_rules_aux rs:{ CHR('|') r:glr_rules_aux}** -> 
       (match r,rs with
       | (def,cond,e),  [] ->
 	(match cond with

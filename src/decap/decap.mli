@@ -254,15 +254,22 @@ val option : 'a -> 'a grammar -> 'a grammar
   sequence). *)
 val fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
 
+(** [fixpoint v g] parses a repetition of one or more times the input parsed
+  by [g]. The value [v] is used as the initial value (i.e. to finish the
+  sequence). *)
+val fixpoint1 : 'a -> ('a -> 'a) grammar -> 'a grammar
+
 (** [alternatives [g1;...;gn]] tries to parse using all the grammars
   [[g1;...;gn]] and keeps only the first success. *)
 val alternatives : 'a grammar list -> 'a grammar
 
-(** the ony difference between the next function and the previous one
-    if that they do not backtrack if the completely parse an object
-    of type 'a grammar *)
+(** the only difference between the next function and the previous one
+    if that they do not backtrack if they completely parse an object
+    of type 'a grammar.
+ *)
 val option' : 'a -> 'a grammar -> 'a grammar
 val fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
+val fixpoint1' : 'a -> ('a -> 'a) grammar -> 'a grammar
 val alternatives' : 'a grammar list -> 'a grammar
 
 (** [apply f g] applies function [f] to the value returned by the grammar

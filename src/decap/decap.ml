@@ -316,7 +316,7 @@ let debug : string -> unit grammar = fun msg ->
     parse = fun grouped str pos next g ->
             let l = line str in
             let current = String.sub l pos (min (String.length l - pos) 10) in
-            Printf.eprintf "%s(%d,%d): %S %a\n" msg (line_num str) pos current print_charset next.accepted_char;
+            Printf.eprintf "%s(%d,%d): %S %a\n%!" msg (line_num str) pos current print_charset next.accepted_char;
             g str pos str pos str pos () }
 
 let fail : string -> 'a grammar = fun msg ->
@@ -608,6 +608,32 @@ let fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
       parse =
         fun grouped str pos next g ->
           let next' = union'' f1 next in
+          let rec fn str' pos' str'' pos'' x () =
+            if test grouped next str'' pos'' then
+              (try
+                  f1.parse grouped str'' pos'' next'
+                           (fun _ _ str' pos' str'' pos'' f ->
+			    let res = try f x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
+                            fn str' pos' str'' pos'' res)
+              with
+              | Error -> fun () -> g str pos str' pos' str'' pos'' x) ()
+            else
+              f1.parse grouped str'' pos'' next'
+                       (fun _ _ str' pos' str'' pos'' f ->
+			let res = try f x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
+                        fn str' pos' str'' pos'' res) ()
+          in
+          fn str pos str pos a ()
+    }
+
+let fixpoint1 : 'a -> ('a -> 'a) grammar -> 'a grammar
+  = fun a f1 ->
+    { firsts = lazy (firsts f1);
+      first_sym = lazy (first_sym f1);
+      accept_empty = lazy true;
+      parse =
+        fun grouped str pos next g ->
+          let next' = union'' f1 next in
           let rec fn str' pos' str'' pos'' x =
             if test grouped next str'' pos'' then
               try
@@ -616,14 +642,46 @@ let fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
 			  let res = try f x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
                           fn str' pos' str'' pos'' res)
               with
-              | Error -> fun () -> g str pos str' pos' str'' pos'' x
+              | Error -> g str pos str' pos' str'' pos'' x
             else
               f1.parse grouped str'' pos'' next'
                        (fun _ _ str' pos' str'' pos'' f ->
 			let res = try f x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
                         fn str' pos' str'' pos'' res)
+          in f1.parse grouped str pos next'
+                         (fun _ _  str' pos' str'' pos'' f ->
+			  let res = try f a with Give_up msg -> parse_error grouped (~!msg) str' pos' in
+                          fn str' pos' str'' pos'' res)
+    }
+
+
+let fixpoint1' : 'a -> ('a -> 'a) grammar -> 'a grammar
+  = fun a f1 ->
+    { firsts = lazy (firsts f1);
+      first_sym = lazy (first_sym f1);
+      accept_empty = lazy true;
+      parse =
+        fun grouped str pos next g ->
+          let next' = union'' f1 next in
+          let rec fn str' pos' str'' pos'' x () =
+            if test grouped next str'' pos'' then
+              (try
+                  f1.parse grouped str'' pos'' next'
+                           (fun _ _ str' pos' str'' pos'' f ->
+			    let res = try f x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
+                            fn str' pos' str'' pos'' res)
+              with
+              | Error -> fun () -> g str pos str' pos' str'' pos'' x) ()
+            else
+              f1.parse grouped str'' pos'' next'
+                       (fun _ _ str' pos' str'' pos'' f ->
+			let res = try f x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
+                        fn str' pos' str'' pos'' res) ()
           in
-          fn str pos str pos a ()
+          f1.parse grouped str pos next'
+                           (fun _ _ str' pos' str'' pos'' f ->
+			    let res = try f a with Give_up msg -> parse_error grouped (~!msg) str' pos' in
+                            fn str' pos' str'' pos'' res) ()
     }
 
 let alternatives : 'a grammar list -> 'a grammar

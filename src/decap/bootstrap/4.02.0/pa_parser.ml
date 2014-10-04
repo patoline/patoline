@@ -100,22 +100,16 @@ let apply_option _loc opt visible e =
                     [exp_Cons_fun _loc; e]]]
           | Some d -> exp_apply _loc (exp_glr_fun _loc f) [d; e])
      | `Fixpoint1 (greedy,d) ->
-         let f = if greedy then "fixpoint'" else "fixpoint" in
+         let f = if greedy then "fixpoint1'" else "fixpoint1" in
          (match d with
           | None  ->
-              exp_apply _loc (exp_glr_fun _loc "sequence")
-                [e;
+              exp_apply _loc (exp_glr_fun _loc "apply")
+                [exp_list_fun _loc "rev";
                 exp_apply _loc (exp_glr_fun _loc f)
                   [exp_Nil _loc;
                   exp_apply _loc (exp_glr_fun _loc "apply")
-                    [exp_Cons_fun _loc; e]];
-                exp_Cons_rev_fun _loc]
-          | Some d ->
-              exp_apply _loc (exp_glr_fun _loc "dependent_sequence")
-                [e;
-                exp_fun _loc "x"
-                  (exp_apply _loc (exp_glr_fun _loc f)
-                     [exp_apply _loc (exp_ident _loc "x") [d]; e])]))
+                    [exp_Cons_fun _loc; e]]]
+          | Some d -> exp_apply _loc (exp_glr_fun _loc f) [d; e]))
 let default_action _loc l =
   let l =
     List.filter
@@ -141,7 +135,7 @@ module Ext(In:Extension) =
     let glr_rule = Decap.declare_grammar "glr_rule"
     let location_name_re = "_loc\\([a-zA-Z0-9_']*\\)"
     let glr_parser =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.sequence parser_kw glr_rules (fun _  p  -> (Atom, p));
         Decap.fsequence_position parser_kw
           (Decap.sequence (Decap.char '*' '*') glr_rules
@@ -162,7 +156,7 @@ module Ext(In:Extension) =
     let is_greedy c =
       let greedy =
         try ignore (Sys.getenv "GREEDY"); true with | Not_found  -> false in
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.apply (fun _  -> false) (Decap.char '~' '~');
         Decap.apply (fun _  -> true) (Decap.char c c);
         Decap.apply (fun _  -> greedy) (Decap.empty ())]
@@ -170,7 +164,7 @@ module Ext(In:Extension) =
     let fp = is_greedy '+'
     let fq = is_greedy '?'
     let glr_option =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.fsequence (Decap.char '*' '*')
            (Decap.sequence fs glr_opt_expr (fun s  e  _  -> `Fixpoint (s, e)));
         Decap.fsequence (Decap.char '+' '+')
@@ -179,7 +173,7 @@ module Ext(In:Extension) =
           (Decap.sequence fq glr_opt_expr (fun s  e  _  -> `Option (s, e)));
         Decap.apply (fun _  -> `Once) (Decap.empty ())]
     let glr_sequence =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.fsequence (Decap.char '{' '{')
            (Decap.sequence glr_rules (Decap.char '}' '}') (fun r  _  _  -> r));
         Decap.sequence_position (Decap.string "EOF" "EOF") glr_opt_expr
@@ -268,7 +262,7 @@ module Ext(In:Extension) =
                let opt = match opt with | None  -> e | Some e -> e in
                exp_apply _loc (exp_glr_fun _loc "string") [e; opt]);
         Decap.sequence_position
-          (Decap.alternatives'
+          (Decap.alternatives
              [Decap.sequence (Decap.string "RE" "RE")
                 (expression_lvl (next_exp App)) (fun _  e  -> e);
              Decap.apply
@@ -305,7 +299,7 @@ module Ext(In:Extension) =
                    [e; exp_fun _loc "groupe" opt]);
         Decap.apply (fun e  -> e) (expression_lvl Atom)]
     let glr_ident =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.sequence (pattern_lvl ConstrPat) (Decap.char ':' ':')
            (fun p  _  ->
               match p.ppat_desc with
@@ -333,7 +327,7 @@ module Ext(In:Extension) =
         (Decap.apply List.rev
            (Decap.fixpoint []
               (Decap.apply (fun x  l  -> x :: l)
-                 (Decap.alternatives'
+                 (Decap.alternatives
                     [Decap.fsequence glr_ident
                        (Decap.sequence glr_sequence glr_option
                           (fun s  opt  id  -> `Normal (id, s, opt)));
@@ -342,7 +336,7 @@ module Ext(In:Extension) =
     let glr_let = Decap.declare_grammar "glr_let"
     let _ =
       Decap.set_grammar glr_let
-        (Decap.alternatives'
+        (Decap.alternatives
            [Decap.fsequence_position (Decap.string "let" "let")
               (Decap.fsequence rec_flag
                  (Decap.fsequence let_binding
@@ -356,12 +350,12 @@ module Ext(In:Extension) =
                           fun x  -> loc_expr _loc (Pexp_let (r, lbs, (l x)))))));
            Decap.apply (fun _  x  -> x) (Decap.empty ())])
     let glr_cond =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.sequence (Decap.string "when" "when") expression
            (fun _  e  -> Some e);
         Decap.apply (fun _  -> None) (Decap.empty ())]
     let glr_action =
-      Decap.alternatives'
+      Decap.alternatives
         [Decap.sequence (Decap.string "->>" "->>") glr_rule
            (fun _  (def,cond,r)  -> DepSeq (def, cond, r));
         Decap.sequence (Decap.string "->" "->") expression
@@ -468,10 +462,12 @@ module Ext(In:Extension) =
     let glr_rules_aux =
       Decap.fsequence_position
         (Decap.option None
-           (Decap.apply (fun x  -> Some x) (Decap.char '|' '|')))
+           (Decap.apply (fun x  -> Some x)
+              (Decap.sequence (Decap.char '|' '|') (Decap.char '|' '|')
+                 (fun _  _  -> ()))))
         (Decap.sequence glr_rule
            (Decap.apply List.rev
-              (Decap.fixpoint []
+              (Decap.fixpoint' []
                  (Decap.apply (fun x  l  -> x :: l)
                     (Decap.fsequence (Decap.char '|' '|')
                        (Decap.sequence (Decap.char '|' '|') glr_rule
@@ -509,12 +505,12 @@ module Ext(In:Extension) =
       Decap.set_grammar glr_rules
         (Decap.fsequence_position
            (Decap.option false
-              (Decap.alternatives'
+              (Decap.alternatives
                  [Decap.apply (fun _  -> false) (Decap.char '|' '|');
                  Decap.apply (fun _  -> true) (Decap.char '~' '~')]))
            (Decap.sequence glr_rules_aux
               (Decap.apply List.rev
-                 (Decap.fixpoint []
+                 (Decap.fixpoint' []
                     (Decap.apply (fun x  l  -> x :: l)
                        (Decap.sequence (Decap.char '|' '|') glr_rules_aux
                           (fun _  r  -> r)))))

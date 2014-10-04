@@ -58,7 +58,6 @@ open Longident
 include Pa_ocaml_prelude
 
 #define LOCATE locate
-#define GREEDY
 
 module Make = functor (Initial:Extension) -> struct
 
@@ -1392,7 +1391,7 @@ let _ = set_grammar let_binding (
 let _ = set_match_cases (fun lvl ->
   parser
   | CHR('|')? pat:pattern w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) 
-      l:{CHR'|' pat:pattern  w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) -> (pat,e,w)}*
+      l:{CHR'|' pat:pattern  w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) -> (pat,e,w)}**
         ls:(match_cases lvl) -> map_cases ((pat,e,w)::l) @ ls
   | CHR('|')? dol:CHR('$') - STR("cases") CHR(':') e:(expression_lvl App) - CHR('$') ls:(match_cases lvl) -> push_pop_cases (start_pos _loc_dol).Lexing.pos_cnum e @ ls
   | EMPTY -> []
