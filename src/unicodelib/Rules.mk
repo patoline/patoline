@@ -43,7 +43,7 @@ $(d)/unicode_parse.cmx: $(d)/unicode_parse.ml $(PA_OCAML)
 	$(ECHO) "[OPT]   ... -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -package decap -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
 
-$(d)/unicode_parse: $(d)/UChar.cmx $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/pa_ocaml_prelude.cmx $(d)/unicode_type.cmx $(d)/unicode_parse.cmx $(PA_OCAML_DIR)/pa_parser.cmx $(PA_OCAML_DIR)/pa_ocaml.cmx $(PA_OCAML_DIR)/pa_compose.cmx $(PA_OCAML_DIR)/pa_opt_main.cmx
+$(d)/unicode_parse: $(d)/UChar.cmx $(PA_OCAML_DIR)/decap.cmxa $(d)/unicode_type.cmx $(d)/unicode_parse.cmx $(PA_OCAML_DIR)/pa_parser.cmx $(PA_OCAML_DIR)/pa_ocaml.cmx $(PA_OCAML_DIR)/pa_compose.cmx $(PA_OCAML_DIR)/pa_opt_main.cmx
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLOPT) -linkpkg -package decap $(COMPILER_INC) $(COMPILER_LIBO) $(PA_OCAML_DIR)/decap.cmxa -o $@ $^
 

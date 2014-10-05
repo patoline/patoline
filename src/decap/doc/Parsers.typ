@@ -156,7 +156,7 @@ let expr = parser
       List.fold_left (fun acc (op,f) -> op acc f) n l
 
 let parse =
-  let blank = blank_regexp (Str.regexp "[ \t]*") in
+  let blank = blank_regexp ''[ \t]*'' in
   handle_exception (parse_string ~filename:"arg" expr blank)
 
 let _ =
@@ -294,7 +294,7 @@ let _ = set_expr (fun prio ->
 
 (* The main loop *)
 let _ =
-  let blank = blank_regexp (Str.regexp "[ \t]*") in
+  let blank = blank_regexp ''[ \t]*'' in
   try while true do
     Printf.printf ">> %!";
     let l = input_line stdin in
@@ -394,40 +394,21 @@ leaving a line empty.
 ### OCaml "text.ml"
 open Decap
 
-let blank1 str pos =
-  let rec fn flag str pos =
-    let (c, str', pos') = Input.read str pos in
-    match c with
-    | ' ' | '\t'         -> fn flag str' pos'
-    | '\n' when not flag -> fn true str' pos'
-    | _                  -> (str, pos)
-  in fn false str pos
+let inter_paragraph = blank_regexp ''[ \t\r\n]*''
 
-let blank2 str pos =
-  let rec fn str pos =
-    let (c, str', pos') = Input.read str pos in
-    match c with
-    | ' ' | '\t' | '\n' -> fn str' pos'
-    | _                 -> (str, pos)
-  in fn str pos
+let inter_word str pos =
+  let gram = parser ''[ \t\r]*'' '\n'? ''[ \t\r]*'' in
+  let str, pos, _ = partial_parse_buffer gram no_blank str pos in
+  str, pos
 
-let word =
-  let word_re = "[^ \t\r\n]+" in
-  parser
-  | w:RE(word_re) -> w
+let word = parser w:''[^ \n\t\r]+'' -> w
 
-let paragraph =
-  change_layout (
-    parser
-    | ws:word+ -> ws
-  ) blank1
+let paragraph = change_layout (parser ws:word+ -> ws) inter_word
 
-let text =
-  parser
-  | ps:paragraph* EOF -> ps
+let text = parser ps:paragraph* -> ps
 
 let _ =
-  let ps = handle_exception (parse_channel text blank2) stdin in
+  let ps = handle_exception (parse_channel text inter_paragraph) stdin in
   let nb = List.length ps in
   Printf.printf "%i paragraphs read.\n" nb
 ###

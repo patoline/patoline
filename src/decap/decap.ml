@@ -82,7 +82,10 @@ module PosMap = Map.Make(Pos)
 
 type blank = buffer -> int -> buffer * int
 
+let no_blank str pos = str, pos
+
 let blank_regexp r =
+  let r = Str.regexp r in
   let accept_newline = string_match r "\n" 0 && match_end () = 1 in
   let rec fn str pos =
     if string_match r (line str) pos then
@@ -225,9 +228,8 @@ let delim : 'a grammar -> 'a grammar
       accept_empty = lazy (accept_empty l);
       parse =
         fun grouped str pos next g ->
-        let cont l c l' c' l'' c'' x = l, c, l', c', l'', c'', x in
-        let l, c, l', c', l'', c'', x = l.parse grouped str pos next cont in
-	g l c l' c' l'' c'' x
+        let cont l c l' c' l'' c'' x () = g l c l' c' l'' c'' x in
+        l.parse grouped str pos next cont ()
     }
 
 let merge : ('a -> 'b) -> ('b -> 'b -> 'b) -> 'a grammar -> 'b grammar

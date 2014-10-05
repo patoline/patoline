@@ -300,14 +300,28 @@ let _ = set_grammar regexp_literal (
     ) no_blank) -> r)
 
 
-let quotation = declare_grammar "quotation"
-let _ = set_grammar quotation (
-  change_layout (parser
-  | STR("<:") q:quotation q':quotation -> "<:" ^ q ^ ">>" ^ q'
-  | s: string_literal q:quotation -> Printf.sprintf "%S" s ^ q
-  | STR(">>") -> ""
-  | c:(one_char String) q:quotation -> String.make 1 c ^ q
-  ) no_blank)
+type tree = Node of tree * tree | Leaf of string
+
+let (string_of_tree:tree->string) t =
+  let b = Buffer.create 101 in
+  let rec fn = function
+      Leaf s -> Buffer.add_string b s
+    | Node(a,b) -> fn a; fn b
+  in
+  fn t;
+  Buffer.contents b
+
+let quotation = 
+  let quotation_aux:tree grammar = declare_grammar "quotation" in				      
+  let _ = set_grammar quotation_aux
+      (parser
+      | "<:" q:quotation_aux q':quotation_aux -> Node(Node((Leaf "<:"), q), Node(Leaf ">>", q'))
+      | s: string_literal q:quotation_aux -> Node(Leaf (Printf.sprintf "%S" s), q)
+      | ">>" -> Leaf ""
+      | s:RE("[^<>\"\n]+") q:quotation_aux -> Node(Leaf s, q)
+      | c:(one_char String) q:quotation_aux -> Node(Leaf (String.make 1 c), q))
+  in
+  apply string_of_tree (change_layout quotation_aux no_blank)
 
 (* Naming labels *)
 let label_name = lowercase_ident

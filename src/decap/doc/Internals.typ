@@ -57,13 +57,13 @@ function is one that does not ignore any character:
 ###
 
 It is possible to eliminate blanks according to a regual expression. To do so,
-the function ##blank_regexp : Str.regexp -> blank## may be used. In the
+the function ##blank_regexp : string -> blank## may be used. In the
 following example, the blank function ignores an arbitrary number of spaces,
 tabulations, newline and carriage return characters:
 
 ### OCaml
 
-  let blank_re = blank_regexp (Str.regexp "[ \t\n\r]*")
+  let blank_re = blank_regexp "[ \t\n\r]*"
 
 ###
 //Important remark: due to a limitation of the ##Str## module (which can only

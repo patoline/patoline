@@ -75,13 +75,17 @@ exception Give_up of string
   be ignored. *)
 type blank = buffer -> int -> buffer * int
 
-(** [blank_regexp re] produces a blank function using a regular expression
-  [re]. There is an important limitation regarding regular expressions
-  containing the newline symbol [\n], due to the fact that the [Str] module
-  only matches on strings (and not on an abstract notion of buffer). Such
-  regular expressions should be idempotent, and match a string containing
-  only a newline. *)
-val blank_regexp : Str.regexp -> blank
+(** [no_blank] is the blank function accepting no charaters *)
+val no_blank : blank
+
+(** [blank_regexp re] produces a blank function using a regular
+  expression [re] following the syntax from the [Str] module. There is
+  an important limitation regarding regular expressions containing the
+  newline symbol [\n], due to the fact that the [Str] module only
+  matches on strings (and not on an abstract notion of buffer). Such
+  regular expressions should be idempotent, and match a string
+  containing only a newline. *)
+val blank_regexp : string -> blank
 
 (** {2 Core type} *)
 

@@ -1,7 +1,7 @@
 open Pa_ocaml_prelude
 open Unicode_type
 
-let _ = parser_locate locate locate2
+#define LOCATE locate
 
 module Ext = functor(In:Extension) -> 
 struct
@@ -89,7 +89,7 @@ let line = parser
 	 $list:oldName$ $string:comments$
 	 $uppercase$ $lowercase$ $titlecase$>> 
 
-let unicodeData = Glr.change_layout (parser
+let unicodeData = Decap.change_layout (parser
   ls:{l:line}* ->   <:structure<
   open Unicode_type
   let unicode_table = Hashtbl.create 10001;;
@@ -111,7 +111,7 @@ let unicodeData = Glr.change_layout (parser
 	   lowercase=n;
 	   titlecase=o;
 	 };;
-  $(List.flatten ls)$>>) (Glr.blank_regexp (Str.regexp "[ \t]*"))
+  $(List.flatten ls)$>>) (Decap.blank_regexp (Str.regexp "[ \t]*"))
 
 
  let _ = 
