@@ -207,14 +207,12 @@ module Initial =
       Decap.apply (fun l  -> List.flatten l)
         (Decap.apply List.rev
            (Decap.fixpoint' []
-              (Decap.apply (fun x  l  -> x :: l)
-                 (Decap.apply (fun s  -> s) structure_item))))
+              (Decap.apply (fun x  l  -> x :: l) structure_item)))
     let signature =
       Decap.apply (fun l  -> List.flatten l)
         (Decap.apply List.rev
            (Decap.fixpoint' []
-              (Decap.apply (fun x  l  -> x :: l)
-                 (Decap.apply (fun s  -> s) signature_item))))
+              (Decap.apply (fun x  l  -> x :: l) signature_item)))
     type type_prio =  
       | TopType
       | As
@@ -964,8 +962,7 @@ module Initial =
                       push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let capitalized_ident =
       Decap.alternatives
-        [Decap.apply (fun id  -> id)
-           (Decap.regexp ~name:"cident" cident_re (fun groupe  -> groupe 0));
+        [Decap.regexp ~name:"cident" cident_re (fun groupe  -> groupe 0);
         Decap.fsequence
           (Decap.apply_position
              (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
@@ -1101,29 +1098,29 @@ module Initial =
     let mutable_kw = key_word "mutable"
     let mutable_flag =
       Decap.alternatives
-        [Decap.apply (fun _  -> Mutable) mutable_kw;
+        [Decap.apply (fun _default_0  -> Mutable) mutable_kw;
         Decap.apply (fun _  -> Immutable) (Decap.empty ())]
     let private_kw = key_word "private"
     let private_flag =
       Decap.alternatives
-        [Decap.apply (fun _  -> Private) private_kw;
+        [Decap.apply (fun _default_0  -> Private) private_kw;
         Decap.apply (fun _  -> Public) (Decap.empty ())]
     let virtual_kw = key_word "virtual"
     let virtual_flag =
       Decap.alternatives
-        [Decap.apply (fun _  -> Virtual) virtual_kw;
+        [Decap.apply (fun _default_0  -> Virtual) virtual_kw;
         Decap.apply (fun _  -> Concrete) (Decap.empty ())]
     let rec_kw = key_word "rec"
     let rec_flag =
       Decap.alternatives
-        [Decap.apply (fun _  -> Recursive) rec_kw;
+        [Decap.apply (fun _default_0  -> Recursive) rec_kw;
         Decap.apply (fun _  -> Nonrecursive) (Decap.empty ())]
     let to_kw = key_word "to"
     let downto_kw = key_word "downto"
     let downto_flag =
       Decap.alternatives
-        [Decap.apply (fun _  -> Upto) to_kw;
-        Decap.apply (fun _  -> Downto) downto_kw]
+        [Decap.apply (fun _default_0  -> Upto) to_kw;
+        Decap.apply (fun _default_0  -> Downto) downto_kw]
     let method_kw = key_word "method"
     let object_kw = key_word "object"
     let class_kw = key_word "class"
@@ -1245,8 +1242,8 @@ module Initial =
                       push_pop_natint (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let bool_lit =
       Decap.alternatives
-        [Decap.apply (fun _  -> "false") false_kw;
-        Decap.apply (fun _  -> "true") true_kw;
+        [Decap.apply (fun _default_0  -> "false") false_kw;
+        Decap.apply (fun _default_0  -> "true") true_kw;
         Decap.fsequence
           (Decap.apply_position
              (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))

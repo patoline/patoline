@@ -51,20 +51,25 @@
 let _ = Location.input_name := ""
 
 (* necessite la librairie UNIX *)
-let nb_tests = 10
+let min_time = 0.2
 
 let with_time f x =
-  Gc.full_major ();
+  Gc.compact ();
   let (minor_words, _, _) = Gc.counters () in
   let {Unix.tms_utime = ut;Unix.tms_stime = st} = Unix.times () in
+  let time = ref 0.0 in
+  let res = ref None in
+  let count = ref 0 in
   try
-    for i = 1 to nb_tests do
-      ignore (f x);
+    while !time < min_time do
+      res := Some (f x);
+      incr count;
+      let {Unix.tms_utime = ut';Unix.tms_stime = st'} = Unix.times () in
+      time := (ut' -. ut) +. (st' -. st);
     done;
-    let r = f x in
-    let {Unix.tms_utime = ut';Unix.tms_stime = st'} = Unix.times () in
+    let r = match !res with None -> assert false | Some r -> r in
     let (minor_words', _, _) = Gc.counters () in
-    (r, (ut' -. ut) +. (st' -. st), minor_words' -. minor_words)
+    (r, !time /. float !count, minor_words' -. minor_words)
   with e ->
     let {Unix.tms_utime = ut';Unix.tms_stime = st'} = Unix.times () in
     Format.eprintf "exception after: %.2fs@." ((ut' -. ut) +. (st' -. st));
@@ -126,11 +131,17 @@ let _ =
   let mem_sum_orig = ref 0.0 in
   let mem_sum_camlp4 = ref 0.0 in
   let mem_sum_pa_ocaml = ref 0.0 in
+  let max_time_camlp4 = ref 0.0 in
+  let min_time_camlp4 = ref max_float in
+  let max_time_orig = ref 0.0 in
+  let min_time_orig = ref max_float in
+  let max_time_o4 = ref 0.0 in
+  let min_time_o4 = ref max_float in
 
   let print_times time_orig time_camlp4 time_pa_ocaml = 
     Format.eprintf "x%f x%f (original %f, camlp4 %f, pa_ocaml %f)@."
       (time_pa_ocaml /. time_orig)
-      (time_pa_ocaml /. time_camlp4)
+      (time_camlp4 /. time_pa_ocaml)
       time_orig time_camlp4 time_pa_ocaml
   in
   let print_mem mem_orig mem_camlp4 mem_pa_ocaml = 
@@ -140,7 +151,10 @@ let _ =
       mem_orig mem_camlp4 mem_pa_ocaml
   in
 
-  Array.iteri (fun i path -> if i <> 0 then begin
+  let csv = open_out "ocaml.csv" in
+  Printf.fprintf csv "size, yacctime, decaptime, camlp4time, yaccmem, decapmem, camlp4mem\n";
+	   
+  Array.iteri (fun i path -> if i <> 0 (*&& Filename.check_suffix path ".ml"*) then begin
     Format.eprintf "%s@." path;
     let time_orig, mem_orig, time_camlp4, mem_camlp4, time_pa_ocaml, mem_pa_ocaml =
       if Filename.check_suffix path ".ml" then
@@ -159,6 +173,16 @@ let _ =
 	end
       else assert false
     in
+    let st = Unix.lstat path in
+    let size = Unix.(st.st_size) in
+    if size > 8192 then begin
+		       max_time_orig := max !max_time_orig (time_pa_ocaml /. time_orig);
+		       min_time_orig := min !min_time_orig (time_pa_ocaml /. time_orig);
+		       max_time_camlp4 := max !max_time_camlp4 (time_camlp4 /. time_pa_ocaml);
+		       min_time_camlp4 := min !min_time_camlp4 (time_camlp4 /. time_pa_ocaml);
+		       max_time_o4 := max !max_time_o4 (time_camlp4 /. time_orig);
+		       min_time_o4 := min !min_time_o4 (time_camlp4 /. time_orig);
+		     end;
     time_sum_orig := !time_sum_orig +. time_orig;
     time_sum_camlp4 := !time_sum_camlp4 +. time_camlp4;
     time_sum_pa_ocaml := !time_sum_pa_ocaml +. time_pa_ocaml;
@@ -166,8 +190,22 @@ let _ =
     mem_sum_camlp4 := !mem_sum_camlp4 +. mem_camlp4;
     mem_sum_pa_ocaml := !mem_sum_pa_ocaml +. mem_pa_ocaml;
     print_times time_orig time_camlp4 time_pa_ocaml;
-    print_mem mem_orig mem_camlp4 mem_pa_ocaml
+    print_mem mem_orig mem_camlp4 mem_pa_ocaml;
+   Printf.fprintf csv "%d, %f, %f, %f, %f, %f, %f\n"
+		   size time_orig time_pa_ocaml time_camlp4
+		   mem_orig mem_pa_ocaml mem_camlp4
+    ;
+    
   end) Sys.argv;
+  close_out csv;
   prerr_endline "ALL TEST ENDED";
   print_times !time_sum_orig !time_sum_camlp4 !time_sum_pa_ocaml;
-  print_mem !mem_sum_orig !mem_sum_camlp4 !mem_sum_pa_ocaml
+  Printf.printf "min decap/orig: %f max decap/orig: %f\n"
+		!min_time_orig !max_time_orig;
+  Printf.printf "min camlp4/decap: %f max camlp4/decap: %f\n"
+		!min_time_camlp4 !max_time_camlp4;
+  Printf.printf "min camlp4/orig: %f max camlp4/orig: %f\n"
+		!min_time_o4 !max_time_o4;
+
+  print_mem !mem_sum_orig !mem_sum_camlp4 !mem_sum_pa_ocaml;
+	    

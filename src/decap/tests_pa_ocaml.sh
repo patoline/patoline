@@ -6,7 +6,9 @@ examples=./doc
 diff=./tests_pa_ocaml
 ocamlversion=`ocamlc -version`
 
-files="$local/test.ml $local/objects.ml $local/variants.ml $local/prefix.ml\
+files="$local/bibi.ml $local/UTF16.ml $local/test_offset.ml $local/image*.ml $local/decap.ml \
+       $local/pa_byt_main.ml $local/pa_ocaml_prelude.ml $local/pa_parser.ml \
+       $local/test.ml $local/objects.ml $local/variants.ml $local/prefix.ml\
        $local/mixin2.ml $local/mixev.ml $local/mixev2.ml $local/mixmod.ml $local/mixmod5.ml $local/mixobj.ml \
        $ocaml/pervasives.ml $ocaml/pervasives.mli $ocaml/list.ml $ocaml/list.mli \
        $ocaml/set.ml $ocaml/set.mli $ocaml/map.ml $ocaml/map.mli $local/bigarray.ml $ocaml/bigarray.mli \
@@ -16,7 +18,8 @@ files="$local/test.ml $local/objects.ml $local/variants.ml $local/prefix.ml\
        $ocaml/dynlink.mli $ocaml/filename.ml $ocaml/filename.mli $ocaml/format.ml $ocaml/gc.ml \
        $ocaml/gc.mli $ocaml/genlex.ml $ocaml/genlex.mli $ocaml/hashtbl.ml $ocaml/hashtbl.mli \
        $ocaml/lexing.ml $ocaml/lexing.mli $ocaml/listLabels.ml $ocaml/listLabels.mli $ocaml/moreLabels.ml \
-       $ocaml/moreLabels.mli"
+       $ocaml/moreLabels.mli 
+"
 
 #files only working on ocaml 4
 files4="$local/test4.ml"
@@ -58,15 +61,15 @@ make $examples/pa_do_try
 /usr/bin/time --format="%C: %e" ocamlc -i -c -pp $examples/pa_do_try $local/test_extension.ml
 echo
 
-echo "test of parser extension"
-/usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ./examples/calc.ml 
-/usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ./examples/calc_all.ml
-cp ./pa_ocaml_prelude.ml $local/
-/usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml_prelude.ml
-cp ./pa_parser.ml $local/
-/usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_parser.ml
-cp ./pa_ocaml.ml $local/
-/usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml.ml
+# echo "test of parser extension"
+# /usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ./examples/calc.ml 
+# /usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ./examples/calc_all.ml
+# cp ./pa_ocaml_prelude.ml $local/
+# /usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml_prelude.ml
+# cp ./pa_parser.ml $local/
+# /usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_parser.ml
+# cp ./pa_ocaml.ml $local/
+# /usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml.ml
 
 echo "********************************************"
 echo TOTAL diff size: 

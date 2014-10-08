@@ -118,13 +118,13 @@ let default_action _loc l =
   let l =
     List.filter
       (function
-       | `Normal (("_",_),false ,_,_) -> false
+       | `Normal (("_",_),_,_) -> false
        | `Ignore -> false
        | _ -> true) l in
   let l =
     List.map
       (function
-       | `Normal ((id,_),_,_,_) -> exp_ident _loc id
+       | `Normal ((id,_),_,_) -> exp_ident _loc id
        | _ -> assert false) l in
   let rec fn =
     function
@@ -140,13 +140,12 @@ module Ext(In:Extension) =
     let location_name_re = "_loc\\([a-zA-Z0-9_']*\\)"
     let glr_parser =
       Decap.alternatives
-        [Decap.sequence parser_kw glr_rules
-           (fun _default_0  -> fun p  -> (Atom, p));
+        [Decap.sequence parser_kw glr_rules (fun _  -> fun p  -> (Atom, p));
         Decap.fsequence_position parser_kw
           (Decap.sequence (Decap.char '*' '*') glr_rules
              (fun _  ->
                 fun p  ->
-                  fun _default_0  ->
+                  fun _  ->
                     fun __loc__start__buf  ->
                       fun __loc__start__pos  ->
                         fun __loc__end__buf  ->
@@ -158,11 +157,12 @@ module Ext(In:Extension) =
                               (exp_apply _loc (exp_glr_fun _loc "lists") [p]))))]
     let extra_expressions = glr_parser :: extra_expressions
     let glr_opt_expr =
-      Decap.option None
-        (Decap.apply (fun x  -> Some x)
-           (Decap.fsequence (Decap.char '[' '[')
-              (Decap.sequence expression (Decap.char ']' ']')
-                 (fun e  -> fun _  -> fun _  -> e))))
+      Decap.apply (fun e  -> e)
+        (Decap.option None
+           (Decap.apply (fun x  -> Some x)
+              (Decap.fsequence (Decap.char '[' '[')
+                 (Decap.sequence expression (Decap.char ']' ']')
+                    (fun e  -> fun _  -> fun _  -> e)))))
     let is_greedy c =
       let greedy =
         try ignore (Sys.getenv "GREEDY"); true with | Not_found  -> false in
@@ -189,7 +189,7 @@ module Ext(In:Extension) =
       Decap.alternatives
         [Decap.fsequence (Decap.char '{' '{')
            (Decap.sequence glr_rules (Decap.char '}' '}')
-              (fun r  -> fun _  -> fun _  -> (true, r)));
+              (fun r  -> fun _  -> fun _  -> r));
         Decap.sequence_position (Decap.string "EOF" "EOF") glr_opt_expr
           (fun _  ->
              fun opt  ->
@@ -204,8 +204,7 @@ module Ext(In:Extension) =
                          match opt with
                          | None  -> exp_unit _loc
                          | Some e -> e in
-                       ((opt <> None),
-                         (exp_apply _loc (exp_glr_fun _loc "eof") [e])));
+                       exp_apply _loc (exp_glr_fun _loc "eof") [e]);
         Decap.sequence_position (Decap.string "EMPTY" "EMPTY") glr_opt_expr
           (fun _  ->
              fun opt  ->
@@ -220,8 +219,7 @@ module Ext(In:Extension) =
                          match opt with
                          | None  -> exp_unit _loc
                          | Some e -> e in
-                       ((opt <> None),
-                         (exp_apply _loc (exp_glr_fun _loc "empty") [e])));
+                       exp_apply _loc (exp_glr_fun _loc "empty") [e]);
         Decap.sequence_position (Decap.string "FAIL" "FAIL")
           (expression_lvl (next_exp App))
           (fun _  ->
@@ -233,8 +231,7 @@ module Ext(In:Extension) =
                        let _loc =
                          locate __loc__start__buf __loc__start__pos
                            __loc__end__buf __loc__end__pos in
-                       (false,
-                         (exp_apply _loc (exp_glr_fun _loc "fail") [e])));
+                       exp_apply _loc (exp_glr_fun _loc "fail") [e]);
         Decap.sequence_position (Decap.string "DEBUG" "DEBUG")
           (expression_lvl (next_exp App))
           (fun _  ->
@@ -246,8 +243,7 @@ module Ext(In:Extension) =
                        let _loc =
                          locate __loc__start__buf __loc__start__pos
                            __loc__end__buf __loc__end__pos in
-                       (false,
-                         (exp_apply _loc (exp_glr_fun _loc "debug") [e])));
+                       exp_apply _loc (exp_glr_fun _loc "debug") [e]);
         Decap.apply_position
           (fun _  ->
              fun __loc__start__buf  ->
@@ -257,8 +253,7 @@ module Ext(In:Extension) =
                      let _loc =
                        locate __loc__start__buf __loc__start__pos
                          __loc__end__buf __loc__end__pos in
-                     (true, (exp_glr_fun _loc "any")))
-          (Decap.string "ANY" "ANY");
+                     exp_glr_fun _loc "any") (Decap.string "ANY" "ANY");
         Decap.fsequence_position (Decap.string "CHR" "CHR")
           (Decap.sequence (expression_lvl (next_exp App)) glr_opt_expr
              (fun e  ->
@@ -271,10 +266,9 @@ module Ext(In:Extension) =
                             let _loc =
                               locate __loc__start__buf __loc__start__pos
                                 __loc__end__buf __loc__end__pos in
-                            let o = match opt with | None  -> e | Some e -> e in
-                            ((opt <> None),
-                              (exp_apply _loc (exp_glr_fun _loc "char")
-                                 [e; o]))));
+                            let opt =
+                              match opt with | None  -> e | Some e -> e in
+                            exp_apply _loc (exp_glr_fun _loc "char") [e; opt]));
         Decap.sequence_position
           (Decap.apply_position
              (fun x  ->
@@ -293,9 +287,8 @@ module Ext(In:Extension) =
                          locate __loc__start__buf __loc__start__pos
                            __loc__end__buf __loc__end__pos in
                        let e = loc_expr _loc_c (Pexp_constant (Const_char c)) in
-                       let o = match opt with | None  -> e | Some e -> e in
-                       ((opt <> None),
-                         (exp_apply _loc (exp_glr_fun _loc "char") [e; o])));
+                       let opt = match opt with | None  -> e | Some e -> e in
+                       exp_apply _loc (exp_glr_fun _loc "char") [e; opt]);
         Decap.fsequence_position (Decap.string "STR" "STR")
           (Decap.sequence (expression_lvl (next_exp App)) glr_opt_expr
              (fun e  ->
@@ -308,10 +301,10 @@ module Ext(In:Extension) =
                             let _loc =
                               locate __loc__start__buf __loc__start__pos
                                 __loc__end__buf __loc__end__pos in
-                            let o = match opt with | None  -> e | Some e -> e in
-                            ((opt <> None),
-                              (exp_apply _loc (exp_glr_fun _loc "string")
-                                 [e; o]))));
+                            let opt =
+                              match opt with | None  -> e | Some e -> e in
+                            exp_apply _loc (exp_glr_fun _loc "string")
+                              [e; opt]));
         Decap.sequence_position
           (Decap.apply_position
              (fun x  ->
@@ -329,28 +322,10 @@ module Ext(In:Extension) =
                        let _loc =
                          locate __loc__start__buf __loc__start__pos
                            __loc__end__buf __loc__end__pos in
-                       ((opt <> None),
-                         (match String.length s with
-                          | 0 ->
-                              raise
-                                (Decap.Give_up
-                                   "Empty string litteral in rule.")
-                          | 1 ->
-                              let e =
-                                loc_expr _loc_s
-                                  (Pexp_constant (Const_char (s.[0]))) in
-                              let opt =
-                                match opt with | None  -> e | Some e -> e in
-                              exp_apply _loc (exp_glr_fun _loc "char")
-                                [e; opt]
-                          | _ ->
-                              let e =
-                                loc_expr _loc_s
-                                  (Pexp_constant (const_string s)) in
-                              let opt =
-                                match opt with | None  -> e | Some e -> e in
-                              exp_apply _loc (exp_glr_fun _loc "string")
-                                [e; opt])));
+                       let e =
+                         loc_expr _loc_s (Pexp_constant (const_string s)) in
+                       let opt = match opt with | None  -> e | Some e -> e in
+                       exp_apply _loc (exp_glr_fun _loc "string") [e; opt]);
         Decap.sequence_position
           (Decap.alternatives
              [Decap.sequence (Decap.string "RE" "RE")
@@ -389,28 +364,24 @@ module Ext(In:Extension) =
                                (l > 3) && ((String.sub id (l - 3) 3) = "_re")
                              then String.sub id 0 (l - 3)
                              else id in
-                           (true,
-                             (exp_lab_apply _loc (exp_glr_fun _loc "regexp")
-                                [("name", (exp_string _loc id));
-                                ("", e);
-                                ("", (exp_fun _loc "groupe" opt))]))
+                           exp_lab_apply _loc (exp_glr_fun _loc "regexp")
+                             [("name", (exp_string _loc id));
+                             ("", e);
+                             ("", (exp_fun _loc "groupe" opt))]
                        | _ ->
-                           (true,
-                             (exp_apply _loc (exp_glr_fun _loc "regexp")
-                                [e; exp_fun _loc "groupe" opt])));
-        Decap.apply (fun e  -> (true, e)) (expression_lvl Atom)]
+                           exp_apply _loc (exp_glr_fun _loc "regexp")
+                             [e; exp_fun _loc "groupe" opt]);
+        Decap.apply (fun e  -> e) (expression_lvl Atom)]
     let glr_ident =
       Decap.alternatives
         [Decap.sequence (pattern_lvl ConstrPat) (Decap.char ':' ':')
            (fun p  ->
               fun _  ->
                 match p.ppat_desc with
-                | Ppat_alias (p,{ txt = id }) ->
-                    ((Some true), (id, (Some p)))
-                | Ppat_var { txt = id } -> ((Some (id <> "_")), (id, None))
-                | Ppat_any  -> ((Some false), ("_", None))
-                | _ -> ((Some true), ("_", (Some p))));
-        Decap.apply (fun _  -> (None, ("_", None))) (Decap.empty ())]
+                | Ppat_alias (p,{ txt = id }) -> (id, (Some p))
+                | Ppat_var { txt = id } -> (id, None)
+                | _ -> ("_", (Some p)));
+        Decap.apply (fun _  -> ("_", None)) (Decap.empty ())]
     let dash =
       Decap.black_box
         (fun str  ->
@@ -425,27 +396,19 @@ module Ext(In:Extension) =
              else raise (Decap.Give_up "'-' expexted"))
         (Charset.singleton '-') false "-"
     let glr_left_member =
-      let f x y = match x with | Some x -> x | None  -> y in
       Decap.sequence
         (Decap.fsequence glr_ident
            (Decap.sequence glr_sequence glr_option
-              (fun ((cst,s) as _default_0)  ->
-                 fun opt  ->
-                   fun ((cst',id) as _default_1)  ->
-                     `Normal (id, (f cst' ((opt <> `Once) || cst)), s, opt))))
+              (fun s  -> fun opt  -> fun id  -> `Normal (id, s, opt))))
         (Decap.apply List.rev
            (Decap.fixpoint []
               (Decap.apply (fun x  -> fun l  -> x :: l)
                  (Decap.alternatives
                     [Decap.fsequence glr_ident
                        (Decap.sequence glr_sequence glr_option
-                          (fun ((cst,s) as _default_0)  ->
-                             fun opt  ->
-                               fun ((cst',id) as _default_1)  ->
-                                 `Normal
-                                   (id, (f cst' ((opt <> `Once) || cst)), s,
-                                     opt)));
-                    Decap.apply (fun _default_0  -> `Ignore) dash]))))
+                          (fun s  ->
+                             fun opt  -> fun id  -> `Normal (id, s, opt)));
+                    Decap.apply (fun _  -> `Ignore) dash]))))
         (fun i  -> fun l  -> i :: l)
     let glr_let = Decap.declare_grammar "glr_let"
     let _ =
@@ -480,8 +443,7 @@ module Ext(In:Extension) =
     let glr_action =
       Decap.alternatives
         [Decap.sequence (Decap.string "->>" "->>") glr_rule
-           (fun _  ->
-              fun ((def,cond,r) as _default_0)  -> DepSeq (def, cond, r));
+           (fun _  -> fun (def,cond,r)  -> DepSeq (def, cond, r));
         Decap.sequence (Decap.string "->" "->") expression
           (fun _  -> fun action  -> Normal action);
         Decap.apply (fun _  -> Default) (Decap.empty ())]
@@ -504,22 +466,6 @@ module Ext(In:Extension) =
                                        locate __loc__start__buf
                                          __loc__start__pos __loc__end__buf
                                          __loc__end__pos in
-                                     let l =
-                                       fst
-                                         (List.fold_right
-                                            (fun x  ->
-                                               fun (res,i)  ->
-                                                 match x with
-                                                 | `Normal
-                                                     (("_",a),true ,c,d) ->
-                                                     (((`Normal
-                                                          ((("_default_" ^
-                                                               (string_of_int
-                                                                  i)), a),
-                                                            true, c, d)) ::
-                                                       res), (i + 1))
-                                                 | _ -> ((x :: res), i)) l
-                                            ([], 0)) in
                                      let (iter,action) =
                                        match action with
                                        | Normal a -> (false, a)
@@ -547,17 +493,15 @@ module Ext(In:Extension) =
                                        match l with
                                        | [] -> assert false
                                        | `Ignore::ls -> assert false
-                                       | (`Normal (id,cst,e,opt))::`Ignore::ls
-                                           ->
+                                       | (`Normal (id,e,opt))::`Ignore::ls ->
                                            let e =
                                              exp_apply _loc
                                                (exp_glr_fun _loc
                                                   "ignore_next_blank") 
                                                [e] in
                                            fn first ids
-                                             ((`Normal (id, cst, e, opt)) ::
-                                             ls)
-                                       | (`Normal (id,_,e,opt))::[] ->
+                                             ((`Normal (id, e, opt)) :: ls)
+                                       | (`Normal (id,e,opt))::[] ->
                                            let occur_loc_id =
                                              ((fst id) <> "_") &&
                                                (pop_location (fst id)) in
@@ -571,22 +515,14 @@ module Ext(In:Extension) =
                                              | (Some _,true ) ->
                                                  "apply_position"
                                              | _ -> "apply" in
-                                           (match action.pexp_desc with
-                                            | Pexp_ident { txt = Lident id' }
-                                                when
-                                                ((fst id) = id') &&
-                                                  (f = "apply")
-                                                -> e
-                                            | _ ->
-                                                exp_apply _loc
-                                                  (exp_glr_fun _loc f)
-                                                  [build_action _loc
-                                                     occur_loc
-                                                     ((id, occur_loc_id) ::
-                                                     ids) action;
-                                                  e])
-                                       | (`Normal (id,_,e,opt))::(`Normal
-                                                                    (id',_,e',opt'))::[]
+                                           exp_apply _loc
+                                             (exp_glr_fun _loc f)
+                                             [build_action _loc occur_loc
+                                                ((id, occur_loc_id) :: ids)
+                                                action;
+                                             e]
+                                       | (`Normal (id,e,opt))::(`Normal
+                                                                  (id',e',opt'))::[]
                                            ->
                                            let occur_loc_id =
                                              ((fst id) <> "_") &&
@@ -615,7 +551,7 @@ module Ext(In:Extension) =
                                                ((id, occur_loc_id) ::
                                                (id', occur_loc_id') :: ids)
                                                action]
-                                       | (`Normal (id,_,e,opt))::ls ->
+                                       | (`Normal (id,e,opt))::ls ->
                                            let occur_loc_id =
                                              ((fst id) <> "_") &&
                                                (pop_location (fst id)) in
@@ -659,7 +595,7 @@ module Ext(In:Extension) =
                           (fun _  -> fun r  -> fun _  -> r))))))
            (fun r  ->
               fun rs  ->
-                fun _default_0  ->
+                fun _  ->
                   fun __loc__start__buf  ->
                     fun __loc__start__pos  ->
                       fun __loc__end__buf  ->

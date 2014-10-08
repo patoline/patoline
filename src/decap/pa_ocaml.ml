@@ -545,7 +545,7 @@ let method_type =
 
 let tag_spec =
   parser
-  | tn:tag_name te:{of_kw amp:CHR('&')? te:typexpr}? ->
+  | tn:tag_name te:{_:of_kw CHR('&')? typexpr}? ->
       let amp,t = match te with
               | None   -> true, []
               | Some (amp,l) -> amp<>None, [l]
@@ -560,7 +560,7 @@ let tag_spec =
 
 let tag_spec_first =
   parser
-  | tn:tag_name te:{of_kw amp:CHR('&')? te:typexpr}? ->
+  | tn:tag_name te:{_:of_kw CHR('&')? typexpr}? ->
       let amp,t = match te with
               | None   -> true,[]
               | Some (amp,l) -> amp<>None, [l]
@@ -629,7 +629,7 @@ let package_constraint =
 let package_type =
   parser
   | mtp:modtype_path cs:{with_kw pc:package_constraint
-    pcs:{and_kw pc:package_constraint}* -> (pc::pcs)}?[[]] ->
+    pcs:{_:and_kw package_constraint}* -> (pc::pcs)}?[[]] ->
       let mtp = id_loc mtp _loc_mtp in
       Ptyp_package (mtp, cs)
 
@@ -784,7 +784,7 @@ let constr_decl =
     | STR("(") STR(")") -> "()"
   in
   parser
-  | cn:constr_name (tes,te):{ te:{of_kw te:typexpr}? ->
+  | cn:constr_name (tes,te):{ te:{_:of_kw typexpr}? ->
 			      let tes =
 				match te with
 				| None   -> []
@@ -869,7 +869,7 @@ let type_definition =
 
 let exception_declaration =
   parser
-  | exception_kw cn:constr_name te:{of_kw te:typexpr}? ->
+  | exception_kw cn:constr_name te:{_:of_kw typexpr}? ->
       (let tes =
         match te with
         | None   -> []
@@ -1012,7 +1012,7 @@ let class_spec =
 
 let class_specification =
   parser
-  | cs:class_spec css:{and_kw cd:class_spec}* -> (cs::css)
+  | cs:class_spec css:{_:and_kw class_spec}* -> (cs::css)
 
 (* Class type definition *)
 let classtype_def =
@@ -1023,7 +1023,7 @@ let classtype_def =
 
 let classtype_definition =
   parser
-  | type_kw cd:classtype_def cds:{and_kw cd:classtype_def}* ->
+  | type_kw cd:classtype_def cds:{_:and_kw classtype_def}* ->
       (cd::cds)
 
 (****************************************************************************
@@ -1247,19 +1247,21 @@ let assoc = function
 | _ -> Right
 
 let infix_prio s =
-  let s1 = if String.length s > 1 then s.[1] else ' ' in
-  match s.[0], s1 with
-  | _ when List.mem s ["lsl"; "lsr"; "asr"] -> Pow
-  | _ when List.mem s ["mod"; "land"; "lor"; "lxor"] -> Prod
-  | _ when List.mem s ["&"; "&&"] -> Conj
-  | _ when List.mem s ["or"; "||"] -> Disj
-  | _ when List.mem s [":="; "<-"] -> Aff
-  | ('*', '*') -> Pow
-  | ('*' | '/' | '%'), _ -> Prod
-  | ('+' | '-'), _ -> Sum
-  | ':', _ -> Cons
-  | ('@' | '^'), _ -> Append
-  | ('=' | '<' | '>' | '|' | '&' | '$' | '!'), _ -> Eq
+  match s.[0] with
+  | '*' -> if String.length s > 1 && s.[1] = '*' then Pow else Prod
+  | '/' | '%' -> Prod
+  | '+' | '-' -> Sum
+  | ':' -> if String.length s > 1 && s.[1] = '=' then Aff else Cons
+  | '<' -> if String.length s > 1 && s.[1] = '-' then Aff else Eq
+  | '@' | '^' -> Append
+  | '&' -> if String.length s = 1 || 
+		(String.length s = 2 && s.[1] = '&') then Conj else Eq
+  | '|' -> if String.length s = 2 && s.[1] = '|' then Disj else Eq
+  | '=' | '>' | '$' | '!' -> Eq
+  | 'o' -> Disj 
+  | 'm' -> Prod
+  | 'a' -> Pow
+  | 'l' -> (match s.[1] with 's' -> Pow | _ -> Prod)
   | _ -> Printf.printf "%s\n%!" s; assert false
 
 let prefix_prio s =
@@ -1381,16 +1383,16 @@ let right_member =
 
 let _ = set_grammar let_binding (
   parser
-  | pat:(pattern_lvl AsPat) e:right_member a:post_item_attributes l:{and_kw l:let_binding}?[[]] ->
+  | pat:(pattern_lvl AsPat) e:right_member a:post_item_attributes l:{_:and_kw let_binding}?[[]] ->
       (value_binding ~attributes:a (merge2 _loc_pat _loc_e) pat e::l)
-  | vn:lowercase_ident CHR(':') ty:poly_typexpr e:right_member a:post_item_attributes l:{and_kw l:let_binding}?[[]] ->
+  | vn:lowercase_ident CHR(':') ty:poly_typexpr e:right_member a:post_item_attributes l:{_:and_kw let_binding}?[[]] ->
       let pat = loc_pat _loc (Ppat_constraint(
         loc_pat _loc (Ppat_var(id_loc vn _loc_vn)),
         ty))
       in
       value_binding ~attributes:a (merge2 _loc_vn _loc_e) pat e::l
 #ifversion >= 4.00
-  | vn:lowercase_ident CHR(':') (ids,ty):poly_syntax_typexpr e:right_member a:post_item_attributes l:{and_kw l:let_binding}?[[]] ->
+  | vn:lowercase_ident CHR(':') (ids,ty):poly_syntax_typexpr e:right_member a:post_item_attributes l:{_:and_kw let_binding}?[[]] ->
     let (e, ty) = wrap_type_annotation _loc ids ty e in 									     
     let pat = loc_pat _loc (Ppat_constraint(
 	loc_pat _loc (Ppat_var(id_loc vn _loc_vn)),
@@ -1398,14 +1400,14 @@ let _ = set_grammar let_binding (
     in
     value_binding ~attributes:a (merge2 _loc_vn _loc_e) pat e::l
 #endif
-  | dol:CHR('$') - STR("bindings") CHR(':') e:(expression_lvl App) - CHR('$') l:{and_kw l:let_binding}?[[]] ->
+  | dol:CHR('$') - STR("bindings") CHR(':') e:(expression_lvl App) - CHR('$') l:{_:and_kw let_binding}?[[]] ->
      push_pop_let_binding (start_pos _loc_dol).Lexing.pos_cnum e @ l
   )
 
 let _ = set_match_cases (fun lvl ->
   parser
-  | CHR('|')? pat:pattern w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) 
-      l:{CHR'|' pat:pattern  w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) -> (pat,e,w)}**
+  | CHR('|')? pat:pattern w:{_:when_kw expression }? STR"->" e:(expression_lvl lvl) 
+      l:{CHR'|' pat:pattern  w:{_:when_kw expression }? STR"->" e:(expression_lvl lvl) -> (pat,e,w)}**
         ls:(match_cases lvl) -> map_cases ((pat,e,w)::l) @ ls
   | CHR('|')? dol:CHR('$') - STR("cases") CHR(':') e:(expression_lvl App) - CHR('$') ls:(match_cases lvl) -> push_pop_cases (start_pos _loc_dol).Lexing.pos_cnum e @ ls
   | EMPTY -> []
@@ -1470,7 +1472,7 @@ let _ = set_grammar class_expr (
 
 let class_field =
   parser
-  | inherit_kw o:override_flag ce:class_expr id:{as_kw id:lowercase_ident}? ->
+  | inherit_kw o:override_flag ce:class_expr id:{_:as_kw lowercase_ident}? ->
 #ifversion >= 4.02
       loc_pcf _loc (Pcf_inherit (o, ce, id))
 #else
@@ -1632,7 +1634,7 @@ let class_binding =
 
 let class_definition =
   parser
-  | cb:class_binding cbs:{and_kw cb:class_binding}* -> (cb::cbs)
+  | cb:class_binding cbs:{_:and_kw class_binding}* -> (cb::cbs)
 
 let pexp_list _loc ?loc_cl l =
   if l = [] then
@@ -1686,7 +1688,7 @@ let expression_base = memoize1 (fun lvl ->
      (Let, loc_expr _loc (apply_params l e).pexp_desc)
   | match_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_match(e, l)))
   | try_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_try(e, l)))
-  | if_kw c:expression then_kw e:(expression_lvl If) e':{else_kw e:(expression_lvl If)}? when (lvl < App) ->
+  | if_kw c:expression then_kw e:(expression_lvl If) e':{_:else_kw (expression_lvl If)}? when (lvl < App) ->
      (If, loc_expr _loc (Pexp_ifthenelse(c,e,e')))
   | STR("(") e:expression? STR(")") -> (Atom, match e with Some e -> loc_expr _loc e.pexp_desc | None ->
       let cunit = id_loc (Lident "()") _loc in
@@ -1703,7 +1705,7 @@ let expression_base = memoize1 (fun lvl ->
   | STR("[|") l:expression_list STR("|]") -> (Atom, loc_expr _loc (Pexp_array (List.map fst l)))
   | STR("[") l:expression_list cl:STR("]") ->
 	(Atom, loc_expr _loc (pexp_list _loc ~loc_cl:_loc_cl l).pexp_desc)
-  | STR("{") e:{e:(expression_lvl (next_exp Seq)) with_kw}? l:record_list STR("}") ->
+  | STR("{") e:{(expression_lvl (next_exp Seq)) _:with_kw}? l:record_list STR("}") ->
       (Atom, loc_expr _loc (Pexp_record(l,e)))
   | while_kw e:expression do_kw e':expression done_kw ->
       (Atom, loc_expr _loc (Pexp_while(e, e')))
@@ -1818,7 +1820,7 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
 			   match t with Some t1, None -> pexp_constraint(e', t1)
 				      | t1, Some t2 -> pexp_coerce(e', t1, t2)
 				      | None, None -> assert false))
-  | l:{semi_col e:(expression_lvl (next_exp Seq))}+ when (lvl' > Seq && lvl <= Seq) -> 
+  | l:{_:semi_col (expression_lvl (next_exp Seq))}+ when (lvl' > Seq && lvl <= Seq) -> 
       (Seq, fun f -> mk_seq (f::l))
   | semi_col when (lvl' >= Seq && lvl <= Seq) -> (Seq, fun e -> e)
   | STR(".") r:{ STR("(") f:expression STR(")") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' > Aff && lvl <= Aff) -> 
@@ -1965,7 +1967,7 @@ let mod_constraint =
 
 let _ = set_grammar module_type (
   parser
-    m:module_type_base l:{with_kw m:mod_constraint l:{and_kw m:mod_constraint}* -> m::l } ? ->
+    m:module_type_base l:{_:with_kw m:mod_constraint l:{_:and_kw mod_constraint}* -> m::l } ? ->
       (match l with
          None -> m
        | Some l -> mtyp_loc _loc (Pmty_with(m, l)))

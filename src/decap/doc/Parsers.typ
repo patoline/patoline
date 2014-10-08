@@ -261,11 +261,11 @@ and implemented using a ##grammar_familly##.
 ### OCaml "calc_prio.ml"
 open Decap
 
-type calc_prio = Sum | Prod | Atom
+type calc_prio = Sum | Prod | Pow | Atom
 let expr, set_expr = grammar_family "expr" 
 
 let float_num =
-  let float_re = "[0-9]+\\([.][0-9]+\\)?\\([eE][-+]?[0-9]+\\)?" in
+  let float_re = ''[0-9]+\([.][0-9]+\)?\([eE][-+]?[0-9]+\)?'' in
   parser
   | f:RE(float_re) -> float_of_string f
 
@@ -283,18 +283,20 @@ let _ = set_expr (fun prio ->
   parser
   | f:float_num          when prio = Atom -> f
   | '(' e:(expr Sum) ')' when prio = Atom -> e
-  | '-' e:(expr Atom)    when prio = Atom -> -. e
-  | '+' e:(expr Atom)    when prio = Atom -> e
-  | e:(expr Atom) l:{fn:prod_sym e':(expr Atom)}*
+  | '-' e:(expr Pow)     when prio = Pow -> -. e
+  | '+' e:(expr Pow)     when prio = Pow -> e
+  | e:(expr Atom) e':{"**" (expr Pow)}? when prio = Pow ->
+      match e' with None -> e | Some e' -> e ** e'
+  | e:(expr Pow) l:{prod_sym (expr Pow)}*
                          when prio = Prod ->
       List.fold_left (fun acc (fn, e') -> fn acc e') e l
-  | e:(expr Prod) l:{fn:sum_sym  e':(expr Prod)}*
+  | e:(expr Prod) l:{sum_sym  (expr Prod)}*
                          when prio = Sum  ->
       List.fold_left (fun acc (fn, e') -> fn acc e') e l)
 
 (* The main loop *)
 let _ =
-  let blank = blank_regexp ''[ \t]*'' in
+  let blank = blank_regexp ''[ \t\r\n]*'' in
   try while true do
     Printf.printf ">> %!";
     let l = input_line stdin in

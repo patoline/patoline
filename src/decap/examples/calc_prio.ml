@@ -1,9 +1,9 @@
 open Decap
 
-let blank = blank_regexp (Str.regexp "[ \t\n\r]*")
+let blank = blank_regexp ''"[ \t\n\r]*''
 
-let float_re = {|[0-9]+\([.][0-9]+\)?\([eE][-]?[0-9]+\)?|}
-let ident_re = {|[a-zA-Z_'][a-zA-Z0-9_']*|}
+let float_re = ''[0-9]+\([.][0-9]+\)?\([eE][-]?[0-9]+\)?''
+let ident_re = ''[a-zA-Z_'][a-zA-Z0-9_']*''
 
 type calc_prio = Sum | Prod | Pow | Atom
 
@@ -19,10 +19,10 @@ let _ = set_expression
       (try Hashtbl.find env id
        with Not_found ->
 	 Printf.eprintf "Unbound %s\n%!" id; raise Exit)
-  | CHR('(') e:(expression Sum) CHR(')') when prio = Atom -> e
-  | e:(expression Atom) e':{STR("**") e':(expression Pow)}? when prio = Pow ->
+  | '(' e:(expression Sum) ')' when prio = Atom -> e
+  | e:(expression Atom) e':{"**" e':(expression Pow)}? when prio = Pow ->
 	 match e' with None -> e | Some e' -> e ** e'
-  | e:(expression Pow) l:{fn:{CHR('*') -> ( *. ) | CHR('/') -> ( /. )} e':(expression Pow)}* when prio = Prod ->
+  | e:(expression Pow) l:{fn:{'*' -> ( *. ) | '/' -> ( /. )} e':(expression Pow)}* when prio = Prod ->
       List.fold_left ( fun acc (fn, e') -> fn acc e') e l
   | e:(expression Prod) l:{fn:{CHR('+') -> ( +. ) | CHR('-') -> ( -. )} e':(expression Prod)}* when prio = Sum ->
       List.fold_left ( fun acc (fn, e') -> fn acc e') e l
@@ -36,7 +36,7 @@ let arith =
   | e:(expression Sum) -> e
 
 let _ =
-  if Unix.((fstat (descr_of_in_channel Pervasives.stdin)).st_kind = S_REG)
+  if true && Unix.((fstat (descr_of_in_channel Pervasives.stdin)).st_kind = S_REG)
   then
       try
 	let x = parse_channel arith blank stdin in

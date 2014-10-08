@@ -127,17 +127,17 @@ struct
   let non_special = ['>';'*';'/';'|';'-';'_']
   let char_alone = 
     black_box 
-		    (fun str pos ->
-		     let c,str',pos' = read str pos in
-		     if List.mem c non_special then
-		       let c',_,_ = read str' pos' in
-		       if c' = c then raise (Give_up "") (* FIXME *)
-		       else c, str', pos'
-		     else
-		       raise (Give_up "")) (* FIXME *)
-		    (List.fold_left Charset.add Charset.empty_charset non_special) false
-		    (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
-
+      (fun str pos ->
+       let c,str',pos' = read str pos in
+       if List.mem c non_special then
+	 let c',_,_ = read str' pos' in
+	 if c' = c then raise (Give_up "") (* FIXME *)
+	 else c, str', pos'
+       else
+	 raise (Give_up "")) (* FIXME *)
+      (List.fold_left Charset.add Charset.empty_charset non_special) false
+      (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
+      
   let character =
     parser
     | | c:RE(char_re) -> c
@@ -187,8 +187,8 @@ struct
     change_layout (
 	parser
 	  RE("^###")
-	  lang:{RE("[ \t]+") id:RE(uid_coloring)}??
-	  filename:{RE("[ \t]+") fn:RE(string_filename)[groupe 1]}??
+	  lang:{_:RE("[ \t]+") id:RE(uid_coloring)}??
+	  filename:{_:RE("[ \t]+") fn:RE(string_filename)[groupe 1]}??
 	  RE("[ \t]*") '\n' lines:{l:RE(verbatim_line) '\n'}++
 	  RE("^###") -> (
 		    let lang = match lang with
@@ -590,9 +590,9 @@ struct
   let title =
     parser
       RE("==========\\(=*\\)") t:text_only
-      author:{RE("----------\\(-*\\)") t:text_only}??
-      institute:{RE("----------\\(-*\\)") t:text_only}??
-      date:{RE("----------\\(-*\\)") t:text_only}??
+      author:{_:RE("----------\\(-*\\)") t:text_only}??
+      institute:{_:RE("----------\\(-*\\)") t:text_only}??
+      date:{_:RE("----------\\(-*\\)") t:text_only}??
       RE("==========\\(=*\\)") ->
 
 	   let extras =

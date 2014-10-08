@@ -163,8 +163,8 @@ let apply_option _loc opt visible e =
    )
 
 let default_action _loc l =
-  let l = List.filter (function `Normal(("_",_),_,_) -> false | `Ignore -> false | _ -> true) l in
-  let l = List.map (function `Normal((id,_),_,_) -> exp_ident _loc id | _ -> assert false) l in
+  let l = List.filter (function `Normal((("_",_),false,_,_)) -> false | `Ignore -> false | _ -> true) l in
+  let l = List.map (function `Normal((id,_),_,_,_) -> exp_ident _loc id | _ -> assert false) l in
   let rec fn = function
     | [] -> exp_unit _loc
     | [x] -> x
@@ -217,34 +217,44 @@ struct
 
   let glr_sequence =
     parser
-    | CHR('{') r:glr_rules CHR('}') -> r
+    | CHR('{') r:glr_rules CHR('}') -> true, r
     | STR("EOF") opt:glr_opt_expr ->
        let e = match opt with None -> exp_unit _loc | Some e -> e in
-       exp_apply _loc (exp_glr_fun _loc "eof") [e]
+       (opt <> None, exp_apply _loc (exp_glr_fun _loc "eof") [e])
     | STR("EMPTY") opt:glr_opt_expr ->
        let e = match opt with None -> exp_unit _loc | Some e -> e in
-       exp_apply _loc (exp_glr_fun _loc "empty") [e]
+       (opt <> None, exp_apply _loc (exp_glr_fun _loc "empty") [e])
     | STR("FAIL") e:(expression_lvl (next_exp App)) ->
-       exp_apply _loc (exp_glr_fun _loc "fail") [e]
+       (false, exp_apply _loc (exp_glr_fun _loc "fail") [e])
     | STR("DEBUG") e:(expression_lvl (next_exp App)) ->
-       exp_apply _loc (exp_glr_fun _loc "debug") [e]
+       (false, exp_apply _loc (exp_glr_fun _loc "debug") [e])
     | STR("ANY") ->
-       exp_glr_fun _loc "any"
+       (true, exp_glr_fun _loc "any")
     | STR("CHR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
-       let opt = match opt with None -> e | Some e -> e in
-       exp_apply _loc (exp_glr_fun _loc "char") [e; opt]
+       let o = match opt with None -> e | Some e -> e in
+       (opt <> None, exp_apply _loc (exp_glr_fun _loc "char") [e; o])
     | c:char_literal opt:glr_opt_expr ->
        let e = loc_expr _loc_c (Pexp_constant (Const_char c)) in
-       let opt = match opt with None -> e | Some e -> e in
-       exp_apply _loc (exp_glr_fun _loc "char") [e; opt]
+       let o = match opt with None -> e | Some e -> e in
+       (opt <> None, exp_apply _loc (exp_glr_fun _loc "char") [e; o])
     | STR("STR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
-       let opt = match opt with None -> e | Some e -> e in
-       exp_apply _loc (exp_glr_fun _loc "string") [e; opt]
+       let o = match opt with None -> e | Some e -> e in
+       (opt <> None, exp_apply _loc (exp_glr_fun _loc "string") [e; o])
     | s:string_literal opt:glr_opt_expr ->
-       let e = loc_expr _loc_s (Pexp_constant (const_string s)) in
-       let opt = match opt with None -> e | Some e -> e in
-       exp_apply _loc (exp_glr_fun _loc "string") [e; opt]
-    | e:{ STR("RE") e:(expression_lvl (next_exp App)) | s:regexp_literal -> loc_expr _loc_s (Pexp_constant (const_string s))}
+       (opt <> None, 
+	match String.length s with
+	| 0 ->
+	   raise (Decap.Give_up "Empty string litteral in rule.")
+	| 1 ->
+	   let e = loc_expr _loc_s (Pexp_constant (Const_char s.[0])) in
+	   let opt = match opt with None -> e | Some e -> e in
+	   exp_apply _loc (exp_glr_fun _loc "char") [e; opt]
+	| _ ->
+	   let e = loc_expr _loc_s (Pexp_constant (const_string s)) in
+	   let opt = match opt with None -> e | Some e -> e in
+	   exp_apply _loc (exp_glr_fun _loc "string") [e; opt])
+    | e:{ STR("RE") e:(expression_lvl (next_exp App))
+        | s:regexp_literal -> loc_expr _loc_s (Pexp_constant (const_string s))}
        opt:glr_opt_expr ->
        let opt = match opt with
 	 | None -> exp_apply _loc (exp_ident _loc "groupe") [exp_int _loc 0]
@@ -260,25 +270,26 @@ struct
 	    let l = String.length id in
 	    if l > 3 && String.sub id (l - 3) 3 = "_re" then String.sub id 0 (l - 3) else id
 	  in
-	  exp_lab_apply _loc (exp_glr_fun _loc "regexp") ["name", exp_string _loc id; "", e; "", exp_fun _loc "groupe" opt] 
+	  (true, exp_lab_apply _loc (exp_glr_fun _loc "regexp") ["name", exp_string _loc id; "", e; "", exp_fun _loc "groupe" opt])
 	| _ -> 
-	   exp_apply _loc (exp_glr_fun _loc "regexp") [e; exp_fun _loc "groupe" opt])
+	  (true, exp_apply _loc (exp_glr_fun _loc "regexp") [e; exp_fun _loc "groupe" opt]))
 	 
-    | e:(expression_lvl Atom) -> e
+    | e:(expression_lvl Atom) -> (true, e)
 
   let glr_ident =
     parser
     | p:(pattern_lvl ConstrPat) CHR(':') ->
 	(match p.ppat_desc with
 #ifversion >= 4.00
-	 | Ppat_alias(p, { txt = id }) -> id, Some p
-	 | Ppat_var { txt = id } -> id, None
+	 | Ppat_alias(p, { txt = id }) -> (Some true, (id, Some p))
+	 | Ppat_var { txt = id } -> (Some (id <> "_"), (id, None))
 #else
-	 | Ppat_alias(p, id ) -> id, Some p
-	 | Ppat_var id -> id, None
+	 | Ppat_alias(p, id ) -> (Some true, (id, Some p))
+	 | Ppat_var id -> (Some (id <> "_"), (id, None))
 #endif
-	 | _ -> "_", Some p)
-    | EMPTY -> ("_", None)
+         | Ppat_any -> (Some false, ("_", None))
+	 | _ -> (Some true, ("_", Some p)))
+    | EMPTY -> (None, ("_", None))
 
   let dash = Decap.black_box 
     (fun str pos ->
@@ -292,9 +303,10 @@ struct
     ) (Charset.singleton '-') false ("-")
 
   let glr_left_member =
+    let f x y = match x with Some x -> x | None -> y in
     parser
-    | i:{id: glr_ident s:glr_sequence opt:glr_option -> `Normal(id,s,opt)} 
-      l:{ id: glr_ident s:glr_sequence opt:glr_option -> `Normal(id,s,opt) | dash -> `Ignore }* -> i::l
+    | i:{(cst',id):glr_ident (cst,s):glr_sequence opt:glr_option -> `Normal(id, (f cst' (opt <> `Once || cst)),s,opt)} 
+      l:{(cst',id):glr_ident (cst,s):glr_sequence opt:glr_option -> `Normal(id, (f cst' (opt <> `Once || cst)),s,opt) | dash -> `Ignore }* -> i::l
 
   let glr_let = Decap.declare_grammar "glr_let" 
   let _ = Decap.set_grammar glr_let (
@@ -317,6 +329,11 @@ struct
   let _ = Decap.set_grammar glr_rule (
     parser
     | def:glr_let l:glr_left_member condition:glr_cond ->> let _ = push_frame () in action:glr_action ->
+      let l = fst (List.fold_right (fun x (res,i) ->
+	match x with
+	  `Normal(("_",a),true,c,d) -> (`Normal(("_default_"^string_of_int i,a),true,c,d)::res, i+1)
+	| _ -> (x::res,i)) l ([], 0))
+      in
       let iter, action = match action with
 	| Normal a -> false, a
 	| Default -> false, default_action _loc l
@@ -330,18 +347,25 @@ struct
       let rec fn first ids l = match l with
 	  [] -> assert false
 	| `Ignore::ls -> assert false
-	| `Normal(id,e,opt)::`Ignore::ls -> 
+	| `Normal(id,cst,e,opt)::`Ignore::ls -> 
 	   let e =  exp_apply _loc (exp_glr_fun _loc "ignore_next_blank") [e] in
-	   fn first ids (`Normal(id,e,opt)::ls)
-	| [`Normal(id,e,opt)] ->
+	   fn first ids (`Normal(id,cst,e,opt)::ls)
+	| [`Normal(id,_,e,opt)] ->
 	   let occur_loc_id = fst id <> "_" && pop_location (fst id) in
 	   let e = apply_option _loc opt occur_loc_id e in
 	   let f = match find_locate (), first && occur_loc with
 	     | Some _, true -> "apply_position"
 	     | _ -> "apply"
 	   in
-	   exp_apply _loc (exp_glr_fun _loc f) [build_action _loc occur_loc ((id,occur_loc_id)::ids) action; e]
-	| [`Normal(id,e,opt); `Normal(id',e',opt') ] ->
+	   (match action.pexp_desc with
+#ifversion >= 4.00
+		Pexp_ident({ txt = Lident id'}) when fst id = id' && f = "apply" -> e
+#else
+		Pexp_ident(Lident id') when fst id = id' && f = "apply" -> e
+#endif
+	   | _ ->
+	      exp_apply _loc (exp_glr_fun _loc f) [build_action _loc occur_loc ((id,occur_loc_id)::ids) action; e])
+	| [`Normal(id,_,e,opt); `Normal(id',_,e',opt') ] ->
 	   let occur_loc_id = fst id <> "_" && pop_location (fst id) in
 	   let occur_loc_id' = fst id' <> "_" && pop_location (fst id') in
 	   let e = apply_option _loc opt occur_loc_id e in
@@ -352,7 +376,7 @@ struct
 	   in
 	   exp_apply _loc (exp_glr_fun _loc f) [e; e'; build_action _loc occur_loc 
 								    ((id,occur_loc_id)::(id',occur_loc_id')::ids) action]
-	| `Normal(id,e,opt) :: ls ->
+	| `Normal(id,_,e,opt) :: ls ->
 	   let occur_loc_id = fst id <> "_" && pop_location (fst id) in
 	   let e = apply_option _loc opt occur_loc_id e in 
 	   let f = match find_locate (), first && occur_loc with
