@@ -167,7 +167,7 @@ let endif_directive =
 type cont_info =
     Else | Endif | EndOfFile | Elif of bool
 
-let buffer_from_fun fname get_line data =
+let buffer_from_fun ?(finalise=(fun _ -> ())) fname get_line data =
   let rec fn fname active num bol cont =
     begin
       let num = num + 1 in
@@ -227,7 +227,7 @@ let buffer_from_fun fname get_line data =
                  next = lazy (fn fname active num bol' cont) })
            else fn fname active num bol' cont)
       with
-        End_of_file -> fun () -> cont fname EndOfFile num bol
+        End_of_file -> fun () -> finalise data; cont fname EndOfFile num bol
     end ()
   in
   lazy (fn fname true 0 0 (fun fname status line bol ->
@@ -249,7 +249,7 @@ let buffer_from_channel ?(filename="") ch =
 
 let buffer_from_file filename =
   let ch = open_in filename in
-  buffer_from_fun filename input_line ch
+  buffer_from_fun ~finalise:close_in filename input_line ch
 
 let get_string_line (str, p) =
   let len = String.length str in

@@ -101,7 +101,6 @@ let locate str pos str' pos' =
     let s = Input.lexing_position str pos in
     let e = Input.lexing_position str' pos' in
     let open Location in { loc_start = s; loc_end = e; loc_ghost = false }
-let locate2 = locate
 let rec merge =
   function
   | [] -> assert false

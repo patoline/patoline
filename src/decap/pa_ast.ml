@@ -137,3 +137,31 @@ let exp_apply_fun _loc =
 let ppat_alias _loc p id =
   if id = "_" then p else
     loc_pat _loc (Ppat_alias (p, (id_loc (id) _loc)))
+
+let rec expression_to_pattern p =
+  let fn arg = match arg with
+    | None -> None
+    | Some e -> Some (expression_to_pattern e)
+  in
+  let p' = match p.pexp_desc with
+    | Pexp_ident { txt = Lident id; loc = l } -> Ppat_var { txt = id; loc = l }
+    | Pexp_constant c -> Ppat_constant c
+    | Pexp_tuple l -> Ppat_tuple (List.map expression_to_pattern l)
+    | Pexp_array l -> Ppat_array (List.map expression_to_pattern l)
+#ifversion >= 4.02
+    | Pexp_construct(id, arg) -> Ppat_construct(id, fn arg)
+#else
+    | Pexp_construct(id, arg, b) -> Ppat_construct(id, fn arg, b)
+#endif
+    | Pexp_variant(id, arg) -> Ppat_variant(id, fn arg)
+    | Pexp_record(l, None) -> Ppat_record(List.map (fun (id, e) -> (id, expression_to_pattern e)) l, Open)
+    | Pexp_lazy e -> Ppat_lazy (expression_to_pattern e)
+    | Pexp_poly(e, Some ty) -> Ppat_constraint(expression_to_pattern e, ty)
+    (* FIXME ? | Pexp_pack of module_expr -> ??? *)
+    (* FIXME: a way to produce Ppat_any ??? *)
+    (* FIXME: a way to produce Ppat_alias or Ppat_or??? *)
+    | _ -> failwith "Illegal quotation pattern" (* FIXME: better messages *)
+  in
+  { ppat_desc = p';
+    ppat_loc  = p.pexp_loc }
+

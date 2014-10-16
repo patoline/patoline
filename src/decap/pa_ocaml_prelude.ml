@@ -187,8 +187,6 @@ let locate str pos str' pos' =
     let e = Input.lexing_position str' pos' in
     Location.({loc_start = s; loc_end = e; loc_ghost = false}))
 
-let locate2 = locate
-
 #define LOCATE locate
 
 let rec merge = function
