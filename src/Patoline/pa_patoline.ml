@@ -688,10 +688,12 @@ struct
 
  let _ = 
     entry_points:= 
-      (".txp", `Impl full_text) ::
-	(".typ", `Impl full_text) ::
-	  (".mlp", `Impl structure ) :: !entry_points
-
+      (".txp", `Impl full_text)  ::
+      (".typ", `Impl full_text)  ::
+      (".mlp", `Impl structure ) ::
+      !entry_points
 end
 
-let _ = register_extension (module Ext : FExt)
+(* Creating and running the extension *)
+module PatolineDefault = Pa_ocaml.Make(Ext(Pa_default.ParserExt))
+module M = Pa_main.Start(PatolineDefault)
