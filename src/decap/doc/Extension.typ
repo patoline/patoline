@@ -102,7 +102,7 @@ implies that the following example depends upon OCaml's version.//
 
   end
 
- let _ = register_extension (module Ext)
+  module M = Pa_main.Start(Pa_ocaml.Make(Ext(Initial)))
 ### 
 ###
 
