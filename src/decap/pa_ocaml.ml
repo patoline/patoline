@@ -1647,9 +1647,10 @@ let pexp_list _loc ?loc_cl l =
 		    l (loc_expr loc_cl (pexp_construct(id_loc (Lident "[]") loc_cl, None)))
 
 (* Expressions *)
+let extra_expressions_grammar = alternatives extra_expressions
 let expression_base = memoize1 (fun lvl ->
   parser
-  | e:(alternatives extra_expressions) -> e
+  | e:extra_expressions_grammar -> e
   | v:inst_var_name STR("<-") e:(expression_lvl (next_exp Aff)) when lvl <= Aff->
       (Aff, loc_expr _loc (Pexp_setinstvar(id_loc v _loc_v, e)))
   | id:value_path -> (Atom, loc_expr _loc (Pexp_ident(id_loc id _loc_id)))

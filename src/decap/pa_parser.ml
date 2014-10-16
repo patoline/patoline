@@ -438,5 +438,3 @@ struct
   )
 
 end
-
-let _ = register_extension (module Ext : FExt)

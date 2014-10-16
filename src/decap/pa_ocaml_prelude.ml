@@ -1229,8 +1229,4 @@ module type Extension = module type of Initial
 
 module type FExt = functor (E:Extension) -> Extension
 
-let extensions_mod  = ref ([] : (module FExt) list)
-
-let register_extension e = extensions_mod := e::!extensions_mod
-
 include Initial
