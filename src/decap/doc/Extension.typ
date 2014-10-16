@@ -66,46 +66,43 @@ implies that the following example depends upon OCaml's version.//
 
 ###
 ### OCaml "pa_do_try.ml"
- open Pa_ocaml_prelude
+  open Pa_ocaml_prelude
 
- #define LOCATE locate
+  #define LOCATE locate
 
- module Ext = functor(In:Extension) -> 
- struct
-   include In
+  module Ext = functor(In:Extension) -> 
+  struct
+    include In
 
-   let extension = parser
-   | STR("do") e:(expr) STR("where") r:STR("rec")? b:let_binding ->
-       (Let, if r<>None then
-               <:expr<let rec $bindings:b$ in $e$>>
-             else 
-               <:expr<let $bindings:b$ in $e$>>)
+    let extension = parser
+    | STR("do") e:(expr) STR("where") r:STR("rec")? b:let_binding ->
+        (Let, if r<>None then
+                <:expr<let rec $bindings:b$ in $e$>>
+              else 
+                <:expr<let $bindings:b$ in $e$>>)
 
-   | STR("let") STR("try") b:let_binding 
-     STR("in") e:(expr) STR("with") c:(match_cases Top) ->
+    | STR("let") STR("try") b:let_binding 
+      STR("in") e:(expr) STR("with") c:(match_cases Top) ->
 
-     (* missing quotation in pattern yet *)
- #ifversion >= 4.02
-        let c = List.map 
-            Parsetree.(fun ({ pc_rhs = e; _ } as b) -> 
-               { b with pc_rhs = <:expr< fun () -> $e$ >> }) c
- #else
-        let c = List.map 
-           (fun (pat, e) -> (pat, <:expr< fun () -> $e$ >>)) c
- #endif
-        in
-        (Let, 
-         <:expr<(try let $bindings:b$ in fun () -> $e$ with $cases:c$) ()>>)
+      (* missing quotation in pattern yet *)
+  #ifversion >= 4.02
+         let c = List.map 
+             Parsetree.(fun ({ pc_rhs = e; _ } as b) -> 
+                { b with pc_rhs = <:expr< fun () -> $e$ >> }) c
+  #else
+         let c = List.map 
+            (fun (pat, e) -> (pat, <:expr< fun () -> $e$ >>)) c
+  #endif
+         in
+         (Let, 
+          <:expr<(try let $bindings:b$ in fun () -> $e$ with $cases:c$) ()>>)
 
-   let extra_expressions = extension::extra_expressions
-   let _ = add_reserved_id "where"
+    let extra_expressions = extension::extra_expressions
+    let _ = add_reserved_id "where"
 
- end
+  end
 
- (* Creating and running the extension *)
- module PatolineDefault = Pa_ocaml.Make(Ext(Pa_default.ParserExt))
- module M = Pa_main.Start(PatolineDefault)
-
+ let _ = register_extension (module Ext)
 ### 
 ###
 
