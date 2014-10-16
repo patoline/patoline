@@ -19,16 +19,9 @@ text: text.ml $(PA_OCAML) $(DECAP_DIR)/decap.cma
 	ocamlc -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) unix.cma str.cma decap.cma $<
 
 pa_do_try: pa_do_try.ml $(PA_OCAML) $(DECAP_DIR)/decap.cmxa $(DECAP_DIR)/decap_ocaml.cmxa
-v v v v v v v
-	ocamlopt -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) -linkall  -I +compiler-libs unix.cmxa str.cmxa ocamlcommon.cmxa $(DECAP_DIR)/decap.cmxa $< $(DECAP_DIR)/decap_ocaml.cmxa
-=============
 	ocamlopt -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) -I +compiler-libs \
 	unix.cmxa str.cmxa ocamlcommon.cmxa decap.cmxa ../pa_ocaml_prelude.cmx \
   ../pa_ocaml.cmx ../pa_main.cmx pa_do_try.ml
-	# unix.cmxa str.cmxa ocamlcommon.cmxa decap.cmxa decap_ocaml.cmxa pa_do_try.ml
-*************
-	ocamlopt -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) -linkall  -I +compiler-libs unix.cmxa str.cmxa ocamlcommon.cmxa $(DECAP_DIR)/decap.cmxa $(DECAP_DIR)/decap_ocaml.cmxa $<
-^ ^ ^ ^ ^ ^ ^
 
 clean:
 	rm -f *.cmi *.cmo
