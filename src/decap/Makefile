@@ -80,7 +80,7 @@ pa_parser.cmo: pa_parser.ml pa_ast.cmo pa_ocaml_prelude.cmo decap.cma
 	$(OCAMLC) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
 pa_main.cmo: pa_main.ml input.cmi pa_ocaml.cmo
-	export BYTE=1; $(OCAMLC) -pp ./pa_ocaml $(COMPILER_INC) -c $<
+	$(OCAMLC) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
 pa_ocaml.byt: decap.cma pa_parser.cmo decap_ocaml.cma
 	$(OCAMLC) $(COMPILER_INC) -linkall -o $@ unix.cma str.cma $(COMPILER_LIBS) $(COMPILER_TOP) $^

@@ -26,8 +26,7 @@ let in_ocamldep = ref false
 type entry =  
   | FromExt
   | Impl
-  | Intf
-  | Toplvl 
+  | Intf 
 let entry = ref FromExt
 let modern = ref false
 let spec =
@@ -1237,8 +1236,7 @@ module Initial =
     let entry_points:
       (string*
         [ `Impl of Parsetree.structure_item list Decap.grammar
-        | `Intf of Parsetree.signature_item list Decap.grammar | `Top]) list
-        ref
+        | `Intf of Parsetree.signature_item list Decap.grammar]) list ref
       = ref [(".mli", (`Intf signature)); (".ml", (`Impl structure))]
   end
 module type Extension = module type of Initial

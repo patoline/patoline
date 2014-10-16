@@ -50,6 +50,9 @@ open Pa_ocaml
 open Decap
 open Format
 
+module ParserExt = Pa_parser.Ext(Pa_ocaml_prelude.Initial)
+module Default = Pa_ocaml.Make(ParserExt)
+
 module type Final = sig
   include Extension
 
@@ -64,48 +67,15 @@ module Start = functor (Main : Final) -> struct
 
   let entry =
     match !entry, !file with
-      FromExt, Some s -> 
+    | FromExt, Some s -> 
       let rec fn = function
-  	(ext, res)::l -> if Filename.check_suffix s ext then res else fn l
+        | (ext, res)::l -> if Filename.check_suffix s ext then res else fn l
         | [] -> eprintf "Don't know what to do with file %s\n%!" s; exit 1
       in
       fn !Main.entry_points
-    | FromExt, None -> `Top
-    | Intf, _ -> `Intf Main.signature
-    | Impl, _ -> `Impl Main.structure
-    | Toplvl, _  -> `Top
-  
-#ifdef BYTE
-  let _ = if entry = `Top then (
-    printf "Pa_ocaml top level using OCaml %s%!" (Sys.ocaml_version);
-    Toploop.initialize_toplevel_env ();
-    let rec loop () =
-      Format.printf "\n> %!";
-      (try
-  	(* the buffer is recreated for each phrase in case of parse error ! *)
-  	let buffer = Input.buffer_from_channel ~filename:"stdin" stdin in
-  	let (buffer,pos,ph) = partial_parse_buffer Main.top_phrase blank buffer 0 in
-  	ignore (Toploop.execute_phrase true Format.std_formatter ph)
-        with
-        | Main.Top_Exit -> 
-  	 raise Main.Top_Exit
-        | Decap.Parse_error _ as e ->
-  	 Decap.print_exception e;
-  	 exit 1
-        | e ->  
-  	 Errors.report_error Format.std_formatter e);
-      loop ()
-  
-    in
-    try
-      loop ()
-    with
-    | Main.Top_Exit -> exit 0)
-#else
-  let _ = 
-    if entry = `Top then (
-      Printf.eprintf "native toplevel not supported by pa_ocaml.\n%!" ; exit 1)
-#endif
+    | FromExt, None -> `Impl Main.structure
+    | Intf, _       -> `Intf Main.signature
+    | Impl, _       -> `Impl Main.structure
   
   let ast =
     (* read the whole file with a buffer ...
@@ -122,7 +92,6 @@ module Start = functor (Main : Final) -> struct
       match entry with
         `Impl g -> `Struct (parse_channel ~filename g blank ch)
       | `Intf g -> `Sig (parse_channel ~filename g blank ch)
-      | `Top -> assert false
     with
       Decap.Parse_error _ as e ->
       Decap.print_exception e;

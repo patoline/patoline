@@ -84,7 +84,7 @@ let fast = ref false
 let file : string option ref = ref None
 let ascii = ref false
 let in_ocamldep = ref false
-type entry = FromExt | Impl | Intf | Toplvl
+type entry = FromExt | Impl | Intf
 let entry = ref FromExt
 let modern = ref false
   (* if true, 
@@ -1222,7 +1222,8 @@ let bool_lit =
 
   let entry_points : (string *
             [ `Impl of Parsetree.structure_item list Decap.grammar
-            | `Intf of Parsetree.signature_item list Decap.grammar | `Top ]) list ref
+            | `Intf of Parsetree.signature_item list Decap.grammar
+            ]) list ref
    = ref [ ".mli", `Intf signature ;  ".ml", `Impl structure ]
 end
 
