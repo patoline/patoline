@@ -50,9 +50,6 @@ open Pa_ocaml
 open Decap
 open Format
 
-module ParserExt = Pa_parser.Ext(Pa_ocaml_prelude.Initial)
-module Default = Pa_ocaml.Make(ParserExt)
-
 module type Final = sig
   include Extension
 
