@@ -76,12 +76,16 @@ let with_time f x =
     flush stderr;
     raise e
 
+module ParserExt = Pa_parser.Ext(Pa_ocaml_prelude.Initial)
+module Default = Pa_ocaml.Make(ParserExt)
+
+
 (* pa_ocaml (DeCaP) *)
 let rec parse_implementation path = 
-  Decap.handle_exception (Decap.parse_file Pa_main.Default.structure Pa_ocaml_prelude.blank) path
+  Decap.handle_exception (Decap.parse_file Default.structure Pa_ocaml_prelude.blank) path
 
 let rec parse_interface path = 
-  Decap.handle_exception (Decap.parse_file Pa_main.Default.signature Pa_ocaml_prelude.blank) path
+  Decap.handle_exception (Decap.parse_file Default.signature Pa_ocaml_prelude.blank) path
 
 (* OCaml *)
 let parse_implementation_orig f =
