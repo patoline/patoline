@@ -102,7 +102,10 @@ implies that the following example depends upon OCaml's version.//
 
  end
 
- let _ = register_extension (module Ext)
+ (* Creating and running the extension *)
+ module PatolineDefault = Pa_ocaml.Make(Ext(Pa_default.ParserExt))
+ module M = Pa_main.Start(PatolineDefault)
+
 ### 
 ###
 
