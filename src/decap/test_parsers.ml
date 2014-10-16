@@ -76,7 +76,7 @@ let with_time f x =
     flush stderr;
     raise e
 
-(* GLR *)
+(* pa_ocaml (DeCaP) *)
 let rec parse_implementation path = 
   Decap.handle_exception (Decap.parse_file Pa_main.Default.structure Pa_ocaml_prelude.blank) path
 
