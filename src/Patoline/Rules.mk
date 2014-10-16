@@ -30,11 +30,11 @@ all: $(PA_PATOLINE)
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(PA_OCAML)
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -linkall \
+	$(Q)$(OCAMLOPT) \
 		-package patutil,imagelib,dynlink,str,decap \
 		-I $(PA_OCAML_DIR) $(COMPILER_INC) -o $@ \
 		bigarray.cmxa camomile.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa str.cmxa \
-		$(COMPILER_LIBO) decap.cmxa decap_ocaml.cmxa pa_default.cmx $<
+		$(COMPILER_LIBO) decap.cmxa decap_ocaml.cmxa $<
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_OCAML) $(PA_OCAML_DIR)/decap.cmxa 
 	$(ECHO) "[OPT]    $< -> $@"

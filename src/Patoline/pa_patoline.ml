@@ -20,7 +20,7 @@ let patoline_packages = ref ["Typography"]
  * Command-line argument parsing.                                           *
  ****************************************************************************)
 
-let _ = spec := !spec @
+let _ = Pa_ocaml_prelude.spec := !(Pa_ocaml_prelude.spec) @
 		  [ ("--driver",  Arg.String (fun d -> patoline_driver := d),
 		     "The driver against which to compile.")
 		  ; ("--format",  Arg.String (fun f -> patoline_format := f),
@@ -28,7 +28,7 @@ let _ = spec := !spec @
 		  ; ("--package", Arg.String (fun p -> let pkgs = p :: !patoline_packages
 						       in patoline_packages := pkgs),
 		     "Package to link.")
-		  ]
+      ]
 
 #define LOCATE locate
 
@@ -695,5 +695,6 @@ struct
 end
 
 (* Creating and running the extension *)
-module PatolineDefault = Pa_ocaml.Make(Ext(Pa_default.ParserExt))
+module ParserExt = Pa_parser.Ext(Pa_ocaml_prelude.Initial)
+module PatolineDefault = Pa_ocaml.Make(Ext(ParserExt))
 module M = Pa_main.Start(PatolineDefault)
