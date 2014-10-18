@@ -810,3 +810,7 @@ let handle_exception f a =
     f a
   with
     Parse_error _ as e -> print_exception e; exit 1
+
+let blank_grammar grammar blank str pos =
+  let (str, pos, _) = partial_parse_buffer grammar blank str pos in
+  (str, pos)

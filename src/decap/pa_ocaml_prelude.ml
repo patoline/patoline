@@ -102,6 +102,9 @@ let spec = ref [
   "--ocamldep", Arg.Set in_ocamldep, "set a flag to inform parser that we are computing dependencies" ;
 ]
 
+let extend_cl_args l =
+  spec := !spec @ l
+
 (****************************************************************************
  * Things that have to do with comments and things to be ignored            *
  ****************************************************************************)
