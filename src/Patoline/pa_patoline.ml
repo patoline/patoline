@@ -1,40 +1,89 @@
-(* ocamlc -pp ../pa_glr -I .. -I +camlp4 dynlink.cma camlp4lib.cma str.cma umap.cmo glr.cmo -o pato pato.ml
-    ocamlfind ocamlopt -pp ./pato -package Typography,Typography.Pdf -linkpkg  -impl toto.txt
-*)
-
-open Input
 open Decap
-open Charset
 open FilenameExtra
 open Pa_ocaml_prelude
 
-(****************************************************************************
- * Some state information (Driver in use, ...) + Code generation helpers    *
- ****************************************************************************)
+(*
+ * The patoline language is implemented as a DeCaP OCaml syntax extension. It
+ * contains:
+ *   - new OCaml expressions to allow Patoline into OCaml code,
+ *   - a new entry point for plain Patoline files.
+ *)
+
+#define LOCATE locate
+
+(*
+ * Everything is wrapped into the functor, this is standard procedur to write
+ * syntax extensions using DeCaP. The argument of the functor is included
+ * straight away, so that extensions can be composed.
+ *)
+module Ext = functor(In:Extension) -> struct
+include In
+
+(* State information + Comand line arguments extension **********************)
 
 let patoline_format   = ref "DefaultFormat"
 let patoline_driver   = ref "Pdf"
 let patoline_packages = ref ["Typography"]
 
-(****************************************************************************
- * Command-line argument parsing.                                           *
- ****************************************************************************)
+let set_patoline_format f =
+  patoline_format := f
 
-let _ = Pa_ocaml_prelude.spec := !(Pa_ocaml_prelude.spec) @
-		  [ ("--driver",  Arg.String (fun d -> patoline_driver := d),
-		     "The driver against which to compile.")
-		  ; ("--format",  Arg.String (fun f -> patoline_format := f),
-		     "The document format to use.")
-		  ; ("--package", Arg.String (fun p -> let pkgs = p :: !patoline_packages
-						       in patoline_packages := pkgs),
-		     "Package to link.")
-      ]
+let set_patoline_driver d =
+  patoline_driver := d
 
-#define LOCATE locate
+let add_patoline_package p =
+  let ps = Util.split ',' p in
+  patoline_packages := !patoline_packages @ ps
 
-(****************************************************************************
- * Things that have to do with comments and things to be ignored            *
- ****************************************************************************)
+let spec = 
+  [ ("--driver",  Arg.String set_patoline_driver,
+     "The driver against which to compile.")
+  ; ("--format",  Arg.String set_patoline_format,
+     "The document format to use.")
+  ; ("--package", Arg.String add_patoline_package,
+     "Package to link.")
+  ]
+
+let _ = extend_cl_args spec
+
+
+(* Blank functions for Patoline *********************************************)
+
+let patocomment = declare_grammar "patocomment"
+
+let comment_content =
+  parser
+  | | "*)" FAIL("Not the place to close a comment")
+  | | _:patocomment
+  | | _:string_literal
+  | | _:ANY
+
+let _ = set_grammar patocomment
+  (parser _:{"(*" comment_content** "*)"}**)
+
+let blank_grammar_sline =
+  parser
+    _:''[ \t\r]*'' _:{'\n' _:''[ \t\r]*''}??
+
+let blank_sline =
+  blank_grammar blank_grammar_sline no_blank
+
+let blank_grammar_mline =
+  parser
+    _:''[ \t\r]*'' _:{'\n' _:''[ \t\r]*''}**
+
+let blank_mline =
+  blank_grammar blank_grammar_mline no_blank
+
+let blank1 = blank_grammar patocomment blank_sline
+let blank2 = blank_grammar patocomment blank_mline
+
+
+
+
+
+
+
 
 exception Unclosed_comment of int * int
 
@@ -42,19 +91,22 @@ exception Unclosed_comment of int * int
  * Characters to be ignored are:
  *   - ' ', '\t', '\r',
  *   - '\n' if mline is true,
- *   - everything between "(*" and "*)" (ocaml-like comments).
- * Remarks on what is allowed inside an ocaml-like comment:
+ *   - OCaml-like comments (i.e. almost everything between "(*" and "*)").
+ * Remark on what is allowed inside an OCaml-like comment:
  *   - nested comments,
- *   - single-line string literals including those containing the substrings
- *     "(*" and or "*)",
+ *   - arbitrary string literlas (including those containing the substrings
+ *     "(*" and or "*)"),
  *   - single '"' character.
  *)
 let pato_blank mline str pos =
-  let rec fn nb lvl state prev (str, pos as cur) =
-    if is_empty str then (if lvl > 0 then raise (Unclosed_comment (line_num str, pos)) else cur)
-    else
-      let c,str',pos' = read str pos in 
-      let next =str', pos' in
+  let rec fn nb lvl state prev ((str, pos) as cur) =
+    if Input.is_empty str then begin
+      if lvl > 0 then
+        raise (Unclosed_comment (Input.line_num str, pos));
+      cur
+    end else
+      let (c, str', pos') = Input.read str pos in 
+      let next = (str', pos') in
       match state, c with
       | `Ini , '('               -> fn nb lvl `Opn cur next
       | `Opn , '*'               -> fn nb (lvl + 1) `Ini cur next
@@ -93,10 +145,6 @@ let freshUid () =
   incr counter;
   "MOD" ^ (string_of_int current)
 
-module Ext = functor(In:Extension) -> 
-struct
-  include In
-
 
   let wrapped_caml_structure = 
     parser
@@ -128,9 +176,9 @@ struct
   let char_alone = 
     black_box 
       (fun str pos ->
-       let c,str',pos' = read str pos in
+       let c,str',pos' = Input.read str pos in
        if List.mem c non_special then
-	 let c',_,_ = read str' pos' in
+	 let c',_,_ = Input.read str' pos' in
 	 if c' = c then raise (Give_up "") (* FIXME *)
 	 else c, str', pos'
        else
@@ -687,10 +735,10 @@ struct
   ****************************************************************************)
 
  let _ = 
-    entry_points:= 
-      (".txp", `Impl full_text)  ::
-      (".typ", `Impl full_text)  ::
-      (".mlp", `Impl structure ) ::
+    entry_points := 
+      (".txp", `Impl full_text) ::
+      (".typ", `Impl full_text) ::
+      (".mlp", `Impl structure) ::
       !entry_points
 end
 
