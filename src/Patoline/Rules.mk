@@ -42,7 +42,7 @@ $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_OCAML) $(PA_OCAML_DIR)/decap.cmxa
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml $(PA_OCAML)
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) -package patutil,decap $< > $@
+	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) -I $(<D) -I $(PA_OCAML_DIR) -I $(UTIL_DIR) -package patutil,decap $< > $@
 
 #$(d)/patolineGL: $(UTIL_DIR)/util.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
 #	$(ECHO) "[OPT]    $(lastword $^) -> $@"
