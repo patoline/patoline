@@ -59,25 +59,22 @@ let comment_content =
   | | _:ANY
 
 let _ = set_grammar patocomment
-  (parser _:{"(*" comment_content** "*)"}**)
+  (change_layout (parser "(*" comment_content** "*)") no_blank)
+
+let patocomments =
+  parser _:patocomment**
 
 let blank_grammar_sline =
-  parser
-    _:''[ \t\r]*'' _:{'\n' _:''[ \t\r]*''}??
-
-let blank_sline =
-  blank_grammar blank_grammar_sline no_blank
+  parser _:''[ \t\r]*'' _:{'\n' _:''[ \t\r]*''}??
 
 let blank_grammar_mline =
-  parser
-    _:''[ \t\r]*'' _:{'\n' _:''[ \t\r]*''}**
+  parser _:''[ \t\r]*'' _:{'\n' _:''[ \t\r]*''}**
 
-let blank_mline =
-  blank_grammar blank_grammar_mline no_blank
+let blank_sline = blank_grammar blank_grammar_sline no_blank
+let blank_mline = blank_grammar blank_grammar_mline no_blank
 
-let blank1 = blank_grammar patocomment blank_sline
-let blank2 = blank_grammar patocomment blank_mline
-
+let blank1 = blank_grammar patocomments blank_sline
+let blank2 = blank_grammar patocomments blank_mline
 
 
 
