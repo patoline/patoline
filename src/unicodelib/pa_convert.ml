@@ -14,12 +14,12 @@ let blank str pos =
       let (c, str', pos') = Input.read str pos in
       let next = (str', pos') in
       match state, c with
-      | _   , '\255'       -> cur (* FIXME hack *)
-      | `Ini, (' ' | '\t') -> fn `Ini cur next
-      | `Ini, '#'          -> fn `Com cur next
-      | `Ini, _            -> cur
-      | `Com, '\n'         -> fn `Ini cur next
-      | `Com, _            -> fn `Com cur next
+      | _   , '\255'              -> cur (* FIXME hack *)
+      | `Ini, (' ' | '\t' | '\r') -> fn `Ini cur next
+      | `Ini, '#'                 -> fn `Com cur next
+      | `Ini, _                   -> cur
+      | `Com, '\n'                -> fn `Ini cur next
+      | `Com, _                   -> fn `Com cur next
     end
   in fn `Ini (str, pos) (str, pos)
 
@@ -32,7 +32,7 @@ let ex_int =
 (* Single mapping parser *)
 let mapping =
   change_layout (
-    parser i:ex_int _:''[ \t]*'' j:ex_int
+    parser i:ex_int _:''[ \t]*'' j:ex_int?[-1]
   ) no_blank
 
 let build_file _loc ms =
