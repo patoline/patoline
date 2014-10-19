@@ -142,6 +142,16 @@ module Make = functor ( ED : EncDec ) ->
       i + sz
 
     (*
+     * Test whether an index is out of range (i.e. if it points out of the
+     * string borders).
+     *   s : the string (that is supposed to be valid),
+     *   i : the index of the current encoded character.
+     * Returns true if the index is out of range, false otherwise.
+     *)
+    let out_of_range : string -> index -> bool = fun s i ->
+      i < 0 || i > String.length s
+
+    (*
      * Compute the index of the previous unicode character encoded in a string
      * starting from a given index.
      * Arguments:
@@ -211,4 +221,24 @@ module Make = functor ( ED : EncDec ) ->
           done;
           buf
       end
+
+    (*
+     * Create an encoded string using a function.
+     * Arguments:
+     *   len : the length of the string to create (in number of [uchar]),
+     *   f   : the initialization function.
+     * Returns the created string, which i-th character will be encoded using
+     * [f i].
+     *)
+    let init : int -> (int -> uchar) -> string = fun len f ->
+      let b = Buf.create (2 * len) in
+      for i = 1 to len do
+        Buf.add_char b (f i)
+      done;
+      Buf.contents b
+
+    (*
+     * Empty encoded string.
+     *)
+    let empty_string : string = ""
   end
