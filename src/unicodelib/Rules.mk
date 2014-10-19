@@ -31,6 +31,13 @@ UNICODELIB_CMI:=$(UNICODELIB_ML:.ml=.cmi)
 # That's why we arbitrarily force the following dependency.
 $(UNICODELIB_CMX): %.cmx: %.cmo
 
+# To be used at build time to generate 8bit-enconding to UTF-X converters
+$(d)/pa_convert: $(d)/pa_convert.ml $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $(PA_OCAML)
+	$(ECHO) "[OPT]    ... -> $@"
+	$(Q) ocamlopt -pp $(PA_OCAML) -o $@ \
+		-I +decap -I +compiler-libs unix.cmxa str.cmxa ocamlcommon.cmxa \
+		$(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $<
+
 $(d)/unicode_parse.ml.depends: $(d)/unicode_parse.ml $(PA_OCAML)
 	$(ECHO) "[DEPS]   ... -> $@"
 	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) $(UNICODELIB_INCLUDES) $< > $@
@@ -69,7 +76,7 @@ all: $(d)/unicodelib.cmxa $(d)/unicodelib.cma $(d)/unicodelib.cmxs
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs
 
-DISTCLEAN += $(wildcard $(d)/*.depends)
+DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/pa_convert
 
 # Installing
 install: install-unicodelib
