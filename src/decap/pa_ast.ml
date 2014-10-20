@@ -144,7 +144,11 @@ let rec expression_to_pattern p =
     | Some e -> Some (expression_to_pattern e)
   in
   let p' = match p.pexp_desc with
+#ifversion >= 4.00
     | Pexp_ident { txt = Lident id; loc = l } -> Ppat_var { txt = id; loc = l }
+#else
+    | Pexp_ident id -> Ppat_var id
+#endif
     | Pexp_constant c -> Ppat_constant c
     | Pexp_tuple l -> Ppat_tuple (List.map expression_to_pattern l)
     | Pexp_array l -> Ppat_array (List.map expression_to_pattern l)
