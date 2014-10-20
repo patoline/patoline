@@ -9,7 +9,7 @@ $(d)/%.depends: INCLUDES:=$(UNICODELIB_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(UNICODELIB_INCLUDES)
 
 # Compute ML files dependencies
-SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
+SRC_$(d) := $(filter-out $(d)/pa_convert.ml, $(wildcard $(d)/*.ml)) $(wildcard $(d)/*.mli)
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
