@@ -51,12 +51,22 @@ let _ = extend_cl_args spec
 
 let patocomment = declare_grammar "patocomment"
 
+let not_close_comment = black_box 
+  (fun str pos ->
+   let c,str',pos' = Input.read str pos in
+   if c = '*' then
+     let c',_,_ = Input.read str' pos' in
+     if c' = ')' then raise (Give_up "Not the place to close a comment")
+     else (), str', pos'
+   else
+     (),str',pos')
+  (Charset.full_charset) false ("ANY")
+
 let comment_content =
   parser
-  | | "*)" FAIL("Not the place to close a comment")
   | | _:patocomment
   | | _:string_literal
-  | | _:ANY
+  | | _:not_close_comment
 
 let _ = set_grammar patocomment
   (change_layout (parser "(*" comment_content** "*)") no_blank)
@@ -131,10 +141,10 @@ let pato_blank mline str pos =
       | _    , _ when lvl > 0    -> fn nb lvl `Ini cur next
       | _    , _                 -> cur
   in fn 0 0 `Ini (str, pos) (str, pos)
-
+(*
 let blank1 = pato_blank true
 let blank2 = pato_blank false
-
+ *)
 (* Function for geting fresh module names (Uid) *)
 let counter = ref 1
 let freshUid () =
