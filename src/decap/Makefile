@@ -49,16 +49,20 @@ OCAMLVERSION=$(shell ocamlc -version)
 
 ifeq ($(OCAMLVERSION),3.12.1)
 COMPILER_INC = -I +compiler-libs/parsing -I +compiler-libs/typing -I +compiler-libs/utils
-COMPILER_LIBS = misc.cmo config.cmo longident.cmo printast.cmo linenum.cmo warnings.cmo location.cmo 
+COMPILER_LIBS = misc.cmo config.cmo longident.cmo printast.cmo linenum.cmo warnings.cmo location.cmo
+COMPILER_PARSERS = syntaxerr.cmo lexer.cmo clflags.cmo parser.cmo parse.cmo 
 COMPILER_TOP = toplevellib.cma
 else
 COMPILER_INC = -I +compiler-libs
 COMPILER_LIBS = ocamlcommon.cma
+COMPILER_PARSERS =
 COMPILER_TOP = ocamlbytecomp.cma ocamltoplevel.cma
 endif
 
 COMPILER_LIBO := $(COMPILER_LIBS:.cma=.cmxa)
 COMPILER_LIBO := $(COMPILER_LIBO:.cmo=.cmx)
+COMPILER_PARSERO := $(COMPILER_PARSERS:.cma=.cmxa)
+COMPILER_PARSERO := $(COMPILER_PARSERO:.cmo=.cmx)
 
 ifeq ($(HAS_PA_OCAML),1)
 
@@ -110,7 +114,7 @@ pa_ocaml: decap.cmxa decap_ocaml.cmxa pa_default.cmx
 	$(OCAMLOPT) $(COMPILER_INC) -linkall -o $@ unix.cmxa str.cmxa $(COMPILER_LIBO) $^
 
 test_parsers: decap.cmxa decap_ocaml.cmxa test_parsers.ml
-	$(OCAMLOPT) $(COMPILER_INC) -I +camlp4 -I +camlp4/Camlp4Parsers -o $@ dynlink.cmxa unix.cmxa str.cmxa camlp4lib.cmxa Camlp4OCamlRevisedParser.cmx Camlp4OCamlParser.cmx	$(COMPILER_INC) $(COMPILER_LIBO) $^
+	$(OCAMLOPT) $(COMPILER_INC) -I +camlp4 -I +camlp4/Camlp4Parsers -o $@ dynlink.cmxa unix.cmxa str.cmxa camlp4lib.cmxa Camlp4OCamlRevisedParser.cmx Camlp4OCamlParser.cmx	$(COMPILER_INC) $(COMPILER_LIBO) $(COMPILER_PARSERO) $^
 
 else
 

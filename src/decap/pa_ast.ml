@@ -147,7 +147,7 @@ let rec expression_to_pattern p =
 #ifversion >= 4.00
     | Pexp_ident { txt = Lident id; loc = l } -> Ppat_var { txt = id; loc = l }
 #else
-    | Pexp_ident id -> Ppat_var id
+    | Pexp_ident(Lident id) -> Ppat_var id
 #endif
     | Pexp_constant c -> Ppat_constant c
     | Pexp_tuple l -> Ppat_tuple (List.map expression_to_pattern l)
@@ -167,5 +167,9 @@ let rec expression_to_pattern p =
     | _ -> failwith "Illegal quotation pattern" (* FIXME: better messages *)
   in
   { ppat_desc = p';
-    ppat_loc  = p.pexp_loc }
+    ppat_loc  = p.pexp_loc;
+#ifversion >= 4.02
+    ppat_attributes = [];
+#endif    
+  }
 
