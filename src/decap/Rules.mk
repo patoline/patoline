@@ -54,6 +54,7 @@ install: install-decap
 
 install-decap: export LIBDIR := $(INSTALL_PA_OCAML_DIR)
 install-decap: export BINDIR := $(INSTALL_BIN_DIR)
+install-decap: export DESTDIR := $(DESTDIR)
 
 install-decap: install-bindir
 	$(MAKE) -e -C $(PA_OCAML_DIR) install

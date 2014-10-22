@@ -1,7 +1,7 @@
 OCAMLC = ocamlc.opt
 OCAMLOPT = ocamlopt.opt
-BINDIR = $(DESTDIR)/usr/local/bin
-LIBDIR = $(DESTDIR)$(shell ocamlc -where)/decap
+BINDIR = /usr/local/bin
+LIBDIR = $(shell ocamlc -where)/decap
 
 # do not add decap.cm(x)a because decap in bootstrap is
 # does not contain pa_ocaml_prelude and adding decap.cm(x)a
@@ -187,15 +187,15 @@ boot:
 	./pa_ocaml --ascii pa_default.ml > bootstrap/$(OCAMLVERSION)/pa_default.ml
 
 install: uninstall $(INSTALLED)
-	install -m 755 -d $(LIBDIR)
-	install -m 755 -d $(BINDIR)
-	ocamlfind install -destdir $(dir $(LIBDIR)) decap META $(INSTALLED)
-	install -m 755 pa_ocaml $(BINDIR)
+	install -m 755 -d $(DESTDIR)/$(LIBDIR)
+	install -m 755 -d $(DESTDIR)/$(BINDIR)
+	ocamlfind install -destdir $(DESTDIR)/$(dir $(LIBDIR)) decap META $(INSTALLED)
+	install -m 755 pa_ocaml $(DESTDIR)/$(BINDIR)
 
 uninstall:
-	ocamlfind remove -destdir $(dir $(LIBDIR)) decap
-	rm -rf $(LIBDIR)
-	rm -f $(BINDIR)/pa_ocaml
+	ocamlfind remove -destdir $(DESTDIR)/$(dir $(LIBDIR)) decap
+	rm -rf $(DESTDIR)/$(LIBDIR)
+	rm -f $(DESTDIR)/$(BINDIR)/pa_ocaml
 
 clean:
 	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa
