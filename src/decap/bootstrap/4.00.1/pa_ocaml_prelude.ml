@@ -56,42 +56,38 @@ let print_blank_state ch s =
   Printf.fprintf ch "%s" s
 let blank str pos =
   let rec fn lvl state prev ((str,pos) as cur) =
-    if is_empty str
-    then
-      (if lvl > 0
-       then raise (Unclosed_comment ((line_num str), pos))
-       else cur)
-    else
-      (let (c,str',pos') = read str pos in
-       let next = (str', pos') in
-       match (state, c) with
-       | (`Esc,_) -> fn lvl `Str cur next
-       | (`Str,'"') -> fn lvl `Ini cur next
-       | (`Chr,_) -> fn lvl `Ini cur next
-       | (`Str,'\\') -> fn lvl `Esc cur next
-       | (`Str,_) -> fn lvl `Str cur next
-       | (`StrO l,('a'..'z')) -> fn lvl (`StrO (c :: l)) cur next
-       | (`StrO l,'|') -> fn lvl (`StrI (List.rev l)) cur next
-       | (`StrO _,_) -> fn lvl `Ini cur next
-       | (`StrI l,'|') -> fn lvl (`StrC (l, l)) cur next
-       | (`StrC (l',a::l),a') when a = a' -> fn lvl (`StrC (l', l)) cur next
-       | (`StrC (_,[]),'}') -> fn lvl `Ini cur next
-       | (`StrC (l',_),_) -> fn lvl (`StrI l') cur next
-       | (_,'"') when lvl > 0 -> fn lvl `Str cur next
-       | (_,'\'') when lvl > 0 -> fn lvl `Chr cur next
-       | (_,'{') when lvl > 0 -> fn lvl (`StrO []) cur next
-       | (`Ini,'(') -> fn lvl `Opn cur next
-       | (`Opn,'*') -> fn (lvl + 1) `Ini cur next
-       | (`Opn,_) when lvl = 0 -> prev
-       | (`Opn,_) -> fn lvl `Ini cur next
-       | (`Ini,'*') when lvl = 0 -> cur
-       | (`Ini,'*') -> fn lvl `Cls cur next
-       | (`Cls,'*') -> fn lvl `Cls cur next
-       | (`Cls,')') -> fn (lvl - 1) `Ini cur next
-       | (`Cls,_) -> fn lvl `Ini cur next
-       | (_,(' '|'\t'|'\r'|'\n')) -> fn lvl `Ini cur next
-       | (_,_) when lvl > 0 -> fn lvl `Ini cur next
-       | (_,_) -> cur) in
+    let (c,str',pos') = read str pos in
+    let next = (str', pos') in
+    match (state, c) with
+    | (_,'\255') when lvl > 0 ->
+        raise (Unclosed_comment ((line_num str), pos))
+    | (`Esc,_) -> fn lvl `Str cur next
+    | (`Str,'"') -> fn lvl `Ini cur next
+    | (`Chr,_) -> fn lvl `Ini cur next
+    | (`Str,'\\') -> fn lvl `Esc cur next
+    | (`Str,_) -> fn lvl `Str cur next
+    | (`StrO l,('a'..'z')) -> fn lvl (`StrO (c :: l)) cur next
+    | (`StrO l,'|') -> fn lvl (`StrI (List.rev l)) cur next
+    | (`StrO _,_) -> fn lvl `Ini cur next
+    | (`StrI l,'|') -> fn lvl (`StrC (l, l)) cur next
+    | (`StrC (l',a::l),a') when a = a' -> fn lvl (`StrC (l', l)) cur next
+    | (`StrC (_,[]),'}') -> fn lvl `Ini cur next
+    | (`StrC (l',_),_) -> fn lvl (`StrI l') cur next
+    | (_,'"') when lvl > 0 -> fn lvl `Str cur next
+    | (_,'\'') when lvl > 0 -> fn lvl `Chr cur next
+    | (_,'{') when lvl > 0 -> fn lvl (`StrO []) cur next
+    | (`Ini,'(') -> fn lvl `Opn cur next
+    | (`Opn,'*') -> fn (lvl + 1) `Ini cur next
+    | (`Opn,_) when lvl = 0 -> prev
+    | (`Opn,_) -> fn lvl `Ini cur next
+    | (`Ini,'*') when lvl = 0 -> cur
+    | (`Ini,'*') -> fn lvl `Cls cur next
+    | (`Cls,'*') -> fn lvl `Cls cur next
+    | (`Cls,')') -> fn (lvl - 1) `Ini cur next
+    | (`Cls,_) -> fn lvl `Ini cur next
+    | (_,(' '|'\t'|'\r'|'\n')) -> fn lvl `Ini cur next
+    | (_,_) when lvl > 0 -> fn lvl `Ini cur next
+    | (_,_) -> cur in
   fn 0 `Ini (str, pos) (str, pos)
 let no_blank str pos = (str, pos)
 let ghost loc = let open Location in { loc with loc_ghost = true }
@@ -1235,9 +1231,13 @@ module Initial =
                       else "false"))))]
     let entry_points:
       (string*
-        [ `Impl of Parsetree.structure_item list Decap.grammar
-        | `Intf of Parsetree.signature_item list Decap.grammar]) list ref
-      = ref [(".mli", (`Intf signature)); (".ml", (`Impl structure))]
+        [ `Impl of (Parsetree.structure_item list Decap.grammar* blank)
+        | `Intf of (Parsetree.signature_item list Decap.grammar* blank)])
+        list ref
+      =
+      ref
+        [(".mli", (`Intf (signature, blank)));
+        (".ml", (`Impl (structure, blank)))]
   end
 module type Extension = module type of Initial
 module type FExt = functor (E : Extension) -> Extension

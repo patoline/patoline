@@ -70,9 +70,9 @@ module Start = functor (Main : Final) -> struct
         | [] -> eprintf "Don't know what to do with file %s\n%!" s; exit 1
       in
       fn !Main.entry_points
-    | FromExt, None -> `Impl Main.structure
-    | Intf, _       -> `Intf Main.signature
-    | Impl, _       -> `Impl Main.structure
+    | FromExt, None -> `Impl (Main.structure, blank)
+    | Intf, _       -> `Intf (Main.signature, blank)
+    | Impl, _       -> `Impl (Main.structure, blank)
   
   let ast =
     (* read the whole file with a buffer ...
@@ -87,12 +87,12 @@ module Start = functor (Main : Final) -> struct
     in
     try
       match entry with
-        `Impl g -> `Struct (parse_channel ~filename g blank ch)
-      | `Intf g -> `Sig (parse_channel ~filename g blank ch)
+        `Impl (g, blank) -> `Struct (parse_channel ~filename g blank ch)
+      | `Intf (g, blank) -> `Sig (parse_channel ~filename g blank ch)
     with
-      Decap.Parse_error _ as e ->
-      Decap.print_exception e;
-      exit 1
+    | Decap.Parse_error _ as e ->
+       Decap.print_exception e;
+       exit 1
   
   let _ = 
     if !ascii then begin

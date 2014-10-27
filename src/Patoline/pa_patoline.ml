@@ -54,6 +54,7 @@ let patocomment = declare_grammar "patocomment"
 let not_close_comment = black_box 
   (fun str pos ->
    let c,str',pos' = Input.read str pos in
+   if c == '\255' then raise (Give_up "End of file inside comments");
    if c = '*' then
      let c',_,_ = Input.read str' pos' in
      if c' = ')' then raise (Give_up "Not the place to close a comment")
@@ -88,12 +89,8 @@ let blank2 = blank_grammar patocomments blank_mline
 
 
 
-
-
-
-
 exception Unclosed_comment of int * int
-
+(*
 (*
  * Characters to be ignored are:
  *   - ' ', '\t', '\r',
@@ -141,7 +138,7 @@ let pato_blank mline str pos =
       | _    , _ when lvl > 0    -> fn nb lvl `Ini cur next
       | _    , _                 -> cur
   in fn 0 0 `Ini (str, pos) (str, pos)
-(*
+
 let blank1 = pato_blank true
 let blank2 = pato_blank false
  *)
@@ -743,9 +740,9 @@ let freshUid () =
 
  let _ = 
     entry_points := 
-      (".txp", `Impl full_text) ::
-      (".typ", `Impl full_text) ::
-      (".mlp", `Impl structure) ::
+      (".txp", `Impl (full_text, blank2)) ::
+      (".typ", `Impl (full_text, blank2)) ::
+      (".mlp", `Impl (structure, blank)) ::
       !entry_points
 end
 
