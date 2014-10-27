@@ -234,6 +234,12 @@ let push_frame, pop_frame, push_location, pop_location =
      else false
    with Stack.Empty -> false)
 
+
+
+type entry_point =   
+  | Implementation of Parsetree.structure_item list Decap.grammar * blank
+  | Interface of Parsetree.signature_item list Decap.grammar * blank
+
 (* declare expression soon for antiquotation *)
 module Initial = struct
   type expression_prio = Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
@@ -1220,11 +1226,9 @@ let bool_lit =
   | true_kw -> "true"
   | dol:CHR('$') - STR("bool") CHR(':') e:(expression_lvl App) - CHR('$') -> if push_pop_bool (start_pos _loc_dol).Lexing.pos_cnum e then "true" else "false"
 
-  let entry_points : (string *
-            [ `Impl of Parsetree.structure_item list Decap.grammar * blank
-            | `Intf of Parsetree.signature_item list Decap.grammar * blank
-            ]) list ref
-   = ref [ ".mli", `Intf (signature, blank) ;  ".ml", `Impl (structure, blank) ]
+let entry_points : (string * entry_point) list ref
+   = ref [ ".mli", Interface (signature, blank) ;  ".ml", Implementation (structure, blank) ]
+
 end
 
 module type Extension = module type of Initial

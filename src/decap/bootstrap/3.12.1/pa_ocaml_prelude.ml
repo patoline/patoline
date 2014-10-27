@@ -143,6 +143,9 @@ let (push_frame,pop_frame,push_location,pop_location) =
          let h = Stack.top loc_tbl in
          if Hashtbl.mem h id then (Hashtbl.remove h id; true) else false
        with | Stack.Empty  -> false))
+type entry_point =  
+  | Implementation of Parsetree.structure_item list Decap.grammar* blank
+  | Interface of Parsetree.signature_item list Decap.grammar* blank 
 module Initial =
   struct
     type expression_prio =  
@@ -1222,15 +1225,10 @@ module Initial =
                       if push_pop_bool (start_pos _loc_dol).Lexing.pos_cnum e
                       then "true"
                       else "false"))))]
-    let entry_points:
-      (string*
-        [ `Impl of (Parsetree.structure_item list Decap.grammar* blank)
-        | `Intf of (Parsetree.signature_item list Decap.grammar* blank)])
-        list ref
-      =
+    let entry_points: (string* entry_point) list ref =
       ref
-        [(".mli", (`Intf (signature, blank)));
-        (".ml", (`Impl (structure, blank)))]
+        [(".mli", (Interface (signature, blank)));
+        (".ml", (Implementation (structure, blank)))]
   end
 module type Extension = module type of Initial
 module type FExt = functor (E : Extension) -> Extension

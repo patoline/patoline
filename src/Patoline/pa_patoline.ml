@@ -740,9 +740,9 @@ let freshUid () =
 
  let _ = 
     entry_points := 
-      (".txp", `Impl (full_text, blank2)) ::
-      (".typ", `Impl (full_text, blank2)) ::
-      (".mlp", `Impl (structure, blank)) ::
+      (".txp", Implementation (full_text, blank2)) ::
+      (".typ", Implementation (full_text, blank2)) ::
+      (".mlp", Implementation (structure, blank)) ::
       !entry_points
 end
 
