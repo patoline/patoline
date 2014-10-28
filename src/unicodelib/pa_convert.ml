@@ -63,11 +63,9 @@ let build_file _loc ms =
   >>
 
 let mappings =
-  change_layout (
-    parser ms:mapping** EOF -> build_file _loc ms
-  ) blank
+  parser ms:mapping** EOF -> build_file _loc ms
 
-let _ = entry_points := (".TXT", `Impl mappings) :: !entry_points
+let _ = entry_points := (".TXT", Implementation (mappings, blank)) :: !entry_points
 
 end
 
