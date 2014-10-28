@@ -306,7 +306,7 @@ module Make(Initial:Extension) =
       let quotation_aux: tree grammar = declare_grammar "quotation" in
       let _ =
         set_grammar quotation_aux
-          (Decap.alternatives
+          (Decap.alternatives'
              [Decap.fsequence (Decap.string "<:" "<:")
                 (Decap.sequence quotation_aux quotation_aux
                    (fun q  q'  _  ->
@@ -318,7 +318,12 @@ module Make(Initial:Extension) =
              Decap.sequence
                (Decap.regexp "[^<>\"\n]+" (fun groupe  -> groupe 0))
                quotation_aux (fun s  q  -> Node ((Leaf s), q));
-             Decap.sequence (one_char String) quotation_aux
+             Decap.sequence
+               (Decap.alternatives'
+                  [Decap.char '<' '<';
+                  Decap.char '>' '>';
+                  Decap.char '\n' '\n';
+                  Decap.char '"' '"']) quotation_aux
                (fun c  q  -> Node ((Leaf (String.make 1 c)), q))]) in
       apply string_of_tree (change_layout quotation_aux no_blank)
     let label_name = lowercase_ident
