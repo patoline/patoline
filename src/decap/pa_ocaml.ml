@@ -315,11 +315,11 @@ let quotation =
   let quotation_aux:tree grammar = declare_grammar "quotation" in				      
   let _ = set_grammar quotation_aux
       (parser
-      | "<:" q:quotation_aux q':quotation_aux -> Node(Node((Leaf "<:"), q), Node(Leaf ">>", q'))
-      | s: string_literal q:quotation_aux -> Node(Leaf (Printf.sprintf "%S" s), q)
-      | ">>" -> Leaf ""
-      | s:RE("[^<>\"\n]+") q:quotation_aux -> Node(Leaf s, q)
-      | c:(one_char String) q:quotation_aux -> Node(Leaf (String.make 1 c), q))
+       | | "<:" q:quotation_aux q':quotation_aux -> Node(Node((Leaf "<:"), q), Node(Leaf ">>", q'))
+       | | s: string_literal q:quotation_aux -> Node(Leaf (Printf.sprintf "%S" s), q)
+       | | ">>" -> Leaf ""
+       | | s:RE("[^<>\"\n]+") q:quotation_aux -> Node(Leaf s, q)
+       | | c:{c:'<' || c:'>' || c:'\n' || c:'"'} q:quotation_aux -> Node(Leaf (String.make 1 c), q))
   in
   apply string_of_tree (change_layout quotation_aux no_blank)
 

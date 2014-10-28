@@ -64,15 +64,15 @@ let line = parser
     combining_class:combining_class CHR(';')
     bidirectional_mapping:bidirectional_mapping CHR(';')
     decomposition:decomposition CHR(';')
-    decimal:int? CHR(';')
-    digit:int? CHR(';')
-    numeric:fraction? CHR(';')
+    decimal:int?? CHR(';')
+    digit:int?? CHR(';')
+    numeric:fraction?? CHR(';')
     mirrored:mirrored CHR(';')
-    oldName:name* CHR(';')
+    oldName:name** CHR(';')
     comments:RE("[^;\n]*") CHR(';')
-    uppercase:code? CHR(';')
-    lowercase:code? CHR(';')
-    titlecase:code? CHR('\n') ->
+    uppercase:code?? CHR(';')
+    lowercase:code?? CHR(';')
+    titlecase:code?? CHR('\n')** ->
         if code mod 16 = 0 then Printf.eprintf "\r%x%!" code;
 	let fi = function None -> <:expr<None>> | Some x -> <:expr<Some $int:x$>> in
 	let ff = function None -> <:expr<None>> | Some (n,d) -> <:expr<Some ($int:n$,$int:d$)>> in
@@ -89,8 +89,8 @@ let line = parser
 	 $list:oldName$ $string:comments$
 	 $uppercase$ $lowercase$ $titlecase$>> 
 
-let unicodeData = Decap.change_layout (parser
-  ls:{l:line}* ->   <:structure<
+let unicodeData = parser
+  ls:{l:line}** ->   <:structure<
   open Unicode_type
   let unicode_table = Hashtbl.create 10001;;
   let fn a b c d e f g h i j k l m n o
@@ -111,13 +111,18 @@ let unicodeData = Decap.change_layout (parser
 	   lowercase=n;
 	   titlecase=o;
 	 };;
-  $(List.flatten ls)$>>) (Decap.blank_regexp (Str.regexp "[ \t]*"))
+  $(List.flatten ls)$>>
+
+ let blank = Decap.blank_regexp "[ \t]*"
 
 
  let _ = 
     entry_points:= 
-      (".txt", `Impl unicodeData) :: !entry_points
+      (".txt", Implementation (unicodeData, blank)) :: !entry_points
 				     
 end
 
-let _ = register_extension (module Ext : FExt)
+(* Creating and running the extension *)
+module ParserExt = Pa_parser.Ext(Pa_ocaml_prelude.Initial)
+module PatolineDefault = Pa_ocaml.Make(Ext(ParserExt))
+module M = Pa_main.Start(PatolineDefault)
