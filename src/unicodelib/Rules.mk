@@ -37,6 +37,7 @@ ENCODING_ML   := $(ENCODING_DATA:.TXT=.ml)
 ENCODING_CMO  := $(ENCODING_DATA:.TXT=.cmo)
 ENCODING_CMX  := $(ENCODING_DATA:.TXT=.cmx)
 ENCODING_CMI  := $(ENCODING_DATA:.TXT=.cmi)
+ENCODING_O    := $(ENCODING_DATA:.TXT=.o)
 
 $(ENCODING_CMX): %.cmx: %.cmo
 
@@ -81,15 +82,15 @@ src/Patoline/UnicodeData.cmx: src/Patoline/UnicodeData.txt $(d)/unicode_parse $(
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -package decap,str -pp $(UNICODE_DIR)/unicode_parse -impl $< $(UNICODELIB_INCLUDES) -c
 
-$(d)/unicodelib.cma: $(UNICODELIB_CMO)
+$(d)/unicodelib.cma: $(UNICODELIB_CMO) $(ENCODING_CMO)
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLC) -a -o $@ $^
 
-$(d)/unicodelib.cmxa: $(UNICODELIB_CMX)
+$(d)/unicodelib.cmxa: $(UNICODELIB_CMX) $(ENCODING_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $^
 
-$(d)/unicodelib.cmxs: $(UNICODELIB_CMX)
+$(d)/unicodelib.cmxs: $(UNICODELIB_CMX) $(ENCODING_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
@@ -97,14 +98,14 @@ $(d)/unicodelib.cmxs: $(UNICODELIB_CMX)
 all: $(d)/unicodelib.cmxa $(d)/unicodelib.cma $(d)/unicodelib.cmxs
 
 # Cleaning
-CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs
+CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs $(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI) $(ENCODING_O)
 
-DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/pa_convert
+DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/pa_convert $(ENCODING_ML)
 
 # Installing
 install: install-unicodelib
 .PHONY: install-unicodelib
-install-unicodelib: $(d)/unicodelib.cma $(d)/unicodelib.cmxa $(d)/unicodelib.cmxs $(d)/unicodelib.a $(UNICODELIB_CMI) $(UNICODELIB_CMX) $(UNICODELIB_CMO) $(d)/META
+install-unicodelib: $(d)/unicodelib.cma $(d)/unicodelib.cmxa $(d)/unicodelib.cmxs $(d)/unicodelib.a $(UNICODELIB_CMI) $(UNICODELIB_CMX) $(UNICODELIB_CMO) $(d)/META $(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI)
 	install -m 755 -d $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
 
