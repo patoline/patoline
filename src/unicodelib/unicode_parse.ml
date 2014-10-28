@@ -49,7 +49,7 @@ let int = parser
   | c:RE("[+-]?[0-9]+") -> int_of_string c
 
 let fraction = parser
-  | n:int d:{ CHR('/') d:int }? ->
+  | n:int d:{ CHR('/') d:int }?? ->
 	    let d = match d with None -> 1
 			       | Some d -> d
 	    in n,d
@@ -71,8 +71,8 @@ let line = parser
     oldName:name** CHR(';')
     comments:RE("[^;\n]*") CHR(';')
     uppercase:code?? CHR(';')
-    lowercase:code?? CHR(';')
-    titlecase:code?? CHR('\n')** ->
+    lowercase:code?? CHR(';') 
+    titlecase:code?? CHR('\n') ->
         if code mod 16 = 0 then Printf.eprintf "\r%x%!" code;
 	let fi = function None -> <:expr<None>> | Some x -> <:expr<Some $int:x$>> in
 	let ff = function None -> <:expr<None>> | Some (n,d) -> <:expr<Some ($int:n$,$int:d$)>> in

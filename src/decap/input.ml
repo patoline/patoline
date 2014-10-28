@@ -56,18 +56,17 @@ type buffer = buffer_aux Lazy.t
 
 let rec read (lazy b as b0) i =
   if b.is_empty then ('\255', b0, 0) else
-  match compare i b.length with
-  | -1 -> b.contents.[i], b0, i+1
-  | 0  -> let n = b.next in
-          if (Lazy.force n).is_empty then ('\255',b0,i) else ('\n', n, 0)
-  | _  -> read b.next (b.length - i - 1)
+  match compare (i+1) b.length with
+    | -1 -> b.contents.[i], b0, i+1
+    | 0 -> b.contents.[i], b.next, 0
+    | _ -> read b.next (b.length - i)
 
 let rec get (lazy b) i =
   if b.is_empty then '\255' else
-  match compare i b.length with
-  | -1 -> b.contents.[i]
-  | 0  -> if (Lazy.force b.next).is_empty then '\255' else '\n'
-  | _  -> get b.next (b.length - i - 1)
+  if i < b.length then
+    b.contents.[i]
+  else
+    get b.next (b.length - i)
 
 let empty_buffer fn lnum bol =
   let rec res =
@@ -174,7 +173,7 @@ let buffer_from_fun ?(finalise=(fun _ -> ())) fname get_line data =
       try
         let line = get_line data in
         let len = String.length line in
-        let bol' = bol + len + 1 in (* +1 for newline, should be 2 on windows ? *)
+        let bol' = bol + len in
         (fun () ->
            if len > 0 && line.[0] = '#' then
              if Str.string_match line_num_directive line 1 then
@@ -244,6 +243,38 @@ let buffer_from_fun ?(finalise=(fun _ -> ())) fname get_line data =
   | EndOfFile ->
      Lazy.force (empty_buffer fname line bol)))
 
+external unsafe_input : in_channel -> string -> int -> int -> int
+                      = "caml_ml_input"
+
+external input_scan_line : in_channel -> int = "caml_ml_input_scan_line"
+
+let input_line chan =
+  let rec build_result buf pos = function
+    [] -> buf
+  | hd :: tl ->
+      let len = String.length hd in
+      String.blit hd 0 buf (pos - len) len;
+      build_result buf (pos - len) tl in
+  let rec scan accu len =
+    let n = input_scan_line chan in
+    if n = 0 then begin                   (* n = 0: we are at EOF *)
+      match accu with
+        [] -> raise End_of_file
+      | _  -> build_result (String.create len) len accu
+    end else if n > 0 then begin          (* n > 0: newline found in buffer *)
+      let res = String.create n in
+      ignore (unsafe_input chan res 0 n);
+      match accu with
+        [] -> res
+      |  _ -> let len = len + n in
+              build_result (String.create len) len (res :: accu)
+    end else begin                        (* n < 0: newline not found *)
+      let beg = String.create (-n) in
+      ignore(unsafe_input chan beg 0 (-n));
+      scan (beg :: accu) (len - n)
+    end
+  in scan [] 0
+
 let buffer_from_channel ?(filename="") ch =
   buffer_from_fun filename input_line ch
 
@@ -255,15 +286,12 @@ let get_string_line (str, p) =
   let len = String.length str in
   let start = !p in
   if start >= len then raise End_of_file;
-  while (!p < len && str.[!p] <> '\n' && str.[!p] <> '\r') do
+  while (!p < len && str.[!p] <> '\n') do
     incr p
   done;
-  let _end = !p in
-  incr p;
-  if !p < len && ((str.[!p] = '\n' && str.[!p - 1] = '\r') ||
-                    (str.[!p] = '\r' && str.[!p - 1] = '\n')) then incr p;
-  let len' = _end - start in
-  if start = 0 && len' = len then str else String.sub str start len'
+  if !p < len then incr p;
+  let len' = !p - start in
+  String.sub str start len'
 
 let buffer_from_string ?(filename="") str =
   let data = (str, ref 0) in

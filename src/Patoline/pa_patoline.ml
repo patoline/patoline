@@ -110,59 +110,6 @@ let blank_mline = blank_grammar blank_grammar_mline no_blank
 let blank1 = blank_grammar patocomments blank_sline
 let blank2 = blank_grammar patocomments blank_mline
 
-(*
-exception Unclosed_comment of int * int
-(*
- * Characters to be ignored are:
- *   - ' ', '\t', '\r',
- *   - '\n' if mline is true,
- *   - OCaml-like comments (i.e. almost everything between "(*" and "*)").
- * Remark on what is allowed inside an OCaml-like comment:
- *   - nested comments,
- *   - arbitrary string literlas (including those containing the substrings
- *     "(*" and or "*)"),
- *   - single '"' character.
- *)
-let pato_blank mline str pos =
-  let rec fn nb lvl state prev ((str, pos) as cur) =
-    if Input.is_empty str then begin
-      if lvl > 0 then
-        raise (Unclosed_comment (Input.line_num str, pos));
-      cur
-    end else
-      let (c, str', pos') = Input.read str pos in 
-      let next = (str', pos') in
-      match state, c with
-      | `Ini , '('               -> fn nb lvl `Opn cur next
-      | `Opn , '*'               -> fn nb (lvl + 1) `Ini cur next
-      | `Opn , _  when lvl = 0   -> prev
-      | `Opn , _                 -> fn nb lvl `Ini cur next
-      | `Ini , '*' when lvl = 0  -> cur
-      | `Ini , '*'               -> fn nb lvl `Cls cur next
-      | `Cls , '*'               -> fn nb lvl `Cls cur next
-      | `Cls , ')'               -> fn 0 (lvl - 1) `Ini cur next
-      | `Cls , _                 -> fn nb lvl `Ini cur next
-
-      | _    , '\n' when lvl > 0 -> fn nb lvl `Ini cur next
-      | _    , '\n' when nb > 0 && mline -> cur
-      | _    , '\n'              -> fn (nb + 1) lvl `Ini cur next
-
-      | `Str , '"'               -> fn nb lvl `Ini cur next
-      | _    , '"' when lvl > 0  -> (try fn nb lvl `Str cur next with
-                                      Unclosed_comment _ ->
-                                        fn nb lvl `Ini cur next)
-      | `Str , '\\'              -> fn nb lvl `Esc cur next
-      | `Esc , _                 -> fn nb lvl `Str cur next
-      | `Str , _                 -> fn nb lvl `Str cur next
-
-      | _    , (' '|'\t'|'\r')   -> fn nb lvl `Ini cur next
-      | _    , _ when lvl > 0    -> fn nb lvl `Ini cur next
-      | _    , _                 -> cur
-  in fn 0 0 `Ini (str, pos) (str, pos)
-
-let blank1 = pato_blank true
-let blank2 = pato_blank false
- *)
 (* Function for geting fresh module names (Uid) *)
 let counter = ref 1
 let freshUid () =
