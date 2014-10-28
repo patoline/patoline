@@ -9,18 +9,15 @@ include In
 (* Blank function *)
 let blank str pos =
   let rec fn state prev ((str, pos) as cur) =
-    if Input.is_empty str then (Printf.eprintf "EMPTY!!!\n%!"; cur)
-    else begin
-      let (c, str', pos') = Input.read str pos in
-      let next = (str', pos') in
-      match state, c with
-      | _   , '\255'              -> cur (* FIXME hack *)
-      | `Ini, (' ' | '\t' | '\r') -> fn `Ini cur next
-      | `Ini, '#'                 -> fn `Com cur next
-      | `Ini, _                   -> cur
-      | `Com, '\n'                -> fn `Ini cur next
-      | `Com, _                   -> fn `Com cur next
-    end
+    let (c, str', pos') = Input.read str pos in
+    let next = (str', pos') in
+    match state, c with
+    | _   , '\255'              -> cur (* EOF reached *)
+    | `Ini, (' ' | '\t' | '\r') -> fn `Ini cur next
+    | `Ini, '#'                 -> fn `Com cur next
+    | `Ini, _                   -> cur
+    | `Com, '\n'                -> fn `Ini cur next
+    | `Com, _                   -> fn `Com cur next
   in fn `Ini (str, pos) (str, pos)
 
 (* Parser for hexadecimal integers *)
