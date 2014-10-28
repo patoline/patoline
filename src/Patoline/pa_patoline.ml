@@ -46,22 +46,40 @@ let spec =
 
 let _ = extend_cl_args spec
 
-
 (* Blank functions for Patoline *********************************************)
+
+exception Unclosed_comments of Location.t list
+
+(*
+ * The position of comment openings is stored in a stack.
+ * When a closing is reached we pop this stack so that in the end it contains
+ * comments that have not been closed. There might be several, but there is at
+ * least one.
+ *)
+let cstack = Stack.create ()
+let get_unclosed () =
+  let rec f l =
+    if Stack.is_empty cstack then
+      l
+    else
+      f (Stack.pop cstack :: l)
+  in f [];
 
 let patocomment = declare_grammar "patocomment"
 
-let not_close_comment = black_box 
-  (fun str pos ->
-   let c,str',pos' = Input.read str pos in
-   if c == '\255' then raise (Give_up "End of file inside comments");
-   if c = '*' then
-     let c',_,_ = Input.read str' pos' in
-     if c' = ')' then raise (Give_up "Not the place to close a comment")
-     else (), str', pos'
-   else
-     (),str',pos')
-  (Charset.full_charset) false ("ANY")
+let not_close_comment =
+  black_box (fun str pos ->
+    let (c, str', pos') = Input.read str pos in
+    match c with
+    | '\255' -> let locs = get_unclosed () in
+                raise (Unclosed_comments locs)
+    | '*'    -> let (c', _, _) = Input.read str' pos' in
+                if c' = ')' then
+                  raise (Give_up "Not the place to close a comment")
+                else
+                  ((), str', pos')
+    | _      -> ((), str', pos')
+  ) Charset.full_charset false "ANY"
 
 let comment_content =
   parser
@@ -70,7 +88,12 @@ let comment_content =
   | | _:not_close_comment
 
 let _ = set_grammar patocomment
-  (change_layout (parser "(*" comment_content** "*)") no_blank)
+  (change_layout (
+    parser
+      {"(*" -> Stack.push _loc cstack}
+      comment_content**
+      {"*)" -> Stack.pop cstack}
+  ) no_blank)
 
 let patocomments =
   parser _:patocomment**
@@ -87,10 +110,8 @@ let blank_mline = blank_grammar blank_grammar_mline no_blank
 let blank1 = blank_grammar patocomments blank_sline
 let blank2 = blank_grammar patocomments blank_mline
 
-
-
-exception Unclosed_comment of int * int
 (*
+exception Unclosed_comment of int * int
 (*
  * Characters to be ignored are:
  *   - ' ', '\t', '\r',
