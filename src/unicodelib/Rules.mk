@@ -31,23 +31,41 @@ UNICODELIB_CMI:=$(UNICODELIB_ML:.ml=.cmi)
 # That's why we arbitrarily force the following dependency.
 $(UNICODELIB_CMX): %.cmx: %.cmo
 
-# To be used at build time to generate 8bit-enconding to UTF-X converters
-$(d)/pa_convert: $(d)/pa_convert.ml $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $(PA_OCAML)
+### To be used at build time to generate 8bit-enconding to UTF-X converters
+ENCODING_DATA := $(wildcard $(d)/encoding_data/*.TXT)
+ENCODING_ML := $(ENCODING_DATA:.TXT=.ml)
+ENCODING_CMO := $(ENCODING_DATA:.TXT=.cmo)
+ENCODING_CMX := $(ENCODING_DATA:.TXT=.cmx)
+ENCODING_CMI := $(ENCODING_DATA:.TXT=.cmi)
+
+$(ENCODING_CMX): %.cmx: %.cmo
+
+PA_CONV=$(d)/pa_convert
+
+$(PA_CONV): $(d)/pa_convert.ml $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $(PA_OCAML)
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q) ocamlopt -pp $(PA_OCAML) -o $@ \
 		-I +decap -I +compiler-libs unix.cmxa str.cmxa ocamlcommon.cmxa \
 		$(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $<
+
+# FIXME
+#$(ENCODING_ML): %.ml: %.TXT $(PA_CONV)
+$(d)/encoding_data/%.ml: $(d)/encoding_data/%.TXT $(PA_CONV)
+	$(ECHO) "[PA_CNV] ... -> $@"
+	$(Q) $(PA_CONV) --ascii $< > $@
+
+###
 
 $(d)/unicode_parse.ml.depends: $(d)/unicode_parse.ml $(PA_OCAML)
 	$(ECHO) "[DEPS]   ... -> $@"
 	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) $(UNICODELIB_INCLUDES) $< > $@
 
 $(d)/unicode_parse.cmo: $(d)/unicode_parse.ml $(PA_OCAML)
-	$(ECHO) "[OCAMLC]   ... -> $@"
+	$(ECHO) "[OCAMLC] ... -> $@"
 	$(Q)$(OCAMLC) -package decap -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
 
 $(d)/unicode_parse.cmx: $(d)/unicode_parse.ml $(PA_OCAML)
-	$(ECHO) "[OPT]   ... -> $@"
+	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -package decap -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
 
 $(d)/unicode_parse: $(d)/UChar.cmx $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $(d)/unicode_type.cmx $(d)/unicode_parse.cmx 
@@ -55,7 +73,7 @@ $(d)/unicode_parse: $(d)/UChar.cmx $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/de
 	$(Q)$(OCAMLOPT) -linkpkg -package decap $(COMPILER_INC) $(COMPILER_LIBO) $(PA_OCAML_DIR)/decap.cmxa -o $@ $^
 
 src/Patoline/UnicodeData.cmx: src/Patoline/UnicodeData.txt $(d)/unicode_parse $(d)/UChar.cmx $(d)/unicode_type.cmx
-	$(ECHO) "[OPT] ... -> ^@"
+	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -package decap,str -pp $(UNICODE_DIR)/unicode_parse -impl $< $(UNICODELIB_INCLUDES) -c
 
 $(d)/unicodelib.cma: $(UNICODELIB_CMO)
