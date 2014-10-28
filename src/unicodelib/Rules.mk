@@ -52,6 +52,13 @@ $(ENCODING_ML): %.ml: %.TXT $(PA_CONV)
 	$(ECHO) "[PA_CNV] ... -> $@"
 	$(Q) $(PA_CONV) --ascii $< > $@
 
+$(ENCODING_CMO): %.cmo: %.ml
+	$(ECHO) "[OCAMLC] ... -> $@"
+	$(Q) ocamlc $(UNICODELIB_INCLUDES) -c $<
+
+$(ENCODING_CMX): %.cmx: %.ml
+	$(ECHO) "[OPT]    ... -> $@"
+	$(Q) ocamlopt $(UNICODELIB_INCLUDES) -c $<
 ###
 
 $(d)/unicode_parse.ml.depends: $(d)/unicode_parse.ml $(PA_OCAML)
