@@ -3,126 +3,234 @@ open Unicode_type
 
 #define LOCATE locate
 
-module Ext = functor(In:Extension) -> 
-struct
-  include In
+let general_category_of_string = function
+  | "Lu" -> Lu | "Ll" -> Ll | "Lt" -> Lt | "Mn" -> Mn | "Mc" -> Mc
+  | "Me" -> Me | "Nd" -> Nd | "Nl" -> Nl | "No" -> No | "Zs" -> Zs
+  | "Zl" -> Zl | "Zp" -> Zp | "Cc" -> Cc | "Cf" -> Cf | "Cs" -> Cs
+  | "Co" -> Co | "Cn" -> Cn
+  | "Lm" -> Lm | "Lo" -> Lo | "Pc" -> Pc | "Pd" -> Pd | "Ps" -> Ps
+  | "Pe" -> Pe | "Pi" -> Pi | "Pf" -> Pf | "Po" -> Po | "Sm" -> Sm
+  | "Sc" -> Sc | "Sk" -> Sk | "So" -> So
+  | s -> Printf.eprintf "Missing: %s\n%!" s; assert false
 
-let code = parser
-  | c:RE("[0-9A-F]+") -> int_of_string ("0x" ^ c) 
+let combining_class_of_int = function
+  | n when n >= 10 && n <= 199
+        -> Fixed_position n
+  | 0   -> Spacing_split_enclosing_reordrant_and_Tibetan_subjoined
+  | 1   -> Overlays_and_interior
+  | 7   -> Nuktas
+  | 8   -> Hiragana_Katakana_voicing_marks
+  | 9   -> Viramas
+  | 200 -> Below_left_attached
+  | 202 -> Below_attached
+  | 204 -> Below_right_attached
+  | 208 -> Left_attached
+  | 210 -> Right_attached
+  | 212 -> Above_left_attached
+  | 214 -> Above_attached
+  | 216 -> Above_right_attached
+  | 218 -> Below_left
+  | 220 -> Below
+  | 222 -> Below_right
+  | 224 -> Left
+  | 226 -> Right
+  | 228 -> Above_left
+  | 230 -> Above
+  | 232 -> Above_right
+  | 233 -> Double_below
+  | 234 -> Double_above
+  | 240 -> Below_iota_subscript
+  | i -> Printf.eprintf "Missing: %i\n%!" i; assert false
 
-let string_table = Hashtbl.create 1001 
 
-let hash_cons str =
-  try Hashtbl.find string_table str
-  with Not_found -> 
-    Hashtbl.add string_table str str;
-    str
+let bidirectional_mapping_of_string = function
+  | "L"   -> L
+  | "LRE" -> LRE
+  | "LRO" -> LRO
+  | "LRI" -> LRI
+  | "R"   -> R
+  | "AL"  -> AL
+  | "RLE" -> RLE
+  | "RLO" -> RLO
+  | "RLI" -> RLI
+  | "PDF" -> PDF
+  | "PDI" -> PDI
+  | "FSI" -> FSI
+  | "EN"  -> EN
+  | "ES"  -> ES
+  | "ET"  -> ET
+  | "AN"  -> AN
+  | "CS"  -> CS
+  | "NSM" -> NSM
+  | "BN"  -> BN
+  | "B"   -> B
+  | "S"   -> S
+  | "WS"  -> WS
+  | "ON"  -> ON
+  | s -> Printf.eprintf "Missing: %s\n%!" s; assert false
 
-let name = parser
-  | n:RE("[A-Za-z0-9-]+") -> 
-      <:expr<$string:(hash_cons n)$ >>
-  | s:RE("<[^>\n]*>") -> <:expr<$string:(hash_cons s)$>>
-  | CHR('(') n:RE("[A-Za-z0-9-]+") CHR(')') ->
-      <:expr<$string:(hash_cons n)$ >>
+let decomposition_atom_of_string = function
+  | "font"     -> Font
+  | "noBreak"  -> NoBreak
+  | "initial"  -> Initial
+  | "medial"   -> Medial
+  | "final"    -> Final
+  | "isolated" -> Isolated
+  | "circle"   -> Circle
+  | "super"    -> Super
+  | "sub"      -> Sub
+  | "vertical" -> Vertical
+  | "wide"     -> Wide
+  | "narrow"   -> Narrow
+  | "small"    -> Small
+  | "square"   -> Square
+  | "fraction" -> Fraction
+  | "compat"   -> Compat
+  | s -> Printf.eprintf "Missing: %s\n%!" s; assert false
 
-let category = parser
-  | c:RE("[A-Z][a-z]") -> c
+let code =
+  parser
+  | c:''[0-9A-F]+'' -> int_of_string ("0x" ^ c)
 
-let combining_class = parser 
-  | c:RE("[0-9]+") -> 
-      let n = int_of_string c in
-      if n >= 10 && n <= 199 then
-	<:expr<Fixed_position $int:n$>>
-      else
-	<:expr<$uid:(cci n)$>>
+let integer =
+  parser
+  | c:''[+-]?[0-9]+'' -> int_of_string c
 
-let bidirectional_mapping = parser 
-  | c:RE("[A-Z]+") -> c
-
-let decomposition_tag = parser
-  | CHR('<') t:RE("[a-zA-Z]+") CHR('>') -> t
-
-let decomposition = parser
-  | l:{ t:decomposition_tag -> <:expr<Tag (dts $string:t$)>> | c:code -> <:expr<Char $int:c$>> }* -> <:expr< $list:l$ >>
-
-let int = parser
-  | c:RE("[+-]?[0-9]+") -> int_of_string c
-
-let fraction = parser
-  | n:int d:{ CHR('/') d:int }?? ->
-	    let d = match d with None -> 1
-			       | Some d -> d
-	    in n,d
+let fraction =
+  parser
+  | n:integer d:{'/' d:integer}??[1]
  
-let mirrored = parser
-  | CHR('Y') -> <:expr<true>> | CHR('N') -> <:expr<false>>
+let category =
+  parser
+  | c:''[A-Z][a-z]'' -> general_category_of_string c
 
-let line = parser
-  | code:code CHR(';')
-    name:name+ CHR(';')
-    category:category CHR(';')	   
-    combining_class:combining_class CHR(';')
-    bidirectional_mapping:bidirectional_mapping CHR(';')
-    decomposition:decomposition CHR(';')
-    decimal:int?? CHR(';')
-    digit:int?? CHR(';')
-    numeric:fraction?? CHR(';')
-    mirrored:mirrored CHR(';')
-    oldName:name** CHR(';')
-    comments:RE("[^;\n]*") CHR(';')
-    uppercase:code?? CHR(';')
-    lowercase:code?? CHR(';') 
-    titlecase:code?? CHR('\n') ->
-        if code mod 16 = 0 then Printf.eprintf "\r%x%!" code;
-	let fi = function None -> <:expr<None>> | Some x -> <:expr<Some $int:x$>> in
-	let ff = function None -> <:expr<None>> | Some (n,d) -> <:expr<Some ($int:n$,$int:d$)>> in
-	let decimal = fi decimal in
-	let digit = fi digit in
-	let numeric = ff numeric in
-	let uppercase = fi uppercase in
-	let lowercase = fi lowercase in
-	let titlecase = fi titlecase in
-	<:structure< let _ = fn
-	 $int:code$ $list:name$ $uid:category$ $combining_class$
-	 $uid:bidirectional_mapping$ $decomposition$
-	 $decimal$ $digit$ $numeric$ $mirrored$
-	 $list:oldName$ $string:comments$
-	 $uppercase$ $lowercase$ $titlecase$>> 
+let bidirectional_mapping =
+  parser 
+  | c:''[A-Z]+'' -> bidirectional_mapping_of_string c
 
-let unicodeData = parser
-  ls:{l:line}** ->   <:structure<
-  open Unicode_type
-  let unicode_table = Hashtbl.create 10001;;
-  let fn a b c d e f g h i j k l m n o
-      = Hashtbl.add unicode_table a {
-	   code=a;
-	   name=b;
-	   category=c;
-	   combining_class=d;
-	   bidirectional_mapping=e;
-	   decomposition=f;
-	   decimal=g;
-	   digit=h;
-	   numeric=i;
-	   mirrored=j;
-	   oldName=k;
-	   comments=l;
-	   uppercase=m;
-	   lowercase=n;
-	   titlecase=o;
-	 };;
-  $(List.flatten ls)$>>
+let combining_class =
+  parser 
+  | c:''[0-9]+'' -> combining_class_of_int (int_of_string c)
 
- let blank = Decap.blank_regexp "[ \t]*"
+let mirrored =
+  parser
+  | 'Y' -> true
+  | 'N' -> false
 
+let decomposition =
+  let decomposition_tag =
+    parser
+    | '<' t:''[a-zA-Z]+'' '>' -> decomposition_atom_of_string t
+    | c:code -> Char c
+  in parser | decomposition_tag*
 
- let _ = 
-    entry_points:= 
-      (".txt", Implementation (unicodeData, blank)) :: !entry_points
-				     
-end
+let name =
+  parser
+  | n:''[()A-Za-z0-9-]+''
+  | n:"<control>"
+(*  | '(' n:"<control>" ')' *)
 
-(* Creating and running the extension *)
-module ParserExt = Pa_parser.Ext(Pa_ocaml_prelude.Initial)
-module PatolineDefault = Pa_ocaml.Make(Ext(ParserExt))
-module M = Pa_main.Start(PatolineDefault)
+let old_name =
+  parser | n:''[A-Za-z0-9 ()-]*'' -> n
+
+type kind = Single of int * char_description
+          | Range  of int * int * (int -> char_description)
+
+let single =
+  parser
+  | code:code ';'
+    name:name+ ';'
+    gen_cat:category ';'    
+    c_cl:combining_class ';'
+    bid_map:bidirectional_mapping ';'
+    dec:decomposition ';'
+    decimal:integer?? ';'
+    digit:integer?? ';'
+    numeric:fraction?? ';'
+    mirrored:mirrored ';'
+    oldName:old_name ';'
+    comments:''[^;\n]*'' ';'
+    uppercase:code?? ';'
+    lowercase:code?? ';' 
+    titlecase:code?? '\n' ->
+      let desc =
+        { code                  = code
+        ; name                  = name
+        ; general_category      = gen_cat
+        ; combining_class       = c_cl
+        ; bidirectional_mapping = bid_map
+        ; decomposition         = dec
+        ; decimal_digit_value   = decimal
+        ; digit_value           = digit
+        ; numeric_value         = numeric
+        ; mirrored              = mirrored
+        ; oldName               = oldName
+        ; comments              = comments
+        ; uppercase             = uppercase
+        ; lowercase             = lowercase
+        ; titlecase             = titlecase
+        }
+      in Single (code, desc)
+
+let range =
+  parser
+  | firstcode:code ';'
+    '<' gname:name+ ", First>" ';'
+    gen_cat:category ';'    
+    c_cl:combining_class ';'
+    bid_map:bidirectional_mapping ';'
+    dec:decomposition ';'
+    decimal:integer?? ';'
+    digit:integer?? ';'
+    numeric:fraction?? ';'
+    mirrored:mirrored ';'
+    oldName:old_name ';'
+    comments:''[^;\n]*'' ';'
+    uppercase:code?? ';'
+    lowercase:code?? ';' 
+    titlecase:code?? '\n'
+    lastcode:code ';'
+    '<' _:name+ ", Last>" ';'
+    _:category ';'    
+    _:combining_class ';'
+    _:bidirectional_mapping ';'
+    _:decomposition ';'
+    _:integer?? ';'
+    _:integer?? ';'
+    _:fraction?? ';'
+    _:mirrored ';'
+    _:old_name ';'
+    _:''[^;\n]*'' ';'
+    _:code?? ';'
+    _:code?? ';' 
+    _:code?? '\n' ->
+      let build_desc c =
+        if c < firstcode || c > lastcode then assert false;
+        { code                  = c
+        ; name                  = gname
+        ; general_category      = gen_cat
+        ; combining_class       = c_cl
+        ; bidirectional_mapping = bid_map
+        ; decomposition         = dec
+        ; decimal_digit_value   = decimal
+        ; digit_value           = digit
+        ; numeric_value         = numeric
+        ; mirrored              = mirrored
+        ; oldName               = oldName
+        ; comments              = comments
+        ; uppercase             = uppercase
+        ; lowercase             = lowercase
+        ; titlecase             = titlecase
+        }
+      in Range (firstcode, lastcode, build_desc)
+
+let file_contents =
+  parser
+  | l:{single | range }* EOF
+
+let blank = Decap.blank_regexp "[ \t]*"
+let _ =
+  let parse = Decap.parse_channel ~filename:"STDIN" file_contents blank in
+  let data = Decap.handle_exception parse stdin in
+  (* TODO do something with the data... *)
+  Printf.printf "Added %i...\n%!" (List.length data)
