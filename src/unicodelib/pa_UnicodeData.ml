@@ -1,5 +1,5 @@
 open Pa_ocaml_prelude
-open Unicode_type
+open UCharInfo
 
 #define LOCATE locate
 
@@ -229,8 +229,23 @@ let file_contents =
   | l:{single | range }* EOF
 
 let blank = Decap.blank_regexp "[ \t]*"
+let parse = Decap.parse_channel ~filename:"STDIN" file_contents blank
+
 let _ =
-  let parse = Decap.parse_channel ~filename:"STDIN" file_contents blank in
   let data = Decap.handle_exception parse stdin in
-  (* TODO do something with the data... *)
-  Printf.printf "Added %i...\n%!" (List.length data)
+  Printf.printf "Number of entries: %i\n%!" (List.length data);
+  PermanentMap.new_map data_file; (* Fails if file exists *)
+  let m = PermanentMap.open_map data_file in
+  let insert_data = function
+    | Single (code, desc)   ->
+        PermanentMap.add m code desc;
+        Printf.eprintf "Added code %X\n%!" code
+    | Range  (fst, lst, bf) ->
+        Printf.eprintf "Entering range %X - %X:\n%!" fst lst;
+        for i = fst to lst do
+          PermanentMap.add m i (bf i);
+          Printf.eprintf "  Added code %X\n%!" i
+        done
+  in
+  List.iter insert_data data;
+  PermanentMap.close_map m

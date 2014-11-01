@@ -95,3 +95,35 @@ type char_description =
   ; lowercase             : UChar.t option
   ; titlecase             : UChar.t option
   }
+
+let data_file = "UnicodeData.data"
+let get_char_descr_from_file : UChar.t -> char_description = fun u ->
+  let m = PermanentMap.open_map data_file in
+  let d = PermanentMap.get m u in
+  PermanentMap.close_map m; d
+
+let cache : (UChar.t, char_description) Hashtbl.t = Hashtbl.create 2048
+let get_char_descr : UChar.t -> char_description = fun u ->
+  try
+    Hashtbl.find cache u
+  with Not_found ->
+    begin
+      let d = get_char_descr_from_file u in
+      Hashtbl.add cache u d; d
+    end
+
+let general_category : UChar.t -> general_category = fun u ->
+  let d = get_char_descr u in
+  d.general_category
+
+let unicode_name : UChar.t -> string = fun u ->
+  let d = get_char_descr u in
+  String.concat " " d.name
+
+let to_lower : UChar.t -> UChar.t option = fun u ->
+  let d = get_char_descr u in
+  d.lowercase
+
+let to_upper : UChar.t -> UChar.t option = fun u ->
+  let d = get_char_descr u in
+  d.uppercase

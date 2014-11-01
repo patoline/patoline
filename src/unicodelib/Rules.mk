@@ -18,7 +18,8 @@ endif
 endif
 
 # Building
-UNICODELIB_MODS:= UChar UTF UTF8 UTF16 UTF32 UTFConvert unicode_type
+# TODO add UCharInfo.ml to the list bellow
+UNICODELIB_MODS:= UChar UTF UTF8 UTF16 UTF32 UTFConvert
 
 UNICODELIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UNICODELIB_MODS)))
 
@@ -62,25 +63,35 @@ $(ENCODING_CMX): %.cmx: %.ml
 	$(Q) ocamlopt $(UNICODELIB_INCLUDES) -c $<
 ###
 
-$(d)/unicode_parse.ml.depends: $(d)/unicode_parse.ml $(PA_OCAML)
-	$(ECHO) "[DEPS]   ... -> $@"
-	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) $(UNICODELIB_INCLUDES) $< > $@
-
-$(d)/unicode_parse.cmo: $(d)/unicode_parse.ml $(PA_OCAML)
-	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q)$(OCAMLC) -package decap -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
-
-$(d)/unicode_parse.cmx: $(d)/unicode_parse.ml $(PA_OCAML)
-	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -package decap -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
-
-$(d)/unicode_parse: $(d)/UChar.cmx $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $(d)/unicode_type.cmx $(d)/unicode_parse.cmx 
-	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLOPT) -linkpkg -package decap $(COMPILER_INC) $(COMPILER_LIBO) $(PA_OCAML_DIR)/decap.cmxa -o $@ $^
-
-src/Patoline/UnicodeData.cmx: src/Patoline/UnicodeData.txt $(d)/unicode_parse $(d)/UChar.cmx $(d)/unicode_type.cmx
-	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -package decap,str -pp $(UNICODE_DIR)/unicode_parse -impl $< $(UNICODELIB_INCLUDES) -c
+### Parsing and data generation for UnicodeData.TXT
+# TODO fix this part:
+#  - compile PermanentMap.ml (required for UCharInfo.ml) with -package sqlite3
+#  - compile UCharInfo.ml which should be part of the library (add to list)
+#  - compile and link pa_UnicodeData.ml (previously unicode_parse.ml) which is
+#    used to create the character database. To be run in the current directory
+#    taking UnicodeData.TXT in stdin:
+#      ./pa_UnicodeData < data/UnicodeData.TXT
+#
+#$(d)/unicode_parse.ml.depends: $(d)/unicode_parse.ml $(PA_OCAML)
+#	$(ECHO) "[DEPS]   ... -> $@"
+#	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) $(UNICODELIB_INCLUDES) $< > $@
+#
+#$(d)/unicode_parse.cmo: $(d)/unicode_parse.ml $(PA_OCAML)
+#	$(ECHO) "[OCAMLC] ... -> $@"
+#	$(Q)$(OCAMLC) -package decap -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
+#
+#$(d)/unicode_parse.cmx: $(d)/unicode_parse.ml $(PA_OCAML)
+#	$(ECHO) "[OPT]    ... -> $@"
+#	$(Q)$(OCAMLOPT_NOINTF) -package decap -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
+#
+#$(d)/unicode_parse: $(d)/UChar.cmx $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $(d)/unicode_type.cmx $(d)/Permanent.cmx $(d)/unicode_parse.cmx 
+#	$(ECHO) "[LINK]   ... -> $@"
+#	$(Q)$(OCAMLOPT) -linkpkg -package sqlite3,decap $(COMPILER_INC) $(COMPILER_LIBO) $(PA_OCAML_DIR)/decap.cmxa -o $@ $^
+#
+#src/Patoline/UnicodeData.cmx: src/Patoline/UnicodeData.txt $(d)/unicode_parse $(d)/UChar.cmx $(d)/unicode_type.cmx
+#	$(ECHO) "[OPT]    ... -> $@"
+#	$(Q)$(OCAMLOPT_NOINTF) -package decap,str -pp $(UNICODE_DIR)/unicode_parse -impl $< $(UNICODELIB_INCLUDES) -c
+###
 
 $(d)/unicodelib.cma: $(UNICODELIB_CMO) $(ENCODING_CMO)
 	$(ECHO) "[LINK]   ... -> $@"
