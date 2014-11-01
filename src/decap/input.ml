@@ -79,7 +79,11 @@ let empty_buffer fn lnum bol =
          ; next     = res }
   in res
 
-let is_empty (lazy b) = b.is_empty
+let rec is_empty (lazy b) pos =
+  if pos < b.length then false
+  else if pos = 0 then
+    b.is_empty
+  else is_empty b.next (pos - b.length)
 
 let fname (lazy b) = b.name
 

@@ -302,7 +302,7 @@ let eof : 'a -> 'a grammar
       accept_empty = lazy false;
       parse =
         fun grouped str pos next g ->
-          if get str pos = '\255' then g str pos str pos str pos a else parse_error grouped (~~ "EOF") str pos
+          if is_empty str pos then g str pos str pos str pos a else parse_error grouped (~~ "EOF") str pos
     }
 
 let empty : 'a -> 'a grammar = fun a ->
