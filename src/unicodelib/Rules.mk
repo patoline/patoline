@@ -76,6 +76,11 @@ $(d)/pa_UnicodeData.cmo: $(d)/pa_UnicodeData.ml $(PA_OCAML)
 	$(Q) ocamlfind ocamlc -package decap -pp $(PA_OCAML) -I +compiler-libs \
 		$(UNICODELIB_INCLUDES) -c $<
 
+$(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml $(PA_OCAML)
+	$(ECHO) "[OCAMLC] ... -> $@"
+	$(Q) ocamlfind ocamlopt -package decap -pp $(PA_OCAML) -I +compiler-libs \
+		$(UNICODELIB_INCLUDES) -c $<
+
 $(d)/pa_UnicodeData: $(PA_OCAML_DIR)/decap.cma $(d)/UChar.cmo $(d)/PermanentMap.cmo $(d)/UCharInfo.cmo $(d)/pa_UnicodeData.cmo
 	$(ECHO) "[OCAMLC] ... -> $@"
 	$(Q) ocamlfind ocamlc -linkpkg -package sqlite3,decap -I +compiler-libs \
