@@ -71,6 +71,22 @@ let add : t -> int -> 'a -> unit = fun m k v ->
   if res != Sqlite3.Rc.DONE then assert false
 
 (**
+[add_many m l] is equivalent to [List.iter (fun (k, v) -> add m k v) l] but it
+is a lot faster. On should prefer this function over add when adding more than
+a few entries. One should consider using the [compact] function after adding
+many entries as it might significantly reduce the size of the map file.
+*)
+let add_many : t -> (int * 'a) list -> unit = fun m l ->
+  (* begin a transaction *)
+  let r = Sqlite3.exec m.db "BEGIN" in
+  if r <> Sqlite3.Rc.OK then assert false;
+  (* perform all adds *)
+  List.iter (fun (k, v) -> add m k v) l;
+  (* end the transaction *)
+  let r = Sqlite3.exec m.db "COMMIT" in
+  if r <> Sqlite3.Rc.OK then assert false
+
+(**
 [del m k] deletes the entry with the key [k] from the map [m] if it exists.
 *)
 let del : t -> int -> unit = fun m k ->
@@ -104,3 +120,10 @@ let get : t -> int -> 'a = fun m k ->
   match e with
   | Sqlite3.Data.BLOB b -> Marshal.from_string b 0
   | _                   -> assert false
+
+(**
+[compact m] reduces the size of the given map if possible.
+*)
+let compact : t -> unit = fun m ->
+  let r = Sqlite3.exec m.db "VACUUM" in
+  if r <> Sqlite3.Rc.OK then assert false

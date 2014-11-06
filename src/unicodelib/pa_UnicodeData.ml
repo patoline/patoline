@@ -231,21 +231,28 @@ let file_contents =
 let blank = Decap.blank_regexp "[ \t]*"
 let parse = Decap.parse_channel ~filename:"STDIN" file_contents blank
 
+let flatten_data ld =
+  let rec flatten_data ld acc =
+    match ld with
+    | []                   -> acc
+    | Single (k,v) :: ls   -> flatten_data ls ((k,v) :: acc)
+    | Range (f,l,bf) :: ls ->
+        if f > l then flatten_data ls acc
+        else flatten_data (Range (f+1, l, bf) :: ls) ((f, bf f) :: acc)
+  in flatten_data ld []
+
 let _ =
+  (* Parsing and preparing the data *)
   let data = Decap.handle_exception parse stdin in
-  Printf.printf "Number of entries: %i\n%!" (List.length data);
+  Printf.printf "%i entries parsed\n%!" (List.length data);
+  let data = flatten_data data in
+  Printf.printf "%i lines to add\n%!" (List.length data);
+
+  (* Adding the data to the permanent map *)
   PermanentMap.new_map data_file; (* Fails if file exists *)
   let m = PermanentMap.open_map data_file in
-  let insert_data = function
-    | Single (code, desc)   ->
-        PermanentMap.add m code desc;
-        Printf.eprintf "Added code %X\n%!" code
-    | Range  (fst, lst, bf) ->
-        Printf.eprintf "Entering range %X - %X:\n%!" fst lst;
-        for i = fst to lst do
-          PermanentMap.add m i (bf i);
-          Printf.eprintf "  Added code %X\n%!" i
-        done
-  in
-  List.iter insert_data data;
+  Printf.printf "Adding the data...\n%!";
+  PermanentMap.add_many m data;
+  Printf.printf "Compacting...\n%!";
+  PermanentMap.compact m;
   PermanentMap.close_map m
