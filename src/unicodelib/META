@@ -1,6 +1,6 @@
 name="unicodelib"
 version="1.0"
 description="A minimal unicode library (part of Patoline)"
-requires=""
+requires="sqlite3"
 archive(native)="unicodelib.cmxa"
 archive(byte)="unicodelib.cma"

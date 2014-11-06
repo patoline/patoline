@@ -229,7 +229,7 @@ let file_contents =
   | l:{single | range }* EOF
 
 let blank = Decap.blank_regexp "[ \t]*"
-let parse = Decap.parse_channel ~filename:"STDIN" file_contents blank
+let parse = Decap.parse_file file_contents blank
 
 let flatten_data ld =
   let rec flatten_data ld acc =
@@ -242,15 +242,25 @@ let flatten_data ld =
   in flatten_data ld []
 
 let _ =
+  (* Command line args *)
+  if Array.length Sys.argv != 3 then
+    begin
+      let pn = Sys.argv.(0) in
+      Printf.eprintf "Usage: %s <path_to_UnicodeData.txt> <output_file>" pn;
+      exit 1
+    end;
+  let infile = Sys.argv.(1) in
+  let outfile = Sys.argv.(2) in
+
   (* Parsing and preparing the data *)
-  let data = Decap.handle_exception parse stdin in
+  let data = Decap.handle_exception parse infile in
   Printf.printf "%i entries parsed\n%!" (List.length data);
   let data = flatten_data data in
   Printf.printf "%i lines to add\n%!" (List.length data);
 
   (* Adding the data to the permanent map *)
-  PermanentMap.new_map data_file; (* Fails if file exists *)
-  let m = PermanentMap.open_map data_file in
+  PermanentMap.new_map outfile; (* Fails if file exists *)
+  let m = PermanentMap.open_map outfile in
   Printf.printf "Adding the data...\n%!";
   PermanentMap.add_many m data;
   Printf.printf "Compacting...\n%!";

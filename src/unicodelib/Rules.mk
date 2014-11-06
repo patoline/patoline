@@ -9,7 +9,7 @@ $(d)/%.depends: INCLUDES:=$(UNICODELIB_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(UNICODELIB_INCLUDES)
 
 # Compute ML files dependencies
-SRC_$(d) := $(filter-out $(d)/pa_convert.ml, $(wildcard $(d)/*.ml)) $(wildcard $(d)/*.mli)
+SRC_$(d) := $(filter-out $(d)/pa_convert.ml, $(filter-out $(d)/pa_UnicodeData.ml, $(wildcard $(d)/*.ml))) $(wildcard $(d)/*.mli)
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
@@ -18,8 +18,7 @@ endif
 endif
 
 # Building
-# TODO add UCharInfo.ml to the list bellow
-UNICODELIB_MODS:= UChar UTF UTF8 UTF16 UTF32 UTFConvert
+UNICODELIB_MODS:= UChar UTF UTF8 UTF16 UTF32 UTFConvert PermanentMap UCharInfo
 
 UNICODELIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UNICODELIB_MODS)))
 
@@ -63,34 +62,31 @@ $(ENCODING_CMX): %.cmx: %.ml
 	$(Q) ocamlopt $(UNICODELIB_INCLUDES) -c $<
 ###
 
-### Parsing and data generation for UnicodeData.TXT
-# TODO fix this part:
-#  - compile PermanentMap.ml (required for UCharInfo.ml) with -package sqlite3
-#  - compile UCharInfo.ml which should be part of the library (add to list)
-#  - compile and link pa_UnicodeData.ml (previously unicode_parse.ml) which is
-#    used to create the character database. To be run in the current directory
-#    taking UnicodeData.TXT in stdin:
-#      ./pa_UnicodeData < data/UnicodeData.TXT
-#
-#$(d)/unicode_parse.ml.depends: $(d)/unicode_parse.ml $(PA_OCAML)
-#	$(ECHO) "[DEPS]   ... -> $@"
-#	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) $(UNICODELIB_INCLUDES) $< > $@
-#
-#$(d)/unicode_parse.cmo: $(d)/unicode_parse.ml $(PA_OCAML)
-#	$(ECHO) "[OCAMLC] ... -> $@"
-#	$(Q)$(OCAMLC) -package decap -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
-#
-#$(d)/unicode_parse.cmx: $(d)/unicode_parse.ml $(PA_OCAML)
-#	$(ECHO) "[OPT]    ... -> $@"
-#	$(Q)$(OCAMLOPT_NOINTF) -package decap -pp $(PA_OCAML) $(COMPILER_INC) $(UNICODELIB_INCLUDES) -c $<
-#
-#$(d)/unicode_parse: $(d)/UChar.cmx $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $(d)/unicode_type.cmx $(d)/Permanent.cmx $(d)/unicode_parse.cmx 
-#	$(ECHO) "[LINK]   ... -> $@"
-#	$(Q)$(OCAMLOPT) -linkpkg -package sqlite3,decap $(COMPILER_INC) $(COMPILER_LIBO) $(PA_OCAML_DIR)/decap.cmxa -o $@ $^
-#
-#src/Patoline/UnicodeData.cmx: src/Patoline/UnicodeData.txt $(d)/unicode_parse $(d)/UChar.cmx $(d)/unicode_type.cmx
-#	$(ECHO) "[OPT]    ... -> $@"
-#	$(Q)$(OCAMLOPT_NOINTF) -package decap,str -pp $(UNICODE_DIR)/unicode_parse -impl $< $(UNICODELIB_INCLUDES) -c
+### Parsing and data generation for UnicodeData.txt
+$(d)/PermanentMap.cmo: $(d)/PermanentMap.ml
+	$(ECHO) "[OCAMLC] ... -> $@"
+	$(Q) ocamlfind ocamlc -package sqlite3 $(UNICODELIB_INCLUDES) -c $<
+
+$(d)/PermanentMap.cmx: $(d)/PermanentMap.ml
+	$(ECHO) "[OPT]    ... -> $@"
+	$(Q) ocamlfind ocamlopt -package sqlite3 $(UNICODELIB_INCLUDES) -c $<
+
+$(d)/pa_UnicodeData.cmo: $(d)/pa_UnicodeData.ml $(PA_OCAML)
+	$(ECHO) "[OCAMLC] ... -> $@"
+	$(Q) ocamlfind ocamlc -package decap -pp $(PA_OCAML) -I +compiler-libs \
+		$(UNICODELIB_INCLUDES) -c $<
+
+$(d)/pa_UnicodeData: $(PA_OCAML_DIR)/decap.cma $(d)/UChar.cmo $(d)/PermanentMap.cmo $(d)/UCharInfo.cmo $(d)/pa_UnicodeData.cmo
+	$(ECHO) "[OCAMLC] ... -> $@"
+	$(Q) ocamlfind ocamlc -linkpkg -package sqlite3,decap -I +compiler-libs \
+		$(UNICODELIB_INCLUDES) -o $@ ocamlcommon.cma $^
+
+UNICODE_DATA_TXT := $(d)/data/UnicodeData.txt
+UNICODE_DATABASE := $(d)/UnicodeData.data
+
+$(d)/UnicodeData.data: $(d)/pa_UnicodeData $(UNICODE_DATA_TXT)
+	$(ECHO) "[PA_Uni] ... -> $@"
+	$(Q) $< $(UNICODE_DATA_TXT) $(UNICODE_DATABASE)
 ###
 
 $(d)/unicodelib.cma: $(UNICODELIB_CMO) $(ENCODING_CMO)
@@ -106,17 +102,17 @@ $(d)/unicodelib.cmxs: $(UNICODELIB_CMX) $(ENCODING_CMX)
 	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
 # Building everything
-all: $(d)/unicodelib.cmxa $(d)/unicodelib.cma $(d)/unicodelib.cmxs
+all: $(d)/unicodelib.cmxa $(d)/unicodelib.cma $(d)/unicodelib.cmxs $(UNICODE_DATABASE)
 
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs $(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI) $(ENCODING_O)
 
-DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/pa_convert $(ENCODING_ML)
+DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/pa_convert $(ENCODING_ML) $(d)/UnicodeData.data
 
 # Installing
 install: install-unicodelib
 .PHONY: install-unicodelib
-install-unicodelib: $(d)/unicodelib.cma $(d)/unicodelib.cmxa $(d)/unicodelib.cmxs $(d)/unicodelib.a $(UNICODELIB_CMI) $(UNICODELIB_CMX) $(UNICODELIB_CMO) $(d)/META $(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI)
+install-unicodelib: $(d)/unicodelib.cma $(d)/unicodelib.cmxa $(d)/unicodelib.cmxs $(d)/unicodelib.a $(UNICODELIB_CMI) $(UNICODELIB_CMX) $(UNICODELIB_CMO) $(d)/META $(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI) $(UNICODE_DATABASE)
 	install -m 755 -d $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
 
