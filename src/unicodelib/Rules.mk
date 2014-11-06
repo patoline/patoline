@@ -107,7 +107,7 @@ all: $(d)/unicodelib.cmxa $(d)/unicodelib.cma $(d)/unicodelib.cmxs $(UNICODE_DAT
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs $(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI) $(ENCODING_O)
 
-DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/pa_convert $(ENCODING_ML) $(d)/UnicodeData.data
+DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/pa_convert $(ENCODING_ML) $(d)/UnicodeData.data $(d)/pa_UnicodeData
 
 # Installing
 install: install-unicodelib
