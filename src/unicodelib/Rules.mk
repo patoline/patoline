@@ -71,20 +71,15 @@ $(d)/PermanentMap.cmx: $(d)/PermanentMap.ml
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q) ocamlfind ocamlopt -package sqlite3 $(UNICODELIB_INCLUDES) -c $<
 
-$(d)/pa_UnicodeData.cmo: $(d)/pa_UnicodeData.ml $(PA_OCAML)
-	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q) ocamlfind ocamlc -package decap -pp $(PA_OCAML) -I +compiler-libs \
-		$(UNICODELIB_INCLUDES) -c $<
-
 $(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml $(PA_OCAML)
 	$(ECHO) "[OCAMLC] ... -> $@"
 	$(Q) ocamlfind ocamlopt -package decap -pp $(PA_OCAML) -I +compiler-libs \
 		$(UNICODELIB_INCLUDES) -c $<
 
-$(d)/pa_UnicodeData: $(PA_OCAML_DIR)/decap.cma $(d)/UChar.cmo $(d)/PermanentMap.cmo $(d)/UCharInfo.cmo $(d)/pa_UnicodeData.cmo
-	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q) ocamlfind ocamlc -linkpkg -package sqlite3,decap -I +compiler-libs \
-		$(UNICODELIB_INCLUDES) -o $@ ocamlcommon.cma $^
+$(d)/pa_UnicodeData: $(PA_OCAML_DIR)/decap.cmxa $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
+	$(ECHO) "[OPT]    ... -> $@"
+	$(Q) ocamlfind ocamlopt -linkpkg -package sqlite3,decap -I +compiler-libs \
+		$(UNICODELIB_INCLUDES) -o $@ ocamlcommon.cmxa $^
 
 UNICODE_DATA_TXT := $(d)/data/UnicodeData.txt
 UNICODE_DATABASE := $(d)/UnicodeData.data
