@@ -18,7 +18,7 @@ endif
 endif
 
 # Building
-UNICODELIB_MODS:= UChar UTF UTF8 UTF16 UTF32 UTFConvert PermanentMap UCharInfo
+UNICODELIB_MODS:= UChar UTF UTF8 UTF16 UTF32 UTFConvert PermanentMap UnicodeLibConfig UCharInfo
 
 UNICODELIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UNICODELIB_MODS)))
 
@@ -30,6 +30,12 @@ UNICODELIB_CMI:=$(UNICODELIB_ML:.ml=.cmi)
 # since they both overwrite the .cmi file, which can get corrupted.
 # That's why we arbitrarily force the following dependency.
 $(UNICODELIB_CMX): %.cmx: %.cmo
+
+### Generation of the configuration file
+$(d)/UnicodeLibConfig.ml:
+	$(ECHO) "[CONF]   ... -> $@"
+	$(Q) echo 'let datafile = "$(INSTALL_UNICODELIB_DIR)/UnicodeData.data"' > $@
+###
 
 ### To be used at build time to generate 8bit-enconding to UTF-X converters
 ENCODING_DATA := $(wildcard $(d)/encoding_data/*.TXT)
@@ -76,7 +82,7 @@ $(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml $(PA_OCAML)
 	$(Q) ocamlfind ocamlopt -package decap -pp $(PA_OCAML) -I +compiler-libs \
 		$(UNICODELIB_INCLUDES) -c $<
 
-$(d)/pa_UnicodeData: $(PA_OCAML_DIR)/decap.cmxa $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
+$(d)/pa_UnicodeData: $(PA_OCAML_DIR)/decap.cmxa $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q) ocamlfind ocamlopt -linkpkg -package sqlite3,decap -I +compiler-libs \
 		$(UNICODELIB_INCLUDES) -o $@ ocamlcommon.cmxa $^
@@ -86,6 +92,7 @@ UNICODE_DATABASE := $(d)/UnicodeData.data
 
 $(d)/UnicodeData.data: $(d)/pa_UnicodeData $(UNICODE_DATA_TXT)
 	$(ECHO) "[PA_Uni] ... -> $@"
+	$(Q) rm -f $(UNICODE_DATABASE)
 	$(Q) $< $(UNICODE_DATA_TXT) $(UNICODE_DATABASE)
 ###
 

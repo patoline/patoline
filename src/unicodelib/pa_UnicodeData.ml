@@ -254,15 +254,13 @@ let _ =
 
   (* Parsing and preparing the data *)
   let data = Decap.handle_exception parse infile in
-  Printf.printf "%i entries parsed\n%!" (List.length data);
   let data = flatten_data data in
-  Printf.printf "%i lines to add\n%!" (List.length data);
 
   (* Adding the data to the permanent map *)
   PermanentMap.new_map outfile; (* Fails if file exists *)
   let m = PermanentMap.open_map outfile in
-  Printf.printf "Adding the data...\n%!";
   PermanentMap.add_many m data;
-  Printf.printf "Compacting...\n%!";
+
+  (* Compacting *)
   PermanentMap.compact m;
   PermanentMap.close_map m
