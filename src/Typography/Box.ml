@@ -22,7 +22,6 @@ open Util
 open UsualMake
 open FTypes
 open Bezier
-open CamomileLibrary
 
 
 (* Box definition (yes, metal boxes) *)

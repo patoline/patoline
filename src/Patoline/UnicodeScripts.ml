@@ -110,7 +110,7 @@ let _ = List.iter (fun (c,h,h') -> Printf.printf "%s %x %x\n" c h h') superscrip
 *)
 
 let int_to_bytes n =
-  CamomileLibrary.UTF8.init 1 (fun _ ->  CamomileLibrary.UChar.chr n)
+  UTF8.init 1 (fun _ -> UChar.chr n)
 
 let esc_int_to_bytes n =
   String.escaped (int_to_bytes n)

@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-LIBFONTS_INCLUDES := -I $(d) $(PACK_FONTS)
+LIBFONTS_INCLUDES := -I $(d) $(PACK_FONTS) -I $(UNICODE_DIR)/encoding_data
 LIBFONTS_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_FONTS)
 
 # Compute ML files dependencies

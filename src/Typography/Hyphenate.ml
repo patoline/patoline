@@ -18,8 +18,6 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open CamomileLibrary
-
 module C=Map.Make (struct type t=UChar.t let compare=compare end)
 
 type ptree=
@@ -99,27 +97,27 @@ let hyphenate tree a0=
   if String.length a0<=4 then [a0] else
     let rec find_punct i=
       if i>=String.length a0 then i else
-        match CamomileLibraryDefault.Camomile.UCharInfo.general_category (UTF8.look a0 i) with
-            `Cc
-          | `Cf
-          | `Cn
-          | `Co
-          | `Cs
+        match UCharInfo.general_category (UTF8.look a0 i) with
+            UCharInfo.Cc
+          | UCharInfo.Cf
+          | UCharInfo.Cn
+          | UCharInfo.Co
+          | UCharInfo.Cs
               (*
-          | `Mc
-          | `Me
-          | `Mn
+          | UCharInfo.Mc
+          | UCharInfo.Me
+          | UCharInfo.Mn
               *)
-          | `Pc
-          | `Pd
-          | `Pe
-          | `Pf
-          | `Pi
-          | `Po
-          | `Ps
-          | `Zl
-          | `Zp
-          | `Zs -> i
+          | UCharInfo.Pc
+          | UCharInfo.Pd
+          | UCharInfo.Pe
+          | UCharInfo.Pf
+          | UCharInfo.Pi
+          | UCharInfo.Po
+          | UCharInfo.Ps
+          | UCharInfo.Zl
+          | UCharInfo.Zp
+          | UCharInfo.Zs -> i
           | _->find_punct (UTF8.next a0 i)
     in
     let first_punct=find_punct 0 in

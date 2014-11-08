@@ -27,7 +27,6 @@ open UsualMake
 open Typography.Box
 open Fonts
 open FTypes
-open CamomileLibrary
 open Typography.Document
 open DefaultFormat
 module MathFonts=DefaultFormat.MathFonts

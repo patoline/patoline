@@ -39,11 +39,11 @@ $(d)/UnicodeLibConfig.ml:
 
 ### To be used at build time to generate 8bit-enconding to UTF-X converters
 ENCODING_DATA := $(wildcard $(d)/encoding_data/*.TXT)
-ENCODING_ML   := $(ENCODING_DATA:.TXT=.ml)
-ENCODING_CMO  := $(ENCODING_DATA:.TXT=.cmo)
-ENCODING_CMX  := $(ENCODING_DATA:.TXT=.cmx)
-ENCODING_CMI  := $(ENCODING_DATA:.TXT=.cmi)
-ENCODING_O    := $(ENCODING_DATA:.TXT=.o)
+ENCODING_ML   := $(addprefix $(d)/, $(notdir $(ENCODING_DATA:.TXT=.ml)))
+ENCODING_CMO  := $(ENCODING_ML:.ml=.cmo)
+ENCODING_CMX  := $(ENCODING_ML:.ml=.cmx)
+ENCODING_CMI  := $(ENCODING_ML:.ml=.cmi)
+ENCODING_O    := $(ENCODING_ML:.ml=.o)
 
 $(ENCODING_CMX): %.cmx: %.cmo
 
@@ -55,9 +55,9 @@ $(PA_CONV): $(d)/pa_convert.ml $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_
 		-I $(PA_OCAML_DIR) -I +compiler-libs unix.cmxa str.cmxa ocamlcommon.cmxa \
 		$(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $<
 
-$(ENCODING_ML): %.ml: %.TXT $(PA_CONV)
+$(ENCODING_ML): %.ml: $(PA_CONV)
 	$(ECHO) "[PA_CNV] ... -> $@"
-	$(Q) $(PA_CONV) --ascii $< > $@
+	$(Q) $(PA_CONV) --ascii $(@D)/encoding_data/$(basename $(@F)).TXT > $@
 
 $(ENCODING_CMO): %.cmo: %.ml
 	$(ECHO) "[OCAMLC] ... -> $@"

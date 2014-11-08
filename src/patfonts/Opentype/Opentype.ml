@@ -21,7 +21,6 @@ open FTypes
 open UsualMake
 open Util
 open CFF
-open CamomileLibraryDefault.Camomile
 
 let offsetTable=12
 let dirSize=16
@@ -127,19 +126,11 @@ let getNames font off=
             try
               match platformID,encodingID with
                   1,0->(
-                    let utf8=CharEncoding.recode_string
-                      (CharEncoding.of_name "MACINTOSH")
-                      (CharEncoding.of_name "UTF-8")
-                      str
-                    in
+                    let utf8 = ROMAN.to_utf8 str in
                     ((languageID,nameID,utf8)::m)
                   )
                 | 3,1->(                (* UTF-16 *)
-                  let utf8=CharEncoding.recode_string
-                    (CharEncoding.of_name "UTF-16")
-                    (CharEncoding.of_name "UTF-8")
-                    str
-                  in
+                  let utf8 = UTFConvert.utf16_to_utf8 str in
                   ((languageID,nameID,utf8)::m)
                 )
                 | a,b->(
@@ -1606,19 +1597,11 @@ let fontInfo font=
               try
                 match platformID,encodingID with
                     1,_->(
-                      let utf8=CharEncoding.recode_string
-                        (CharEncoding.of_name "MACINTOSH")
-                        (CharEncoding.of_name "UTF-8")
-                        str
-                      in
+                      let utf8 = ROMAN.to_utf8 str in
                       ((languageID,nameID,utf8)::m)
                     )
                   | 3,1->(                (* UTF-16 *)
-                    let utf8=CharEncoding.recode_string
-                      (CharEncoding.of_name "UTF-16")
-                      (CharEncoding.of_name "UTF-8")
-                      str
-                    in
+                    let utf8 = UTFConvert.utf16_to_utf8 str in
                     ((languageID,nameID,utf8)::m)
                   )
                   | a,b->(
@@ -2181,23 +2164,18 @@ let make_tables font fontInfo cmap glyphs_idx=
       let names=List.fold_left (fun l (language,name,str)->
         let utf16=
           try
-            let utf16=CharEncoding.recode_string
-              (CharEncoding.of_name "UTF-8")
-              (CharEncoding.of_name "UTF-16")
-              str
-            in
+            let utf16 = UTFConvert.utf8_to_utf16 str in
             (3,1,language,name,String.sub utf16 2 (String.length utf16-2))::l
           with
               _->(l)
         in
-        let mac=
+        let mac= utf16 (* FIXME *)
+          (*
           try
-            (1,0,language,name,CharEncoding.recode_string
-              (CharEncoding.of_name "UTF-8")
-              (CharEncoding.of_name "MACINTOSH")
-              str)::utf16
+            (1,0,language,name,ROMAN.from_utf8 str)::utf16
           with
               _->(utf16)
+          *)
         in
         mac
       ) [] fontInfo.names

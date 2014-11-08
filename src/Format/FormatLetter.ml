@@ -24,7 +24,6 @@ open Typography.Document
 open Util
 open UsualMake
 open Typography.Box
-open CamomileLibrary
 open Printf
 
 let id x=x

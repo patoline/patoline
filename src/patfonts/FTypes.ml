@@ -1,5 +1,3 @@
-open CamomileLibrary
-
 type glyph_id =
   { glyph_utf8  : string;
     glyph_index : int

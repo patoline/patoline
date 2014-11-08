@@ -17,7 +17,6 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open CamomileLibrary
 open ConfigUtil
 open Util
 open OutputCommon
@@ -296,11 +295,17 @@ let rec draw draw_env env_stack mlist =
                             let utf8=(Fonts.glyphNumber g.glyph).glyph_utf8 in
                             utf8.[0]<>'\\' &&
                               (let lastChar=UTF8.look utf8 (UTF8.last utf8) in
-                               match CamomileLibraryDefault.Camomile.UCharInfo.general_category lastChar with
-                                   (* Letters *)
-                                   `Lu | `Ll | `Lt | `Lm | `Lo
+                               match UCharInfo.general_category lastChar with
+                                 (* Letters *)
+                                   UCharInfo.Lu
+                                 | UCharInfo.Ll
+                                 | UCharInfo.Lt
+                                 | UCharInfo.Lm
+                                 | UCharInfo.Lo
                                  (* Numbers *)
-                                 | `Nd | `Nl | `No -> true
+                                 | UCharInfo.Nd
+                                 | UCharInfo.Nl
+                                 | UCharInfo.No -> true
                                  | _->false
                               )
                           )

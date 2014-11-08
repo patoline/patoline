@@ -19,7 +19,6 @@
 *)
 open Typography
 open Fonts
-open CamomileLibrary
 open Printf
 open Util
 open UsualMake
@@ -92,8 +91,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         let code= (UTF8.look utf i) in
         (if is_space code then
             Rbuffer.add_string pdf_string_buf "20"
-         else if UChar.uint_code code<=0xff then
-           Rbuffer.add_string pdf_string_buf (sprintf "%02x" (UChar.uint_code code)));
+         else if UChar.code code<=0xff then
+           Rbuffer.add_string pdf_string_buf (sprintf "%02x" (UChar.code code)));
         fill (UTF8.next utf i)
       with
           _->()
@@ -915,8 +914,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                 let idx0,m0=IntMap.min_binding a0 in
                 let num0=glyphutf8 m0 in
                 let u,v=IntMap.partition (fun idx x->let num=glyphutf8 x in
-                                                     idx-(UChar.uint_code (UTF8.get num 0)) =
-                    idx0-(UChar.uint_code (UTF8.get num0 0))
+                                                     idx-(UChar.code (UTF8.get num 0)) =
+                    idx0-(UChar.code (UTF8.get num0 0))
                 ) a0
                 in
                 let idx1,m1=IntMap.max_binding u in
@@ -961,7 +960,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         make_cmap x.revFontGlyphs;
         let rec print_utf8 utf idx=
           try
-            Rbuffer.add_string buf (sprintf "%04x" (UChar.uint_code (UTF8.look utf idx)));
+            Rbuffer.add_string buf (sprintf "%04x" (UChar.code (UTF8.look utf idx)));
             print_utf8 utf (UTF8.next utf idx)
           with
               _->()
@@ -983,7 +982,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         if !range<>[] || mult_nonempty<>[] then (
           Rbuffer.add_string buf (sprintf "%d beginbfrange\n" (List.length !range+List.length !multRange));
           List.iter (fun (a,b,c)->Rbuffer.add_string buf (sprintf "<%04x> <%04x> <%04x>\n"
-                                                            a b (UChar.uint_code c))) !range;
+                                                            a b (UChar.code c))) !range;
           List.iter (fun (a,b)->
             Rbuffer.add_string buf (sprintf "<%04x> <%04x> [" a (a+List.length b-1));
             List.iter (fun c->

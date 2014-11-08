@@ -16,7 +16,7 @@ endif
 
 $(d)/emacs/SubstKey: $(d)/emacs/SubstKey.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) -package str,camomile $< -linkpkg -o $@
+	$(Q)$(OCAMLOPT) -package str,unicodelib $< -linkpkg -o $@
 
 # $(d)/emacs/SubSuper.el is built by src/Patoline/Rules.mk
 $(d)/emacs/SubSuper2.el: $(d)/emacs/SubSuper.el $(SRC_DIR)/quail.el $(d)/emacs/SubstKey

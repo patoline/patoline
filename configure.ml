@@ -98,8 +98,8 @@ type local_packages = {
 let local_packages = [
   { package_name = "patutil";
     macro_suffix = "UTIL";
-    local_deps = ["rbuffer"];
-    extern_deps = ["camomile"];
+    local_deps = ["rbuffer"; "unicodelib"];
+    extern_deps = [];
     subdirs = [];
     has_meta = true;
   };
@@ -126,15 +126,15 @@ let local_packages = [
   };
   { package_name = "patfonts";
     macro_suffix = "FONTS";
-    local_deps = ["patutil"];
-    extern_deps = ["camomile"];
+    local_deps = ["patutil"; "unicodelib"];
+    extern_deps = [];
     subdirs = ["CFF";"Opentype";"unicodeRanges"];
     has_meta = true;
   };
   { package_name = "bibi";
     macro_suffix = "BIBI";
-    local_deps = ["Typography";"patutil"];
-    extern_deps = ["camomile";"sqlite3"];
+    local_deps = ["Typography"; "patutil"; "unicodelib"];
+    extern_deps = ["sqlite3"];
     subdirs = [];
     has_meta = true;
   };
@@ -147,8 +147,8 @@ let local_packages = [
   };
   { package_name = "Typography";
     macro_suffix = "TYPOGRAPHY";
-    local_deps = ["patutil";"patfonts";"imagelib"];
-    extern_deps = ["camomile";"zip";"mysql";"dynlink";"fontconfig"];
+    local_deps = ["patutil";"patfonts";"imagelib";"unicodelib"];
+    extern_deps = ["zip";"mysql";"dynlink";"fontconfig"];
     subdirs = ["Output";"DefaultFormat"];
     has_meta = true;
   };
@@ -311,12 +311,6 @@ let patoline_uses_packages =
   List.iter (fun p -> Hashtbl.add res p.pack_name p)
   [
     {
-      pack_name = "camomile";
-      known_aliases = [];
-      additional_check = package_min_version "0.8.3";
-      additional_check_string = "version >= 0.8.3";
-    };
-    {
       pack_name = "zip";
       known_aliases = ["camlzip"];
       additional_check = package_no_check;
@@ -446,7 +440,7 @@ let r_patoline_drivers = ref
     { name = "None"; needs = []; suggests = []; internals = [] };
     { name = "Pdf"; needs = []; suggests = [Package "zip"; Package "camlimages.all_formats"]; internals = [] };
     { name = "Bin"; needs = []; suggests = []; internals = [] };
-    { name = "Html"; needs = [ Package "camomile"]; suggests = []; internals = [] };
+    { name = "Html"; needs = [ Package "unicodelib"]; suggests = []; internals = [] };
     { name = "Patonet"; needs = [ Package "cryptokit"]; suggests = []; internals = [Driver svg_driver] };
     { name = "DriverCairo"; needs = [ Package "cairo"]; suggests = []; internals = []  };
     svg_driver; patoline_driver_gl;
@@ -542,11 +536,6 @@ let _=
     let _,st=Unix.waitpid [] i in
     (ocamlfind_has "dyp") && st = (Unix.WEXITED 0)
   in
-
-  if not (ocamlfind_has "camomile") then (
-    Printf.eprintf "Error: package camomile missing.\n";
-    exit 1
-  );
 
   let has_mysql = ocamlfind_has "mysql" in
   if not has_mysql then (
@@ -694,7 +683,7 @@ let _=
   let meta=open_out "src/Typography/META" in
     Printf.fprintf meta
       "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"patutil,patfonts,%s\"\n"
-      (String.concat "," (gen_pack_line [Package "str"; Package "camomile"; Package "mysql";
+      (String.concat "," (gen_pack_line [Package "str"; Package "unicodelib"; Package "mysql";
                                          Package "zip";
                                          Package "imagelib";Package "dynlink";
                                          Package "fontconfig"]));

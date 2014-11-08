@@ -67,7 +67,7 @@ $(d)/SubSuper.dyp: $(d)/UnicodeData.txt $(PATOLINE_UNICODE_SCRIPTS)
 
 $(d)/UnicodeScripts: $(d)/UnicodeScripts.ml
 	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) -o $@ -package bigarray -package camomile -linkpkg $<
+	$(Q)$(OCAMLC) -o $@ -package bigarray,unicodelib -linkpkg $<
 
 $(d)/tmp.dyp: $(d)/Parser.dyp $(d)/SubSuper.dyp
 	$(ECHO) "[CAT]    $^ -> $@"

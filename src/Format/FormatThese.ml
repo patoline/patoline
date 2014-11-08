@@ -24,7 +24,6 @@ open Typography.Document
 open Util
 open UsualMake
 open Typography.ConfigUtil
-open CamomileLibrary
 open Typography.Box
 open Printf
 

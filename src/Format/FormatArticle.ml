@@ -25,8 +25,6 @@ open Typography.Document
 open Util
 open Box
 (* open Binary *)
-open CamomileLibrary
-
 
 let boxes_width env contents = 
   let boxes = boxify_scoped env contents in

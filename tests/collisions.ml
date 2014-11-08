@@ -23,7 +23,6 @@ open Typography
 open Constants
 open Lexing
 open Util
-open CamomileLibrary
 open Fonts.FTypes
 
 let spec = []

@@ -27,7 +27,6 @@ open Typography.ConfigUtil
 open Fonts
 open Typography.Box
 open Typography.Break
-open CamomileLibrary
 let _=Random.self_init ()
 
 module Euler = Euler

@@ -1,7 +1,6 @@
 open UsualMake
 open Util
 open FTypes
-open CamomileLibrary
 
 let pt_of_mm x=(72.*.x)/.25.4
 let mm_of_pt x=(25.4*.x)/.72.
@@ -345,7 +344,7 @@ let loadFont ?offset:(off=0) ?size file=
     }
 
 let glyph_of_uchar _ _=0
-let glyph_of_char f c=glyph_of_uchar f (CamomileLibrary.UChar.of_char c)
+let glyph_of_char f c=glyph_of_uchar f (UChar.of_char c)
 
 let ascender _=0.
 let descender _=0.

@@ -10,7 +10,6 @@
     informations such as their outlines. *)
 
 (** Type font *)
-open CamomileLibrary
 open UsualMake
 open FTypes
 

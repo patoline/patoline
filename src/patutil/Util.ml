@@ -17,7 +17,6 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open CamomileLibrary
 open UsualMake
 
 (** Convertir en points Adobe une longueur en millimètres *)
@@ -210,7 +209,7 @@ let rec init=function
   | h::s->h::init s
 
 let is_space x0=
-  let x=UChar.uint_code x0 in
+  let x=UChar.code x0 in
     (x>=0x0009 && x<=0x000d)
   || x=0x0020
   || x=0x00a0

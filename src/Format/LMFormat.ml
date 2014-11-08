@@ -25,7 +25,6 @@ open Util
 open Typography.ConfigUtil
 open Fonts
 open Typography.Box
-open CamomileLibrary
 
 let _=Random.self_init ()
 

@@ -21,11 +21,9 @@ open Typography
 open Typography.Document
 open Typography.OutputCommon
 open UsualMake
-
 open Typography.Box
 open Fonts
 open FTypes
-open CamomileLibrary
 open Typography.Document
 open HtmlFonts
 
