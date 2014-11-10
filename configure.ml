@@ -106,7 +106,7 @@ let local_packages = [
   { package_name = "imagelib";
     macro_suffix = "IMAGELIB";
     local_deps = ["patutil"];
-    extern_deps = ["zip"];
+    extern_deps = ["zip";"bigarray"];
     subdirs = [];
     has_meta = true;
   };
@@ -183,7 +183,7 @@ let local_packages = [
   };
   { package_name = "cesure";
     macro_suffix = "CESURE";
-    local_deps = ["Typography"];
+    local_deps = ["Typography"; "unicodelib"];
     extern_deps = [];
     subdirs = [];
     has_meta = false;

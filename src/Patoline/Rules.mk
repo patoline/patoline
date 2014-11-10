@@ -14,11 +14,11 @@ PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx $(d)/Config2.cmx \
 $(PAT_CMX): %.cmx: %.cmo
 
 # Compute ML dependencies
-DEPENDS_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
-$(filter-out $(d)/Parser.ml.depends,$(filter-out $(d)/pa_patoline.ml.depends,$(DEPENDS_$(d)))): $(d)/Parser.ml.depends
+SRC_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
+$(d)/Parser.ml.depends: $(d)/Parser.ml
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
--include $(DEPENDS_$(d))
+-include $(SRC_$(d))
 endif
 endif
 
@@ -33,7 +33,7 @@ $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/
 	$(Q)$(OCAMLOPT) \
 		-package patutil,imagelib,dynlink,str,decap \
 		-I $(PA_OCAML_DIR) $(COMPILER_INC) -o $@ \
-		bigarray.cmxa camomile.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa str.cmxa \
+		bigarray.cmxa unicodelib.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa str.cmxa \
 		$(COMPILER_LIBO) decap.cmxa decap_ocaml.cmxa $<
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_OCAML) $(PA_OCAML_DIR)/decap.cmxa 

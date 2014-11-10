@@ -1,6 +1,6 @@
 name="patfonts"
 version="1.0"
 description="A font library which used to be a part of Patoline"
-requires="camomile, patutil"
+requires="unicodelib, patutil"
 archive(native)="fonts.cmxa"
 archive(byte)="fonts.cma"

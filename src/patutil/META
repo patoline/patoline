@@ -1,6 +1,6 @@
 name="patutil"
 version="1.0"
 description="A library with convenient functions to extend the standard library (part of Patoline)"
-requires="camomile,rbuffer"
+requires="unicodelib,rbuffer"
 archive(native)="patutil.cmxa"
 archive(byte)="patutil.cma"
