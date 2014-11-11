@@ -106,7 +106,7 @@ let local_packages = [
   { package_name = "imagelib";
     macro_suffix = "IMAGELIB";
     local_deps = ["patutil"];
-    extern_deps = ["zip";"bigarray"];
+    extern_deps = ["zip"; "bigarray"];
     subdirs = [];
     has_meta = true;
   };

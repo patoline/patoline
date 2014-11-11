@@ -24,7 +24,9 @@ endif
 
 $(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -o $@ -linkpkg $(PATOLINE_INCLUDES),threads -thread $(PAT_CMX)
+	$(Q)$(OCAMLOPT) -o $@ $(PATOLINE_INCLUDES),threads -thread dyp.cmxa \
+		dynlink.cmxa patutil.cmxa str.cmxa unix.cmxa rbuffer.cmxa \
+		unicodelib.cmxa threads.cmxa $(PAT_CMX)
 
 all: $(PA_PATOLINE)
 

@@ -296,13 +296,7 @@ let defaultEnv:environment=
     font=f;
     mathsEnvironment=Euler.default;
     mathStyle=Document.Mathematical.Text;
-    word_substitutions=
-      (fun x->List.fold_left (fun y f->f y) x
-        [
-          replace_utf8 ("``") 8220;
-          replace_utf8 ("''") 8221
-        ]
-      );
+    word_substitutions=word_subst;
     substitutions=(fun glyphs->Fonts.apply_features f loaded_feat (subst glyphs));
     positioning=(fun x->pos (positioning f x));
     footnote_y=10.;

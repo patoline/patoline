@@ -56,13 +56,3 @@ let code : uchar -> int = to_int
  * Raise Out_of_bound if the code is invalid.
  *)
 let chr : int -> uchar = of_int
-
-(*
- * Check whether an index is out of the range of a string or not.
- * Arguments:
- *   s : the string,
- *   i : the index.
- * Returns true if the index is out of range, false otherwise.
- *)
-let out_of_range : string -> index -> bool = fun s i ->
-  i < 0 || i >= String.length s

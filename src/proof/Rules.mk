@@ -22,9 +22,10 @@ all: $(d)/proof
 
 $(d)/%.depends: INCLUDES:=$(PROOF_INCLUDES)
 
-$(d)/proof: $(d)/proof.cmx $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmx 
+$(d)/proof: $(UNICODE_DIR)/unicodelib.cmxa $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmx $(d)/proof.cmx
 	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLOPT) dynlink.cmxa -linkpkg $(PACK_DRIVER_Pdf) $(INCLUDES) -o $@ $(DRIVERS_DIR)/Pdf/Pdf.cmx $<
+	$(Q)$(OCAMLOPT) $(INCLUDES) -o $@ dynlink.cmxa \
+		zip.cmxa unix.cmxa bigarray.cmxa sqlite3.cmxa $^
 
 # Installing
 install: install-proof

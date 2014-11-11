@@ -19,7 +19,8 @@ all: $(d)/cesure
 
 $(d)/cesure: $(IMAGELIB_DIR)/imagelib.cmxa $(UTIL_DIR)/patutil.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(d)/cesure.cmx 
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(INCLUDES) -o $@ bigarray.cmxa $^
+	$(Q)$(OCAMLOPT) $(INCLUDES) -o $@ zip.cmxa dynlink.cmxa str.cmxa unix.cmxa \
+		rbuffer.cmxa sqlite3.cmxa unicodelib.cmxa bigarray.cmxa $^
 
 CLEAN += $(d)/cesure $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo
 DISTCLEAN += $(d)/cesure.ml.depends

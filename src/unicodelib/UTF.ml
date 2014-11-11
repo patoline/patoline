@@ -149,7 +149,7 @@ module Make = functor ( ED : EncDec ) ->
      * Returns true if the index is out of range, false otherwise.
      *)
     let out_of_range : string -> index -> bool = fun s i ->
-      i < 0 || i > String.length s
+      i < 0 || i >= String.length s
 
     (*
      * Compute the index of the previous unicode character encoded in a string
