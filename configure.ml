@@ -664,7 +664,7 @@ let _=
     let f = open_out meta_name in
     Printf.fprintf f "name=\"imagelib\"\n\nversion=\"1.0\"\ndescription=\"A pure OCaml library for reading / writing images\"\n";
     let zip = if ocamlfind_has "zip" then snd (ocamlfind_query "zip") ^ "," else "" in
-    Printf.fprintf f "requires=\"%spatutil\"\n" zip; 
+    Printf.fprintf f "requires=\"%spatutil,bigarray\"\n" zip; 
     Printf.fprintf f "archive(byte)=\"imagelib.cma\"\n";
     Printf.fprintf f "archive(native)=\"imagelib.cmxa\"\n";
     close_out f
