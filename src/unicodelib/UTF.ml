@@ -177,14 +177,11 @@ module Make = functor ( ED : EncDec ) ->
     (*
      * Compute the index of the first unicode character in a string.
      * Argument:
-     *   s : a non-empty string (that is supposed to be valid).
-     * Returns the index of the first unicode character in s.
-     * Raise invalid_arg if the string s is empty.
+     *   s : the string (that is supposed to be valid).
+     * Returns the first unicode character index in s.
      *)
     let first : string -> index = fun s ->
-      if s = "" then
-        raise (invalid_arg "UTF.first")
-      else 0
+      0
 
     (*
      * Compute the index of the last unicode character in a string.
