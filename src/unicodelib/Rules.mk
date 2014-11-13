@@ -52,12 +52,12 @@ PA_CONV:=$(d)/pa_convert
 $(PA_CONV): $(d)/pa_convert.ml $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $(PA_OCAML)
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q) ocamlopt -pp $(PA_OCAML) -o $@ \
-		-I $(PA_OCAML_DIR) -I +compiler-libs unix.cmxa str.cmxa ocamlcommon.cmxa \
+		-I $(PA_OCAML_DIR) $(COMPILER_INC) $(COMPILER_LIBO) unix.cmxa str.cmxa \
 		$(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $<
 
 $(ENCODING_ML): %.ml: $(PA_CONV)
 	$(ECHO) "[PA_CNV] ... -> $@"
-	$(Q) $(PA_CONV) --ascii $(@D)/encoding_data/$(basename $(@F)).TXT > $@
+	$(Q) $(PA_CONV) $(@D)/encoding_data/$(basename $(@F)).TXT > $@
 
 $(ENCODING_CMO): %.cmo: %.ml
 	$(ECHO) "[OCAMLC] ... -> $@"
@@ -79,13 +79,13 @@ $(d)/PermanentMap.cmx: $(d)/PermanentMap.ml
 
 $(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml $(PA_OCAML)
 	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q) ocamlfind ocamlopt -package decap -pp $(PA_OCAML) -I +compiler-libs \
+	$(Q) ocamlfind ocamlopt -package decap -pp $(PA_OCAML) $(COMPILER_INC) \
 		$(UNICODELIB_INCLUDES) -c $<
 
 $(d)/pa_UnicodeData: $(PA_OCAML_DIR)/decap.cmxa $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q) ocamlfind ocamlopt -linkpkg -package sqlite3,decap -I +compiler-libs \
-		$(UNICODELIB_INCLUDES) -o $@ ocamlcommon.cmxa $^
+	$(Q) ocamlfind ocamlopt -linkpkg -package sqlite3,decap $(COMPILER_INC)\
+		$(UNICODELIB_INCLUDES) -o $@ $(COMPILER_LIBO) $^
 
 UNICODE_DATA_TXT := $(d)/data/UnicodeData.txt
 UNICODE_DATABASE := $(d)/UnicodeData.data
