@@ -11,6 +11,8 @@ let spec = [
  "Adds directories to the search path for hyphenation dictionaries");
 ("--extra-plugins-dir",Arg.String (fun x->Config.pluginspath:=x::(!Config.pluginspath)), 
  "Adds directories to the plugins search path");
+("--unicode-data",Arg.String (fun x->UnicodeLibConfig.datafile:=x), 
+ "Specify the file where to find unicode data");
 ("-I",Arg.String (fun x->Config.local_path:=x::(!Config.local_path)),
  "Adds directories to the font search path");
 ("--at-most",Arg.Int (fun x->Config.atmost:=x),

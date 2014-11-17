@@ -34,7 +34,7 @@ $(UNICODELIB_CMX): %.cmx: %.cmo
 ### Generation of the configuration file
 $(d)/UnicodeLibConfig.ml:
 	$(ECHO) "[CONF]   ... -> $@"
-	$(Q) echo 'let datafile = "$(INSTALL_UNICODELIB_DIR)/UnicodeData.data"' > $@
+	$(Q) echo 'let datafile = ref "$(INSTALL_UNICODELIB_DIR)/UnicodeData.data"' > $@
 ###
 
 ### To be used at build time to generate 8bit-enconding to UTF-X converters
@@ -114,7 +114,7 @@ all: $(d)/unicodelib.cmxa $(d)/unicodelib.cma $(d)/unicodelib.cmxs $(UNICODE_DAT
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs $(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI) $(ENCODING_O)
 
-DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/pa_convert $(ENCODING_ML) $(d)/UnicodeData.data $(d)/pa_UnicodeData
+DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/pa_convert $(ENCODING_ML) $(d)/UnicodeData.data $(d)/pa_UnicodeData $(d)/UnicodeLibConfig.ml
 
 # Installing
 install: install-unicodelib
