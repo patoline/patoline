@@ -182,7 +182,7 @@ struct
 
   let location_name_re = {|_loc\([a-zA-Z0-9_']*\)|}
 
-  let glr_parser = 
+  let glr_parser lvl = 
     parser
     | parser_kw p:glr_rules -> (Atom, p)
     | parser_kw CHR('*') p:glr_rules -> (Atom, exp_apply _loc (exp_glr_fun _loc "lists") [p])

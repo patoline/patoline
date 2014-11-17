@@ -853,9 +853,10 @@ module Make(Initial:Extension) =
       loc_typ loc
         (Ptyp_constr
            ((id_loc (Ldot ((Lident "*predef*"), "option")) loc), [d]))
+    let extra_types_grammar = alternatives extra_types
     let typexpr_base: core_type grammar =
       Decap.alternatives
-        [alternatives extra_types;
+        [extra_types_grammar;
         Decap.sequence_position (Decap.string "'" "'") ident
           (fun _  ->
              fun id  ->
@@ -1174,6 +1175,8 @@ module Make(Initial:Extension) =
                                       | "tuple" ->
                                           loc_typ _loc (Ptyp_tuple l)
                                       | _ -> raise (Give_up "")))))]
+    let extra_type_suits_grammar lvl' lvl =
+      alternatives (List.map (fun g  -> g lvl' lvl) extra_type_suits)
     let typexpr_suit_aux:
       type_prio ->
         type_prio ->
@@ -1183,7 +1186,7 @@ module Make(Initial:Extension) =
         (fun lvl'  ->
            fun lvl  ->
              let ln f _loc e _loc_f = loc_typ (merge2 _loc_f _loc) e in
-             Decap.alternatives
+             Decap.alternatives ((extra_type_suits_grammar lvl' lvl) ::
                (let y =
                   let y =
                     let y =
@@ -1312,7 +1315,7 @@ module Make(Initial:Extension) =
                                     (fun te  ->
                                        ln te _loc (Ptyp_arrow ("", te, te'))))))
                   :: y
-                else y))
+                else y)))
     let typexpr_suit =
       let f =
         memoize2'
@@ -2061,10 +2064,12 @@ module Make(Initial:Extension) =
           ppat_construct (c, (Some (loc_pat _loc (Ppat_tuple [x; xs])))) in
         loc_pat _loc cons in
       List.fold_right cons l (loc_pat _loc (ppat_construct (nil, None)))
+    let extra_patterns_grammar lvl =
+      alternatives (List.map (fun g  -> g lvl) extra_patterns)
     let pattern_base =
       memoize1
         (fun lvl  ->
-           Decap.alternatives ((alternatives extra_patterns) ::
+           Decap.alternatives ((extra_patterns_grammar lvl) ::
              (Decap.apply_position
                 (fun vn  ->
                    let (_loc_vn,vn) = vn in
@@ -2657,6 +2662,8 @@ module Make(Initial:Extension) =
                                 (ConstrPat, (loc_pat _loc ast))))
                 :: y
               else y)))
+    let extra_pattern_suits_grammar lvl' lvl =
+      alternatives (List.map (fun g  -> g lvl' lvl) extra_pattern_suits)
     let pattern_suit_aux:
       pattern_prio ->
         pattern_prio -> (pattern_prio* (pattern -> pattern)) grammar
@@ -2665,7 +2672,7 @@ module Make(Initial:Extension) =
         (fun lvl'  ->
            fun lvl  ->
              let ln f _loc e = loc_pat (merge2 f.ppat_loc _loc) e in
-             Decap.alternatives
+             Decap.alternatives ((extra_pattern_suits_grammar lvl' lvl) ::
                (let y =
                   let y =
                     let y =
@@ -2831,7 +2838,7 @@ module Make(Initial:Extension) =
                                        ln p _loc
                                          (Ppat_alias (p, (id_loc vn _loc_vn)))))))
                   :: y
-                else y))
+                else y)))
     let pattern_suit =
       let f =
         memoize2'
@@ -4228,11 +4235,12 @@ module Make(Initial:Extension) =
                        (Some (loc_expr _loc (Pexp_tuple [x; acc])))))) l
            (loc_expr loc_cl
               (pexp_construct ((id_loc (Lident "[]") loc_cl), None))))
-    let extra_expressions_grammar = alternatives extra_expressions
+    let extra_expressions_grammar lvl =
+      alternatives (List.map (fun g  -> g lvl) extra_expressions)
     let expression_base =
       memoize1
         (fun lvl  ->
-           Decap.alternatives (extra_expressions_grammar ::
+           Decap.alternatives ((extra_expressions_grammar lvl) ::
              (let y =
                 (Decap.apply_position
                    (fun id  ->
@@ -5526,12 +5534,14 @@ module Make(Initial:Extension) =
                let (c',_,_) = read str' pos' in
                (if c' <> ';' then raise (Give_up "") else ((), str', pos'))
              else raise (Give_up "")) (Charset.singleton ';') false ";;"
+    let extra_expression_suits_grammar lvl' lvl =
+      alternatives (List.map (fun g  -> g lvl' lvl) extra_expression_suits)
     let expression_suit_aux =
       memoize2
         (fun lvl'  ->
            fun lvl  ->
              let ln f _loc e = loc_expr (merge2 f.pexp_loc _loc) e in
-             Decap.alternatives
+             Decap.alternatives ((extra_expression_suits_grammar lvl' lvl) ::
                (let y =
                   let y =
                     let y =
@@ -6065,7 +6075,7 @@ module Make(Initial:Extension) =
                                  (expression_lvl (next_exp Tupl))
                                  (fun _  -> fun e  -> e))))))
                   :: y
-                else y))
+                else y)))
     let expression_suit =
       let f =
         memoize2'

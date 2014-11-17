@@ -138,7 +138,7 @@ module Ext(In:Extension) =
     let glr_rules = Decap.declare_grammar "glr_rules"
     let glr_rule = Decap.declare_grammar "glr_rule"
     let location_name_re = "_loc\\([a-zA-Z0-9_']*\\)"
-    let glr_parser =
+    let glr_parser lvl =
       Decap.alternatives
         [Decap.sequence parser_kw glr_rules
            (fun _default_0  -> fun p  -> (Atom, p));

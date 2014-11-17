@@ -694,7 +694,7 @@ let directive =
     <:structure<>>)
 let extra_structure = directive :: extra_structure
 
-let patoline_quotations =
+let patoline_quotations _ =
     parser
     | "<<" par:text_only     ">>" -> Atom, par
     | "<$" mat:math_toplevel "$>" -> Atom, mat

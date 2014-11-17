@@ -642,9 +642,11 @@ let mkoption loc d =
   let loc = ghost loc in 
   loc_typ loc (Ptyp_constr(id_loc (Ldot (Lident "*predef*", "option")) loc,[d]))
 
+let extra_types_grammar = alternatives extra_types
+				       
 let typexpr_base : core_type grammar =
   parser
-  | e:(alternatives extra_types) -> e
+  | e:extra_types_grammar -> e
   | STR("'") id:ident ->
       loc_typ _loc (Ptyp_var id)
   | STR("_") ->
@@ -706,10 +708,12 @@ let typexpr_base : core_type grammar =
 	    match str with
 	    | "tuple" -> loc_typ _loc (Ptyp_tuple l)
 	    | _ -> raise (Give_up "" (* FIXME *)))
-			    
+
+let extra_type_suits_grammar lvl' lvl = alternatives (List.map (fun g -> g lvl' lvl) extra_type_suits)
 let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> Location.t -> core_type)) grammar = memoize1 (fun lvl' lvl ->
   let ln f _loc e _loc_f = loc_typ (merge2 _loc_f _loc) e in
   parser
+  | e:(extra_type_suits_grammar lvl' lvl) -> e
   | STR("->") te':(typexpr_lvl Arr) when lvl' > Arr && lvl <= Arr ->
       (Arr, fun te -> ln te _loc (Ptyp_arrow ("", te, te')))
   | tes:{STR("*") te:(typexpr_lvl (next_type_prio ProdType))}+  when lvl' > ProdType && lvl <= ProdType->
@@ -1073,9 +1077,10 @@ let ppat_list _loc l =
   in
   List.fold_right cons l (loc_pat _loc (ppat_construct (nil, None)))
 
+let extra_patterns_grammar lvl = alternatives (List.map (fun g -> g lvl) extra_patterns)
 let pattern_base = memoize1 (fun lvl ->
   parser
-  | e:(alternatives extra_patterns) -> e
+  | e:(extra_patterns_grammar lvl) -> e
   | vn:value_name ->
       (AtomPat, loc_pat _loc (Ppat_var (id_loc vn _loc_vn)))
   | STR("_") ->
@@ -1188,9 +1193,11 @@ let pattern_base = memoize1 (fun lvl ->
 	    | _ -> raise (Give_up "" (* FIXME *)))
   )
 
+let extra_pattern_suits_grammar lvl' lvl = alternatives (List.map (fun g -> g lvl' lvl) extra_pattern_suits)
 let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
   let ln f _loc e = loc_pat (merge2 f.ppat_loc _loc) e in
   parser
+  | e:(extra_pattern_suits_grammar lvl' lvl) -> e
   | as_kw vn:value_name when lvl' >= AsPat && lvl <= AsPat ->
       (lvl', fun p ->
         ln p _loc (Ppat_alias(p, id_loc vn _loc_vn)))
@@ -1647,10 +1654,10 @@ let pexp_list _loc ?loc_cl l =
 		    l (loc_expr loc_cl (pexp_construct(id_loc (Lident "[]") loc_cl, None)))
 
 (* Expressions *)
-let extra_expressions_grammar = alternatives extra_expressions
+let extra_expressions_grammar lvl = alternatives (List.map (fun g -> g lvl) extra_expressions)
 let expression_base = memoize1 (fun lvl ->
   parser
-  | e:extra_expressions_grammar -> e
+  | e:(extra_expressions_grammar lvl) -> e
   | v:inst_var_name STR("<-") e:(expression_lvl (next_exp Aff)) when lvl <= Aff->
       (Aff, loc_expr _loc (Pexp_setinstvar(id_loc v _loc_v, e)))
   | id:value_path -> (Atom, loc_expr _loc (Pexp_ident(id_loc id _loc_id)))
@@ -1811,9 +1818,11 @@ let double_semi_col = black_box
      raise (Give_up "" (* FIXME *)))
   (Charset.singleton ';') false (";;")
 
+let extra_expression_suits_grammar lvl' lvl = alternatives (List.map (fun g -> g lvl' lvl) extra_expression_suits)
 let expression_suit_aux = memoize2 (fun lvl' lvl ->
   let ln f _loc e = loc_expr (merge2 f.pexp_loc _loc) e in
   parser
+  | e:(extra_expression_suits_grammar lvl' lvl) -> e
   | l:{STR(",") e:(expression_lvl (next_exp Tupl))}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, fun f -> ln f _loc (Pexp_tuple(f::l)))
   | t:type_coercion when (lvl' > Coerce && lvl <= Coerce) ->

@@ -263,9 +263,28 @@ module Initial =
       declare_grammar "let_binding"
     let class_body: class_structure grammar = declare_grammar "class_body"
     let class_expr: class_expr grammar = declare_grammar "class_expr"
-    let extra_expressions: (expression_prio* expression) grammar list = []
+    let extra_expressions:
+      (expression_prio -> (expression_prio* expression) grammar) list = []
+    let extra_expression_suits:
+      (expression_prio ->
+         expression_prio ->
+           (expression_prio* (expression -> expression)) grammar)
+        list
+      = []
     let extra_types: core_type grammar list = []
-    let extra_patterns: (pattern_prio* pattern) grammar list = []
+    let extra_type_suits:
+      (type_prio ->
+         type_prio ->
+           (type_prio* (core_type -> Location.t -> core_type)) grammar)
+        list
+      = []
+    let extra_patterns:
+      (pattern_prio -> (pattern_prio* pattern) grammar) list = []
+    let extra_pattern_suits:
+      (pattern_prio ->
+         pattern_prio -> (pattern_prio* (pattern -> pattern)) grammar)
+        list
+      = []
     let extra_structure: structure_item list grammar list = []
     let extra_signature: signature_item list grammar list = []
     let loc_str _loc desc = { pstr_desc = desc; pstr_loc = _loc }

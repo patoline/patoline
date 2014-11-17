@@ -24,8 +24,7 @@ $(d)/%.depends: INCLUDES:=$(PROOF_INCLUDES)
 
 $(d)/proof: $(UNICODE_DIR)/unicodelib.cmxa $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmx $(d)/proof.cmx
 	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLOPT) $(INCLUDES) -o $@ dynlink.cmxa \
-		zip.cmxa unix.cmxa bigarray.cmxa sqlite3.cmxa $^
+	$(Q)$(OCAMLOPT) $(INCLUDES) -o $@ -package Typography -linkpkg $<
 
 # Installing
 install: install-proof
