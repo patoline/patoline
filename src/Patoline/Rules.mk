@@ -14,8 +14,9 @@ PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx $(d)/Config2.cmx \
 $(PAT_CMX): %.cmx: %.cmo
 
 # Compute ML dependencies
-SRC_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
+SRC_$(d) := $(filter-out UnicodeScripts.ml.depends, $(addsuffix .depends,$(wildcard $(d)/*.ml)))
 $(d)/Parser.ml.depends: $(d)/Parser.ml
+$(d)/Generateur.ml.depends: $(d)/Parser.ml.depends
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
 -include $(SRC_$(d))
@@ -30,7 +31,7 @@ $(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 
 all: $(PA_PATOLINE)
 
-$(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(PA_OCAML)
+$(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) \
 		-package patutil,imagelib,dynlink,str,decap \
@@ -38,11 +39,11 @@ $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/
 		bigarray.cmxa unicodelib.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa str.cmxa \
 		$(COMPILER_LIBO) decap.cmxa decap_ocaml.cmxa $<
 
-$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_OCAML) $(PA_OCAML_DIR)/decap.cmxa 
+$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_OCAML) -c -package patutil,decap $(COMPILER_INC) -o $@ $< 
 
-$(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml $(PA_OCAML)
+$(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) -I $(<D) -I $(PA_OCAML_DIR) -I $(UTIL_DIR) -package patutil,decap $< > $@
 
@@ -67,9 +68,11 @@ $(d)/SubSuper.dyp: $(d)/UnicodeData.txt $(PATOLINE_UNICODE_SCRIPTS)
 	$(ECHO) "[UNIC]   $< -> $@"
 	$(Q)$(PATOLINE_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/SubSuper.el
 
-$(d)/UnicodeScripts: $(d)/UnicodeScripts.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) -o $@ -package bigarray,unicodelib -linkpkg $<
+$(d)/UnicodeScripts.cmx: $(UNICODELIB_CMX) $(UNICODELIB_DEPS) $(UNICODELIB_ML)
+
+$(d)/UnicodeScripts: $(d)/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
+	$(ECHO) "[OCAMLOPT] $< -> $@"
+	$(Q)$(OCAMLOPT) -o $@ -package bigarray,unicodelib -linkpkg $<
 
 $(d)/tmp.dyp: $(d)/Parser.dyp $(d)/SubSuper.dyp
 	$(ECHO) "[CAT]    $^ -> $@"

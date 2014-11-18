@@ -18,10 +18,26 @@ PA_OCAML_DIR := $(d)/decap
 UNICODE_DIR := $(d)/unicodelib
 PA_OCAML := $(PA_OCAML_DIR)/pa_ocaml
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
+DUMMY := $(shell if [ ! -x $(PA_OCAML_DIR)/pa_ocaml ]; then $(MAKE) -e -j 1 -C $(PA_OCAML_DIR) pa_ocaml; fi; $(MAKE) -e -j 1 -C $(PA_OCAML_DIR) decap.cmxa decap_ocaml.cmxa decap.cma decap_ocaml.cma)
+endif
+endif
+
+ifeq ($(MAKECMDGOALS),clean)
+DUMMY := $(shell $(MAKE) -e -C $(PA_OCAML_DIR) clean)
+endif
+
+ifeq ($(MAKECMDGOALS),distclean)
+DUMMY := $(shell $(MAKE) -e -C $(PA_OCAML_DIR) distclean)
+endif
+
+$(d)/Patoline/Rules.mk: $(UNICODELIB_CMX)
+
 # Visit subdirectories
-MODULES := unicodelib rbuffer patutil imagelib patfonts decap \
-  Typography Drivers Patoline Pdf cesure Format \
-  $(OCAML_BIBI) plot proof plugins
+MODULES := unicodelib rbuffer patutil imagelib patfonts \
+  Typography Drivers Pdf cesure Format \
+  $(OCAML_BIBI) plot proof plugins Patoline 
 
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 

@@ -236,16 +236,16 @@ INCLUDES:=
 %.mli.depends: %.mli
 	$(ECHO) "[DEPS]   $< -> $@"
 	$(Q)$(OCAMLDEP) $(INCLUDES) $< > $@
-%.cmi: %.mli
+%.cmi: %.mli %.ml.depends
 	$(ECHO) "[OCAMLC] $< -> $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
-%.cmo: %.ml
+%.cmo: %.ml %.ml.depends
 	$(ECHO) "[OCAMLC] $< -> $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
-%.cmx: %.ml
+%.cmx: %.ml %.ml.depends
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ -c $<
-%.p.cmx: %.ml
+%.p.cmx: %.ml %.ml.depends
 	$(ECHO) "[OPT -p] $< -> $@"
 	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(INCLUDES) -o $@ -c $<
 %.cmo: %.mlpack

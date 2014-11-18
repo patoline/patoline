@@ -6,7 +6,7 @@ all: $(d)/emacs/patoline-input.el
 
 # Vim part
 
-
+$(d)/emacs/%.depends: INCLUDES += -I $(UNICODE_DIR)
 # Emacs part
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
@@ -14,7 +14,9 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-$(d)/emacs/SubstKey: $(d)/emacs/SubstKey.ml
+$(d)/emacs/SubstKey.cmx: INCLUDES += -I $(UNICODE_DIR)
+
+$(d)/emacs/SubstKey: $(d)/emacs/SubstKey.cmx
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) -package str,unicodelib $< -linkpkg -o $@
 

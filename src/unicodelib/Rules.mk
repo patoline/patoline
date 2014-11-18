@@ -2,34 +2,33 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-UNICODELIB_INCLUDES := -I $(d)
+UNICODELIB_INCLUDES := -I $(d) 
 UNICODELIB_DEPS_INCLUDES := -I $(d)
 
+$(d)/%.depends: OCAMLDEP:=ocamlfind ocamldep -pp $(PA_OCAML)
 $(d)/%.depends: INCLUDES:=$(UNICODELIB_DEPS_INCLUDES)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(UNICODELIB_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES:=$(UNICODELIB_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi: OCAMLC:=ocamlfind ocamlc -pp $(PA_OCAML)
+$(d)/%.cmx: OCAMLOPT:=ocamlfind ocamlopt -pp $(PA_OCAML)
 
 # Compute ML files dependencies
-SRC_$(d) := $(filter-out $(d)/pa_convert.ml, $(filter-out $(d)/pa_UnicodeData.ml, $(wildcard $(d)/*.ml))) $(wildcard $(d)/*.mli)
-
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(MAKECMDGOALS),distclean)
--include $(addsuffix .depends,$(SRC_$(d)))
-endif
-endif
-
 # Building
 UNICODELIB_MODS:= UChar UTF UTF8 UTF16 UTF32 UTFConvert PermanentMap UnicodeLibConfig UCharInfo
 
 UNICODELIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UNICODELIB_MODS)))
+UNICODELIB_DEPS:=$(addsuffix .depends,$(UNICODELIB_ML)) $(d)/pa_convert.ml.depends
+
+$(UNICODELIB_DEPS): $(d)/UnicodeLibConfig.ml
 
 UNICODELIB_CMO:=$(UNICODELIB_ML:.ml=.cmo)
 UNICODELIB_CMX:=$(UNICODELIB_ML:.ml=.cmx)
 UNICODELIB_CMI:=$(UNICODELIB_ML:.ml=.cmi)
 
-# We cannot run ocamlc and ocamlopt simultaneously on the same input,
-# since they both overwrite the .cmi file, which can get corrupted.
-# That's why we arbitrarily force the following dependency.
-$(UNICODELIB_CMX): %.cmx: %.cmo
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
+-include $(UNICODELIB_DEPS)
+endif
+endif
 
 ### Generation of the configuration file
 $(d)/UnicodeLibConfig.ml:
@@ -49,9 +48,9 @@ $(ENCODING_CMX): %.cmx: %.cmo
 
 PA_CONV:=$(d)/pa_convert
 
-$(PA_CONV): $(d)/pa_convert.ml $(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $(PA_OCAML)
+$(PA_CONV): $(d)/pa_convert.ml
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q) ocamlopt -pp $(PA_OCAML) -o $@ \
+	$(Q) ocamlopt -pp $(PA_OCAML) -o $@ -I $(UNICODE_DIR) \
 		-I $(PA_OCAML_DIR) $(COMPILER_INC) $(COMPILER_LIBO) unix.cmxa str.cmxa \
 		$(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $<
 
@@ -77,12 +76,12 @@ $(d)/PermanentMap.cmx: $(d)/PermanentMap.ml
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q) ocamlfind ocamlopt -package sqlite3 $(UNICODELIB_INCLUDES) -c $<
 
-$(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml $(PA_OCAML)
+$(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml
 	$(ECHO) "[OCAMLC] ... -> $@"
 	$(Q) ocamlfind ocamlopt -package decap -pp $(PA_OCAML) $(COMPILER_INC) \
 		$(UNICODELIB_INCLUDES) -c $<
 
-$(d)/pa_UnicodeData: $(PA_OCAML_DIR)/decap.cmxa $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
+$(d)/pa_UnicodeData: $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q) ocamlfind ocamlopt -linkpkg -package sqlite3,decap $(COMPILER_INC)\
 		$(UNICODELIB_INCLUDES) -o $@ $(COMPILER_LIBO) $^
@@ -122,6 +121,30 @@ install: install-unicodelib
 install-unicodelib: $(d)/unicodelib.cma $(d)/unicodelib.cmxa $(d)/unicodelib.cmxs $(d)/unicodelib.a $(UNICODELIB_CMI) $(UNICODELIB_CMX) $(UNICODELIB_CMO) $(d)/META $(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI) $(UNICODE_DATABASE)
 	install -m 755 -d $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
+
+$(d)/UTF16.cmo : $(d)/UTF.cmo $(d)/UChar.cmo
+$(d)/UTF16.cmx : $(d)/UTF.cmx $(d)/UChar.cmx
+$(d)/UTF8.cmo : $(d)/UTF.cmo $(d)/UChar.cmo
+$(d)/UTF8.cmx : $(d)/UTF.cmx $(d)/UChar.cmx
+$(d)/UTF32.cmo : $(d)/UTF.cmo $(d)/UChar.cmo
+$(d)/UTF32.cmx : $(d)/UTF.cmx $(d)/UChar.cmx
+$(d)/UTFConvert.cmo : $(d)/UTF8.cmo \
+    $(d)/UTF32.cmo $(d)/UTF16.cmo
+$(d)/UTFConvert.cmx : $(d)/UTF8.cmx \
+    $(d)/UTF32.cmx $(d)/UTF16.cmx
+$(d)/UTF.cmo : $(d)/UChar.cmo
+$(d)/UTF.cmx : $(d)/UChar.cmx
+$(d)/LATIN1.cmo: $(d)/UTF8.cmo
+$(d)/LATIN1.cmx: $(d)/UTF8.cmx
+src/unicodelib/UCharInfo.cmo : src/unicodelib/UnicodeLibConfig.cmo \
+    src/unicodelib/UChar.cmo src/unicodelib/PermanentMap.cmo
+src/unicodelib/UCharInfo.cmx : src/unicodelib/UnicodeLibConfig.cmx \
+    src/unicodelib/UChar.cmx src/unicodelib/PermanentMap.cmx
+
+$(ENCODING_CMO): %.cmo: $(UNICODE_CMO)
+$(ENCODING_CMX): %.cmx: $(UNICODE_CMX)
+
+
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
