@@ -67,7 +67,9 @@ let block_background = ref black
 let block_foreground = ref white
 let block_title_foreground = ref white
 
-type numbering_kind = SimpleNumbering | RelativeNumbering
+type numbering_kind = SimpleNumbering
+                    | RelativeNumbering
+                    | CustomNumbering of (int -> int -> string)
 
 let slide_numbering = ref (Some SimpleNumbering)
 
@@ -854,6 +856,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                  let num= match sn with
                            | SimpleNumbering   -> Printf.sprintf "%d" (i+1)
                            | RelativeNumbering -> Printf.sprintf "%d/%d" (i+1) (i_fin+1)
+                           | CustomNumbering f -> f i i_fin
                  in
                  let boxes=boxify_scoped env [tT num] in
                 let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in
