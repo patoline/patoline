@@ -273,7 +273,9 @@ let next_exp = function
   let expression= expr
   let structure_item : structure_item list grammar = declare_grammar "structure_item"
   let signature_item : signature_item list grammar = declare_grammar "signature_item"
-
+  let (parameter : bool -> [`Arg of string * expression option * pattern
+           | `Type of string ] grammar), set_parameter = grammar_family "parameter"
+						
   let structure =
     parser
       l : {s:structure_item}** -> List.flatten l

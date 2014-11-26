@@ -74,7 +74,7 @@ implies that the following example depends upon OCaml's version.//
   struct
     include In
 
-    let extension = parser
+    let extension lvl = parser
     | STR("do") e:(expr) STR("where") r:STR("rec")? b:let_binding ->
         (Let, if r<>None then
                 <:expr<let rec $bindings:b$ in $e$>>

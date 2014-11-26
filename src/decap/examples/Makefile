@@ -13,11 +13,11 @@ endif
 
 all: calc
 
-calc: calc.cmx ../glr.cmxa
-	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../glr.cmxa $< -o $@
+calc: calc.cmx ../decap.cmxa
+	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../decap.cmxa $< -o $@
 
-calc.cmx: calc.ml ../glr.cmxa ../pa_glr
-	$(CAMLOPT) -I .. -pp ../pa_glr -c $<
+calc.cmx: calc.ml ../decap.cmx ../pa_glr
+	$(CAMLOPT) -I .. -pp ../pa_ocaml -c $<
 
 calc_simple: gcalc_simple.cmx ../glr.cmxa
 	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../glr.cmxa $< -o $@

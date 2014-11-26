@@ -187,8 +187,39 @@ struct
     | parser_kw p:glr_rules -> (Atom, p)
     | parser_kw CHR('*') p:glr_rules -> (Atom, exp_apply _loc (exp_glr_fun _loc "lists") [p])
 
+  let glr_binding = Decap.declare_grammar "glr_binding"
+  let _ = Decap.set_grammar glr_binding (parser
+     name:lowercase_ident arg:(pattern_lvl AsPat)? ty:{':' typexpr}? '=' r:glr_rules l:{_:and_kw glr_binding}?[[]] ->
+										       (name,arg,ty,r)::l)
+  let glr_struct_item =
+    parser
+    | let_kw parser_kw l:glr_binding ->
+		  let rec fn = function
+		      [] -> [], []
+		    | (name,arg,ty,r)::l ->
+		       let str1, str2 = fn l in
+		       let pname = match ty, arg with
+			   None, _-> <:pat< $lid:name$ >>
+			 | Some ty, None -> <:pat< $lid:name$ : $ty$ >>
+			 | Some ty, Some _ -> <:pat< $lid:name$ : ('type_of_arg -> $ty$) >>
+		       in
+		       (match arg with
+			| None ->
+			   <:structure< let $pname$ = Decap.declare_grammar $string:name$>> @ str1,
+			   <:structure< let _ = Decap.set_grammar $lid:name$ $r$ >> @ str2
+			| Some arg ->
+			   let set_name = name ^ "__set__grammar" in
+			   <:structure< let $pname$, $lid:set_name$ = Decap.grammar_family $string:name$>> @ str1,
+			   <:structure< let _ = $lid:set_name$ (fun $arg$ -> $r$) >> @ str2)
+		  in
+		  let str1, str2 = fn l in
+		  str1 @ str2
+		  
   let extra_expressions = glr_parser::extra_expressions
+  let extra_structure = glr_struct_item::extra_structure
 
+  let _ = add_reserved_id "parser"
+		       
   let glr_opt_expr = 
     parser
       e:{ CHR('[') e:expression CHR(']') }? -> e

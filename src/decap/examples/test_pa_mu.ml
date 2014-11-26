@@ -116,7 +116,7 @@ let _ =
 
 let _ =
   Printf.printf "%a\n" (print_sum print_list print_list) (?test3 7 < 7 < 4?)
-
+(*
 let dot_prod (a,b) (a',b') = a*a' + b*b'
 let vec (a,b) (c,d) = (c - a, d - b)
 let vec_prod (a,b) (a',b') = b'*a - b*a'
@@ -182,3 +182,4 @@ let rec show_erdos verbose n p =
     show_erdos verbose (n+1) p)
 
 let _ = show_erdos false 5 14
+ *)

@@ -164,7 +164,11 @@ let rec expression_to_pattern p =
     (* FIXME ? | Pexp_pack of module_expr -> ??? *)
     (* FIXME: a way to produce Ppat_any ??? *)
     (* FIXME: a way to produce Ppat_alias or Ppat_or??? *)
-    | _ -> failwith "Illegal quotation pattern" (* FIXME: better messages *)
+    | _ ->
+#ifversion > 3.12       
+	       Pprintast.expression Format.std_formatter p;
+#endif
+       failwith "Illegal quotation pattern" (* FIXME: better messages *)
   in
   { ppat_desc = p';
     ppat_loc  = p.pexp_loc;

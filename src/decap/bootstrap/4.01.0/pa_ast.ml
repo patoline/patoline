@@ -88,5 +88,7 @@ let rec expression_to_pattern p =
     | Pexp_lazy e -> Ppat_lazy (expression_to_pattern e)
     | Pexp_poly (e,Some ty) ->
         Ppat_constraint ((expression_to_pattern e), ty)
-    | _ -> failwith "Illegal quotation pattern" in
+    | _ ->
+        (Pprintast.expression Format.std_formatter p;
+         failwith "Illegal quotation pattern") in
   { ppat_desc = p'; ppat_loc = (p.pexp_loc) }

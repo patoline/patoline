@@ -7,8 +7,7 @@ let arith_sum
 
 let re_float = "[0-9]+\\([.][0-9]+\\)?\\([eE][-]?[0-9]+\\)?"
 
-let arith_atom =
-  parser
+parser arith_atom =
   | f:RE(re_float)[float_of_string (groupe 0)]
   | CHR('-') f:RE(re_float)[float_of_string (groupe 0)] -> -. f
   | STR"(" s:arith_sum STR")"

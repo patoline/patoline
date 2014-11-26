@@ -1336,7 +1336,7 @@ let argument =
     (* NOTE the "id" in the first position of the couple was not prefixed with a "?". I guess this was a bug. *)
   | e:(expression_lvl (next_exp App)) -> ("", e)
 
-let parameter allow_new_type =
+let _ = set_parameter (fun allow_new_type ->
   parser
   | pat:(pattern_lvl AtomPat) -> `Arg ("", None, pat)
   | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typexpr }? STR")" -> (
@@ -1361,7 +1361,7 @@ let parameter allow_new_type =
       in `Arg ("?"^id, e, pat))
   | id:opt_label STR":" pat:pattern -> `Arg ("?"^id, None, pat)
   | id:opt_label -> `Arg ("?"^id, None, loc_pat _loc_id (Ppat_var(id_loc id _loc_id)))
-  | CHR('(') type_kw name:typeconstr_name CHR(')') when allow_new_type -> `Type(name)
+  | CHR('(') type_kw name:typeconstr_name CHR(')') when allow_new_type -> `Type(name))
 
 let apply_params params e =
   let f acc = function

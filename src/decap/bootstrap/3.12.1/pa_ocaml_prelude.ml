@@ -201,6 +201,11 @@ module Initial =
       declare_grammar "structure_item"
     let signature_item: signature_item list grammar =
       declare_grammar "signature_item"
+    let ((parameter :
+           bool ->
+             [ `Arg of (string* expression option* pattern)
+             | `Type of string] grammar),set_parameter)
+      = grammar_family "parameter"
     let structure =
       Decap.apply (fun l  -> List.flatten l)
         (Decap.apply List.rev

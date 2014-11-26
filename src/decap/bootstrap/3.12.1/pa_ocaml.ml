@@ -2221,73 +2221,30 @@ module Make(Initial:Extension) =
                (loc_expr _loc (Pexp_ident (id_loc (Lident id) _loc)))))
           opt_label;
         Decap.apply (fun e  -> ("", e)) (expression_lvl (next_exp App))]
-    let parameter allow_new_type =
-      Decap.alternatives
-        ((Decap.apply (fun pat  -> `Arg ("", None, pat))
-            (pattern_lvl AtomPat)) ::
-        (Decap.fsequence_position (Decap.string "~" "~")
-           (Decap.fsequence (Decap.string "(" "(")
-              (Decap.fsequence
-                 (Decap.apply_position
-                    (fun x  str  pos  str'  pos'  ->
-                       ((locate str pos str' pos'), x)) lowercase_ident)
-                 (Decap.sequence
-                    (Decap.option None
-                       (Decap.apply (fun x  -> Some x)
-                          (Decap.sequence (Decap.string ":" ":") typexpr
-                             (fun _  t  -> t)))) (Decap.string ")" ")")
-                    (fun t  _  id  ->
-                       let (_loc_id,id) = id in
-                       fun _  _  __loc__start__buf  __loc__start__pos 
-                         __loc__end__buf  __loc__end__pos  ->
-                         let _loc =
-                           locate __loc__start__buf __loc__start__pos
-                             __loc__end__buf __loc__end__pos in
-                         let pat =
-                           loc_pat _loc_id (Ppat_var (id_loc id _loc_id)) in
-                         let pat =
-                           match t with
-                           | None  -> pat
-                           | Some t ->
-                               loc_pat _loc (Ppat_constraint (pat, t)) in
-                         `Arg (id, None, pat)))))) ::
-        (Decap.fsequence label
-           (Decap.sequence (Decap.string ":" ":") pattern
-              (fun _  pat  id  -> `Arg (id, None, pat)))) ::
-        (Decap.sequence (Decap.char '~' '~')
-           (Decap.apply_position
-              (fun x  str  pos  str'  pos'  ->
-                 ((locate str pos str' pos'), x)) ident)
-           (fun _  id  ->
-              let (_loc_id,id) = id in
-              `Arg
-                (id, None, (loc_pat _loc_id (Ppat_var (id_loc id _loc_id))))))
-        ::
-        (Decap.fsequence (Decap.string "?" "?")
-           (Decap.fsequence (Decap.string "(" "(")
-              (Decap.fsequence
-                 (Decap.apply_position
-                    (fun x  str  pos  str'  pos'  ->
-                       ((locate str pos str' pos'), x)) lowercase_ident)
-                 (Decap.fsequence
-                    (Decap.apply_position
-                       (fun x  str  pos  str'  pos'  ->
-                          ((locate str pos str' pos'), x))
-                       (Decap.option None
-                          (Decap.apply (fun x  -> Some x)
-                             (Decap.sequence (Decap.string ":" ":") typexpr
-                                (fun _  t  -> t)))))
-                    (Decap.sequence
-                       (Decap.option None
-                          (Decap.apply (fun x  -> Some x)
-                             (Decap.sequence (Decap.string "=" "=")
-                                expression (fun _  e  -> e))))
-                       (Decap.string ")" ")")
-                       (fun e  _  t  ->
-                          let (_loc_t,t) = t in
-                          fun id  ->
+    let _ =
+      set_parameter
+        (fun allow_new_type  ->
+           Decap.alternatives
+             ((Decap.apply (fun pat  -> `Arg ("", None, pat))
+                 (pattern_lvl AtomPat)) ::
+             (Decap.fsequence_position (Decap.string "~" "~")
+                (Decap.fsequence (Decap.string "(" "(")
+                   (Decap.fsequence
+                      (Decap.apply_position
+                         (fun x  str  pos  str'  pos'  ->
+                            ((locate str pos str' pos'), x)) lowercase_ident)
+                      (Decap.sequence
+                         (Decap.option None
+                            (Decap.apply (fun x  -> Some x)
+                               (Decap.sequence (Decap.string ":" ":") typexpr
+                                  (fun _  t  -> t)))) (Decap.string ")" ")")
+                         (fun t  _  id  ->
                             let (_loc_id,id) = id in
-                            fun _  _  ->
+                            fun _  _  __loc__start__buf  __loc__start__pos 
+                              __loc__end__buf  __loc__end__pos  ->
+                              let _loc =
+                                locate __loc__start__buf __loc__start__pos
+                                  __loc__end__buf __loc__end__pos in
                               let pat =
                                 loc_pat _loc_id
                                   (Ppat_var (id_loc id _loc_id)) in
@@ -2295,63 +2252,109 @@ module Make(Initial:Extension) =
                                 match t with
                                 | None  -> pat
                                 | Some t ->
-                                    loc_pat (merge2 _loc_id _loc_t)
-                                      (Ppat_constraint (pat, t)) in
-                              `Arg (("?" ^ id), e, pat))))))) ::
-        (Decap.fsequence opt_label
-           (Decap.fsequence (Decap.string ":" ":")
-              (Decap.fsequence (Decap.string "(" "(")
-                 (Decap.fsequence
-                    (Decap.apply_position
-                       (fun x  str  pos  str'  pos'  ->
-                          ((locate str pos str' pos'), x)) pattern)
-                    (Decap.fsequence
-                       (Decap.apply_position
-                          (fun x  str  pos  str'  pos'  ->
-                             ((locate str pos str' pos'), x))
-                          (Decap.option None
-                             (Decap.apply (fun x  -> Some x)
-                                (Decap.sequence (Decap.string ":" ":")
-                                   typexpr (fun _  t  -> t)))))
-                       (Decap.sequence
-                          (Decap.option None
-                             (Decap.apply (fun x  -> Some x)
-                                (Decap.sequence (Decap.char '=' '=')
-                                   expression (fun _  e  -> e))))
-                          (Decap.string ")" ")")
-                          (fun e  _  t  ->
-                             let (_loc_t,t) = t in
-                             fun pat  ->
-                               let (_loc_pat,pat) = pat in
-                               fun _  _  id  ->
-                                 let pat =
-                                   match t with
-                                   | None  -> pat
-                                   | Some t ->
-                                       loc_pat (merge2 _loc_pat _loc_t)
-                                         (Ppat_constraint (pat, t)) in
-                                 `Arg (("?" ^ id), e, pat)))))))) ::
-        (Decap.fsequence opt_label
-           (Decap.sequence (Decap.string ":" ":") pattern
-              (fun _  pat  id  -> `Arg (("?" ^ id), None, pat)))) ::
-        (Decap.apply
-           (fun id  ->
-              let (_loc_id,id) = id in
-              `Arg
-                (("?" ^ id), None,
-                  (loc_pat _loc_id (Ppat_var (id_loc id _loc_id)))))
-           (Decap.apply_position
-              (fun x  str  pos  str'  pos'  ->
-                 ((locate str pos str' pos'), x)) opt_label)) ::
-        (let y = [] in
-         if allow_new_type
-         then
-           (Decap.fsequence (Decap.char '(' '(')
-              (Decap.fsequence type_kw
-                 (Decap.sequence typeconstr_name (Decap.char ')' ')')
-                    (fun name  _  _default_0  _  -> `Type name))))
-           :: y
-         else y))
+                                    loc_pat _loc (Ppat_constraint (pat, t)) in
+                              `Arg (id, None, pat)))))) ::
+             (Decap.fsequence label
+                (Decap.sequence (Decap.string ":" ":") pattern
+                   (fun _  pat  id  -> `Arg (id, None, pat)))) ::
+             (Decap.sequence (Decap.char '~' '~')
+                (Decap.apply_position
+                   (fun x  str  pos  str'  pos'  ->
+                      ((locate str pos str' pos'), x)) ident)
+                (fun _  id  ->
+                   let (_loc_id,id) = id in
+                   `Arg
+                     (id, None,
+                       (loc_pat _loc_id (Ppat_var (id_loc id _loc_id)))))) ::
+             (Decap.fsequence (Decap.string "?" "?")
+                (Decap.fsequence (Decap.string "(" "(")
+                   (Decap.fsequence
+                      (Decap.apply_position
+                         (fun x  str  pos  str'  pos'  ->
+                            ((locate str pos str' pos'), x)) lowercase_ident)
+                      (Decap.fsequence
+                         (Decap.apply_position
+                            (fun x  str  pos  str'  pos'  ->
+                               ((locate str pos str' pos'), x))
+                            (Decap.option None
+                               (Decap.apply (fun x  -> Some x)
+                                  (Decap.sequence (Decap.string ":" ":")
+                                     typexpr (fun _  t  -> t)))))
+                         (Decap.sequence
+                            (Decap.option None
+                               (Decap.apply (fun x  -> Some x)
+                                  (Decap.sequence (Decap.string "=" "=")
+                                     expression (fun _  e  -> e))))
+                            (Decap.string ")" ")")
+                            (fun e  _  t  ->
+                               let (_loc_t,t) = t in
+                               fun id  ->
+                                 let (_loc_id,id) = id in
+                                 fun _  _  ->
+                                   let pat =
+                                     loc_pat _loc_id
+                                       (Ppat_var (id_loc id _loc_id)) in
+                                   let pat =
+                                     match t with
+                                     | None  -> pat
+                                     | Some t ->
+                                         loc_pat (merge2 _loc_id _loc_t)
+                                           (Ppat_constraint (pat, t)) in
+                                   `Arg (("?" ^ id), e, pat))))))) ::
+             (Decap.fsequence opt_label
+                (Decap.fsequence (Decap.string ":" ":")
+                   (Decap.fsequence (Decap.string "(" "(")
+                      (Decap.fsequence
+                         (Decap.apply_position
+                            (fun x  str  pos  str'  pos'  ->
+                               ((locate str pos str' pos'), x)) pattern)
+                         (Decap.fsequence
+                            (Decap.apply_position
+                               (fun x  str  pos  str'  pos'  ->
+                                  ((locate str pos str' pos'), x))
+                               (Decap.option None
+                                  (Decap.apply (fun x  -> Some x)
+                                     (Decap.sequence (Decap.string ":" ":")
+                                        typexpr (fun _  t  -> t)))))
+                            (Decap.sequence
+                               (Decap.option None
+                                  (Decap.apply (fun x  -> Some x)
+                                     (Decap.sequence (Decap.char '=' '=')
+                                        expression (fun _  e  -> e))))
+                               (Decap.string ")" ")")
+                               (fun e  _  t  ->
+                                  let (_loc_t,t) = t in
+                                  fun pat  ->
+                                    let (_loc_pat,pat) = pat in
+                                    fun _  _  id  ->
+                                      let pat =
+                                        match t with
+                                        | None  -> pat
+                                        | Some t ->
+                                            loc_pat (merge2 _loc_pat _loc_t)
+                                              (Ppat_constraint (pat, t)) in
+                                      `Arg (("?" ^ id), e, pat)))))))) ::
+             (Decap.fsequence opt_label
+                (Decap.sequence (Decap.string ":" ":") pattern
+                   (fun _  pat  id  -> `Arg (("?" ^ id), None, pat)))) ::
+             (Decap.apply
+                (fun id  ->
+                   let (_loc_id,id) = id in
+                   `Arg
+                     (("?" ^ id), None,
+                       (loc_pat _loc_id (Ppat_var (id_loc id _loc_id)))))
+                (Decap.apply_position
+                   (fun x  str  pos  str'  pos'  ->
+                      ((locate str pos str' pos'), x)) opt_label)) ::
+             (let y = [] in
+              if allow_new_type
+              then
+                (Decap.fsequence (Decap.char '(' '(')
+                   (Decap.fsequence type_kw
+                      (Decap.sequence typeconstr_name (Decap.char ')' ')')
+                         (fun name  _  _default_0  _  -> `Type name))))
+                :: y
+              else y)))
     let apply_params params e =
       let f acc =
         function

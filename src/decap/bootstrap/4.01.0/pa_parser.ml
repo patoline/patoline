@@ -156,7 +156,170 @@ module Ext(In:Extension) =
                                 __loc__end__buf __loc__end__pos in
                             (Atom,
                               (exp_apply _loc (exp_glr_fun _loc "lists") [p]))))]
+    let glr_binding = Decap.declare_grammar "glr_binding"
+    let _ =
+      Decap.set_grammar glr_binding
+        (Decap.fsequence lowercase_ident
+           (Decap.fsequence
+              (Decap.option None
+                 (Decap.apply (fun x  -> Some x) (pattern_lvl AsPat)))
+              (Decap.fsequence
+                 (Decap.option None
+                    (Decap.apply (fun x  -> Some x)
+                       (Decap.sequence (Decap.char ':' ':') typexpr
+                          (fun _  -> fun _default_0  -> _default_0))))
+                 (Decap.fsequence (Decap.char '=' '=')
+                    (Decap.sequence glr_rules
+                       (Decap.option []
+                          (Decap.sequence and_kw glr_binding
+                             (fun _  -> fun _default_0  -> _default_0)))
+                       (fun r  ->
+                          fun l  ->
+                            fun _  ->
+                              fun ty  ->
+                                fun arg  ->
+                                  fun name  -> (name, arg, ty, r) :: l))))))
+    let glr_struct_item =
+      Decap.fsequence_position let_kw
+        (Decap.sequence parser_kw glr_binding
+           (fun _default_0  ->
+              fun l  ->
+                fun _default_1  ->
+                  fun __loc__start__buf  ->
+                    fun __loc__start__pos  ->
+                      fun __loc__end__buf  ->
+                        fun __loc__end__pos  ->
+                          let _loc =
+                            locate __loc__start__buf __loc__start__pos
+                              __loc__end__buf __loc__end__pos in
+                          let rec fn =
+                            function
+                            | [] -> ([], [])
+                            | (name,arg,ty,r)::l ->
+                                let (str1,str2) = fn l in
+                                let pname =
+                                  match (ty, arg) with
+                                  | (None ,_) ->
+                                      ((Stack.push
+                                          (Pa_ocaml_prelude.empty_quote_env2
+                                             ()) Pa_ocaml_prelude.quote_stack;
+                                        Pa_ocaml_prelude.push_string 44 name);
+                                       (let quote_res =
+                                          Pa_ocaml_prelude.quote_pattern_2
+                                            _loc
+                                            "#201 \"pa_parser.ml\"\n                        $lid:name$ " in
+                                        ignore
+                                          (Stack.pop
+                                             Pa_ocaml_prelude.quote_stack);
+                                        quote_res))
+                                  | (Some ty,None ) ->
+                                      (((Stack.push
+                                           (Pa_ocaml_prelude.empty_quote_env2
+                                              ())
+                                           Pa_ocaml_prelude.quote_stack;
+                                         Pa_ocaml_prelude.push_type 64 ty);
+                                        Pa_ocaml_prelude.push_string 51 name);
+                                       (let quote_res =
+                                          Pa_ocaml_prelude.quote_pattern_2
+                                            _loc
+                                            "#202 \"pa_parser.ml\"\n                               $lid:name$ : $ty$ " in
+                                        ignore
+                                          (Stack.pop
+                                             Pa_ocaml_prelude.quote_stack);
+                                        quote_res))
+                                  | (Some ty,Some _) ->
+                                      (((Stack.push
+                                           (Pa_ocaml_prelude.empty_quote_env2
+                                              ())
+                                           Pa_ocaml_prelude.quote_stack;
+                                         Pa_ocaml_prelude.push_type 83 ty);
+                                        Pa_ocaml_prelude.push_string 53 name);
+                                       (let quote_res =
+                                          Pa_ocaml_prelude.quote_pattern_2
+                                            _loc
+                                            "#203 \"pa_parser.ml\"\n                                 $lid:name$ : ('type_of_arg -> $ty$) " in
+                                        ignore
+                                          (Stack.pop
+                                             Pa_ocaml_prelude.quote_stack);
+                                        quote_res)) in
+                                (match arg with
+                                 | None  ->
+                                     (((((Stack.push
+                                            (Pa_ocaml_prelude.empty_quote_env2
+                                               ())
+                                            Pa_ocaml_prelude.quote_stack;
+                                          Pa_ocaml_prelude.push_string 76
+                                            name);
+                                         Pa_ocaml_prelude.push_pattern 44
+                                           pname);
+                                        (let quote_res =
+                                           Pa_ocaml_prelude.quote_structure_2
+                                             _loc
+                                             "#207 \"pa_parser.ml\"\n                    let $pname$ = Decap.declare_grammar $string:name$" in
+                                         ignore
+                                           (Stack.pop
+                                              Pa_ocaml_prelude.quote_stack);
+                                         quote_res)) @ str1),
+                                       ((((Stack.push
+                                             (Pa_ocaml_prelude.empty_quote_env2
+                                                ())
+                                             Pa_ocaml_prelude.quote_stack;
+                                           Pa_ocaml_prelude.push_expression
+                                             77 r);
+                                          Pa_ocaml_prelude.push_string 66
+                                            name);
+                                         (let quote_res =
+                                            Pa_ocaml_prelude.quote_structure_2
+                                              _loc
+                                              "#208 \"pa_parser.ml\"\n                    let _ = Decap.set_grammar $lid:name$ $r$ " in
+                                          ignore
+                                            (Stack.pop
+                                               Pa_ocaml_prelude.quote_stack);
+                                          quote_res)) @ str2))
+                                 | Some arg ->
+                                     let set_name = name ^ "__set__grammar" in
+                                     ((((((Stack.push
+                                             (Pa_ocaml_prelude.empty_quote_env2
+                                                ())
+                                             Pa_ocaml_prelude.quote_stack;
+                                           Pa_ocaml_prelude.push_string 91
+                                             name);
+                                          Pa_ocaml_prelude.push_string 53
+                                            set_name);
+                                         Pa_ocaml_prelude.push_pattern 44
+                                           pname);
+                                        (let quote_res =
+                                           Pa_ocaml_prelude.quote_structure_2
+                                             _loc
+                                             "#211 \"pa_parser.ml\"\n                    let $pname$, $lid:set_name$ = Decap.grammar_family $string:name$" in
+                                         ignore
+                                           (Stack.pop
+                                              Pa_ocaml_prelude.quote_stack);
+                                         quote_res)) @ str1),
+                                       ((((((Stack.push
+                                               (Pa_ocaml_prelude.empty_quote_env2
+                                                  ())
+                                               Pa_ocaml_prelude.quote_stack;
+                                             Pa_ocaml_prelude.push_expression
+                                               77 r);
+                                            Pa_ocaml_prelude.push_pattern 68
+                                              arg);
+                                           Pa_ocaml_prelude.push_string 48
+                                             set_name);
+                                          Pa_ocaml_prelude.push_string 48
+                                            set_name);
+                                         (let quote_res =
+                                            Pa_ocaml_prelude.quote_structure_2
+                                              _loc
+                                              "#212 \"pa_parser.ml\"\n                    let _ = $lid:set_name$ (fun $arg$ -> $r$) " in
+                                          ignore
+                                            (Stack.pop
+                                               Pa_ocaml_prelude.quote_stack);
+                                          quote_res)) @ str2))) in
+                          let (str1,str2) = fn l in str1 @ str2))
     let extra_expressions = glr_parser :: extra_expressions
+    let extra_structure = glr_struct_item :: extra_structure
+    let _ = add_reserved_id "parser"
     let glr_opt_expr =
       Decap.option None
         (Decap.apply (fun x  -> Some x)

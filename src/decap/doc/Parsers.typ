@@ -54,6 +54,7 @@ respectively.
              | "STR"   <atom_expr>
              | <string_literal>
              | "RE"    <atom_expr>
+             | <regexp_literal>
              | "DEBUG" <atom_expr>
 
 <option>   ::= "[" <expr> "]"
@@ -170,7 +171,17 @@ let _ =
 
 Until now, we never wrote any recursive grammar and rather handled repetition
 using modifiers such as ##+## or ##*##. In order to define a recursive
-grammar, one should first declare it using the function ##declare_grammar##,
+grammar, one should define it using the ##parser## keyword at the level of definitions, using the following syntax:
+
+###
+<definition> ::= ...
+               | "let" "parser" <lowercase-ident> [<pattern>] [":" <typexpr>] "=" <rule>
+###
+
+The ##pattern##, is an optional argument that we will describe letter.
+
+(*
+first declare it using the function ##declare_grammar##,
 which take as input a ##string##, which is to refer to the grammar in error
 messages.
 
@@ -191,6 +202,7 @@ another grammar that will be take as its definition.
 set_grammar : 'a grammar -> 'a grammar -> unit
 
 ###
+*)
 
 As a first very simple example of recursive grammar, we can construct a
 parser that accepts the following the following BNF grammar, where ##<empty>##
@@ -213,15 +225,11 @@ program fails and prints an error message.
 ### OCaml "aabb.ml"
 open Decap
 
-let aabb = declare_grammar "aabb"
-
-let _ = set_grammar aabb (
-  parser
+let parser aabb =
   | 'a' aabb 'b'
-  | EMPTY)
+  | EMPTY
 
-let aabb_eof =
-  parser
+let parser aabb_eof =
   | aabb EOF
 
 let _ =
@@ -262,25 +270,20 @@ and implemented using a ##grammar_familly##.
 open Decap
 
 type calc_prio = Sum | Prod | Pow | Atom
-let expr, set_expr = grammar_family "expr" 
 
-let float_num =
-  let float_re = ''[0-9]+\([.][0-9]+\)?\([eE][-+]?[0-9]+\)?'' in
-  parser
-  | f:RE(float_re) -> float_of_string f
+let float_re = ''[0-9]+\([.][0-9]+\)?\([eE][-+]?[0-9]+\)?''
+let parser float_num =
+  f:RE(float_re) -> float_of_string f
 
-let prod_sym =
-  parser
+let parser prod_sym =
   | '*' -> ( *. )
   | '/' -> ( /. )
 
-let sum_sym =
-  parser
+let parser sum_sym =
   | '+' -> ( +. )
   | '-' -> ( -. )
 
-let _ = set_expr (fun prio ->
-  parser
+let parser expr prio : float grammar =
   | f:float_num          when prio = Atom -> f
   | '(' e:(expr Sum) ')' when prio = Atom -> e
   | '-' e:(expr Pow)     when prio = Pow -> -. e
@@ -292,7 +295,7 @@ let _ = set_expr (fun prio ->
       List.fold_left (fun acc (fn, e') -> fn acc e') e l
   | e:(expr Prod) l:{sum_sym  (expr Prod)}*
                          when prio = Sum  ->
-      List.fold_left (fun acc (fn, e') -> fn acc e') e l)
+      List.fold_left (fun acc (fn, e') -> fn acc e') e l
 
 (* The main loop *)
 let _ =
@@ -336,23 +339,16 @@ grammar, which accepts for example the words ##""##, ##"abc"## or ##"aabbcc"##.
 ### OCaml "aabbcc.ml"
 open Decap
 
-let (nb_cc, set_nb_cc) = grammar_family "nb_cc"
-
-let _ = set_nb_cc (fun nb ->
-  parser
+let parser nb_cc nb =
   | 'c' (nb_cc (nb - 1))  when nb > 0
-  | EMPTY                      when nb <= 0)
+  | EMPTY                 when nb <= 0
 
-let aabb = declare_grammar "aabb"
-
-let _ = set_grammar aabb (
-  parser
+let parser aabb =
   | 'a' n:aabb 'b' -> n + 1
-  | EMPTY                    -> 0)
+  | EMPTY          -> 0
 
-let aabbcc =
-  parser
-  | n:aabb ->> {(nb_cc n) EOF}
+let parser aabbcc =
+  | n:aabb ->> (nb_cc n) EOF
 
 let _ =
   let no_blank buf pos = (buf, pos) in
