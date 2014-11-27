@@ -117,13 +117,49 @@ type next = {
 
 type ('a, 'b) continuation = buffer -> int -> buffer -> int -> buffer -> int -> 'a -> 'b
 
-type 'a grammar = {
-  mutable firsts : charset Lazy.t;
-  mutable first_sym : string_tree Lazy.t;
-  mutable accept_empty : bool Lazy.t;
-  mutable parse : 'b. grouped -> buffer -> int -> next -> ('a, 'b) continuation -> 'b;
-}
+type empty_type = R of empty_type
+			 
+module rec G:
+	     sig
+  type 'a grammar = {
+    ident : int;
+    mutable firsts : charset;
+    mutable first_sym : string_tree;
+    mutable accept_empty : bool;
+    mutable parse : 'b. grouped -> buffer -> int -> next -> ('a, 'b) continuation -> 'b;
+    mutable set_info : unit -> unit;
+    mutable deps : TG.t option;
+  }
 
+  include Hashtbl.HashedType with   type t = empty_type grammar
+							
+end = struct			   
+  type 'a grammar = {
+    ident : int;
+    mutable firsts : charset;
+    mutable first_sym : string_tree;
+    mutable accept_empty : bool;
+    mutable parse : 'b. grouped -> buffer -> int -> next -> ('a, 'b) continuation -> 'b;
+    mutable set_info : unit -> unit;
+    mutable deps : TG.t option;
+  }
+
+  type t = empty_type grammar
+
+  let hash g = Hashtbl.hash g.ident
+
+  let equal g1 g2 = g1.ident = g2.ident
+end
+and TG:Weak.S with type data = G.t = Weak.Make(G)
+
+include G
+
+let new_ident =
+  let c = ref 0 in
+  (fun () -> let i = !c in c := i + 1; i)
+    
+let cast : 'a grammar -> empty_type grammar = Obj.magic
+		    
 let record_error grouped msg str col =
   let pos = Input.line_beginning str + col in
   let pos' = grouped.err_info.max_err_pos in
@@ -141,9 +177,10 @@ let parse_error grouped msg str pos =
   record_error grouped msg str pos;
   raise Error
 
-let accept_empty g = Lazy.force g.accept_empty
-let firsts g = Lazy.force g.firsts
-let first_sym g = Lazy.force g.first_sym
+
+let accept_empty g = g.accept_empty
+let firsts g = g.firsts
+let first_sym g = g.first_sym
 let next_sym g ={
                  accepted_char = firsts g;
                  first_syms = first_sym g;
@@ -165,18 +202,46 @@ let test grouped next str p =
 let not_ready name _ = failwith ("not_ready: "^name)
 
 let declare_grammar name = {
-  firsts = lazy (not_ready name ());
-  first_sym = lazy (not_ready name ());
-  accept_empty = lazy (not_ready name ());
+  ident = new_ident ();
+  firsts = empty_charset;
+  first_sym = Empty;
+  accept_empty = true;
+  deps = Some (TG.create 7);
+  set_info = (fun () -> ());
   parse = (not_ready name);
 }
 
+let rec update (g : empty_type grammar) =
+  let old_firsts = g.firsts in
+  let old_accept_empty = g.accept_empty in
+  g.set_info ();
+  if (old_firsts <> g.firsts || old_accept_empty <> g.accept_empty)
+  then match g.deps with None -> () | Some t -> TG.iter update t
+
+let add_deps p1 p2 = match p2.deps with None -> () | Some t -> TG.add t (cast p1)
+
+let tbl = Hashtbl.create 1001
+
 let set_grammar p1 p2 =
-(*  if p1.parse != not_ready then failwith "this grammar can not be set";*)
-  p1.firsts <- p2.firsts;
-  p1.first_sym <- p2.first_sym;
-  p1.accept_empty <- p2.accept_empty;
-  p1.parse <- p2.parse
+  let rec fn p =
+    match p.deps with
+      None -> ()
+    | Some deps ->
+       if not (Hashtbl.mem tbl p.ident) then (
+	 if TG.mem deps (cast p2) then failwith "Illegal left recursion";
+	 Hashtbl.add tbl p.ident ();
+	 TG.iter fn deps
+       )
+  in
+  fn (cast p1);
+  Hashtbl.clear tbl;
+  p1.parse <- p2.parse;
+  p1.set_info <- (fun () ->
+		  p1.firsts <- p2.firsts;
+		  p1.first_sym <- p2.first_sym;
+		  p1.accept_empty <- p2.accept_empty);
+  add_deps p1 p2;
+  update (cast p1)
 
 let grammar_family ?(param_to_string=fun _ -> "<param>") name =
   let tbl = Hashtbl.create 101 in
@@ -208,11 +273,17 @@ let grammar_family ?(param_to_string=fun _ -> "<param>") name =
    do_fix fn;
    definition := Some fn)
 
+let imit_deps l = match l.deps with None -> None | Some _ -> Some (TG.create 7)
+								  
 let apply : ('a -> 'b) -> 'a grammar -> 'b grammar
   = fun f l ->
-    { firsts = lazy (firsts l);
-      first_sym = lazy (first_sym l);
-      accept_empty = lazy (accept_empty l);
+  let res = {
+      ident = new_ident ();
+      firsts = firsts l;
+      first_sym = first_sym l;
+      accept_empty = accept_empty l;
+      deps = imit_deps l;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
         l.parse grouped str pos next 
@@ -220,23 +291,45 @@ let apply : ('a -> 'b) -> 'a grammar -> 'b grammar
 	    let r = try f x with Give_up msg -> parse_error grouped (~!msg) l' c' in
 	    g l c l' c' l'' c'' r);
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts l;
+    res.first_sym <- first_sym l;
+    res.accept_empty <- accept_empty l);
+  add_deps res l;
+  res
 
 let delim : 'a grammar -> 'a grammar
   = fun l ->
-    { firsts = lazy (firsts l);
-      first_sym = lazy (first_sym l);
-      accept_empty = lazy (accept_empty l);
+  let res =
+    { ident = new_ident ();
+      firsts = firsts l;
+      first_sym = first_sym l;
+      accept_empty = accept_empty l;
+      deps = imit_deps l;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
         let cont l c l' c' l'' c'' x () = g l c l' c' l'' c'' x in
         l.parse grouped str pos next cont ()
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts l;
+    res.first_sym <- first_sym l;
+    res.accept_empty <- accept_empty l);
+  add_deps res l;
+  res
 
 let merge : ('a -> 'b) -> ('b -> 'b -> 'b) -> 'a grammar -> 'b grammar
   = fun unit merge l ->
-    { firsts = lazy (firsts l);
-      first_sym = lazy (first_sym l);
-      accept_empty = lazy (accept_empty l);
+  let res =
+    { ident = new_ident ();
+      firsts = firsts l;
+      first_sym = first_sym l;
+      accept_empty = accept_empty l;
+      deps = imit_deps l;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
         let m = ref PosMap.empty in
@@ -265,27 +358,49 @@ let merge : ('a -> 'b) -> ('b -> 'b -> 'b) -> 'a grammar -> 'b grammar
             None -> raise Error
           | Some x -> x
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts l;
+    res.first_sym <- first_sym l;
+    res.accept_empty <- accept_empty l);
+  add_deps res l;
+  res
 
 let lists : 'a grammar -> 'a list grammar =
   fun gr -> merge (fun x -> [x]) (@) gr
 
 let position : 'a grammar -> (string * int * int * int * int * 'a) grammar
   = fun l ->
-    { firsts = lazy (firsts l);
-      first_sym = lazy (first_sym l);
-      accept_empty = lazy (accept_empty l);
+   let res =
+     { ident = new_ident ();
+       firsts = firsts l;
+      first_sym = first_sym l;
+      accept_empty = accept_empty l;
+      deps = imit_deps l;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
           l.parse grouped str pos next (fun l c l' c' l'' c'' x ->
                                           g l c l' c' l'' c'' (
                                               (fname l, line_num l, c, line_num l', c', x)))
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts l;
+    res.first_sym <- first_sym l;
+    res.accept_empty <- accept_empty l);
+  add_deps res l;
+  res
 
 let apply_position : ('a -> buffer -> int -> buffer -> int -> 'b) -> 'a grammar -> 'b grammar
   = fun f l ->
-    { firsts = lazy (firsts l);
-      first_sym = lazy (first_sym l);
-      accept_empty = lazy (accept_empty l);
+   let res =
+     { ident = new_ident ();
+       firsts = firsts l;
+      first_sym = first_sym l;
+      accept_empty = accept_empty l;
+      deps = imit_deps l;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
           l.parse grouped str pos next
@@ -293,28 +408,44 @@ let apply_position : ('a -> buffer -> int -> buffer -> int -> 'b) -> 'a grammar 
 		   let r = try f x l c l' c' with Give_up msg -> parse_error grouped (~!msg) l' c' in
 		   g l c l' c' l'' c'' r)
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts l;
+    res.first_sym <- first_sym l;
+    res.accept_empty <- accept_empty l);
+  add_deps res l;
+  res
 
 let eof : 'a -> 'a grammar
   = fun a ->
     let set = singleton '\255' in
-    { firsts = lazy set;
-      first_sym = lazy (~~ "EOF");
-      accept_empty = lazy false;
+    { ident = new_ident ();
+      firsts = set;
+      first_sym = ~~ "EOF";
+      accept_empty = false;
+      set_info = (fun () -> ());
+      deps = None;
       parse =
         fun grouped str pos next g ->
           if is_empty str pos then g str pos str pos str pos a else parse_error grouped (~~ "EOF") str pos
     }
 
 let empty : 'a -> 'a grammar = fun a ->
-  { firsts = lazy empty_charset;
-    first_sym = lazy Empty;
-    accept_empty = lazy true;
+  { ident = new_ident ();
+    firsts = empty_charset;
+    first_sym = Empty;
+    accept_empty = true;
+    set_info = (fun () -> ());
+    deps = None;
     parse = fun grouped str pos next g -> g str pos str pos str pos a }
 
 let debug : string -> unit grammar = fun msg ->
-  { firsts = lazy empty_charset;
-    first_sym = lazy Empty;
-    accept_empty = lazy true;
+  { ident = new_ident ();
+    firsts = empty_charset;
+    first_sym = Empty;
+    accept_empty = true;
+    deps = None;
+    set_info = (fun () -> ());
     parse = fun grouped str pos next g ->
             let l = line str in
             let current = String.sub l pos (min (String.length l - pos) 10) in
@@ -322,17 +453,23 @@ let debug : string -> unit grammar = fun msg ->
             g str pos str pos str pos () }
 
 let fail : string -> 'a grammar = fun msg ->
-  { firsts = lazy empty_charset;
-    first_sym = lazy Empty;
-    accept_empty =  lazy false;
+  { ident = new_ident ();
+    firsts = empty_charset;
+    first_sym = Empty;
+    accept_empty = false;
+    deps = None;
+    set_info = (fun () -> ());
     parse = fun grouped str pos next g ->
              parse_error grouped (~~ msg) str pos }
 
 let  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool -> string -> 'a grammar =
   (fun fn set empty name ->
-   { firsts = lazy set;
-     first_sym = lazy (~~ name);
-     accept_empty = lazy empty;
+   { ident = new_ident ();
+     firsts = set;
+     first_sym = ~~ name;
+     accept_empty = empty;
+     deps = None;
+     set_info = (fun () -> ());
      parse = fun grouped str pos next g ->
              let a, str', pos' = try fn str pos with Give_up msg -> parse_error grouped (~! msg) str pos in
              let str'', pos'' = apply_blank grouped str' pos' in
@@ -342,9 +479,12 @@ let char : char -> 'a -> 'a grammar
   = fun s a ->
     let set = singleton s in
     let s' = String.make 1 s in
-    { firsts = lazy set;
-      first_sym = lazy (~~ s');
-      accept_empty = lazy false;
+    { ident = new_ident ();
+      firsts = set;
+      first_sym = ~~ s';
+      accept_empty = false;
+      deps = None;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
           let c, str', pos' = read str pos in
@@ -355,9 +495,12 @@ let char : char -> 'a -> 'a grammar
 
 let any : char grammar
   = let set = del full_charset '\255' in
-    { firsts = lazy set;
-      first_sym = lazy (~~ "ANY");
-      accept_empty = lazy false;
+    { ident = new_ident ();
+      firsts = set;
+      first_sym = ~~ "ANY";
+      accept_empty = false;
+      deps = None;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
           let c, str', pos' = read str pos in
@@ -370,9 +513,12 @@ let string : string -> 'a -> 'a grammar
   = fun s a ->
    let len_s = String.length s in
     let set = if len_s > 0 then singleton s.[0] else empty_charset in
-    { firsts = lazy set;
-      first_sym = lazy (if len_s > 0 then (~~ s) else Empty);
-      accept_empty = lazy (len_s = 0);
+    { ident = new_ident ();
+      firsts = set;
+      first_sym = if len_s > 0 then (~~ s) else Empty;
+      accept_empty = (len_s = 0);
+      deps = None;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
           let str' = ref str in
@@ -398,9 +544,12 @@ let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
         (found := true; addq set (Char.chr i))
     done;
     if not !found then failwith "regexp: illegal empty regexp";
-    { firsts = lazy set;
-      first_sym = lazy (~~ name);
-      accept_empty = lazy (Str.string_match r "" 0);
+    { ident = new_ident ();
+      firsts = set;
+      first_sym = ~~ name;
+      accept_empty = Str.string_match r "" 0;
+      deps = None;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
         let l = line str in
@@ -415,14 +564,6 @@ let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
           else (
             parse_error grouped (~~ name) str pos)
     }
-
-let mk_empty in_analysis fn =
-  lazy (
-      if !in_analysis then failwith "illegal left recursion";
-      in_analysis := true;
-      let r = fn () in
-      in_analysis := false;
-      r)
 
 let union_firsts l1 l2 =
   if accept_empty l1 then
@@ -445,12 +586,21 @@ let union' gram next =
   if accept_empty gram then union'' gram next
   else next_sym gram
 
+let imit_deps_seq l1 l2 =
+  if accept_empty l1 then
+    match l1.deps, l2.deps with None, None -> None | _ -> Some (TG.create 7)
+  else
+    imit_deps l1
+	      
 let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
   = fun l1 l2 f ->
-  let flag = ref false in
-    { firsts = lazy (union_firsts l1 l2);
-      first_sym = lazy (union_first_sym l1 l2);
-      accept_empty = mk_empty flag (fun () -> accept_empty l1 && accept_empty l2);
+   let res =
+     { ident = new_ident ();
+       firsts = union_firsts l1 l2;
+      first_sym = union_first_sym l1 l2;
+      accept_empty = accept_empty l1 && accept_empty l2;
+      set_info = (fun () -> ());
+      deps = imit_deps_seq l1 l2;
       parse =
         fun grouped str pos next g ->
           l1.parse grouped str pos (union' l2 next)
@@ -460,14 +610,25 @@ let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
                               let str', pos' = if str' == str0 && pos' == pos0 then str0', pos0' else str', pos' in
 			      let res = try f a x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
                               g str pos str' pos' str'' pos'' res))
-    }
+    } in
+    res.set_info <- (fun () ->
+		   res.firsts <- union_firsts l1 l2;
+		   res.first_sym <- union_first_sym l1 l2;
+		   res.accept_empty <- accept_empty l1 && accept_empty l2);
+    add_deps res l1;
+    (* FIXME: if accept_empty l1 becomes false, this dependency could be removed *)
+    if accept_empty l1 then add_deps res l2;
+  res
 
 let sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -> buffer -> int -> 'c) -> 'c grammar
   = fun l1 l2 f ->
-  let flag = ref false in
-    { firsts = lazy (union_firsts l1 l2);
-      first_sym = lazy (union_first_sym l1 l2);
-      accept_empty = mk_empty flag (fun () -> accept_empty l1 && accept_empty l2);
+   let res =
+     { ident = new_ident ();
+       firsts = union_firsts l1 l2;
+      first_sym = union_first_sym l1 l2;
+      accept_empty = accept_empty l1 && accept_empty l2;
+      set_info = (fun () -> ());
+      deps = imit_deps_seq l1 l2;
       parse =
         fun grouped str pos next g ->
           l1.parse grouped str pos (union' l2 next)
@@ -477,7 +638,15 @@ let sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -
                               let str', pos' = if str' == str0 && pos' == pos0 then str0', pos0' else str', pos' in
 			      let res = try f a b str pos str' pos' with Give_up msg -> parse_error grouped (~!msg) str' pos' in
                               g str pos str' pos' str'' pos'' res))
-    }
+    } in
+    res.set_info <- (fun () ->
+		   res.firsts <- union_firsts l1 l2;
+		   res.first_sym <- union_first_sym l1 l2;
+		   res.accept_empty <- accept_empty l1 && accept_empty l2);
+    add_deps res l1;
+    (* FIXME: if accept_empty l1 becomes false, this dependency could be removed *)
+    if accept_empty l1 then add_deps res l2;
+  res
 
 let fsequence : 'a grammar -> ('a -> 'b) grammar -> 'b grammar
   = fun l1 l2 -> sequence l1 l2 (fun x f -> f x)
@@ -495,10 +664,13 @@ let all_next =
 
 let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
   = fun l1 f2 ->
-  let ae = lazy (accept_empty l1) in
-    { firsts = lazy (if Lazy.force ae then firsts l1 else full_charset);
-      first_sym = lazy (first_sym l1);
-      accept_empty = ae;
+  let res =
+    { ident = new_ident ();
+      firsts = if accept_empty l1 then firsts l1 else full_charset;
+      first_sym = first_sym l1;
+      accept_empty = accept_empty l1;
+      set_info = (fun () -> ());
+      deps = imit_deps l1;
       parse =
         fun grouped str pos next g ->
           l1.parse grouped str pos all_next
@@ -509,6 +681,13 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
                               let str', pos' = if str' == str0 && pos' == pos0 then str0', pos0' else str', pos' in
                               g str pos str' pos' str'' pos'' b))
     }
+  in
+  res.set_info <- (fun () ->
+		   res.firsts <- if accept_empty l1 then firsts l1 else full_charset;
+		   res.first_sym <- first_sym l1;
+		   res.accept_empty <- accept_empty l1);
+  add_deps res l1;
+  res
 
 let iter : 'a grammar grammar -> 'a grammar
   = fun g -> dependent_sequence g (fun x -> x)
@@ -516,9 +695,13 @@ let iter : 'a grammar grammar -> 'a grammar
 let change_layout : ?new_blank_before:bool -> ?old_blank_after:bool -> 'a grammar -> blank -> 'a grammar
   = fun ?(new_blank_before=true) ?(old_blank_after=true) l1 blank1 ->
     (* if not l1.ready then failwith "change_layout: illegal recursion"; *)
-    { firsts = lazy (firsts l1);
-      first_sym = lazy (first_sym l1);
-      accept_empty = lazy (accept_empty l1);
+   let res =
+     { ident = new_ident ();
+       firsts = firsts l1;
+      first_sym = first_sym l1;
+      accept_empty = accept_empty l1;
+      deps = imit_deps l1;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
         let grouped' = { grouped with blank = blank1 } in
@@ -530,23 +713,44 @@ let change_layout : ?new_blank_before:bool -> ?old_blank_after:bool -> 'a gramma
                       g str pos str' pos' str'' pos'' x)
                    else g)
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts l1;
+    res.first_sym <- first_sym l1;
+    res.accept_empty <- accept_empty l1);
+  add_deps res l1;
+  res
 
 let ignore_next_blank : 'a grammar -> 'a grammar
   = fun l1 ->
-    (* if not l1.ready then failwith "change_layout: illegal recursion"; *)
-    { firsts = lazy (firsts l1);
-      first_sym = lazy (first_sym l1);
-      accept_empty = lazy (accept_empty l1);
+   let res =
+     { ident = new_ident ();
+       firsts = firsts l1;
+      first_sym = first_sym l1;
+      accept_empty = accept_empty l1;
+      deps = imit_deps l1;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
           l1.parse grouped str pos all_next (fun s p s' p' s'' p'' -> g s p s' p' s' p')
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts l1;
+    res.first_sym <- first_sym l1;
+    res.accept_empty <- accept_empty l1);
+  add_deps res l1;
+  res
 
 let option : 'a -> 'a grammar -> 'a grammar
   = fun a l ->
-    { firsts = lazy (firsts l);
-      first_sym = lazy (first_sym l);
-      accept_empty = lazy true;
+  let res =
+    { ident = new_ident ();
+      firsts = firsts l;
+      first_sym = first_sym l;
+      accept_empty = true;
+      deps = imit_deps l;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
         if test grouped next str pos then
@@ -558,12 +762,22 @@ let option : 'a -> 'a grammar -> 'a grammar
         else
           l.parse grouped str pos next g
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts l;
+    res.first_sym <- first_sym l);
+  add_deps res l;
+  res
 
 let option' : 'a -> 'a grammar -> 'a grammar
   = fun a l ->
-    { firsts = lazy (firsts l);
-      first_sym = lazy (first_sym l);
-      accept_empty = lazy true;
+  let res =
+    { ident = new_ident ();
+      firsts = firsts l;
+      first_sym = first_sym l;
+      accept_empty = true;
+      deps = imit_deps l;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
         if test grouped next str pos then
@@ -576,12 +790,22 @@ let option' : 'a -> 'a grammar -> 'a grammar
         else
           l.parse grouped str pos next g
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts l;
+    res.first_sym <- first_sym l);
+  add_deps res l;
+  res
 
 let fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
-    { firsts = lazy (firsts f1);
-      first_sym = lazy (first_sym f1);
-      accept_empty = lazy true;
+  let res =
+    { ident = new_ident ();
+      firsts = firsts f1;
+      first_sym = first_sym f1;
+      accept_empty = true;
+      deps = imit_deps f1;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
           let next' = union'' f1 next in
@@ -601,12 +825,22 @@ let fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
                         fn str' pos' str'' pos'' res)
           in fn str pos str pos a
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts f1;
+    res.first_sym <- first_sym f1);
+  add_deps res f1;
+  res
 
 let fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
-    { firsts = lazy (firsts f1);
-      first_sym = lazy (first_sym f1);
-      accept_empty = lazy true;
+   let res =
+     { ident = new_ident ();
+       firsts = firsts f1;
+      first_sym = first_sym f1;
+      accept_empty = true;
+      deps = imit_deps f1;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
           let next' = union'' f1 next in
@@ -627,12 +861,22 @@ let fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
           in
           fn str pos str pos a ()
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts f1;
+    res.first_sym <- first_sym f1);
+  add_deps res f1;
+  res
 
 let fixpoint1 : 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
-    { firsts = lazy (firsts f1);
-      first_sym = lazy (first_sym f1);
-      accept_empty = lazy true;
+  let res =
+    { ident = new_ident ();
+      firsts = firsts f1;
+      first_sym = first_sym f1;
+      accept_empty = accept_empty f1;
+      deps = imit_deps f1;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
           let next' = union'' f1 next in
@@ -655,13 +899,24 @@ let fixpoint1 : 'a -> ('a -> 'a) grammar -> 'a grammar
 			  let res = try f a with Give_up msg -> parse_error grouped (~!msg) str' pos' in
                           fn str' pos' str'' pos'' res)
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts f1;
+    res.accept_empty <- accept_empty f1;
+    res.first_sym <- first_sym f1);
+  add_deps res f1;
+  res
 
 
 let fixpoint1' : 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
-    { firsts = lazy (firsts f1);
-      first_sym = lazy (first_sym f1);
-      accept_empty = lazy true;
+  let res =
+    { ident = new_ident ();
+      firsts = firsts f1;
+      first_sym = first_sym f1;
+      accept_empty = accept_empty f1;
+      deps = imit_deps f1;
+      set_info = (fun () -> ());
       parse =
         fun grouped str pos next g ->
           let next' = union'' f1 next in
@@ -685,13 +940,23 @@ let fixpoint1' : 'a -> ('a -> 'a) grammar -> 'a grammar
 			    let res = try f a with Give_up msg -> parse_error grouped (~!msg) str' pos' in
                             fn str' pos' str'' pos'' res) ()
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <- firsts f1;
+    res.accept_empty <- accept_empty f1;
+    res.first_sym <- first_sym f1);
+  add_deps res f1;
+  res
 
 let alternatives : 'a grammar list -> 'a grammar
   = fun ls ->
-  let flag = ref false in
-  { firsts = lazy (List.fold_left (fun s p -> union s (firsts p)) empty_charset ls);
-    first_sym = lazy (List.fold_left (fun s p -> s @@ (first_sym p)) Empty ls);
-    accept_empty = mk_empty flag (fun () -> List.exists accept_empty ls);
+  let res =
+    { ident = new_ident ();
+      firsts = List.fold_left (fun s p -> union s (firsts p)) empty_charset ls;
+    first_sym = List.fold_left (fun s p -> s @@ (first_sym p)) Empty ls;
+    accept_empty = List.exists accept_empty ls;
+    deps = if List.exists (fun l -> l.deps <> None) ls then Some (TG.create 7) else None;
+    set_info = (fun () -> ());
     parse =
         fun grouped str pos next g ->
           let empty_ok = test grouped next str pos in
@@ -710,13 +975,25 @@ let alternatives : 'a grammar list -> 'a grammar
           in
           fn ls
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <-
+      List.fold_left (fun s p -> union s (firsts p)) empty_charset ls;
+    res.first_sym <- 
+      List.fold_left (fun s p -> s @@ (first_sym p)) Empty ls;
+    res.accept_empty <- List.exists accept_empty ls);
+  List.iter (fun l -> add_deps res l) ls;
+  res
 
 let alternatives' : 'a grammar list -> 'a grammar
   = fun ls ->
-  let flag = ref false in
-  { firsts = lazy (List.fold_left (fun s p -> union s (firsts p)) empty_charset ls);
-    first_sym = lazy (List.fold_left (fun s p -> s @@ (first_sym p)) Empty ls);
-    accept_empty = mk_empty flag (fun () -> List.exists accept_empty ls);
+  let res =
+    { ident = new_ident ();
+      firsts = List.fold_left (fun s p -> union s (firsts p)) empty_charset ls;
+    first_sym = List.fold_left (fun s p -> s @@ (first_sym p)) Empty ls;
+    accept_empty = List.exists accept_empty ls;
+    deps = if List.exists (fun l -> l.deps <> None) ls then Some (TG.create 7) else None;
+    set_info = (fun () -> ());
     parse =
         fun grouped str pos next g ->
           let empty_ok = test grouped next str pos in
@@ -738,6 +1015,15 @@ let alternatives' : 'a grammar list -> 'a grammar
           in
           fn ls ()
     }
+  in
+  res.set_info <- (fun () ->
+    res.firsts <-
+      List.fold_left (fun s p -> union s (firsts p)) empty_charset ls;
+    res.first_sym <- 
+      List.fold_left (fun s p -> s @@ (first_sym p)) Empty ls;
+    res.accept_empty <- List.exists accept_empty ls);
+  List.iter (fun l -> add_deps res l) ls;
+  res
 
 let parse_buffer grammar blank str =
   let grammar = sequence grammar (eof ()) (fun x _ -> x) in

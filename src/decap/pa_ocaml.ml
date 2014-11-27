@@ -209,8 +209,7 @@ let single_quote = black_box
      raise (Give_up "" (* FIXME *)))
   (Charset.singleton '\'') false ("'")
 
-let one_char slt =
-  parser
+let parser one_char slt =
   | '\n' -> '\n' 
   | single_quote when slt = Re -> '\''
   | c:RE(if slt = Re then re_escaped else char_escaped) ->
@@ -709,8 +708,8 @@ let typexpr_base : core_type grammar =
 	    | "tuple" -> loc_typ _loc (Ptyp_tuple l)
 	    | _ -> raise (Give_up "" (* FIXME *)))
 
-let extra_type_suits_grammar lvl' lvl = alternatives (List.map (fun g -> g lvl' lvl) extra_type_suits)
-let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> Location.t -> core_type)) grammar = memoize1 (fun lvl' lvl ->
+let extra_type_suits_grammar = memoize2 (fun lvl' lvl -> alternatives (List.map (fun g -> g lvl' lvl) extra_type_suits))
+let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> Location.t -> core_type)) grammar = memoize2 (fun lvl' lvl ->
   let ln f _loc e _loc_f = loc_typ (merge2 _loc_f _loc) e in
   parser
   | e:(extra_type_suits_grammar lvl' lvl) -> e
@@ -1077,7 +1076,7 @@ let ppat_list _loc l =
   in
   List.fold_right cons l (loc_pat _loc (ppat_construct (nil, None)))
 
-let extra_patterns_grammar lvl = alternatives (List.map (fun g -> g lvl) extra_patterns)
+let extra_patterns_grammar = memoize1 (fun lvl -> alternatives (List.map (fun g -> g lvl) extra_patterns))
 let pattern_base = memoize1 (fun lvl ->
   parser
   | e:(extra_patterns_grammar lvl) -> e
@@ -1193,8 +1192,8 @@ let pattern_base = memoize1 (fun lvl ->
 	    | _ -> raise (Give_up "" (* FIXME *)))
   )
 
-let extra_pattern_suits_grammar lvl' lvl = alternatives (List.map (fun g -> g lvl' lvl) extra_pattern_suits)
-let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
+let extra_pattern_suits_grammar = memoize2 (fun lvl' lvl -> alternatives (List.map (fun g -> g lvl' lvl) extra_pattern_suits))
+let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize2 (fun lvl' lvl ->
   let ln f _loc e = loc_pat (merge2 f.ppat_loc _loc) e in
   parser
   | e:(extra_pattern_suits_grammar lvl' lvl) -> e
@@ -1654,7 +1653,7 @@ let pexp_list _loc ?loc_cl l =
 		    l (loc_expr loc_cl (pexp_construct(id_loc (Lident "[]") loc_cl, None)))
 
 (* Expressions *)
-let extra_expressions_grammar lvl = alternatives (List.map (fun g -> g lvl) extra_expressions)
+let extra_expressions_grammar = memoize1 (fun lvl -> alternatives (List.map (fun g -> g lvl) extra_expressions))
 let expression_base = memoize1 (fun lvl ->
   parser
   | e:(extra_expressions_grammar lvl) -> e
@@ -1818,7 +1817,7 @@ let double_semi_col = black_box
      raise (Give_up "" (* FIXME *)))
   (Charset.singleton ';') false (";;")
 
-let extra_expression_suits_grammar lvl' lvl = alternatives (List.map (fun g -> g lvl' lvl) extra_expression_suits)
+let extra_expression_suits_grammar = memoize2 (fun lvl' lvl -> alternatives (List.map (fun g -> g lvl' lvl) extra_expression_suits))
 let expression_suit_aux = memoize2 (fun lvl' lvl ->
   let ln f _loc e = loc_expr (merge2 f.pexp_loc _loc) e in
   parser
