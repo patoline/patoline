@@ -1114,7 +1114,7 @@ let key_word s =
       match c with
 	'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> raise (Give_up ("The keyword "^s^" was expected..."))
 	| _ -> (), str', pos')
-     (Charset.singleton s.[0]) false s
+     (Charset.singleton s.[0]) None s
 
 let mutable_kw = key_word "mutable"
 let mutable_flag =

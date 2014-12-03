@@ -8,7 +8,7 @@ type action =
   | Normal of expression
   | DepSeq of (expression -> expression)* expression option* expression
 let find_locate () =
-  try Some (exp_ident Location.none (Sys.getenv "LOCATE"))
+  try let l = Sys.getenv "LOCATE" in Some (exp_ident Location.none l)
   with | Not_found  -> None
 let mkpatt _loc (id,p) =
   match (p, (find_locate ())) with
@@ -207,7 +207,7 @@ module Ext(In:Extension) =
                                        (let quote_res =
                                           Pa_ocaml_prelude.quote_pattern_2
                                             _loc
-                                            "#201 \"pa_parser.ml\"\n                        $lid:name$ " in
+                                            "#202 \"pa_parser.ml\"\n                        $lid:name$ " in
                                         ignore
                                           (Stack.pop
                                              Pa_ocaml_prelude.quote_stack);
@@ -222,7 +222,7 @@ module Ext(In:Extension) =
                                        (let quote_res =
                                           Pa_ocaml_prelude.quote_pattern_2
                                             _loc
-                                            "#202 \"pa_parser.ml\"\n                               $lid:name$ : $ty$ " in
+                                            "#203 \"pa_parser.ml\"\n                               $lid:name$ : $ty$ " in
                                         ignore
                                           (Stack.pop
                                              Pa_ocaml_prelude.quote_stack);
@@ -237,7 +237,7 @@ module Ext(In:Extension) =
                                        (let quote_res =
                                           Pa_ocaml_prelude.quote_pattern_2
                                             _loc
-                                            "#203 \"pa_parser.ml\"\n                                 $lid:name$ : ('type_of_arg -> $ty$) " in
+                                            "#204 \"pa_parser.ml\"\n                                 $lid:name$ : ('type_of_arg -> $ty$) " in
                                         ignore
                                           (Stack.pop
                                              Pa_ocaml_prelude.quote_stack);
@@ -255,7 +255,7 @@ module Ext(In:Extension) =
                                         (let quote_res =
                                            Pa_ocaml_prelude.quote_structure_2
                                              _loc
-                                             "#207 \"pa_parser.ml\"\n                    let $pname$ = Decap.declare_grammar $string:name$" in
+                                             "#208 \"pa_parser.ml\"\n                    let $pname$ = Decap.declare_grammar $string:name$" in
                                          ignore
                                            (Stack.pop
                                               Pa_ocaml_prelude.quote_stack);
@@ -271,7 +271,7 @@ module Ext(In:Extension) =
                                          (let quote_res =
                                             Pa_ocaml_prelude.quote_structure_2
                                               _loc
-                                              "#208 \"pa_parser.ml\"\n                    let _ = Decap.set_grammar $lid:name$ $r$ " in
+                                              "#209 \"pa_parser.ml\"\n                    let _ = Decap.set_grammar $lid:name$ $r$ " in
                                           ignore
                                             (Stack.pop
                                                Pa_ocaml_prelude.quote_stack);
@@ -291,7 +291,7 @@ module Ext(In:Extension) =
                                         (let quote_res =
                                            Pa_ocaml_prelude.quote_structure_2
                                              _loc
-                                             "#211 \"pa_parser.ml\"\n                    let $pname$, $lid:set_name$ = Decap.grammar_family $string:name$" in
+                                             "#212 \"pa_parser.ml\"\n                    let $pname$, $lid:set_name$ = Decap.grammar_family $string:name$" in
                                          ignore
                                            (Stack.pop
                                               Pa_ocaml_prelude.quote_stack);
@@ -311,7 +311,7 @@ module Ext(In:Extension) =
                                          (let quote_res =
                                             Pa_ocaml_prelude.quote_structure_2
                                               _loc
-                                              "#212 \"pa_parser.ml\"\n                    let _ = $lid:set_name$ (fun $arg$ -> $r$) " in
+                                              "#213 \"pa_parser.ml\"\n                    let _ = $lid:set_name$ (fun $arg$ -> $r$) " in
                                           ignore
                                             (Stack.pop
                                                Pa_ocaml_prelude.quote_stack);
@@ -493,27 +493,16 @@ module Ext(In:Extension) =
                          locate __loc__start__buf __loc__start__pos
                            __loc__end__buf __loc__end__pos in
                        ((opt <> None),
-                         (match String.length s with
-                          | 0 ->
-                              raise
-                                (Decap.Give_up
-                                   "Empty string litteral in rule.")
-                          | 1 ->
-                              let e =
-                                loc_expr _loc_s
-                                  (Pexp_constant (Const_char (s.[0]))) in
-                              let opt =
-                                match opt with | None  -> e | Some e -> e in
-                              exp_apply _loc (exp_glr_fun _loc "char")
-                                [e; opt]
-                          | _ ->
-                              let e =
-                                loc_expr _loc_s
-                                  (Pexp_constant (const_string s)) in
-                              let opt =
-                                match opt with | None  -> e | Some e -> e in
-                              exp_apply _loc (exp_glr_fun _loc "string")
-                                [e; opt])));
+                         (if (String.length s) = 0
+                          then
+                            raise
+                              (Decap.Give_up "Empty string litteral in rule.");
+                          (let e =
+                             loc_expr _loc_s (Pexp_constant (const_string s)) in
+                           let opt =
+                             match opt with | None  -> e | Some e -> e in
+                           exp_apply _loc (exp_glr_fun _loc "string")
+                             [e; opt]))));
         Decap.sequence_position
           (Decap.alternatives
              [Decap.sequence (Decap.string "RE" "RE")
@@ -586,7 +575,7 @@ module Ext(In:Extension) =
                 then raise (Decap.Give_up "'-' expected")
                 else ((), str', pos'))
              else raise (Decap.Give_up "'-' expexted"))
-        (Charset.singleton '-') false "-"
+        (Charset.singleton '-') None "-"
     let glr_left_member =
       let f x y = match x with | Some x -> x | None  -> y in
       Decap.sequence

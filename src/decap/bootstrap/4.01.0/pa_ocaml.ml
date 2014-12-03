@@ -139,45 +139,52 @@ module Make(Initial:Extension) =
              then
                let (c',_,_) = read str' pos' in
                (if c' = '\'' then raise (Give_up "") else ((), str', pos'))
-             else raise (Give_up "")) (Charset.singleton '\'') false "'"
-    let one_char slt =
-      Decap.alternatives
-        ((Decap.apply (fun _  -> '\n') (Decap.char '\n' '\n')) ::
-        (let y =
-           [Decap.apply
-              (fun c  ->
-                 match c.[1] with
-                 | 'n' -> '\n'
-                 | 't' -> '\t'
-                 | 'b' -> '\b'
-                 | 'r' -> '\r'
-                 | 's' -> ' '
-                 | c -> c)
-              (Decap.regexp (if slt = Re then re_escaped else char_escaped)
-                 (fun groupe  -> groupe 0));
-           Decap.apply (fun c  -> c.[0])
-             (Decap.regexp
-                (match slt with
-                 | Char  -> char_regular
-                 | String  -> string_regular
-                 | Re  -> re_regular) (fun groupe  -> groupe 0));
-           Decap.apply
-             (fun c  ->
-                let str = String.sub c 1 3 in
-                let i = Scanf.sscanf str "%i" (fun i  -> i) in
-                if i > 255 then raise (Illegal_escape str) else char_of_int i)
-             (Decap.regexp ~name:"char_dec" char_dec
-                (fun groupe  -> groupe 0));
-           Decap.apply
-             (fun c  ->
-                let str = String.sub c 2 2 in
-                let str' = String.concat "" ["0x"; str] in
-                let i = Scanf.sscanf str' "%i" (fun i  -> i) in char_of_int i)
-             (Decap.regexp ~name:"char_hex" char_hex
-                (fun groupe  -> groupe 0))] in
-         if slt = Re
-         then (Decap.apply (fun _default_0  -> '\'') single_quote) :: y
-         else y))
+             else raise (Give_up "")) (Charset.singleton '\'') None "'"
+    let (one_char,one_char__set__grammar) = Decap.grammar_family "one_char"
+    let _ =
+      one_char__set__grammar
+        (fun slt  ->
+           Decap.alternatives
+             ((Decap.apply (fun _  -> '\n') (Decap.char '\n' '\n')) ::
+             (let y =
+                [Decap.apply
+                   (fun c  ->
+                      match c.[1] with
+                      | 'n' -> '\n'
+                      | 't' -> '\t'
+                      | 'b' -> '\b'
+                      | 'r' -> '\r'
+                      | 's' -> ' '
+                      | c -> c)
+                   (Decap.regexp
+                      (if slt = Re then re_escaped else char_escaped)
+                      (fun groupe  -> groupe 0));
+                Decap.apply (fun c  -> c.[0])
+                  (Decap.regexp
+                     (match slt with
+                      | Char  -> char_regular
+                      | String  -> string_regular
+                      | Re  -> re_regular) (fun groupe  -> groupe 0));
+                Decap.apply
+                  (fun c  ->
+                     let str = String.sub c 1 3 in
+                     let i = Scanf.sscanf str "%i" (fun i  -> i) in
+                     if i > 255
+                     then raise (Illegal_escape str)
+                     else char_of_int i)
+                  (Decap.regexp ~name:"char_dec" char_dec
+                     (fun groupe  -> groupe 0));
+                Decap.apply
+                  (fun c  ->
+                     let str = String.sub c 2 2 in
+                     let str' = String.concat "" ["0x"; str] in
+                     let i = Scanf.sscanf str' "%i" (fun i  -> i) in
+                     char_of_int i)
+                  (Decap.regexp ~name:"char_hex" char_hex
+                     (fun groupe  -> groupe 0))] in
+              if slt = Re
+              then (Decap.apply (fun _default_0  -> '\'') single_quote) :: y
+              else y)))
     let _ =
       set_grammar char_literal
         (Decap.alternatives
@@ -1175,14 +1182,17 @@ module Make(Initial:Extension) =
                                       | "tuple" ->
                                           loc_typ _loc (Ptyp_tuple l)
                                       | _ -> raise (Give_up "")))))]
-    let extra_type_suits_grammar lvl' lvl =
-      alternatives (List.map (fun g  -> g lvl' lvl) extra_type_suits)
+    let extra_type_suits_grammar =
+      memoize2
+        (fun lvl'  ->
+           fun lvl  ->
+             alternatives (List.map (fun g  -> g lvl' lvl) extra_type_suits))
     let typexpr_suit_aux:
       type_prio ->
         type_prio ->
           (type_prio* (core_type -> Location.t -> core_type)) grammar
       =
-      memoize1
+      memoize2
         (fun lvl'  ->
            fun lvl  ->
              let ln f _loc e _loc_f = loc_typ (merge2 _loc_f _loc) e in
@@ -1571,11 +1581,7 @@ module Make(Initial:Extension) =
         [Decap.fsequence (Decap.string "{" "{")
            (Decap.sequence field_decl_list (Decap.string "}" "}")
               (fun fds  -> fun _  -> fun _  -> Ptype_record fds));
-        Decap.apply
-          (fun cds  ->
-             if cds = []
-             then raise (Give_up "Illegal empty constructors declaration");
-             Ptype_variant cds) constr_decl_list]
+        Decap.apply (fun cds  -> Ptype_variant cds) constr_decl_list]
     let type_information =
       Decap.fsequence
         (Decap.option None (Decap.apply (fun x  -> Some x) type_equation))
@@ -2064,8 +2070,9 @@ module Make(Initial:Extension) =
           ppat_construct (c, (Some (loc_pat _loc (Ppat_tuple [x; xs])))) in
         loc_pat _loc cons in
       List.fold_right cons l (loc_pat _loc (ppat_construct (nil, None)))
-    let extra_patterns_grammar lvl =
-      alternatives (List.map (fun g  -> g lvl) extra_patterns)
+    let extra_patterns_grammar =
+      memoize1
+        (fun lvl  -> alternatives (List.map (fun g  -> g lvl) extra_patterns))
     let pattern_base =
       memoize1
         (fun lvl  ->
@@ -2662,13 +2669,17 @@ module Make(Initial:Extension) =
                                 (ConstrPat, (loc_pat _loc ast))))
                 :: y
               else y)))
-    let extra_pattern_suits_grammar lvl' lvl =
-      alternatives (List.map (fun g  -> g lvl' lvl) extra_pattern_suits)
+    let extra_pattern_suits_grammar =
+      memoize2
+        (fun lvl'  ->
+           fun lvl  ->
+             alternatives
+               (List.map (fun g  -> g lvl' lvl) extra_pattern_suits))
     let pattern_suit_aux:
       pattern_prio ->
         pattern_prio -> (pattern_prio* (pattern -> pattern)) grammar
       =
-      memoize1
+      memoize2
         (fun lvl'  ->
            fun lvl  ->
              let ln f _loc e = loc_pat (merge2 f.ppat_loc _loc) e in
@@ -4249,8 +4260,10 @@ module Make(Initial:Extension) =
                        (Some (loc_expr _loc (Pexp_tuple [x; acc])))))) l
            (loc_expr loc_cl
               (pexp_construct ((id_loc (Lident "[]") loc_cl), None))))
-    let extra_expressions_grammar lvl =
-      alternatives (List.map (fun g  -> g lvl) extra_expressions)
+    let extra_expressions_grammar =
+      memoize1
+        (fun lvl  ->
+           alternatives (List.map (fun g  -> g lvl) extra_expressions))
     let expression_base =
       memoize1
         (fun lvl  ->
@@ -5537,7 +5550,7 @@ module Make(Initial:Extension) =
              then
                let (c',_,_) = read str' pos' in
                (if c' = ';' then raise (Give_up "") else ((), str', pos'))
-             else raise (Give_up "")) (Charset.singleton ';') false ";"
+             else raise (Give_up "")) (Charset.singleton ';') None ";"
     let double_semi_col =
       black_box
         (fun str  ->
@@ -5547,9 +5560,13 @@ module Make(Initial:Extension) =
              then
                let (c',_,_) = read str' pos' in
                (if c' <> ';' then raise (Give_up "") else ((), str', pos'))
-             else raise (Give_up "")) (Charset.singleton ';') false ";;"
-    let extra_expression_suits_grammar lvl' lvl =
-      alternatives (List.map (fun g  -> g lvl' lvl) extra_expression_suits)
+             else raise (Give_up "")) (Charset.singleton ';') None ";;"
+    let extra_expression_suits_grammar =
+      memoize2
+        (fun lvl'  ->
+           fun lvl  ->
+             alternatives
+               (List.map (fun g  -> g lvl' lvl) extra_expression_suits))
     let expression_suit_aux =
       memoize2
         (fun lvl'  ->

@@ -77,7 +77,7 @@ let any_not_closing =
                 else
                   ((), str', pos')
     | _      -> ((), str', pos')
-  ) Charset.full_charset false "ANY"
+  ) Charset.full_charset None "ANY"
 
 let comment_content =
   parser
@@ -163,7 +163,7 @@ let freshUid () =
          else c, str', pos'
        else
          raise (Give_up "")) (* FIXME *)
-      (List.fold_left Charset.add Charset.empty_charset non_special) false
+      (List.fold_left Charset.add Charset.empty_charset non_special) None
       (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
 
   let character =

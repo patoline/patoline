@@ -207,7 +207,7 @@ let single_quote = black_box
      else (), str', pos'
    else
      raise (Give_up "" (* FIXME *)))
-  (Charset.singleton '\'') false ("'")
+  (Charset.singleton '\'') None ("'")
 
 let parser one_char slt =
   | '\n' -> '\n' 
@@ -1804,7 +1804,7 @@ let semi_col = black_box
      else (), str', pos'
    else
      raise (Give_up "" (* FIXME *)))
-  (Charset.singleton ';') false (";")
+  (Charset.singleton ';') None (";")
 
 let double_semi_col = black_box 
   (fun str pos ->
@@ -1815,7 +1815,7 @@ let double_semi_col = black_box
      else (), str', pos'
    else
      raise (Give_up "" (* FIXME *)))
-  (Charset.singleton ';') false (";;")
+  (Charset.singleton ';') None (";;")
 
 let extra_expression_suits_grammar = memoize2 (fun lvl' lvl -> alternatives (List.map (fun g -> g lvl' lvl) extra_expression_suits))
 let expression_suit_aux = memoize2 (fun lvl' lvl ->

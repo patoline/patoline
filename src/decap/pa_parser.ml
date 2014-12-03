@@ -60,7 +60,8 @@ type action =
 
 let find_locate () =
   try
-    Some(exp_ident Location.none (Sys.getenv "LOCATE"))
+    let l = Sys.getenv "LOCATE" in
+    Some(exp_ident Location.none l)
   with Not_found -> None
 
 let mkpatt _loc (id, p) = match p, find_locate () with 
@@ -273,17 +274,11 @@ struct
        (opt <> None, exp_apply _loc (exp_glr_fun _loc "string") [e; o])
     | s:string_literal opt:glr_opt_expr ->
        (opt <> None, 
-	match String.length s with
-	| 0 ->
-	   raise (Decap.Give_up "Empty string litteral in rule.")
-	| 1 ->
-	   let e = loc_expr _loc_s (Pexp_constant (Const_char s.[0])) in
-	   let opt = match opt with None -> e | Some e -> e in
-	   exp_apply _loc (exp_glr_fun _loc "char") [e; opt]
-	| _ ->
-	   let e = loc_expr _loc_s (Pexp_constant (const_string s)) in
-	   let opt = match opt with None -> e | Some e -> e in
-	   exp_apply _loc (exp_glr_fun _loc "string") [e; opt])
+        (if String.length s = 0 then
+	  raise (Decap.Give_up "Empty string litteral in rule.");
+	let e = loc_expr _loc_s (Pexp_constant (const_string s)) in
+	let opt = match opt with None -> e | Some e -> e in
+	exp_apply _loc (exp_glr_fun _loc "string") [e; opt]))
     | e:{ STR("RE") e:(expression_lvl (next_exp App))
         | s:regexp_literal -> loc_expr _loc_s (Pexp_constant (const_string s))}
        opt:glr_opt_expr ->
@@ -331,7 +326,7 @@ struct
          else (), str', pos'
       else
         raise (Decap.Give_up "\'-\' expexted")
-    ) (Charset.singleton '-') false ("-")
+    ) (Charset.singleton '-') None ("-")
 
   let glr_left_member =
     let f x y = match x with Some x -> x | None -> y in
@@ -359,7 +354,7 @@ struct
 
   let _ = Decap.set_grammar glr_rule (
     parser
-    | def:glr_let l:glr_left_member condition:glr_cond ->> let _ = push_frame () in action:glr_action ->
+      | def:glr_let l:glr_left_member condition:glr_cond ->> let _ = push_frame () in action:glr_action ->
       let l = fst (List.fold_right (fun x (res,i) ->
 	match x with
 	  `Normal(("_",a),true,c,d) -> (`Normal(("_default_"^string_of_int i,a),true,c,d)::res, i+1)

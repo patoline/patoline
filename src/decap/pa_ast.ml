@@ -165,7 +165,7 @@ let rec expression_to_pattern p =
     (* FIXME: a way to produce Ppat_any ??? *)
     (* FIXME: a way to produce Ppat_alias or Ppat_or??? *)
     | _ ->
-#ifversion > 3.12       
+#ifversion > 4.00       
 	       Pprintast.expression Format.std_formatter p;
 #endif
        failwith "Illegal quotation pattern" (* FIXME: better messages *)

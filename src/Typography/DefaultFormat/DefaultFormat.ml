@@ -646,7 +646,7 @@ let defaultEnv:environment=
 		      "and";"=>";"->";"type";"|";"=";"match";"with";
 		      "rec";"let";"begin";"end";"while";"for";"do";"done";
 		      "struct"; "sig"; "module"; "functor"; "if"; "then"; 
-		      "else"; ] in
+		      "else"; "try" ] in
       lang_ML keywords specials s
 
     let lang_Python s=

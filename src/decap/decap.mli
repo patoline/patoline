@@ -145,7 +145,8 @@ val empty : 'a -> 'a grammar
 (** [debug msg] does not parse anything and always succeeds. It prints the
   message [msg] on [stderr] for debugging. *)
 val debug : string -> unit grammar
-
+val active_debug : bool ref
+			
 (** [fail msg] always fails, adding [msg] to the list of messages int the
   list of messages to be reported by [Parse_error]. *)
 val fail : string -> 'a grammar
@@ -160,7 +161,7 @@ val fail : string -> 'a grammar
   false otherwise. The [name] argument is used to give more readable error
   messages. In case of parse error, the function [fn] should raise the
   exception [Give_up msg], where [msg] is an explicit error message. *)
-val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool
+val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> 'a option
                  -> string -> 'a grammar
 
 (** [char c v] is a grammar that parses the character [c] and returns [v]. *)

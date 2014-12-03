@@ -9,7 +9,7 @@ LIBDIR = $(shell ocamlc -where)/decap
 # a more complete all is given below when pa_ocaml binary
 # is present
 
-INSTALLED = decap.cmi decap.cmo decap.mli decap.cmx charset.cmi charset.cmo charset.mli charset.cmx input.cmi input.cmo input.mli input.cmx decap.cma decap.cmxa decap.a pa_ocaml_prelude.cmi pa_ocaml_prelude.cmo pa_ocaml_prelude.cmx pa_ocaml.cmi pa_ocaml.cmo pa_ocaml.cmx pa_parser.cmi pa_parser.cmx pa_parser.cmo pa_main.cmi pa_main.cmx pa_main.cmo decap_ocaml.cmxa decap_ocaml.cma decap.a decap_ocaml.a
+INSTALLED = ahash.cmi ahash.cmo ahash.mli ahash.cmx decap.cmi decap.cmo decap.mli decap.cmx charset.cmi charset.cmo charset.mli charset.cmx input.cmi input.cmo input.mli input.cmx decap.cma decap.cmxa decap.a pa_ocaml_prelude.cmi pa_ocaml_prelude.cmo pa_ocaml_prelude.cmx pa_ocaml.cmi pa_ocaml.cmo pa_ocaml.cmx pa_parser.cmi pa_parser.cmx pa_parser.cmo pa_main.cmi pa_main.cmx pa_main.cmo decap_ocaml.cmxa decap_ocaml.cma decap.a decap_ocaml.a
 
 all: pa_ocaml
 
@@ -22,16 +22,16 @@ all: pa_ocaml
 %.cmx: %.ml %.cmi
 	$(OCAMLOPT) -c $< 
 
-decap.cmi: charset.cmi input.cmi
+decap.cmi: charset.cmi input.cmi ahash.cmi
 
-decap.cmo: charset.cmi input.cmi
+decap.cmo: charset.cmi input.cmi ahash.cmi
 
-decap.cmx: charset.cmx charset.cmi input.cmx input.cmi
+decap.cmx: charset.cmx charset.cmi input.cmx input.cmi ahash.cmi ahash.cmx
 
-decap.cmxa: charset.cmx input.cmx decap.cmx
+decap.cmxa: charset.cmx input.cmx ahash.cmx decap.cmx
 	$(OCAMLOPT) -a -o $@ $^
 
-decap.cma: charset.cmo input.cmo decap.cmo
+decap.cma: charset.cmo input.cmo ahash.cmo decap.cmo
 	$(OCAMLC) -a -o $@ $^
 
 decap_ocaml.cmxa: pa_ocaml_prelude.cmx pa_ast.cmx pa_parser.cmx pa_ocaml.cmx pa_main.cmx
@@ -86,9 +86,6 @@ pa_parser.cmo: pa_parser.ml pa_ast.cmo pa_ocaml_prelude.cmo decap.cma
 pa_main.cmo: pa_main.ml input.cmi pa_ocaml.cmo
 	$(OCAMLC) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
-pa_ocaml.byt: decap.cma pa_parser.cmo decap_ocaml.cma
-	$(OCAMLC) $(COMPILER_INC) -linkall -o $@ unix.cma str.cma $(COMPILER_LIBS) $(COMPILER_TOP) $^
-
 pa_ocaml_prelude.cmx: pa_ocaml_prelude.ml charset.cmx input.cmx decap.cmx 
 	$(OCAMLOPT) -pp ./pa_ocaml $(COMPILER_INC) -c $< 
 
@@ -112,6 +109,9 @@ pa_default.cmx: pa_default.ml pa_ocaml_prelude.cmx pa_parser.cmx pa_ocaml.cmx pa
 
 pa_ocaml: decap.cmxa decap_ocaml.cmxa pa_default.cmx 
 	$(OCAMLOPT) $(COMPILER_INC) -linkall -o $@ unix.cmxa str.cmxa $(COMPILER_LIBO) $^
+
+pa_ocaml.byt: decap.cma decap_ocaml.cma pa_default.cmo 
+	$(OCAMLC) $(COMPILER_INC) -linkall -o $@ unix.cma str.cma $(COMPILER_LIBS) $^
 
 test_parsers: decap.cmxa decap_ocaml.cmxa test_parsers.ml
 	$(OCAMLOPT) $(COMPILER_INC) -I +camlp4 -I +camlp4/Camlp4Parsers -o $@ dynlink.cmxa unix.cmxa str.cmxa camlp4lib.cmxa Camlp4OCamlRevisedParser.cmx Camlp4OCamlParser.cmx	$(COMPILER_INC) $(COMPILER_LIBO) $(COMPILER_PARSERO) $^
@@ -198,7 +198,7 @@ uninstall:
 	rm -f $(DESTDIR)/$(BINDIR)/pa_ocaml
 
 clean:
-	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa
+	- rm -f *.cm* *.o *.a
 	- rm -f bootstrap/*/*.cm* bootstrap/*/*.o bootstrap/*/*.a
 
 distclean: clean
