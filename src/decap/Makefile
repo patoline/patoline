@@ -1,5 +1,5 @@
-OCAMLC = ocamlc.opt
-OCAMLOPT = ocamlopt.opt
+OCAMLC = ocamlc
+OCAMLOPT = ocamlopt
 BINDIR = /usr/local/bin
 LIBDIR = $(shell ocamlc -where)/decap
 

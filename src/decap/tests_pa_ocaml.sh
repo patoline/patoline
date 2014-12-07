@@ -39,8 +39,8 @@ for f in $files; do
   /usr/bin/time --format="%C: %U,%S,%E" ./pa_ocaml $f > /dev/null
 #  /usr/bin/time --format="%C: %U,%S,%E" camlp4o.opt $f > /dev/null
 
-  ocamlc.opt -rectypes -c -dparsetree -o /tmp/foo.cmo -pp ./pa_ocaml  $f 2> $diff/$(basename $f).pa_ocaml.full
-  ocamlc.opt -rectypes -c -dparsetree -o /tmp/bar.cmo                 $f 2> /tmp/bar.tree
+  ocamlc -rectypes -c -dparsetree -o /tmp/foo.cmo -pp ./pa_ocaml  $f 2> $diff/$(basename $f).pa_ocaml.full
+  ocamlc -rectypes -c -dparsetree -o /tmp/bar.cmo                 $f 2> /tmp/bar.tree
 #  ocamlc.opt -c -dparsetree -o /tmp/bar.cmo -pp camlp4o.opt $f 2> /tmp/bar.tree
 #  diff /tmp/foo.cmo /tmp/bar.cmo
 
