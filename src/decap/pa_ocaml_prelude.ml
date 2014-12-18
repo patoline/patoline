@@ -105,75 +105,6 @@ let spec = ref [
 let extend_cl_args l =
   spec := !spec @ l
 
-(****************************************************************************
- * Things that have to do with comments and things to be ignored            *
- ****************************************************************************)
-
-exception Unclosed_comment of int * int
-
-(*
- * Characters to be ignored are:
- *   - ' ', '\t', '\r', '\n',
- *   - everything between "(*" and "*)" (ocaml-like comments).
- * Remarks on what is allowed inside an ocaml-like comment:
- *   - nested comments,
- *   - single-line string literals including those containing the substrings
- *     "(*" and or "*)",
- *   - single '"' character.
- *)
-let print_blank_state ch s =
-  let s = match s with
-      `Ini -> "Ini"
-    | `Str -> "Str"
-    | `Cls -> "Cls"
-    | `Opn -> "Opn"
-    | `Esc -> "Esc"
-    | `Chr -> "Chr"
-  in
-  Printf.fprintf ch "%s" s
-
-let blank str pos =
-  let rec fn lvl state prev (str, pos as cur) =
-    let c,str',pos' = read str pos in 
-    let next =str', pos' in
-    (*      Printf.eprintf "%d:%d -> lvl:%d,state:%a,char:%c\n%!" (line_num str) pos lvl print_blank_state state c;*)
-    match state, c with
-    | _, '\255' when lvl > 0      -> raise (Unclosed_comment (line_num str, pos))
-    | `Esc , _                    -> fn lvl `Str cur next
-    | `Str , '"'                  -> fn lvl `Ini cur next
-    | `Chr , _                    -> fn lvl `Ini cur next
-    | `Str , '\\'                 -> fn lvl `Esc cur next
-    | `Str , _                    -> fn lvl `Str cur next
-					
-    | `StrO(l)    , 'a'..'z'      -> fn lvl (`StrO(c::l)) cur next
-    | `StrO(l)    , '|'           -> fn lvl (`StrI(List.rev l)) cur next
-    | `StrO(_)    , _             -> fn lvl `Ini cur next
-    | `StrI(l)    , '|'           -> fn lvl (`StrC(l,l)) cur next
-    | `StrC(l',(a::l)) , a' when a = a'-> fn lvl (`StrC(l',l)) cur next
-    | `StrC(_,[])   , '}'         -> fn lvl `Ini cur next
-    | `StrC(l',_)    , _          -> fn lvl (`StrI(l')) cur next
-					
-    | _    , '"' when lvl > 0     -> fn lvl `Str cur next
-    | _    , '\'' when lvl > 0    -> fn lvl `Chr cur next
-    | _    , '{' when lvl > 0     -> fn lvl (`StrO []) cur next
-					
-    | `Ini , '('                  -> fn lvl `Opn cur next
-    | `Opn , '*'                  -> fn (lvl + 1) `Ini cur next
-    | `Opn , _   when lvl = 0     -> prev
-    | `Opn , _                    -> fn lvl `Ini cur next
-    | `Ini , '*' when lvl = 0     -> cur
-    | `Ini , '*'                  -> fn lvl `Cls cur next
-    | `Cls , '*'                  -> fn lvl `Cls cur next
-    | `Cls , ')'                  -> fn (lvl - 1) `Ini cur next
-    | `Cls , _                    -> fn lvl `Ini cur next
-					
-    | _    , (' '|'\t'|'\r'|'\n') -> fn lvl `Ini cur next
-    | _    , _ when lvl > 0       -> fn lvl `Ini cur next
-    | _    , _                    -> cur
-  in fn 0 `Ini (str, pos) (str, pos)
-	
-let no_blank str pos = str, pos
-
 let ghost loc =
   Location.({loc with loc_ghost = true})
 
@@ -242,10 +173,136 @@ type entry_point =
 
 (* declare expression soon for antiquotation *)
 module Initial = struct
-  type expression_prio = Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
+
+(* Declaration of grammars for literals *)
+let char_literal : char grammar = declare_grammar "char_literal"
+let string_literal : string grammar = declare_grammar "string_literal"
+let regexp_literal : string grammar = declare_grammar "regexp_literal"
+
+(****************************************************************************
+ * Things that have to do with comments and things to be ignored            *
+ ****************************************************************************)
+
+exception Unclosed_comments of Location.t list
+
+(*
+ * The position of comment openings is stored in a stack.
+ * When a closing is reached we pop this stack so that in the end it contains
+ * comments that have not been closed. There might be several, but there is at
+ * least one.
+ *)
+let cstack = Stack.create ()
+let get_unclosed () =
+  let rec f l =
+    if Stack.is_empty cstack then l
+    else f (Stack.pop cstack :: l)
+  in f [];
+
+let comment = declare_grammar "comment"
+
+let any_not_closing =
+  black_box (fun str pos ->
+    let (c, str', pos') = Input.read str pos in
+    match c with
+    | '\255' -> let locs = get_unclosed () in
+                raise (Unclosed_comments locs)
+    | '*'    -> let (c', _, _) = Input.read str' pos' in
+                if c' = ')' then
+                  raise (Give_up "Not the place to close a comment")
+                else
+                  ((), str', pos')
+    | _      -> ((), str', pos')
+  ) Charset.full_charset None "ANY"
+
+let comment_content =
+  parser
+  | | _:comment
+  | | _:string_literal
+  | | _:any_not_closing
+
+let _ = set_grammar comment
+  (change_layout (
+    parser
+      {"(*" -> Stack.push _loc cstack}
+      comment_content**
+      {"*)" -> Stack.pop cstack}
+  ) no_blank)
+
+let comments =
+  parser _:comment**
+
+let blank_blank_blank =
+  parser _:''[ \t\r]*'' _:{'\n' _:''[ \t\r]*''}**
+
+let blank_blank = blank_grammar blank_blank_blank no_blank
+
+let blank = blank_grammar comments blank_blank
+
+
+
+
+
+
+exception Unclosed_comment of int * int
+
+(*
+ * Characters to be ignored are:
+ *   - ' ', '\t', '\r', '\n',
+ *   - everything between "(*" and "*)" (ocaml-like comments).
+ * Remarks on what is allowed inside an ocaml-like comment:
+ *   - nested comments,
+ *   - single-line string literals including those containing the substrings
+ *     "(*" and or "*)",
+ *   - single '"' character.
+ *)
+let blank str pos =
+  let rec fn lvl state prev (str, pos as cur) =
+    let c,str',pos' = read str pos in 
+    let next =str', pos' in
+    (*      Printf.eprintf "%d:%d -> lvl:%d,state:%a,char:%c\n%!" (line_num str) pos lvl print_blank_state state c;*)
+    match state, c with
+    | _, '\255' when lvl > 0      -> raise (Unclosed_comment (line_num str, pos))
+    | `Esc , _                    -> fn lvl `Str cur next
+    | `Str , '"'                  -> fn lvl `Ini cur next
+    | `Chr , _                    -> fn lvl `Ini cur next
+    | `Str , '\\'                 -> fn lvl `Esc cur next
+    | `Str , _                    -> fn lvl `Str cur next
+					
+    | `StrO(l)    , 'a'..'z'      -> fn lvl (`StrO(c::l)) cur next
+    | `StrO(l)    , '|'           -> fn lvl (`StrI(List.rev l)) cur next
+    | `StrO(_)    , _             -> fn lvl `Ini cur next
+    | `StrI(l)    , '|'           -> fn lvl (`StrC(l,l)) cur next
+    | `StrC(l',(a::l)) , a' when a = a'-> fn lvl (`StrC(l',l)) cur next
+    | `StrC(_,[])   , '}'         -> fn lvl `Ini cur next
+    | `StrC(l',_)    , _          -> fn lvl (`StrI(l')) cur next
+					
+    | _    , '"' when lvl > 0     -> fn lvl `Str cur next
+    | _    , '\'' when lvl > 0    -> fn lvl `Chr cur next
+    | _    , '{' when lvl > 0     -> fn lvl (`StrO []) cur next
+					
+    | `Ini , '('                  -> fn lvl `Opn cur next
+    | `Opn , '*'                  -> fn (lvl + 1) `Ini cur next
+    | `Opn , _   when lvl = 0     -> prev
+    | `Opn , _                    -> fn lvl `Ini cur next
+    | `Ini , '*' when lvl = 0     -> cur
+    | `Ini , '*'                  -> fn lvl `Cls cur next
+    | `Cls , '*'                  -> fn lvl `Cls cur next
+    | `Cls , ')'                  -> fn (lvl - 1) `Ini cur next
+    | `Cls , _                    -> fn lvl `Ini cur next
+					
+    | _    , (' '|'\t'|'\r'|'\n') -> fn lvl `Ini cur next
+    | _    , _ when lvl > 0       -> fn lvl `Ini cur next
+    | _    , _                    -> cur
+  in fn 0 `Ini (str, pos) (str, pos)
+	
+(****************************************************************************)
+
+type expression_prio =
+  | Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append
+  | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
 
 let next_exp = function
-    Top -> Let
+  | Top -> Let
   | Let -> Seq
   | Seq -> Coerce
   | Coerce -> If
@@ -1189,11 +1246,6 @@ let functor_kw = key_word "functor"
 let sig_kw = key_word "sig"
 let lazy_kw = key_word "lazy"
 let parser_kw = key_word "parser"
-
-(* Declaration of grammars for literals *)
-let char_literal : char grammar = declare_grammar "char_literal"
-let string_literal : string grammar = declare_grammar "string_literal"
-let regexp_literal : string grammar = declare_grammar "regexp_literal"
 
 (* Integer literals *)
 let int_dec_re = "[0-9][0-9_]*"
