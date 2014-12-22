@@ -37,7 +37,8 @@ $(d)/Patoline/Rules.mk: $(UNICODELIB_CMX)
 # Visit subdirectories
 MODULES := unicodelib rbuffer patutil imagelib patfonts \
   Typography Drivers Pdf cesure Format \
-  $(OCAML_BIBI) plot proof plugins Patoline 
+  $(OCAML_BIBI) plot proof plugins Patoline
+
 
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 

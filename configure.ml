@@ -131,7 +131,7 @@ let local_packages = [
     subdirs = ["CFF";"Opentype";"unicodeRanges"];
     has_meta = true;
   };
-  { package_name = "bibi";
+  { package_name = "ocaml-bibi";
     macro_suffix = "BIBI";
     local_deps = ["Typography"; "patutil"; "unicodelib"];
     extern_deps = ["sqlite3"];

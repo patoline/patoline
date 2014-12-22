@@ -23,6 +23,7 @@ open UsualMake
 
 let fields=[
   "id","INTEGER PRIMARY KEY AUTOINCREMENT";
+  "key","TEXT";
   "booktitle", "TEXT";
   "chapter", "TEXT";
   "crossref", "INTEGER";
@@ -154,11 +155,11 @@ let make_name n=
       []->("","")
     | h::s->
         let initiales=List.map
-          (fun x->
-            let xx=Util.unspace x in
+                        (fun x->
+            let xx=try Util.unspace x with _->"" in
             (String.sub xx 0 (UTF8.next xx 0)) ^ ".") s
         in
-        (String.concat "" (List.rev initiales),Util.unspace h)
+        (String.concat "" (List.rev initiales),try Util.unspace h with _->"")
 
 exception Bib_error of string
 
@@ -171,7 +172,7 @@ let rec intercalate a b=match b with
 let rec dbCite db subcitation req=
   let results=ref [] in
   let r=sprintf "SELECT %s FROM bibliography %s" (String.concat ", " (List.map fst fields))
-    (if String.length (Util.unspace req) > 0 then "WHERE "^req else "")
+    (if String.length req > 0 then "WHERE "^req else "")
   in
   match exec db ~cb:(fun row _->results:=row::(!results)) r with
       Rc.OK->List.rev !results
@@ -233,10 +234,10 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
       let num (b:string option array)=
         match b.(field_num "id") with
             Some bid->(
-              try
+          try
 	        fst (IntMap.find (int_of_string bid) !bib)
               with
-	          Not_found->
+	        Not_found->
                     let key=(IntMap.cardinal !bib)+1 in
                     bib:=IntMap.add (int_of_string bid) (key, b) !bib;
                     revbib:=IntMap.add key b !revbib;
@@ -250,6 +251,7 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
           | (row)::l->
             let a=match row.(field_num "id") with None->assert false | Some a->int_of_string a in
 	    citeCounter:=IntMap.add a () !citeCounter;
+            let _=num row in
 	    let item =
               bB (fun _->[Marker (BeginLink (Intern (sprintf "_bibi_%d" (num row))))])
               ::(C.citation_format (num row) row)
@@ -274,7 +276,12 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
 
   let cite x=match !bibfile_ with
       None->failwith "Bibi: no bibliographic source defined"
-    | Some y->citeFile y x
+    | Some y->(
+      let b=
+        citeFile y x
+      in
+      b
+    )
 
   let author x=match !bibfile_ with
       None->failwith "Bibi: no bibliographic source defined"
@@ -283,10 +290,10 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
   open Box
 
   module TheBibliography (D : DocumentStructure) = struct
-    let _ =
+    let _=
       let l=List.sort (C.compare) (IntMap.bindings !revbib) in
       List.iter (fun (i,x)->
-        D.structure:=up (newChildAfter !D.structure (B.biblio_format i x));
+                 D.structure:=up (newChildAfter !D.structure (B.biblio_format i x));
       ) l
   end
 end
@@ -531,7 +538,8 @@ module CitationNames(M:sig val longCite:Document.content list list->Document.con
               auteurs
             )
         in
-        compare (aut a) (aut b)
+        let i=compare (aut a) (aut b) in
+        i
       )
   let citation_format i row=
     match !bibfile_ with
