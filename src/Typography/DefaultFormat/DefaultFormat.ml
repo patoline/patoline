@@ -784,88 +784,52 @@ module Env_dynamic(X : sig val arg1 : string val arg2 : OutputCommon.event -> Ou
 
 end
 
-    let figure ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing=
-      let drawing' env=
-        let dr_=drawing env in
-        let dr=
-          if scale<>1. then
-            match resize scale (Drawing dr_) with Drawing f->f | _->assert false
-          else dr_
-        in
-        let lvl,num=try StrMap.find "figure" env.counters with Not_found -> -1,[] in
-        let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
-        let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
-	let caption =
-	  OutputDrawing.minipage {env with normalLeftMargin=0.} (
-	    paragraph ((
-              [ tT "Figure"; tT " ";
-                tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
-              @(if caption=[] then [] else tT" "::tT"–"::tT" "::caption)
-            )))
-	in
-        let caption=try IntMap.find 0 caption with Not_found->empty_drawing_box in
-        let fig=if caption.drawing_nominal_width<=dr.drawing_nominal_width then
-          drawing_blit dr
-            ((dr.drawing_nominal_width-.caption.drawing_nominal_width)/.2.)
-            (dr.drawing_y0-.2.*.caption.drawing_y1) caption
-        else
-          drawing_blit caption
-            ((caption.drawing_nominal_width-.dr.drawing_nominal_width)/.2.)
-            (2.*.caption.drawing_y1-.dr.drawing_y0) dr
-        in
-        { fig with drawing_y0=fig.drawing_y0-.env.lead }
-      in
-      figure ~name:name D.structure center drawing'
 
 
-  let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing=
-    let drawing' env=
-      let dr_=drawing env in
-      let dr=
-        if scale<>1. then
-          match resize scale (Drawing dr_) with Drawing f->f | _->assert false
-        else dr_
-      in
-      let lvl,num=try StrMap.find "figure" env.counters with _-> -1,[] in
-      let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1, [] in
-      let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
-      let caption=
-        Box.drawing (
-          draw_boxes env (
-            boxify_scoped env (
-              [ tT "Figure"; tT " ";
-                tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
-              @(if caption=[] then [] else tT" "::tT"-"::tT" "::caption)
-            )
-          )
-        )
-      in
-      let fig=if caption.drawing_nominal_width<=dr.drawing_nominal_width then
-        drawing_blit dr
-          ((dr.drawing_nominal_width-.caption.drawing_nominal_width)/.2.)
-          (dr.drawing_y0-.2.*.caption.drawing_y1) caption
-      else
-        drawing_blit caption
-          ((caption.drawing_nominal_width-.dr.drawing_nominal_width)/.2.)
-          (2.*.caption.drawing_y1-.dr.drawing_y0) dr
-      in
-      { fig with drawing_y1=fig.drawing_y1-.fig.drawing_y0+.env.lead/.2.;
-          drawing_y0=(-.env.lead/.2.);
-          drawing_contents=(fun x->List.map (OutputCommon.translate 0. (-.fig.drawing_y0)) (fig.drawing_contents x)) }
-    in
-    let par a b c d e f g line=
-      let p=parameters a b c d e f g line in
-      { p with
-        measure=a.normalMeasure;
-        left_margin=a.normalLeftMargin+.(a.normalMeasure-.line.nom_width)/.2.;
-        absolute=true;
-      }
-    in
-    (match !D.structure with
-         Paragraph _,_->go_up D.structure;
-       | x->());
-    newPar D.structure ~environment:(fun env->{env with par_indent=[]}) Complete.normal par
-      (Env (incr_counter "figure")::bB (fun env->[Drawing (drawing' env)])::label name)
+
+let figure_drawing ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing env=
+  let dr_=drawing env in
+  let dr=
+    if scale<>1. then
+      match resize scale (Drawing dr_) with Drawing f->f | _->assert false
+    else dr_
+  in
+  let lvl,num=try StrMap.find "figure" env.counters with Not_found -> -1,[] in
+  let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
+  let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
+  let caption =
+    OutputDrawing.minipage {env with normalLeftMargin=0.} (
+	                     paragraph ((
+                                         [ tT "Figure"; tT " ";
+                                           tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
+                                         @(if caption=[] then [] else tT" "::tT"–"::tT" "::caption)
+                                       )))
+  in
+  let caption=try IntMap.find 0 caption with Not_found->empty_drawing_box in
+  let fig=if caption.drawing_nominal_width<=dr.drawing_nominal_width then
+            drawing_blit dr
+                         ((dr.drawing_nominal_width-.caption.drawing_nominal_width)/.2.)
+                         (dr.drawing_y0-.2.*.caption.drawing_y1) caption
+          else
+            drawing_blit caption
+                         ((caption.drawing_nominal_width-.dr.drawing_nominal_width)/.2.)
+                         (2.*.caption.drawing_y1-.dr.drawing_y0) dr
+  in
+  { fig with drawing_y0=fig.drawing_y0-.env.lead }
+
+
+
+let figure ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing=
+  figure ~name:name D.structure center (figure_drawing ~parameters ~name ~caption ~scale drawing)
+
+
+let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing=
+  let _=match !D.structure with
+      Paragraph _,_->go_up D.structure;
+    | _->()
+  in
+  newPar D.structure ~environment:(fun env->{env with par_indent=[]}) Complete.normal parameters
+         (Env (incr_counter "figure")::bB (fun env->[Drawing (figure_drawing ~parameters ~name ~caption ~scale drawing env)])::label name)
 
 
     type tableParams={ widths:environment->float array; h_spacing:float; v_spacing:float }

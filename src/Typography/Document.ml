@@ -1207,6 +1207,8 @@ let boxify buf nbuf env0 l=
         boxify keep_cache env' s
       )
     | Env f::s->boxify keep_cache (f env) s
+    | T (t,cache)::T (t',_)::s->
+       boxify keep_cache env (T (t^t',match !cache with Some _->cache | _->cache)::s)
     | (T (t,cache))::s->(
       match !cache with
 	    Some l when keep_cache ->(
