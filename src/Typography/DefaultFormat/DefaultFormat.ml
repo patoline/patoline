@@ -72,18 +72,9 @@ let hyphenate_dict dict=
     let inp=input_value i in
     close_in i;
     (fun str->
-      let hyphenated=Hyphenate.hyphenate inp str in
-      let pos=Array.make (List.length hyphenated-1) ("","") in
-      let rec hyph l i cur=match l with
-          []->()
-        | h::s->(
-          pos.(i)<-(cur^"-", List.fold_left (^) "" l);
-          hyph s (i+1) (cur^h)
-        )
-      in
-      match hyphenated with
-          []->[||]
-        | h::s->(hyph s 0 h; pos));
+     let hyphenated=Hyphenate.hyphenate inp str in
+     Array.of_list (hyphenated)
+    )
   with
       FindPath.File_not_found (f,p)->
 	(Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;

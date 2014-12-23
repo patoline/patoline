@@ -84,17 +84,23 @@ let insert_exception tree a0=
 
 exception Exp of (string list)
 
-let rec dash_hyphen s=if String.length s=0 then [] else
-  try
-    let i=String.index s '-' in
-    let s0=String.sub s 0 i in
-    let next=(dash_hyphen (String.sub s (i+1) (String.length s-i-1))) in
-    if String.length s0=0 then next else s0::next
-  with
-      Not_found->if String.length s=0 then [] else [s]
+let rec dash_hyphen s i acc=
+  if i>=String.length s then acc else
+    let j,next=
+      try
+        let i'=String.index_from s i '-' in
+        if i'>=String.length s-1 then (String.length s,acc) else (
+          let s0=String.sub s 0 (i'+1) in
+          let s1=String.sub s (i'+1) (String.length s-i'-1) in
+          (i'+1),((s0,s1)::acc)
+        )
+      with
+        Not_found->String.length s,acc
+    in
+    dash_hyphen s j next
 
 let hyphenate tree a0=
-  if String.length a0<=4 then [a0] else
+  if UTF8.length a0<=4 then [] else
     let rec find_punct i=
       if i>=String.length a0 then i else
         match UCharInfo.general_category (UTF8.look a0 i) with
@@ -121,9 +127,9 @@ let hyphenate tree a0=
           | _->find_punct (UTF8.next a0 i)
     in
     let first_punct=find_punct 0 in
-    match dash_hyphen a0 with
-        _::_::_ as l->l
-      | _->(
+    match dash_hyphen a0 0 [] with
+      _::_ as l->l
+    | _->(
         let a=String.create (first_punct+2) in
         String.blit a0 0 a 1 first_punct;
         a.[0]<-'.';
@@ -167,19 +173,20 @@ let hyphenate tree a0=
         hyphenate_word 0;
 
         let total=UTF8.length a in
-        let rec make_hyphens i j k=
-          if j>=String.length a then [String.sub a0 (i-1) (String.length a0-i+1)] else (
-#ifdef DEBUG
-            Printf.fprintf stderr "%S %d %d\n" a total k;
-#endif
-            if (int_of_char breaks.[j+1]) land 1 = 1 && k>=3 && (total-k)>=6 then
-              (String.sub a i (UTF8.next a j-i)) ::
-                make_hyphens (UTF8.next a j) (UTF8.next a j) (k+1)
+        let rec make_hyphens j k=
+          if j>=String.length a || j+1>=String.length breaks || total-k<6 then
+            [] else (
+            if (int_of_char breaks.[j+1]) land 1 = 1 && k>=3 then (
+              let j'=(UTF8.next a j-1) in
+              (String.sub a0 0 j'^"-",String.sub a0 j' (String.length a0-j')) ::
+                make_hyphens (UTF8.next a j) (k+1)
+            )
             else
-              make_hyphens i (UTF8.next a j) (k+1)
+              make_hyphens (UTF8.next a j) (k+1)
           )
         in
-        make_hyphens 1 1 0
+        let m=make_hyphens 1 0 in
+        m
       )
 let empty=Node ("", C.empty)
 
