@@ -36,6 +36,30 @@ type pdfFont= { font:Fonts.font;
                 mutable fontGlyphs:(int*int*Fonts.glyph) IntMap.t;
                 mutable revFontGlyphs:(Fonts.glyph) IntMap.t }
 
+
+
+type state=
+    { mutable strokingColor:color option;
+      mutable nonStrokingColor:color option;
+      mutable strokingOpacity:int;
+      mutable nonstrokingOpacity:int;
+      mutable lineWidth:float;
+      mutable lineJoin:lineJoin;
+      mutable lineCap:lineCap;
+      mutable dashPattern:float list
+    }
+let default_state={
+  strokingColor=None;
+  nonStrokingColor=None;
+  strokingOpacity=0;
+  nonstrokingOpacity=0;
+  lineWidth=1.;
+  lineJoin=Miter_join;
+  lineCap=Butt_cap;
+  dashPattern=[]
+}
+
+
 #ifdef CAMLZIP
 let stream buf=
   let out_buf=Rbuffer.create 100000 in
@@ -234,17 +258,10 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let xline=ref 0. in
 
     (* Dessins *)
-    let strokingColor=ref None in
-    let nonStrokingColor=ref None in
+    let state=ref default_state in
     let opacitiesCounter=ref 0 in
     let sopacities=ref (FloatMap.singleton 1. 0) in
     let nsopacities=ref (FloatMap.singleton 1. 0) in
-    let strokingOpacity=ref 0 in
-    let nonstrokingOpacity=ref 0 in
-    let lineWidth=ref 1. in
-    let lineJoin=ref Miter_join in
-    let lineCap=ref Butt_cap in
-    let dashPattern=ref [] in
 
     let close_line ()=
       if !openedWord then (Rbuffer.add_string pageBuf ")"; openedWord:=false);
@@ -256,14 +273,14 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       if !isText then (
         currentFont:=(-1);
         currentSize:=(-.infinity);
-        nonStrokingColor:=None;
-        strokingColor:=None;
+        (!state).nonStrokingColor<-None;
+        (!state).strokingColor<-None;
         Rbuffer.add_string pageBuf " ET "; isText:=false
       );
       xt:=0.; yt:=0.
     in
     let change_stroking_color col =
-      if (Some col)<> !strokingColor then (
+      if (Some col)<> (!state).strokingColor then (
         close_text();
         match col with
             RGB color -> (
@@ -278,17 +295,17 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                     !opacitiesCounter
                   )
               in
-              if alpha <> !strokingOpacity then (
-                strokingOpacity:=alpha;
+              if alpha <> (!state).strokingOpacity then (
+                (!state).strokingOpacity<-alpha;
                 Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
               );
-              strokingColor:=Some col;
+              (!state).strokingColor<-Some col;
               Rbuffer.add_string pageBuf (sprintf "%f %f %f RG " r g b);
             )
       )
     in
     let change_non_stroking_color col =
-      if Some col<> !nonStrokingColor then (
+      if Some col<> (!state).nonStrokingColor then (
         close_text();
         match col with
             RGB color -> (
@@ -303,19 +320,19 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                     !opacitiesCounter
                   )
               in
-              if alpha <> !nonstrokingOpacity then (
-                nonstrokingOpacity:=alpha;
+              if alpha <> (!state).nonstrokingOpacity then (
+                (!state).nonstrokingOpacity<-alpha;
                 Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
               );
-              nonStrokingColor:=Some col;
+              (!state).nonStrokingColor<-Some col;
               Rbuffer.add_string pageBuf (sprintf "%f %f %f rg " r g b);
             )
       )
     in
     let set_line_join j=
-      if j<> !lineJoin then (
+      if j<> (!state).lineJoin then (
         close_text ();
-        lineJoin:=j;
+        (!state).lineJoin<-j;
         Rbuffer.add_string pageBuf (
           match j with
               Miter_join->" 0 j "
@@ -326,9 +343,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       )
     in
     let set_line_cap c=
-      if c<> !lineCap then (
+      if c<> (!state).lineCap then (
         close_text ();
-        lineCap:=c;
+        (!state).lineCap<-c;
         Rbuffer.add_string pageBuf (
           match c with
               Butt_cap->" 0 J "
@@ -339,16 +356,16 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       )
     in
     let set_line_width w=
-      if w <> !lineWidth then (
+      if w <> (!state).lineWidth then (
         close_text ();
-        lineWidth:=w;
+        (!state).lineWidth<-w;
         Rbuffer.add_string pageBuf (sprintf "%f w " w);
       )
     in
     let set_dash_pattern l=
-      if l<> !dashPattern then (
+      if l<> (!state).dashPattern then (
         close_text ();
-        dashPattern:=l;
+        (!state).dashPattern<-l;
         match l with
             []->(Rbuffer.add_string pageBuf "[] 0 d ")
           | _::_->(
@@ -453,6 +470,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | Dynamic d->List.iter output_contents (d.dyn_contents ())
       | Affine aff->(
         close_text ();
+        let saved_state= { !state with strokingColor= (!state).strokingColor } in
         Rbuffer.add_string pageBuf
           (Printf.sprintf "q %f %f %f %f %f %f cm "
              aff.affine_matrix.(0).(0)
@@ -463,7 +481,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
              (pt_of_mm aff.affine_matrix.(1).(2)));
         List.iter output_contents aff.affine_contents;
         close_text ();
-        Rbuffer.add_string pageBuf "Q "
+        Rbuffer.add_string pageBuf "Q ";
+        state:=saved_state
       )
       | Video _-> Printf.fprintf stderr "Video not support by Pdf driver\n%!"
     in
