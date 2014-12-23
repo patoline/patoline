@@ -567,3 +567,18 @@ let sort_raw l=
     | b->b
   in
   IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
+
+let image imageFile=
+  let w,h = ReadImg.size imageFile in
+  let fw=float_of_int w/.10. and fh=float_of_int h/.10. in
+  let i={image_file=imageFile;
+         image_width=fw;
+         image_height=fh;
+         image_pixel_width=w;
+         image_pixel_height=h;
+         image_x=0.;
+         image_y=0.;
+         image_order=0
+        }
+  in
+  i

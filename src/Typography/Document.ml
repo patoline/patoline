@@ -990,44 +990,19 @@ let button ?(btype=Clickable) name destinations b=bB (fun _->[Marker (BeginLink 
 (** {3 Images} *)
 
 let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
-  let w,h = ReadImg.size imageFile in
-  let fw,fh=
-    if width=0. then
-      if height=0. then
-        if scale=0. then
-          if env.normalMeasure<(float_of_int w)/.7. then
-            env.normalMeasure, env.normalMeasure*.(float_of_int h)/.(float_of_int w)
-          else
-            (float_of_int w)/.7.,(float_of_int h)/.7.
-        else
-          (float_of_int w)*.scale,(float_of_int h)*.scale
-      else
-        height*.(float_of_int w)/.(float_of_int h), height
-    else
-      width, width*.(float_of_int h)/.(float_of_int w)
-  in
-  let i={image_file=imageFile;
-         image_width=fw;
-         image_height=fh;
-         image_pixel_width=w;
-         image_pixel_height=h;
-         image_x=0.;
-         image_y=offset;
-         image_order=0
-        }
-  in
+  let i=OutputCommon.image imageFile in
   {
-    drawing_min_width=fw;
-    drawing_max_width=fw;
-    drawing_nominal_width=fw;
+    drawing_min_width=i.image_width;
+    drawing_max_width=i.image_width;
+    drawing_nominal_width=i.image_width;
     drawing_width_fixed = true;
     drawing_adjust_before = false;
     drawing_y0=offset;
-    drawing_y1=fh+.offset;
+    drawing_y1=i.image_height+.offset;
     drawing_break_badness=0.;
     drawing_states=[];
     drawing_badness=(fun _->0.);
-    drawing_contents=(fun _->[OutputCommon.Image i])
+    drawing_contents=(fun _->[OutputCommon.translate 0. offset (Image i)])
   }
 
 let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=

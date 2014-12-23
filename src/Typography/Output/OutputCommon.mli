@@ -178,3 +178,4 @@ val in_order : int -> raw -> raw
 val drawing_order : raw -> int
 val drawing_sort : raw list -> raw list
 val sort_raw : raw list -> raw list
+val image : string -> image
