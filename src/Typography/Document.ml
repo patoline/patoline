@@ -207,6 +207,7 @@ and environment={
   substitutions:glyph_id list -> glyph_id list;
   positioning:glyph_ids list -> glyph_ids list;
   counters:(int*int list) StrMap.t;     (** Niveau du compteur, état.  *)
+  last_changed_counter:string;
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
   fixable:bool ref;
   new_page:Box.frame_zipper->Box.frame_zipper;
@@ -289,7 +290,9 @@ let _user_positions env=
   env.user_positions
 
 let incr_counter ?(level= -1) name env=
-  { env with counters=
+  { env with
+    last_changed_counter=name;
+    counters=
       StrMap.add name (try let a,b=StrMap.find name env.counters in
                          match b with
                              h::s -> (a,(h+1)::s)
@@ -299,11 +302,15 @@ let incr_counter ?(level= -1) name env=
                       ) env.counters }
 
 let pop_counter name env=
-  { env with counters=
+  { env with
+    last_changed_counter=name;
+    counters=
       StrMap.add name (let a,b=StrMap.find name env.counters in (a,drop 1 b)) env.counters }
 
 let push_counter name env=
-  { env with counters=
+  { env with
+    last_changed_counter=name;
+    counters=
       StrMap.add name (let a,b=StrMap.find name env.counters in (a,0::b)) env.counters }
 
 let tags=function
@@ -806,7 +813,8 @@ let figure str parameters ?(name="") drawing=
                                   in
                                   StrMap.add name (counters', "_figure", w) (names x)
                                 );
-                                counters=counters'
+                                counters=counters';
+                                last_changed_counter="_figure"
                             });
                  fig_post_env=(fun x y->{ x with names=names y; counters=y.counters; user_positions=user_positions y });
                  fig_parameters=parameters }))
@@ -943,26 +951,28 @@ let make_name name=
   fill 0 true
 
 
-let label ?(labelType="_structure") name=
+let label ?labelType name=
   let name=make_name name in
   [Env (fun env->
-    let w=try let (_,_,w)=StrMap.find name (names env) in w with Not_found -> uselessLine in
-    { env with names=StrMap.add name (env.counters, labelType, w) (names env) });
+        let w=try let (_,_,w)=StrMap.find name (names env) in w with Not_found -> uselessLine in
+        let labelType=match labelType with None->env.last_changed_counter | Some t->t in
+        { env with names=StrMap.add name (env.counters, labelType, w) (names env) });
    bB (fun env ->
-     [Marker (Label name)])
+       [Marker (Label name)])
   ]
 
 
 
-let generalRef refType name=
+let lref ?refType name=
   let name=make_name name in
   [ C (fun env->
     try
       env_accessed:=true;
-      let counters=
-        if name="_here" then env.counters else
-          let a,_,_=StrMap.find name (names env) in a
+      let counters,refType_=
+        if name="_here" then env.counters,env.last_changed_counter else
+          let a,t,_=StrMap.find name (names env) in a,t
       in
+      let refType=match refType with Some x->x | None->refType_ in
       let lvl,num_=StrMap.find refType counters in
       let num=if refType="_structure" then drop 1 num_ else num_ in
       let str_counter=
@@ -981,7 +991,7 @@ let generalRef refType name=
         Not_found -> []
   )]
 
-let sectref x=generalRef "_structure" x
+let sectref x=lref ~refType:"_structure" x
 
 let extLink a b=bB (fun _->[Marker (BeginLink (Extern a))])::b@[bB (fun _->[Marker EndLink])]
 let link a b=bB (fun _->[Marker (BeginLink (Intern a))])::b@[bB (fun _->[Marker EndLink])]

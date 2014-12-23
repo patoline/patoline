@@ -215,7 +215,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
       module Block=Env_block(struct let arg1=blocktitle end)
 
-      let reference name=generalRef Th.refType name
+      let reference name=lref ~refType:Th.refType name
 
       let do_begin_env ()=
         Env_center.do_begin_env ();

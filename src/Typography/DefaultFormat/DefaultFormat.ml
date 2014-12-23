@@ -309,6 +309,7 @@ let defaultEnv:environment=
                             drawing_badness=fun _-> 0. }];
     hyphenate=hyphenate_dict "hyph-en-us.hdict";
     counters=StrMap.empty;
+    last_changed_counter="";
     names=StrMap.empty;
     fixable=ref false;
     user_positions=MarkerMap.empty;
@@ -1276,7 +1277,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 
     module Make_theorem=functor (Th:Theorem)->struct
 
-      let reference name=generalRef Th.refType name
+      let reference name=lref ~refType:Th.refType name
 
       let do_begin_env ()=
         D.structure:=newChildAfter !D.structure (Node empty);
