@@ -449,46 +449,48 @@ let defaultEnv:environment=
       in
 
       let rec sectionize path=function
-      Node n when List.mem_assoc "structural" n.node_tags ->
-        let section_name=
-          if List.mem_assoc "numbered" n.node_tags  then
-            [C (fun env->
-              let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-              bB (fun _->[Marker (Structure path)])
-              ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
-              ::tT " "
-              ::n.displayname
-            )]
-          else
-            [C(fun env->
-              bB (fun env->[Marker (Structure path)])::
-                n.displayname)]
-        in
-        let par=Paragraph {
-          par_contents=section_name;
-          par_env=(fun env->
-            let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-            { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
-              size=(if List.length b <= 2 then sqrt phi else
-                  sqrt (sqrt phi))*.env.size;
-            });
-          par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
-            user_positions=user_positions env2 });
-          par_parameters=
-            (fun a b c d e f g line->
-              { (parameters a b c d e f g line) with
-                min_height_before=if line.lineStart=0 then a.normalLead else 0.;
-                min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then a.normalLead else 0.;
-                not_last_line=true });
-          par_badness=(badness);
-          par_completeLine=Complete.normal;
-          par_states=[];
-          par_paragraph=(-1) }
-        in
-        fst (up (newChildBefore (
-          Node { n with children=IntMap.mapi (fun k a->sectionize (k::path) a)
-              n.children }, []) par
-        ))
+          Node n when List.mem_assoc "structural" n.node_tags ->
+          let section_name=
+            if List.mem_assoc "numbered" n.node_tags  then
+              [C (fun env->
+                  let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+                  bB (fun _->[Marker (Structure path)])
+                  ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
+                  ::tT " "
+                  ::n.displayname
+                 )]
+            else
+              [C(fun env->
+                 bB (fun env->[Marker (Structure path)])::
+                   n.displayname)]
+          in
+          let par=Paragraph {
+                      par_contents=section_name;
+                      par_env=(fun env->
+                               let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+                               { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
+                                 size=(if List.length b <= 2 then sqrt phi else
+                                         sqrt (sqrt phi))*.env.size;
+                               });
+                      par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
+                                                                 user_positions=user_positions env2 });
+                      par_parameters=
+                        (fun a b c d e f g line->
+                         { (parameters a b c d e f g line) with
+                           min_height_before=if line.lineStart=0 then a.normalLead else 0.;
+                           min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then a.normalLead else 0.;
+                           not_last_line=true });
+                      par_badness=(badness);
+                      par_completeLine=Complete.normal;
+                      par_states=[];
+                      par_paragraph=(-1) }
+          in
+          fst (up (newChildBefore (
+                       Node { n with children=IntMap.mapi (fun k a->sectionize (k::path) a)
+                                                          n.children }, []) par
+                  ))
+        | Node n->
+           Node { n with children=IntMap.map (sectionize path) n.children }
         | a->a
       in
       let with_chapters=match with_title with
@@ -496,6 +498,7 @@ let defaultEnv:environment=
         | _->with_title
       in
       with_chapters
+
 
 
     let indent ()=[bB (fun env->env.par_indent);Env (fun env->{env with par_indent=[]})]
@@ -1033,7 +1036,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
           done;
           D.structure:=newChildAfter !D.structure
             (Node { empty with
-              node_tags=("item","")::("structural","")::empty.node_tags;
+              node_tags=("item","")::empty.node_tags;
               node_env=(incr_counter "enumerate")
             })
         let do_end_env()=()
