@@ -263,8 +263,7 @@ let rec resize alpha=function
   | Animation a -> Animation { a with anim_contents=Array.map (List.map (resize alpha)) a.anim_contents }
   | Dynamic d -> Dynamic { d with dyn_contents = fun e -> List.map (resize alpha) (d.dyn_contents e) }
   | Affine a->(
-    let m=Array.map (Array.copy) a.affine_matrix in
-    for i=0 to 1 do for j=0 to 1 do m.(i).(j)<-m.(i).(j)*.alpha done done;
+    let m=Array.map (Array.map (fun x->x*.alpha)) a.affine_matrix in
     Affine { a with affine_matrix=m }
   )
 
