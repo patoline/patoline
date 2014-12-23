@@ -449,10 +449,11 @@ let defaultEnv:environment=
         | _->with_author
       in
 
-      let rec sectionize path=function
+      let rec sectionize path numbered=function
           Node n when List.mem_assoc "structural" n.node_tags ->
+          let numbered'=numbered && List.mem_assoc "numbered" n.node_tags in
           let section_name=
-            if List.mem_assoc "numbered" n.node_tags  then
+            if numbered' then
               [C (fun env->
                   let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                   bB (fun _->[Marker (Structure path)])
@@ -487,15 +488,15 @@ let defaultEnv:environment=
                       par_paragraph=(-1) }
           in
           fst (up (newChildBefore (
-                       Node { n with children=IntMap.mapi (fun k a->sectionize (k::path) a)
+                       Node { n with children=IntMap.mapi (fun k a->sectionize (k::path) numbered' a)
                                                           n.children }, []) par
                   ))
         | Node n->
-           Node { n with children=IntMap.map (sectionize path) n.children }
+           Node { n with children=IntMap.map (sectionize path numbered) n.children }
         | a->a
       in
       let with_chapters=match with_title with
-          Node n->Node { n with children=IntMap.map (sectionize []) n.children }
+          Node n->Node { n with children=IntMap.map (sectionize [] true) n.children }
         | _->with_title
       in
       with_chapters
