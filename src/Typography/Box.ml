@@ -505,18 +505,21 @@ let glue a b c=
          drawing_states=[];
          drawing_badness=knuth_h_badness b }
 
+let resize_drawing l x=
+  { x with
+    drawing_min_width= x.drawing_min_width*.l;
+    drawing_max_width= x.drawing_max_width*.l;
+    drawing_y0=x.drawing_y0*.l;
+    drawing_y1=x.drawing_y1*.l;
+    drawing_nominal_width= x.drawing_nominal_width*.l;
+    drawing_contents=(fun w->List.map (OutputCommon.resize l) (x.drawing_contents w))
+  }
+
 let rec resize l=function
     GlyphBox b -> GlyphBox { b with glyph_size= l*.b.glyph_size }
   | Hyphen x->Hyphen { hyphen_normal=Array.map (resize l) x.hyphen_normal;
                        hyphenated=Array.map (fun (a,b)->Array.map (resize l) a, Array.map (resize l) b) x.hyphenated }
-  | Drawing x -> Drawing { x with
-                       drawing_min_width= x.drawing_min_width*.l;
-                       drawing_max_width= x.drawing_max_width*.l;
-                       drawing_y0=x.drawing_y0*.l;
-                       drawing_y1=x.drawing_y1*.l;
-                       drawing_nominal_width= x.drawing_nominal_width*.l;
-                       drawing_contents=(fun w->List.map (OutputCommon.resize l) (x.drawing_contents w))
-                   }
+  | Drawing x -> Drawing (resize_drawing l x)
   | Glue x -> Glue { x with
     drawing_min_width= x.drawing_min_width*.l;
     drawing_max_width= x.drawing_max_width*.l;

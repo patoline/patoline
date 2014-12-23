@@ -788,12 +788,8 @@ end
 
 
 let figure_drawing ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing env=
-  let dr_=drawing env in
-  let dr=
-    if scale<>1. then
-      match resize scale (Drawing dr_) with Drawing f->f | _->assert false
-    else dr_
-  in
+  let dr=drawing env in
+  let dr=resize_drawing scale dr in
   let lvl,num=try StrMap.find "figure" env.counters with Not_found -> -1,[] in
   let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
   let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
