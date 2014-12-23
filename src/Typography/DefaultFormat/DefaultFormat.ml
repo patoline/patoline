@@ -183,43 +183,6 @@ let bitstreamverasansmono=simpleFont "Bitstream Vera Sans Mono"
 
 let all_fonts = [alegreya; texgyrecursor] (* trick to force same type *)
 
-let parameters env paragraphs figures last_parameters last_figures last_users (last_line:line) (line:line)=
-  let frame_measure=env.normalMeasure in
-  let measure=IntMap.fold (fun i aa m->match aa with
-      Break.Placed a->
-        (if layout_page line=layout_page a &&
-           line.height>=
-           a.height+.figures.(i).drawing_y0
-         && line.height<=
-           a.height+. figures.(i).drawing_y1
-         then
-            frame_measure -. figures.(i).drawing_nominal_width
-         else m)
-    | _->m
-  ) last_figures frame_measure
-  in
-  let p={ measure=measure;
-    left_margin=env.normalLeftMargin;
-    local_optimization=0;
-    min_page_before=0;
-    min_page_after=0;
-    min_height_before=0.;
-    min_height_after=0.;
-    not_last_line=false;
-    not_first_line=false;
-    min_lines_before=1;
-    min_lines_after=0;
-    absolute=false
-  }
-  in
-  fold_left_line paragraphs (fun p0 x->match x with
-      Parameters fp->(
-        let p1=fp p0 in
-        p1
-      )
-    | _->p0
-  ) p line
-
 let break ()=
   [bB (fun env->[Glue { Box.empty_drawing_box with drawing_min_width=0.;drawing_max_width=env.normalMeasure;drawing_nominal_width=0. };
                  Glue { Box.empty_drawing_box with

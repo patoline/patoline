@@ -106,7 +106,7 @@ module Make (L:Line with type t=Box.line)=(
       close_out f
 
     let typeset ?(initial_line=uselessLine) ~completeLine ~figures ~figure_parameters ~parameters ~new_page ~new_line ~badness paragraphs=
-      if Array.length paragraphs=0 then ([],fst (frame_top initial_line.layout),IntMap.empty,MarkerMap.empty) else begin
+      if Array.length paragraphs=0 && Array.length figures=0 then ([],fst (frame_top initial_line.layout),IntMap.empty,MarkerMap.empty) else begin
       let collide line_haut params_i comp_i line_bas params_j comp_j=
 
         max_haut:=
@@ -227,21 +227,50 @@ module Make (L:Line with type t=Box.line)=(
           let place_figure ()=
             let fig=figures.(node.lastFigure+1) in
             let vspace,_=
-              if node.isFigure then
-                (figures.(node.lastFigure).drawing_y0,
-                 figures.(node.lastFigure).drawing_y1)
-              else
-                line_height paragraphs figures node
+              if node.lineEnd<0 then 0.,0. else
+                if node.isFigure then (
+                  (figures.(node.lastFigure).drawing_y0,
+                   figures.(node.lastFigure).drawing_y1)
+                ) else
+                  line_height paragraphs figures node
             in
             if node.height+.vspace -. (fig.drawing_y1 -. fig.drawing_y0)
               >=(fst node.layout).frame_y0 then (
+              let layouts0,h0=
+                if snd node.layout=[] then (
+                  let zip=new_page.(node.paragraph) node.layout in
+                  let h0=(fst zip).frame_y1 in
+                  (* pages:=zip::(!pages); *)
+                  zip,h0
+                ) else
+                  if lastParameters.min_page_after>0 then
+                    let rec make_new_pages n zip=if n<=0 then zip else (
+                      let zip=new_page.(node.paragraph) zip in
+                      (* pages:=zip::(!pages); *)
+                      make_new_pages (n-1) zip
+                    )
+                    in
+                    let zip=make_new_pages lastParameters.min_page_after node.layout in
+                    let h0=(fst zip).frame_y1 in
+                    (zip, h0)
+                  else
+                    if node.height<(fst node.layout).frame_y0 then (
+                      match next_zipper node.layout with
+                          None->
+                          let a,b=new_page.(node.paragraph) node.layout in
+                            (* pages:=(a,b)::(!pages); *)
+                            (a,b),a.frame_y1
+                        | Some a->a,(fst a).frame_y1
+                    ) else
+                      (node.layout, node.height)
+              in
                 let nextNode={
                   paragraph=if node.isFigure then node.paragraph else node.paragraph+1;
                   lastFigure=node.lastFigure+1; isFigure=true;
                   hyphenStart= -1; hyphenEnd= -1;
-                  height=node.height+.vspace-.fig.drawing_y1;
+                  height=h0+.vspace-.fig.drawing_y1;
                   lineStart= -1; lineEnd= -1; paragraph_height= -1;
-                  layout=node.layout;
+                  layout=layouts0;
                   page_line=node.page_line+1;
                   min_width=fig.drawing_min_width;
                   nom_width=fig.drawing_nominal_width;

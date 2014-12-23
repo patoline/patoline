@@ -402,7 +402,7 @@ module MarginBiblio (C:CitationStyle)=struct
   let w_mar=2.
   let biblio_format i row=
     let params env a1 a2 a3 a4 a5 a6 line=
-      let p=DefaultFormat.parameters env a1 a2 a3 a4 a5 a6 line in
+      let p=Document.parameters env a1 a2 a3 a4 a5 a6 line in
       if line.lineStart=0 then (
         let rec findMark w j=
           if j>=line.lineEnd then 0. else
@@ -468,7 +468,7 @@ module DefaultBiblio (C:CitationStyle)=struct
 
   let w=phi
   let params env a1 a2 a3 a4 a5 a6 line=
-    let p=DefaultFormat.parameters env a1 a2 a3 a4 a5 a6 line in
+    let p=Document.parameters env a1 a2 a3 a4 a5 a6 line in
     if line.lineStart=0 then (
       p
     ) else
