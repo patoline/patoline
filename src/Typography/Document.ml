@@ -1193,7 +1193,7 @@ let boxify buf nbuf env0 l=
           | _ ->(
             (* let buf=ref [|Empty|] in *)
             (* let nbuf=ref 0 in *)
-            let t=try UTF8.validate t;t with _->(
+            let t=if UTF8.validate t then t else (
               Printf.fprintf stderr "%s\n" (TypoLanguage.message (TypoLanguage.BadEncoding t));
               let rec count i n=if i>=String.length t then n else
                   count (i+1) (if t.[i]>char_of_int 0x7f then n else (n+1))
