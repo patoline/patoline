@@ -922,7 +922,8 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
       node_tags= (if in_toc then ["intoc",""] else []) @ ["structural",""] @(if numbered then ["numbered",""] else []);
       node_env=(
         fun env->
-          { env with
+        { env with
+          last_changed_counter="_structure";
               counters=StrMap.add "_structure" (
                 try
                   let (a,b)=StrMap.find "_structure" env.counters in
