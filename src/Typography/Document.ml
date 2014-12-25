@@ -1038,7 +1038,7 @@ let button ?(btype=Clickable) name destinations b=bB (fun _->[Marker (BeginLink 
 
 let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
   let i=OutputCommon.image imageFile in
-  {
+  let dr={
     drawing_min_width=i.image_width;
     drawing_max_width=i.image_width;
     drawing_nominal_width=i.image_width;
@@ -1051,6 +1051,16 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_badness=(fun _->0.);
     drawing_contents=(fun _->[OutputCommon.translate 0. offset (Image i)])
   }
+  in
+  if scale>0. then resize_drawing scale dr else
+    if width>0. then
+      let drw={ dr with drawing_min_width=width;drawing_max_width=width;drawing_nominal_width=width } in
+      if height>0. then
+        {drw with drawing_y1=offset+.height}
+      else
+        drw
+    else
+      dr
 
 let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
   let tmp=(try Filename.chop_extension imageFile with _->imageFile) in
