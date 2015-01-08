@@ -1179,7 +1179,7 @@ let gl_of_str env string=
   try
     hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
       env.fontColor
-      (env.word_substitutions string)
+      string
   with
       Glyph_not_found _ -> []
 
@@ -1265,10 +1265,11 @@ let boxify buf nbuf env0 l=
             )
             in
             let l=ref IntMap.empty in
+            let t=env.word_substitutions (nfkc t) in
             let rec cut_str i0 i=
               if i>=String.length t then
                 let sub=String.sub t i0 (i-i0) in
-                l:=mappend !l (gl_of_str env (nfkc sub));
+                l:=mappend !l (gl_of_str env sub);
               else if is_space (UTF8.look t i) then
                 let sub=String.sub t i0 (i-i0) in
                 l:=mappend !l (gl_of_str env (nfkc sub));
