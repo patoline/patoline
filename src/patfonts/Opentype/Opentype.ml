@@ -1993,6 +1993,7 @@ let make_tables font fontInfo cmap glyphs_idx=
      strInt2 buf_os2 0 3;               (* version *)
 
      strInt2 buf_os2 2 ((round (!xAvgCharWidth/.float_of_int (Array.length glyphs))));
+     strInt2 buf_os2 8 0; (* fsType : fix IE10 limitation. Not sure how legally correct this is. *)
 #ifdef INT32
      let u1=ref 0l in
      let u2=ref 0l in
