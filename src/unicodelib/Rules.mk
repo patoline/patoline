@@ -24,6 +24,11 @@ UNICODELIB_CMO:=$(UNICODELIB_ML:.ml=.cmo)
 UNICODELIB_CMX:=$(UNICODELIB_ML:.ml=.cmx)
 UNICODELIB_CMI:=$(UNICODELIB_ML:.ml=.cmi)
 
+#pb with ocamldep: undetected deps inside quotation
+pa_convert.cmo: $(UNICODELIB_CMO)
+pa_convert.cmx: $(UNICODELIB_CMX)
+
+
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
 -include $(UNICODELIB_DEPS)

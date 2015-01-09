@@ -161,7 +161,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           ) path
         ))
     ) paths;
-    match params.fillColor, params.strokingColor with
+    match Typography.OutputCommon.(params.fillColor, params.strokingColor) with
         None, None-> Rbuffer.add_string pageBuf "n "
       | None, Some col -> (
         if params.close then Rbuffer.add_string pageBuf "s " else
@@ -441,14 +441,14 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | Path (params,[])->()
       | Path (params,paths) ->(
         close_text ();
-        set_line_join params.lineJoin;
-        set_line_cap params.lineCap;
-        set_line_width (pt_of_mm params.lineWidth);
-        set_dash_pattern params.dashPattern;
-        (match params.strokingColor with
+        set_line_join Typography.OutputCommon.(params.lineJoin);
+        set_line_cap Typography.OutputCommon.(params.lineCap);
+        set_line_width (pt_of_mm Typography.OutputCommon.(params.lineWidth));
+        set_dash_pattern Typography.OutputCommon.(params.dashPattern);
+        (match Typography.OutputCommon.(params.strokingColor) with
             None->()
           | Some col -> change_stroking_color col);
-        (match params.fillColor with
+        (match Typography.OutputCommon.(params.fillColor) with
             None->()
           | Some col -> change_non_stroking_color col);
         writePath pageBuf pt_of_mm paths params
