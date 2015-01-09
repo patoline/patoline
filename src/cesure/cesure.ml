@@ -1,89 +1,54 @@
-(*
-  Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
-  Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
-
-  This file is part of Patoline.
-
-  Patoline is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Patoline is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
-*)
-open Str
 open Typography.Hyphenate
 
-let _=
-  for i=1 to Array.length Sys.argv-1 do
-    let patterns,hyphenations=
-      let i=open_in_bin Sys.argv.(i) in
-      let rec find_pats seek_patterns seek_hyph p e=
-        let pos0=pos_in i in
-        match (try Some (input_line i) with _->None) with
-            None->p,e
-          | Some str->(
+let group name = parser | "\\" - STR(name) "{" ''[^ \t\n\r{}]+''* "}"
+let patt = group "patterns"
+let hyph = group "hyphenation"
 
-            let str=try let i=String.index str '%' in String.sub str 0 i with Not_found->str in
+let parser cesure_file =
+  | ps:patt?[[]] hy:hyph?[[]] -> (ps, hy)
+  | hy:hyph?[[]] ps:patt?[[]] -> (ps, hy)
 
-            let reg=(Str.regexp "\\\\patterns{") in
-            let exc=(Str.regexp "\\\\hyphenation{") in
-            let regend=(Str.regexp "}") in
-            if Str.string_match reg str 0 then (
-              let pos1=Str.search_forward reg str 0 in
-              seek_in i (pos0+pos1+String.length (Str.matched_string str));
-              find_pats true false p e
-            ) else (
-              if Str.string_match exc str 0 then (
-                let pos1=Str.search_forward exc str 0 in
-                seek_in i (pos0+pos1+String.length (Str.matched_string str));
-                find_pats false true p e
-              ) else (
-                let seek_patterns',seek_hyph',str=
-                  if Str.string_match regend str 0 then (
-                    let pos1=Str.search_forward regend str 0 in
-                    seek_in i (pos0+pos1+String.length (Str.matched_string str));
-                    false, false, String.sub str 0 pos1
-                  ) else seek_patterns, seek_hyph, str
-                in
-                let next_p=
-                  if seek_patterns then (
-                    let s=List.filter (fun s->String.length s>0) (split (regexp "[\n\t ]") str) in
-                    (* List.iter (Printf.fprintf stderr "pat %S\n") s; *)
-                    s@p
-                  ) else p
-                in
-                let next_e=
-                  if seek_hyph then (
-                    let s=List.filter (fun s->String.length s>0) (split (regexp "[\n\t ]") str) in
-                    let ss=(List.map (Str.split (Str.regexp "-")) s) in
-                    (* List.iter (fun s->Printf.fprintf stderr "hyph : ["; *)
-                    (*   List.iter (Printf.fprintf stderr "%s ")s; *)
-                    (*   Printf.fprintf stderr "]\n"; *)
-                    (* ) ss; *)
-                    ss@e
-                  ) else e
-                in
-                find_pats seek_patterns' seek_hyph' next_p next_e
-              )
-            )
-          )
-      in
-      let p,e=find_pats false false [] [] in
-      close_in i;
-      p,e
-    in
-    let tree0 = List.fold_left insert empty patterns in
-    let tree = List.fold_left insert_exception tree0 hyphenations in
-    let o=open_out ((try Filename.chop_extension Sys.argv.(i)
-      with _->Sys.argv.(i))^".hdict")
-    in
-    output_value o tree;
-    close_out o
-  done
+let blank str pos =
+  let rec fn state prev ((str, pos) as cur) =
+    let (c, str', pos') = Input.read str pos in 
+    let next = (str', pos') in
+    match state, c with
+    | `Ini , (' '|'\t'|'\r'|'\n') -> fn `Ini cur next
+    | `Ini , '%'                  -> fn `Com cur next
+    | `Com , '\n'                 -> fn `Ini cur next
+    | `Com , _                    -> fn `Com cur next
+    | _    , _                    -> cur
+  in fn `Ini (str, pos) (str, pos)
+
+let parse_file fn =
+  let parse = Decap.parse_file cesure_file blank in
+  Decap.handle_exception parse fn
+
+let split c s =
+  let rec split s acc =
+    try
+      let i = String.index s c in
+      let e = String.sub s 0 i in
+      let s' = String.sub s (i+1) (String.length s - i - 1) in
+      split s' (e :: acc)
+    with _ -> List.rev (s :: acc)
+  in
+  split s []
+
+let build_cesure_file fn =
+  let (pa, hy) = parse_file fn in
+  let hy = List.map (split '-') hy in
+  let tree = List.fold_left insert empty pa in
+  let tree = List.fold_left insert_exception tree hy in
+  let fn' = (try Filename.chop_extension fn with _ -> fn) ^ ".hdict" in
+  let o = open_out fn' in
+  output_value o tree;
+  close_out o
+
+let _ =
+  if Array.length Sys.argv > 1 then
+    for i = 1 to Array.length Sys.argv - 1 do
+      build_cesure_file Sys.argv.(i)
+    done
+  else
+    Printf.eprintf "Usage: %s [File] ... [File]\n%!" Sys.argv.(0)

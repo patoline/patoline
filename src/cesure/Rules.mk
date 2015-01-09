@@ -8,7 +8,7 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-CESURE_INCLUDES := -I $(d) $(PACK_CESURE)
+CESURE_INCLUDES := -I $(d) $(PACK_CESURE) -I $(PA_OCAML_DIR) -pp $(PA_OCAML)
 CESURE_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_CESURE)
 $(d)/%.depends: INCLUDES+=$(CESURE_DEPS_INCLUDES)
 $(d)/cesure $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(CESURE_INCLUDES)
@@ -17,9 +17,9 @@ $(d)/cesure.cmx: $(d)/cesure.cmo
 
 all: $(d)/cesure
 
-$(d)/cesure: $(d)/cesure.cmx  $(IMAGELIB_DIR)/imagelib.cmxa $(UTIL_DIR)/patutil.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa 
+$(d)/cesure: $(d)/cesure.cmx  $(IMAGELIB_DIR)/imagelib.cmxa $(UTIL_DIR)/patutil.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(INCLUDES) -o $@ -package Typography -linkpkg $<
+	$(Q)$(OCAMLOPT) $(INCLUDES) -o $@ -package Typography -linkpkg $(PA_OCAML_DIR)/decap.cmxa $<
 
 CLEAN += $(d)/cesure $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo
 DISTCLEAN += $(d)/cesure.ml.depends
