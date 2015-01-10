@@ -21,8 +21,6 @@ let spec = [
  "input a .bin file instead of generating pages");
 ("--driver",Arg.String (fun x->Config.driver := Some x),
  "specify a driver to dynlink");
-("--",Arg.Unit (fun () -> raise Exit),
- "Driver specific arguments")
 ]
 
-let parse () = try Arg.parse spec ignore "Usage :" with Exit -> ();;
+let parse filter spec' = Arg.parse_argv (filter Sys.argv) (spec'@spec) ignore "Usage :"

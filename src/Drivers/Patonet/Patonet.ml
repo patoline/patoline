@@ -181,9 +181,9 @@ let click=Str.regexp "click_\\([0-9]*\\)_\\([0-9]*\\) "
 let edit=Str.regexp "edit_\\([0-9]*\\)_\\([0-9]*\\) "
 let drag=Str.regexp "drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*\\) "
 
-
-let spec=
-  SVG.spec @
+let filter_options argv = argv
+let driver_options =
+  SVG.driver_options @
   [("--master",Arg.Set_string master_page,"Set the master page");
    ("--port",Arg.Set_int port_num,"Set the port number to listen to")]
 
@@ -265,8 +265,6 @@ type change =
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
-
-  Arg.parse spec (fun x->()) "";
 
   let dynCache = Array.map (fun t -> Array.map (fun _ -> Hashtbl.create 13) t) pages in
 

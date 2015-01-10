@@ -20,6 +20,9 @@
 open Typography.OutputCommon
 open Typography.OutputPaper
 
+let driver_options = []
+let filter_options argv = argv
+
 let bin_output structure pages filename isoutput' =
   (* For marshalling, do database retain pointer that can not be marshalled *)
   Typography.Db.do_interaction_start_hook ();

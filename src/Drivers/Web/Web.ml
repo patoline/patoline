@@ -18,4 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+let driver_options = []
+let filter_options argv = argv
+
 let output' = ()

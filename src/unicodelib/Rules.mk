@@ -6,7 +6,7 @@ UNICODELIB_INCLUDES := -I $(d)
 UNICODELIB_DEPS_INCLUDES := -I $(d)
 
 $(d)/%.depends: OCAMLDEP:=ocamlfind ocamldep -pp $(PA_OCAML)
-$(d)/%.depends: INCLUDES:=$(UNICODELIB_DEPS_INCLUDES)
+$(d)/%.depends: INCLUDES:=$(UNICODELIB_DEPS_INCLUDES) 
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES:=$(UNICODELIB_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi: OCAMLC:=ocamlfind ocamlc -pp $(PA_OCAML) $(INCLUDES)
 $(d)/%.cmx: OCAMLOPT:=ocamlfind ocamlopt -pp $(PA_OCAML) $(INCLUDES)

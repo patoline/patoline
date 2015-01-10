@@ -51,8 +51,11 @@ let prefs = ref {
   second_window = false;
 }
 
+let filter_options argv =		
+  Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double";
+  Glut.init argv
 
-let spec = Arg.([
+let driver_options = Arg.([
   "--second", Unit (fun () -> prefs := { !prefs with second_window = true })
          , "Open a second window";
   "--connect", String (fun p -> prefs := { !prefs with server = Some p })
@@ -1480,12 +1483,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     if all_win.(0) = None then begin
       Sys.catch_break true;
       Printf.fprintf stderr "Start patoline GL.\n%!";
-      Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double";
-      let argv = Glut.init Sys.argv in
-      let usage = Printf.sprintf "Usage : %s [options] file.bin" Sys.argv.(0) in
-      let current = ref 0 in
-      while !current < Array.length Sys.argv && Sys.argv.(!current) <> "--" do incr current done;
-      if !prefs.batch_cmd = None then Arg.parse_argv ~current argv spec ignore usage;
       let _ = Db.make_sessid () in
       let _ = read_links () in
 

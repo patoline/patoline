@@ -29,7 +29,8 @@ exception Bezier_degree of int
 
 let font_filter = ref ""
 
-let spec=
+let filter_options argv = argv
+let driver_options =
   [("--font-filter",Arg.Set_string font_filter,"Set a command to filter otf fonts");]
 
 let assemble style title svg=
@@ -826,7 +827,6 @@ if(h0!=current_slide || h1!=current_state){
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
 	    pages filename=
-  Arg.parse spec (fun x->()) "";
   let prefix=try Filename.chop_extension filename with _->filename in
   let rec unlink_rec dir=
     if Sys.file_exists dir then (

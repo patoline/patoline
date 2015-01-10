@@ -29,7 +29,8 @@ let width = ref None
 let height = ref None
 let saa = ref DriverGL.No_SAA
 
-let spec = [
+let filter_options = DriverGL.filter_options
+let driver_options = [
   ("--format",Arg.String (fun s -> format := s), message (Language.Image IFormat));
   ("--width",Arg.Int (fun i -> width := Some i), message (Language.Image Width));
   ("--height",Arg.Int (fun i -> height := Some i), message (Language.Image Height));
@@ -46,9 +47,6 @@ let filename file = try (Filename.chop_extension file)^"_img_dir" with _->file^"
 let filename' file i j = 
   try "page_"^string_of_int i^"."^ !format with _->"page_"^string_of_int i^"_"^string_of_int j^"."^ !format
 
-
-let _ =
-  Arg.parse spec (fun x-> raise (Arg.Bad x)) (Language.message Usage)
 
 let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})

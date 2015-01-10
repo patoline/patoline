@@ -49,16 +49,35 @@ let aliasDriver=
   (List.combine shortDrivers Config2.drivers)
 
 open Language
+
+       let getopts str=
+  let restr="\\('\\(\\'\\|[^\']\\)*\'\\)\\|\\(\"\\(\\\"\\|[^\"]\\)*\"\\)\\|\\([^ \t\n\"]+\\)" in
+  let re=Str.regexp restr in
+  let rec getopts i res=
+    let next,j=
+      try
+        let _=Str.search_forward re str i in
+        let i'=Str.match_beginning () in
+        let j=Str.match_end () in
+        let gr=String.sub str i' (j-i') in
+        gr, j
+      with
+          Not_found->"",(-1)
+    in
+    if j<0 then List.rev res else getopts (max (i+1) j) (next::res)
+  in
+  getopts 0 []
+
 let spec =
-  [("--extra-fonts-dir",Arg.String (fun x->extras_top:=x::"--extra-fonts-dir"::(!extras_top)),
+  [("--extra-fonts-dir",Arg.String (fun x->extras_top:=["--extra-fonts-dir";x]::(!extras_top)),
     message (Cli Extra_fonts));
-   ("--extra-hyph-dir",Arg.String (fun x->extras_top:=x::"--extra-hyph-dir"::(!extras_top)),
+   ("--extra-hyph-dir",Arg.String (fun x->extras_top:=["--extra-hyph-dir";x]::(!extras_top)),
     message (Cli Extra_hyph));
-   ("--font-filter",Arg.String (fun x->extras_top:=x::"--font-filter"::"--"::(!extras_top)),
+   ("--font-filter",Arg.String (fun x->extras_top:=["--font-filter";x]::(!extras_top)),
     message (Cli Font_filter));
-   ("--build-dir",Arg.String (fun x-> build_dir := x; extras_top:=x::"--build-dir"::(!extras_top)),
+   ("--build-dir",Arg.String (fun x-> build_dir := x; extras_top:=["--build-dir";x]::(!extras_top)),
     message (Cli Build_dir));
-   ("--no-build-dir",Arg.Unit (fun ()-> build_dir := ""; extras_top:="--no-build-dir"::(!extras_top)),
+   ("--no-build-dir",Arg.Unit (fun ()-> build_dir := ""; extras_top:=["--no-build-dir"]::(!extras_top)),
     message (Cli No_build_dir));
    ("--main-ml",Arg.Unit (fun () -> main_ml:=true), message (Cli MainMl));
    ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), message (Cli Ml));
@@ -91,9 +110,9 @@ let spec =
    ("--ocamlopt",Arg.String (fun s->ocamlopt:=s), message (Cli Ocamlopt));
    ("-j",Arg.Int (fun s->Build.j:=max !Build.j s), message (Cli Parallel));
    ("--quiet", Arg.Int (fun x->quiet:=x), message (Cli Quiet));
-   ("--",Arg.Rest (fun s -> extras := s:: !extras), message (Cli Remaining));
-   ("--topopts",Arg.String (fun s -> extras_top := s:: !extras_top), message (Cli TopOpts));
-   ("--ccopts",Arg.String (fun s -> extras := s:: !extras), message (Cli CCOpts));
+   ("--",Arg.Rest (fun s -> extras := [s]:: !extras), message (Cli Remaining));
+   ("--topopts",Arg.String (fun s -> extras_top := getopts s:: !extras_top), message (Cli TopOpts));
+   ("--ccopts",Arg.String (fun s -> extras := getopts s :: !extras), message (Cli CCOpts));
    ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), message (Cli No_line_directive));
    ("--debug-parser", Arg.Unit (fun () -> Parser.debug_parser:=true), message (Cli Debug_parser));
   ]
@@ -118,24 +137,6 @@ type options={
   directories:string list;
   noamble:bool
 }
-
-let getopts str=
-  let restr="\\(\"\\(\\\"\\|[^\"]\\)*\"\\)\\|\\([^ \t\n\"]+\\)" in
-  let re=Str.regexp restr in
-  let rec getopts i res=
-    let next,j=
-      try
-        let _=Str.search_forward re str i in
-        let i'=Str.match_beginning () in
-        let j=Str.match_end () in
-        let gr=String.sub str i' (j-i') in
-        gr, j
-      with
-          Not_found->"",(-1)
-    in
-    if j<0 then List.rev res else getopts (max (i+1) j) (next::res)
-  in
-  getopts 0 []
 
 module StringSet = Set.Make(struct type t = string let compare = compare end)
 let compact l =
@@ -596,7 +597,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
             let args_l=List.filter (fun x->x<>"")
               ([ cmd;
                  !ocamlopt]@prepro@
-                  (List.concat (List.map getopts !extras))@
+                  (List.concat (List.rev !extras))@
                   comp_opts@
                   (let pack=String.concat "," (List.rev (opts.packages)) in
                    if pack<>"" then ["-package";pack] else [])@
@@ -660,7 +661,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
             let args_l=List.filter (fun x->x<>"")
               ([cmd;
                 !ocamlopt]@
-                  (List.concat (List.map getopts !extras))@
+                  (List.concat (List.rev !extras))@
                   comp_opts@
                   (let pack=String.concat "," (List.rev (opts.packages)) in
                    if pack<>"" then ["-package";pack] else [])@
@@ -725,7 +726,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
               let args_l=List.filter (fun x->x<>"")
                 ([cmd;
                   !ocamlopt]@
-                    (List.concat (List.map getopts !extras))@
+                    (List.concat (List.rev !extras))@
                     comp_opts@
                     (let pack=String.concat ","
 		       ((if !dynlink then ["dynlink"] else ["dynlink";"Typography."^opts.driver])@
@@ -785,7 +786,7 @@ let process_each_file l=
           Build.sem_set Build.sem !Build.j;
           Build.build_with_rule (patoline_rule objects) [cmd];
           if !run && Sys.file_exists cmd then (
-            let extras_top =List.rev !extras_top in
+            let extras_top =List.concat (List.rev !extras_top) in
 	    Mutex.lock Build.mstdout;
             Printf.fprintf stdout "[RUN] %s %s\n%!" cmd (String.concat " " extras_top);
 	    Mutex.unlock Build.mstdout;

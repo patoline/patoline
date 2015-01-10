@@ -24,11 +24,12 @@ open OutputPaper
 open Util
 open HtmlFonts
 
+let driver_options = []
+let filter_options argv = argv			    
+
 exception Bezier_degree
 
 let filename x= try (Filename.chop_extension x)^".html" with _ -> x^".html"
-
-
 
 let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})

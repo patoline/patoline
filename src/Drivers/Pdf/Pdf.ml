@@ -26,6 +26,9 @@ open FTypes
 open OutputCommon
 open OutputPaper
 
+let driver_options = []
+let filter_options argv = argv
+
 module FloatMap=Map.Make(struct type t=float let compare=compare end)
 
 let filename file=try (Filename.chop_extension file)^".pdf" with _->file^".pdf"

@@ -126,6 +126,8 @@ module Driver = (val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver)
   else
     Printf.fprintf where "module Driver = %s;;\n" driver;
 
+  Printf.fprintf where "let _ = ParseMainArgs.parse Driver.filter_options Driver.driver_options\n";
+
   Printf.fprintf where "module Patoline_Output=Patoline_Format%d.Output(Driver);;\n" (!i-1) ;
 
   let buf=Buffer.create 100 in
@@ -182,7 +184,6 @@ open Typography.Config
 open Typography.Document
 open Typography.OutputCommon
 open DefaultFormat.MathsFormat
-let _ = ParseMainArgs.parse ()
 let %s = ref ([||] : (environment -> Mathematical.style -> box list) array)
 let m%s = ref ([||]  : (environment -> Mathematical.style -> box list) list array)
 module Document=functor(Patoline_Output:DefaultFormat.Output) -> functor(D:DocumentStructure)->struct\n"

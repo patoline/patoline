@@ -21,6 +21,9 @@ open Typography.OutputCommon
 open Typography.OutputPaper
 open Util
 
+let driver_options = []
+let filter_options argv = argv			    
+
 let pixels_per_mm=ref 10.
 
 let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
