@@ -151,7 +151,29 @@ let output_fonts cache=
       close_out out;
   ) cache.fontBuffers
 
-
+let filter_fonts cmd cache =
+  let temp_dir = Filename.temp_file "patfonts" "" in
+  Sys.remove temp_dir; Unix.mkdir temp_dir 0o700;
+  StrMap.iter (fun filename buf->
+    let filename = Filename.(concat temp_dir (basename filename)) in
+    let out=open_out filename in
+    Rbuffer.output_buffer out buf;
+    close_out out;
+    let cmd = cmd ^ " " ^ filename in
+    Printf.eprintf "filtering: %s\n" cmd;
+    if Sys.command cmd <> 0 then
+      begin
+	Printf.eprintf "font filter command %S failed\n" cmd;
+	exit 1
+      end;
+    Rbuffer.clear buf;
+    let cin =open_in filename in
+    Rbuffer.add_channel buf cin (in_channel_length cin);
+    close_in cin;
+    Sys.remove filename;
+  ) cache.fontBuffers;
+  Unix.rmdir temp_dir
+      
 
 (* renvoit (nom complet de la police, nom de la classe) *)
 let className cache gl_=

@@ -54,6 +54,8 @@ let spec =
     message (Cli Extra_fonts));
    ("--extra-hyph-dir",Arg.String (fun x->extras_top:=x::"--extra-hyph-dir"::(!extras_top)),
     message (Cli Extra_hyph));
+   ("--font-filter",Arg.String (fun x->extras_top:=x::"--font-filter"::"--"::(!extras_top)),
+    message (Cli Font_filter));
    ("--build-dir",Arg.String (fun x-> build_dir := x; extras_top:=x::"--build-dir"::(!extras_top)),
     message (Cli Build_dir));
    ("--no-build-dir",Arg.Unit (fun ()-> build_dir := ""; extras_top:="--no-build-dir"::(!extras_top)),
@@ -783,13 +785,13 @@ let process_each_file l=
           Build.sem_set Build.sem !Build.j;
           Build.build_with_rule (patoline_rule objects) [cmd];
           if !run && Sys.file_exists cmd then (
-            extras_top:=List.rev !extras_top;
+            let extras_top =List.rev !extras_top in
 	    Mutex.lock Build.mstdout;
-            Printf.fprintf stdout "[RUN] %s %s\n%!" cmd (String.concat " " !extras_top);
+            Printf.fprintf stdout "[RUN] %s %s\n%!" cmd (String.concat " " extras_top);
 	    Mutex.unlock Build.mstdout;
             let pid=Unix.create_process
               (if Filename.is_relative cmd then (Filename.concat (Sys.getcwd ()) cmd) else cmd)
-              (Array.of_list (List.filter (fun x->x<>"") (cmd:: !extras_top)))
+              (Array.of_list (List.filter (fun x->x<>"") (cmd:: extras_top)))
               Unix.stdin
               Unix.stdout
               Unix.stderr

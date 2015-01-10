@@ -45,6 +45,7 @@ and syntax_error=
 and command_line=
     Extra_fonts
   | Extra_hyph
+  | Font_filter
   | Build_dir
   | No_build_dir
   | Dirs
@@ -105,6 +106,7 @@ let message=function
     match cli with
         Extra_fonts->"Rajoute le répertoire au chemin de recherche des polices"
       | Extra_hyph->"Rajoute le répertoire au chemin de recherche des dictionnaires de césures"
+      | Font_filter->"Ajoute un filtre pour les fonts pour les drivers SVG et Patonet"
       | Build_dir->"Fixe le répertoire des fichiers intermédiaires"
       | No_build_dir ->"N'utilise pas de répertoire des fichiers intermédiaires"
       | Dirs->"Rajoute le répertoire au chemin de compilation"
@@ -171,6 +173,7 @@ let message=function
     match cli with
         Extra_fonts->"Add directory to the font search path"
       | Extra_hyph->"Add directory to the hyphenation dictionary search path"
+      | Font_filter->"Add a font filter command for SVG and Patonet drivers"
       | Build_dir->"Fixes the directory for auxilliary files"
       | No_build_dir->"Use no directory for auxilliary files"
       | Dirs->"Add directory to the list of include directories"

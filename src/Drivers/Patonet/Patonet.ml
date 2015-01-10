@@ -183,6 +183,7 @@ let drag=Str.regexp "drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*
 
 
 let spec=
+  SVG.spec @
   [("--master",Arg.Set_string master_page,"Set the master page");
    ("--port",Arg.Set_int port_num,"Set the port number to listen to")]
 
@@ -264,6 +265,8 @@ type change =
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
+
+  Arg.parse spec (fun x->()) "";
 
   let dynCache = Array.map (fun t -> Array.map (fun _ -> Hashtbl.create 13) t) pages in
 
@@ -715,6 +718,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 });
 " (Array.length pages - 1)
   in
+
   let page,css=SVG.basic_html
     ~script:websocket
     ~onload
@@ -1187,8 +1191,6 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       Printf.eprintf "erreur %d : \"%s\"\n%!" num (Printexc.to_string e);
       exit 0;
 in
-
-  Arg.parse spec (fun x->()) "";
 
   if !master_page="" then (
     master_page:=Printf.sprintf "/%d" (Random.int (1 lsl 29));

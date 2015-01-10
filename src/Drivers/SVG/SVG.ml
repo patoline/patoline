@@ -27,7 +27,10 @@ open UsualMake
 open HtmlFonts
 exception Bezier_degree of int
 
+let font_filter = ref ""
 
+let spec=
+  [("--font-filter",Arg.Set_string font_filter,"Set a command to filter otf fonts");]
 
 let assemble style title svg=
   let svg_buf=Rbuffer.create 256 in
@@ -527,6 +530,7 @@ let buffered_output' ?dynCache ?(structure:structure={name="";displayname=[];met
     ) pi
   ) pages
   in
+  if !font_filter <> "" then filter_fonts !font_filter cache;  
   svg_files,cache,!imgs
 
 let default_script = ""
@@ -821,7 +825,8 @@ if(h0!=current_slide || h1!=current_state){
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    pages filename=
+	    pages filename=
+  Arg.parse spec (fun x->()) "";
   let prefix=try Filename.chop_extension filename with _->filename in
   let rec unlink_rec dir=
     if Sys.file_exists dir then (
@@ -860,7 +865,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Rbuffer.output_buffer o y;
       close_out o
     )
-  ) svg_files;
+	      ) svg_files;
   output_fonts cache
 
 let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];

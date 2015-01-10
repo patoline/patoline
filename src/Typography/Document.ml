@@ -1028,6 +1028,7 @@ let lref ?refType name=
         Not_found -> []
   )]
 
+let generalRef t x = lref ~refType:t x
 let sectref x=lref ~refType:"_structure" x
 
 let extLink a b=bB (fun _->[Marker (BeginLink (Extern a))])::b@[bB (fun _->[Marker EndLink])]
