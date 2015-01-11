@@ -18,11 +18,9 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-module C=Map.Make (struct type t=UChar.t let compare=compare end)
-
 type ptree=
-    Node of (string)*(ptree C.t)
-  | Exception of (string list)*(ptree C.t)
+    Node of (string)*(ptree UChar.UMap.t)
+  | Exception of (string list)*(ptree UChar.UMap.t)
 
 let is_num c = c>=int_of_char '0' && c<=int_of_char '9'
 
@@ -54,11 +52,11 @@ let insert tree a=
       else
         (match tree with
             Node (x,t)->
-              (let tree'=try C.find (UTF8.look a i) t with Not_found->Node ("", C.empty) in
-               Node (x, C.add (UTF8.look a i) (insert (UTF8.next a i) tree') t))
+              (let tree'=try UChar.UMap.find (UTF8.look a i) t with Not_found->Node ("", UChar.UMap.empty) in
+               Node (x, UChar.UMap.add (UTF8.look a i) (insert (UTF8.next a i) tree') t))
           | Exception (x,t)->
-            (let tree'=try C.find (UTF8.look a i) t with Not_found->Node ("", C.empty) in
-             Exception (x, C.add (UTF8.look a i) (insert (UTF8.next a i) tree') t))
+            (let tree'=try UChar.UMap.find (UTF8.look a i) t with Not_found->Node ("", UChar.UMap.empty) in
+             Exception (x, UChar.UMap.add (UTF8.look a i) (insert (UTF8.next a i) tree') t))
         )
     )
   in
@@ -70,13 +68,13 @@ let insert_exception tree a0=
   let rec insert i = function
       Exception (_,_) as t when i>=String.length a-1 -> t
     | Exception (x,t)->(
-      let t'=try C.find (UTF8.look a i) t with Not_found->Node ("", C.empty) in
-      Exception (x, C.add (UTF8.look a i) (insert (UTF8.next a i) t') t)
+      let t'=try UChar.UMap.find (UTF8.look a i) t with Not_found->Node ("", UChar.UMap.empty) in
+      Exception (x, UChar.UMap.add (UTF8.look a i) (insert (UTF8.next a i) t') t)
     )
     | Node (x,t) when i>=String.length a-1 -> Exception (a0,t)
     | Node (x,t)->(
-      let t'=try C.find (UTF8.look a i) t with Not_found->Node ("", C.empty) in
-      Node (x, C.add (UTF8.look a i) (insert (UTF8.next a i) t') t)
+      let t'=try UChar.UMap.find (UTF8.look a i) t with Not_found->Node ("", UChar.UMap.empty) in
+      Node (x, UChar.UMap.add (UTF8.look a i) (insert (UTF8.next a i) t') t)
     )
   in
     insert 0 tree
@@ -144,7 +142,7 @@ let hyphenate tree a0=
               | Exception (_,t)->
                 (
                   try
-                    let t'=C.find (UTF8.look a j) t in
+                    let t'=UChar.UMap.find (UTF8.look a j) t in
                     hyphenate i (UTF8.next a j) t'
                   with
                       _->())
@@ -157,7 +155,7 @@ let hyphenate tree a0=
                   fill_breaks 0
                 );
                 try
-                  let t'=C.find (UTF8.look a j) t in
+                  let t'=UChar.UMap.find (UTF8.look a j) t in
                   hyphenate i (UTF8.next a j) t'
                 with
                     _->()
@@ -188,14 +186,14 @@ let hyphenate tree a0=
         let m=make_hyphens 1 0 in
         m
       )
-let empty=Node ("", C.empty)
+let empty=Node ("", UChar.UMap.empty)
 
 #ifdef DEBUG
 let _=
     let i=open_in_bin ("../../Hyphenation/hyph-en-us.hdict") in
     let tree=input_value i in
     close_in i;
-  (* let tree0 = List.fold_left insert (Node ([||],C.empty)) ["ab3sent.";"2sent."] in *)
+  (* let tree0 = List.fold_left insert (Node ([||],UChar.UMap.empty)) ["ab3sent.";"2sent."] in *)
   (* let tree = List.fold_left insert_exception tree0 [] in *)
     List.iter (fun a->
       Printf.fprintf stderr "%S\n" a

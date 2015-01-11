@@ -56,3 +56,12 @@ let code : uchar -> int = to_int
  * Raise Out_of_bound if the code is invalid.
  *)
 let chr : int -> uchar = of_int
+
+(*
+ * Map indexed with uchar.
+ *)
+module UMap = Map.Make (
+  struct
+    type t = uchar
+    let compare = compare
+  end)
