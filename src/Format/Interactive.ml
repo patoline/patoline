@@ -219,6 +219,7 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 	     let env = { env with 
 	       normalLead = env.normalLead *. 0.8;
 	       lead = env.normalLead *. 0.8;
+	       normalLeftMargin=env.size *. 0.2;
 	     } in
 	     List.map (fun x-> Drawing (snd x))
 	       (IntMap.bindings 

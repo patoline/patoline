@@ -383,7 +383,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           (* min height (nextNode.height-.env.lead) *)
           height-.env.lead
         );
-        new_page=
+        new_page= (* useless because redefined below depending upon the presence of a title *)
         (fun t->
           let zip=Box.make_page (slidew,slideh) (frame_top t) in
           let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
@@ -541,7 +541,32 @@ module Format=functor (D:Document.DocumentStructure)->(
                   (*let out=open_out (Printf.sprintf "slide%d" (List.length !slides)) in
                   doc_graph out tree;
                   close_out out;*)
-
+	      let hasTitle = n.displayname <> [] in
+	      let env0 =
+		if hasTitle then
+		  { env0 with
+		    new_page=
+		      (fun t->
+		       let zip=Box.make_page (slidew,slideh) (frame_top t) in
+		       let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
+		       let y0= -. slideh in          (* Un peu abusif, mais tout le contenu est censé tenir *)
+		       let x1=((fst zip).frame_x1-.1.*.slidew/.6.) in
+		       let y1=((fst zip).frame_y1-.1.*.slideh/.7.) in
+		       frame x0 y0 x1 y1 zip
+		      )
+		  } else
+		  { env0 with
+		    new_page=
+		      (fun t->
+		       let zip=Box.make_page (slidew,slideh) (frame_top t) in
+		       let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
+		       let y0= -. slideh in          (* Un peu abusif, mais tout le contenu est censé tenir *)
+		       let x1=((fst zip).frame_x1-.1.*.slidew/.6.) in
+		       let y1=((fst zip).frame_y1-.1.*.slideh/.14.) in
+		       frame x0 y0 x1 y1 zip
+		      )
+		  }
+	      in
                   let rec get_max_state t=match t with
                       Paragraph p->(List.fold_left max 0 p.par_states)
                     | Node n->
@@ -697,7 +722,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         line={ ll.line with
                           height=ll.line.height
                           -. state_start.(i).(ll.line.paragraph)
-                          +.lowest_start.(ll.line.paragraph)
+                          +. lowest_start.(ll.line.paragraph)
                         }
                       }
                     ) opts.(i)
