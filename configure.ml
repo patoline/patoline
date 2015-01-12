@@ -147,7 +147,7 @@ let local_packages = [
   };
   { package_name = "Typography";
     macro_suffix = "TYPOGRAPHY";
-    local_deps = ["patutil";"patfonts";"imagelib";"unicodelib"];
+    local_deps = ["patutil";"patfonts";"imagelib";"unicodelib";"cesure"];
     extern_deps = ["zip";"mysql";"dynlink";"fontconfig"];
     subdirs = ["Output";"DefaultFormat"];
     has_meta = true;
@@ -162,7 +162,7 @@ let local_packages = [
   (* FAKE: no META yet *)
   { package_name = "Format"; 
     macro_suffix = "FORMAT";
-    local_deps = ["Typography"];
+    local_deps = ["Typography";"cesure"];
     extern_deps = [];
     subdirs = [];
     has_meta = false;
@@ -183,7 +183,7 @@ let local_packages = [
   };
   { package_name = "cesure";
     macro_suffix = "CESURE";
-    local_deps = ["Typography"; "unicodelib"];
+    local_deps = ["unicodelib"];
     extern_deps = [];
     subdirs = [];
     has_meta = false;
@@ -609,6 +609,7 @@ let _=
   Printf.fprintf make "INSTALL_BIBI_DIR :=%s/bibi\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_PATOPLOT_DIR :=%s/patoplot\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_PLUGINS_DIR :=%s\n" !plugins_dir;
+  Printf.fprintf make "INSTALL_CESURE_DIR :=%s/cesure\n" !ocaml_lib_dir;
 
   Printf.fprintf make "INSTALL_BIN_DIR :=%s\n" !bin_dir;
 
@@ -686,7 +687,8 @@ let _=
       (String.concat "," (gen_pack_line [Package "str"; Package "unicodelib"; Package "mysql";
                                          Package "zip";
                                          Package "imagelib";Package "dynlink";
-                                         Package "fontconfig"]));
+                                         Package "fontconfig"; Package
+                                         "cesure"]));
     Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, ParseMainArgs.cmx\"\n";
     Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cmx, ParseMainArgs.cmo\"\n";
 

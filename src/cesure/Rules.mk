@@ -2,33 +2,59 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(MAKECMDGOALS),distclean)
--include $(d)/cesure.ml.depends
-endif
-endif
+CESURE_OCAMLDEP := ocamlfind ocamldep -I $(d)
+CESURE_OCAMLC   := ocamlfind ocamlc -I $(d)
+CESURE_OCAMLOPT := ocamlfind ocamlopt -I $(d)
 
-CESURE_INCLUDES := -I $(d) $(PACK_CESURE) -I $(PA_OCAML_DIR) -pp $(PA_OCAML)
-CESURE_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_CESURE)
-$(d)/%.depends: INCLUDES+=$(CESURE_DEPS_INCLUDES)
-$(d)/cesure $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(CESURE_INCLUDES)
+all: $(d)/cesure $(d)/cesure.cmxa $(d)/cesure.cma
 
-$(d)/cesure.cmx: $(d)/cesure.cmo
+$(d)/hyphen.ml.depend: $(d)/hyphen.ml
+	$(ECHO) "[DEP] $< -> $@"
+	$(Q)$(CESURE_OCAMLDEP) -package unicodelib $<
 
-all: $(d)/cesure
+$(d)/cesure.ml.depend: $(d)/cesure.ml
+	$(ECHO) "[DEP] $< -> $@"
+	$(Q)$(CESURE_OCAMLDEP) -package unicodelib $<
 
-$(d)/cesure: $(d)/cesure.cmx  $(IMAGELIB_DIR)/imagelib.cmxa $(UTIL_DIR)/patutil.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa
+$(d)/hyphen.cmx: $(d)/hyphen.cmo
+
+$(d)/hyphen.cmo: $(d)/hyphen.ml
+	$(ECHO) "[OCAMLC] $< -> $@"
+	$(Q)$(CESURE_OCAMLC) -package unicodelib -c $<
+
+$(d)/hyphen.cmx: $(d)/hyphen.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(INCLUDES) -o $@ -package Typography -linkpkg $(PA_OCAML_DIR)/decap.cmxa $<
+	$(Q)$(CESURE_OCAMLOPT) -package unicodelib -c $<
 
-CLEAN += $(d)/cesure $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo
-DISTCLEAN += $(d)/cesure.ml.depends
+$(d)/cesure.cma: $(d)/hyphen.cmo $(UNICODE_DIR)/unicodelib.cma
+	$(ECHO) "[LINK]   $< -> $@"
+	$(Q)$(CESURE_OCAMLC) -package unicodelib -a -o $@ $<
+
+$(d)/cesure.cmxa: $(d)/hyphen.cmx $(UNICODE_DIR)/unicodelib.cmxa
+	$(ECHO) "[LINK]   $< -> $@"
+	$(Q)$(CESURE_OCAMLOPT) -package unicodelib -a -o $@ $<
+
+$(d)/cesure.cmx: $(d)/cesure.ml
+	$(ECHO) "[OPT]    $< -> $@"
+	$(Q)$(CESURE_OCAMLOPT) -pp $(PA_OCAML) -package decap -c $<
+
+$(d)/cesure: $(PA_OCAML_DIR)/decap.cmxa $(UNICODE_DIR)/unicodelib.cmxa $(d)/hyphen.cmx $(d)/cesure.cmx
+	$(ECHO) "[OPT]    $< -> $@"
+	$(Q)$(CESURE_OCAMLOPT) $(INCLUDES) -o $@ -package unicodelib,decap unix.cmxa str.cmxa sqlite3.cmxa $^
+
+CLEAN += $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.a
+DISTCLEAN += $(d)/cesure.cma $(d)/cesure.cmxa $(d)/cesure
 
 # Installing
-install: install-cesure
-.PHONY: install-cesure
-install-cesure: install-bindir $(d)/cesure
+install: install-cesure-bin install-cesure-lib
+.PHONY: install-cesure-bin
+install-cesure-bin: install-bindir $(d)/cesure
 	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
+
+.PHONY: install-cesure-lib
+install-cesure-lib: $(d)/cesure.cma $(d)/cesure.cmxa $(d)/META $(d)/cesure.o $(d)/cesure.a $(d)/hyphen.cmi $(d)/hyphen.cmx $(d)/hyphen.cmo
+	install -m 755 -d $(DESTDIR)/$(INSTALL_CESURE_DIR)
+	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_CESURE_DIR)
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

@@ -1,8 +1,9 @@
-open Typography.Hyphenate
+let pattern     = parser | ''[^- \t\n\r{}]+''
+let hyphenation = parser | x:pattern xs:{"-" pattern}* -> x::xs
+let hyphenation = Decap.change_layout hyphenation  Decap.no_blank
 
-let group name = parser | "\\" - STR(name) "{" ''[^ \t\n\r{}]+''* "}"
-let patt = group "patterns"
-let hyph = group "hyphenation"
+let patt = parser | "\\patterns" "{" pattern* "}"
+let hyph = parser | "\\hyphenation" "{" hyphenation* "}"
 
 let parser cesure_file =
   | ps:patt?[[]] hy:hyph?[[]] -> (ps, hy)
@@ -24,22 +25,12 @@ let parse_file fn =
   let parse = Decap.parse_file cesure_file blank in
   Decap.handle_exception parse fn
 
-let split c s =
-  let rec split s acc =
-    try
-      let i = String.index s c in
-      let e = String.sub s 0 i in
-      let s' = String.sub s (i+1) (String.length s - i - 1) in
-      split s' (e :: acc)
-    with _ -> List.rev (s :: acc)
-  in
-  split s []
-
 let build_cesure_file fn =
   let (pa, hy) = parse_file fn in
-  let hy = List.map (split '-') hy in
-  let tree = List.fold_left insert empty pa in
-  let tree = List.fold_left insert_exception tree hy in
+  let (lpa, lhy) = (List.length pa, List.length hy) in
+  Printf.eprintf "  Read: %i patterns and %i exceptions\n%!" lpa lhy;
+  let tree = List.fold_left Hyphen.insert Hyphen.empty pa in
+  let tree = List.fold_left Hyphen.insert_exception tree hy in
   let fn' = (try Filename.chop_extension fn with _ -> fn) ^ ".hdict" in
   let o = open_out fn' in
   output_value o tree;

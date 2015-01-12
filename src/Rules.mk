@@ -65,7 +65,7 @@ $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
   $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa \
   $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) -I $(<D) -I $(DRIVERS_DIR)/Pdf Pdf.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
+	$(Q)$(OCAMLOPT_NOINTF) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) -I $(<D) -I $(DRIVERS_DIR)/Pdf Pdf.cmxa $(CESURE_DIR)/cesure.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) $(HYPHENATION_DIR)/hyph-en-us.hdict
 	$(ECHO) "[TMX]    $< -> $@"

@@ -72,7 +72,7 @@ let hyphenate_dict dict=
     let inp=input_value i in
     close_in i;
     (fun str->
-     let hyphenated=Hyphenate.hyphenate inp str in
+     let hyphenated=Hyphen.hyphenate inp str in
      Array.of_list (hyphenated)
     )
   with

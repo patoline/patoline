@@ -323,6 +323,20 @@ let split char str =
   in
   fn 0 0 []
 
+(* alternative implementation
+let split c s =
+  let rec split s acc =
+    try
+      let i = String.index s c in
+      let e = String.sub s 0 i in
+      let s' = String.sub s (i+1) (String.length s - i - 1) in
+      split s' (e :: acc)
+    with _ -> List.rev (s :: acc)
+  in
+  split s []
+*)
+
+
 
 let base64_decode s=
   let buf=Buffer.create (String.length s) in

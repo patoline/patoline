@@ -21,7 +21,7 @@ endif
 endif
 
 TYPOGRAPHY_MODS:= TypoLanguage FindPath FontPattern $(FINDFONT) Config ConfigUtil Bezier Distance \
-  Offset Output/OutputCommon Box Badness Break Document Complete Hyphenate Maths \
+  Offset Output/OutputCommon Box Badness Break Document Complete Maths \
 	Output/OutputPaper Output/OutputDrawing Geometry Proj3d Diagrams ProofTree Db
 
 TYPOGRAPHY_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(TYPOGRAPHY_MODS)))
