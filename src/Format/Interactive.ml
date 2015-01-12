@@ -69,26 +69,25 @@ let scoreBar ?(vertical=false) envDiagram height width data =
   if vertical then
     let w2 = width /. 2. in
     List.iter (fun ((col:color), x, x0, x1) ->
-      let _ = path Edge.([draw;fill (col:color);noStroke]) (0.0, x0)
-	[[0.0, x1] ; [width, x1] ; [width, x0]] in
       let text = [tT (string_of_int x)] in
       let text_box = Document.draw_boxes env (boxify_scoped env text) in
       let (x0',_,x1',_) = bounding_box_full text_box in
       if x1' -. x0' < 1.75 *. (x1 -. x0) then
-	ignore (node Node.([at (w2, (x0 +. x1) /. 2.); outerSep 0.0; innerSep 0.0]) text)
+	ignore (node Node.([at (w2, (x0 +. x1) /. 2.); outerSep 0.0; innerSep 0.0; setZ (1.0)]) text)
       else
-	ignore (node Node.([at (w2, (x0 +. x1) /. 2.); outerSep 0.0; innerSep 0.0])
-		  (scale (1.75 *. (x1 -. x0) /. (x1' -. x0')) text))
+	ignore (node Node.([at (w2, (x0 +. x1) /. 2.); outerSep 0.0; innerSep 0.0; setZ (1.0)])
+		  (scale (1.75 *. (x1 -. x0) /. (x1' -. x0')) text));
+      ignore (path Edge.([draw;fill (col:color);noStroke]) (0.0, x0)
+	[[0.0, x1] ; [width, x1] ; [width, x0]]);
     ) data
   else
     let h2 = height /. 2. in
     List.iter (fun ((col:color), x, x0, x1) ->
-      let _ = path Edge.([draw;fill (col:color);noStroke]) (x0, 0.0)
-	[[x1, 0.0] ; [x1, height] ; [x0, height]] in
       let text = [tT (string_of_int x)] in
       let text_box = Document.draw_boxes env (boxify_scoped env text) in
       let (x0',_,x1',_) = bounding_box_full text_box in
-      if x1' -. x0' < 1.75 *. (x1 -. x0) then ignore (node Node.([at ((x0 +. x1) /. 2., h2); outerSep 0.0; innerSep 0.0]) text)
+      if x1' -. x0' < 1.75 *. (x1 -. x0) then ignore (node Node.([at ((x0 +. x1) /. 2., h2); outerSep 0.0; innerSep 0.0; setZ (1.0)]) text);
+      ignore (path Edge.([draw;fill (col:color);noStroke]) (x0, 0.0) [[x1, 0.0] ; [x1, height] ; [x0, height]]);
     ) data
 
 let scoreBarProg envDiagram height width data =

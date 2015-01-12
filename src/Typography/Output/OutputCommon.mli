@@ -115,7 +115,6 @@ and 'a dynamic = {
   dyn_sample : 'a;
   dyn_react : event -> action;
   dyn_order : int;
-  dyn_father : string option;
 }
 and affine = {
   affine_matrix : float array array;

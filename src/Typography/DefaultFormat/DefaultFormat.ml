@@ -688,7 +688,6 @@ let dynamic name action sample contents =
       dyn_order = List.fold_left (fun acc c -> min acc (OutputCommon.drawing_order c)) max_int (contents ());
       dyn_sample = draw env sample;
       dyn_react = action;
-      dyn_father = None;
     }
   in
   let (x0,y0,x1,y1)=bounding_box [r] in

@@ -36,7 +36,7 @@ open Interactive
 \size(5.0){Interactive Patoline}
 
 
-\caml([bB (fun env-> [Drawing (image "titleduck.png" env)])])
+\caml([bB (fun env-> [Drawing (Document.image "titleduck.png" env)])])
 \end{center}
 \end{slide}
 
@@ -207,12 +207,13 @@ let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
 
 \begin{slide}
 
+\begin{block}{
 Un petit programme éditable (the program is compiled but not executed for security)~:
-
+}
 \caml(
   editableText ~nb_lines:5 ~lang:lang_OCaml ~extra:(test_ocaml ~run:false) ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML" 
 )
-
+\end{block}
 \end{slide}
 
 == Animation ==

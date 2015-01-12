@@ -205,7 +205,24 @@ function websocket_msg(evt){
        if (current_slide == st.slide && current_state == st.state) {
          to_refresh = true;
        }
-     } else if (ch && current_slide == st.slide && current_state == st.state) {
+     } else if (ch == 'Dynamics' && current_slide == st.slide && current_state == st.state) {
+/*     var svg = Base64.decode(st.change_list);*/
+       var parser=new DOMParser();
+       for(var change in st.change_list) {
+         var label = st.change_list[change].dyn_label;
+         var contents = Base64.decode(st.change_list[change].dyn_contents);
+         var newSvg=parser.parseFromString('<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">'+contents+'</svg>',\"text/xml\");
+         newSvg=document.importNode(newSvg.documentElement,true);
+         var oldSvg=document.getElementById(label);
+         while (oldSvg.hasChildNodes()) {
+           oldSvg.removeChild(oldSvg.lastChild);
+         }
+         childs = newSvg.childNodes
+         while (newSvg.hasChildNodes()) {
+           oldSvg.appendChild(newSvg.lastChild);
+         }
+         setReaction(oldSvg)
+       }
      }  
 };
 function websocket_err(evt){
@@ -260,7 +277,7 @@ type change =
   Nothing
 | Slide of int * int
 | Refresh of int * int
-| Dynamics of string Typography.OutputCommon.dynamic list
+| Dynamics of int * int * string list(*Typography.OutputCommon.dynamic list*)
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
@@ -729,23 +746,21 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
   let css = Rbuffer.contents css in
 
   let output_cache out i j =
+    Rbuffer.add_string out "<defs id=\"svg_defs\">";
     Hashtbl.iter (fun k (d, ptr) ->
       try 
 	let c = match !ptr with
 	    Some c -> (*Printf.eprintf "From cache\n%!";*)  c 
 	  | None -> let c = try d.dyn_contents () with _ -> "" in ptr := Some c; c
 	in
-	let father = match d.dyn_father with
-	    None -> ""
-	  | Some id -> Printf.sprintf " class=\"with_father\" father=\"%s\"" id
-	in
-	Rbuffer.add_string out (Printf.sprintf "<g id=\"%s\"%s>%s</g>" d.dyn_label father c) 
+	Rbuffer.add_string out (Printf.sprintf "<g id=\"@%s\">%s</g>" d.dyn_label c) 
       with e -> 
 	let e = Printexc.to_string e in
 	Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" e d.dyn_label;
 	Printexc.print_backtrace stderr;
 	Rbuffer.add_string out (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label e)
-    ) dynCache.(i).(j)
+    ) dynCache.(i).(j);
+    Rbuffer.add_string out "</defs>";
   in
 
   let reset_cache () =
@@ -761,10 +776,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     let prefix,suffix = slides.(i).(j) in
     let buf = Rbuffer.create 256 in
     Rbuffer.add_string buf prefix;
-    Printf.eprintf "build dynamic parts %d %d\n%!" i j;
     output_cache buf i j;
     Rbuffer.add_string buf suffix;
-    Printf.eprintf "finished build slide %d %d\n%!" i j;
     Rbuffer.contents buf;
   in
 
@@ -778,11 +791,21 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	  i, j, "\"Slide\"", Printf.sprintf "\"%s\"" (base64_encode svg)
 	| Refresh(i,j) -> 
 	  i, j, "\"Refresh\"", "[]"
-	| Dynamics l ->
-	  let l = List.map (fun d -> 
-	    Printf.sprintf "{\"dyn_label:\"%s\",dyn_contents:\"%s\"}" d.dyn_label (base64_encode (d.dyn_contents ()))) l in
-	  let full = "[" ^ String.concat "," l ^"]" in 
-	  0, 0, "\"Dynamics\"", full
+	| Dynamics(i,j,l) ->
+	   let l = List.fold_left
+		     (fun acc label ->
+		      let l = List.filter (fun ((i',j'),_) -> i = i' && j = j') (Hashtbl.find dynTable label) in
+		      List.fold_left (fun acc ((_,_),(d,ptr)) ->
+				      let c = match !ptr with
+					  Some d -> d
+					| None -> d.dyn_contents ()
+				      in
+				      Printf.sprintf "{\"dyn_label\":\"%s\", \"dyn_contents\":\"%s\"}" d.dyn_label (base64_encode c)::acc)
+				     acc l)
+		     [] l
+	   in
+	   let full = "[" ^ String.concat "," l ^"]" in
+	   i, j, "\"Dynamics\"", full
       in
       resp_slave a (
 	Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"change\":%s, \"change_list\":%s }" 
@@ -921,7 +944,11 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	      acc) ([], []) dest
       in
       Printf.eprintf "Private change\n%!"; 
-      if affected slide state priv then pushto ~change:(Slide(slide,state)) fd fdfather;
+      if affected slide state priv then
+	begin
+	  pushto ~change:(Dynamics(slide,state,priv)) fd fdfather;
+	  (*pushto ~change:(Slide(slide,state)) fd fdfather;*)
+	end;
       Printf.eprintf "Public change\n%!"; 
       Printf.fprintf fouc "change %s\n%!" (String.concat " " pub);
     in

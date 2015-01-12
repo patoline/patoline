@@ -150,7 +150,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
 
   (* Écriture du contenu à proprement parler *)
 
-  let rec output_contents ?father ~svg_buf contents=
+  let rec output_contents ~svg_buf contents=
     let imgs=ref StrMap.empty in
     let cur_x=ref 0. in
     let cur_y=ref 0. in
@@ -313,8 +313,6 @@ let draw ?fontCache ?dynCache prefix w h contents=
         opened_text:=false
       );
 
-      let father = ref father in
-
       (match l.link_kind with
 	Intern(label,dest_page,dest_x,dest_y) ->
           Rbuffer.add_string svg_buf
@@ -344,15 +342,13 @@ let draw ?fontCache ?dynCache prefix w h contents=
 			    (global_replace (regexp_string "\"") "&quot;"
 			       (global_replace (regexp_string "&") "&amp;" init))))))
 	in
-	father := Some name;
         Rbuffer.add_string svg_buf (
 	  Printf.sprintf "<g class='%s' id='%s' dest='%s'>"
 	    ty name (String.concat " " ds)
 	);
       );
 
-      let father = !father in
-      ignore (output_contents ?father ~svg_buf l.link_contents);
+      ignore (output_contents ~svg_buf l.link_contents);
 
       if !opened_tspan then (
         Rbuffer.add_string svg_buf "</tspan>\n";
@@ -377,21 +373,27 @@ let draw ?fontCache ?dynCache prefix w h contents=
         Rbuffer.add_string svg_buf "</text>\n";
         opened_text:=false
       );
+      Rbuffer.add_string svg_buf (Printf.sprintf "<g id=\"%s\">" d.dyn_label);
       (match dynCache with
-	None ->
-	  List.iter output_contents_aux (d.dyn_contents ());
-      | Some h ->
-	let tmp = Rbuffer.create 256 in
-	ignore (output_contents ~svg_buf:tmp (d.dyn_contents ()));
-	ignore (output_contents ~svg_buf:tmp (d.dyn_sample));
- 	let contents () =
-	  let buf = Rbuffer.create 256 in
-	  ignore (output_contents ~svg_buf:buf (d.dyn_contents ()));
-	  Rbuffer.contents buf
-	in
-	let d = { d with dyn_contents = contents; dyn_sample = ""; dyn_father = father } in
-	Hashtbl.add h d.dyn_label (d, ref None)
+	 None ->
+	 List.iter output_contents_aux (d.dyn_contents ());
+       | Some h ->
+	  (* <use> and <defs> would be much better ... but click inside
+             defs does not work with firefox (bug reported for more
+             than one year *)
+	  let tmp = Rbuffer.create 256 in
+	  ignore (output_contents ~svg_buf:tmp (d.dyn_contents ()));
+	  ignore (output_contents ~svg_buf:tmp (d.dyn_sample));
+ 	  let contents () =
+	    let buf = Rbuffer.create 256 in
+	    ignore (output_contents ~svg_buf:buf (d.dyn_contents ()));
+	    Rbuffer.contents buf
+	  in
+	  let d = { d with dyn_contents = contents; dyn_sample = "" } in
+	  Hashtbl.add h d.dyn_label (d, ref None)
       );
+      Rbuffer.add_string svg_buf "</g>";
+
     | Affine a->(
       if !opened_tspan then (
         Rbuffer.add_string svg_buf "</tspan>\n";
@@ -629,6 +631,74 @@ function Animate(name,nbframes,mirror,step) {
     }, step));
   }
 
+function setReaction(svg) {
+
+    /* move definitions (can not use <use> and <defs>
+                         because of a firefox bug) */
+    var defs_elt = document.getElementById('svg_defs')
+    if (defs_elt) {
+      var defs = defs_elt.childNodes;
+      for (var i = 0; i < defs.length; i++) {
+        var id = defs[i].id;
+        id=id.substring(1,id.length); // remove leading @
+	var dest = document.getElementById(id);
+	while (defs[i].hasChildNodes()) {
+	  dest.appendChild(defs[i].lastChild);
+	}
+      }
+      defs_elt.parentNode.removeChild(defs_elt);
+    }
+
+    var anim2=svg.getElementsByClassName('animation');
+
+    for (var a=0;a<anim2.length;a++) {
+        Animate(anim2[a].getAttribute('id'),
+                anim2[a].getAttribute('nbframes'),
+                anim2[a].getAttribute('mirror'),
+                anim2[a].getAttribute('step')); }
+
+    var buttons=svg.getElementsByClassName('button');
+    for (var a=0;a<buttons.length;a++) {
+        function closure(name,dest) {
+          return(function (e) { send_click(name,dest,e); });
+        }
+        var elt = buttons[a];
+        elt.style.pointerEvents = 'all';
+        elt.onclick=closure(elt.getAttribute('id'),elt.getAttribute('dest'));
+        elt.onmouseover=(function () { document.body.style.cursor = 'crosshair'; });
+        elt.onmouseout=(function () { document.body.style.cursor = 'default'; });
+    }
+
+    var dragable=svg.getElementsByClassName('dragable');
+    for (var a=0;a<dragable.length;a++) {
+        var elt = dragable[a];
+        elt.style.pointerEvents = 'all';
+        var name = elt.getAttribute('id');
+        function closure2(name,dest) {
+          return(function (e) { start_drag(name,dest,e); });
+        }
+        elt.onmousedown=closure2(name,elt.getAttribute('dest'));
+        elt.onmouseover=(function () { document.body.style.cursor = 'move'; });
+        elt.onmouseout=(function () { document.onselectstart = null; document.body.style.cursor = 'default'; });
+    }
+
+    var editable=svg.getElementsByClassName('editable');
+    for (var a=0;a<editable.length;a++) {
+        var elt = editable[a];
+        elt.style.pointerEvents = 'all';
+        var name = elt.getAttribute('id');
+        function closure3(name,dest) {
+          return(function (e) { start_edit(name,dest,e); });
+        }
+        elt.onclick=closure3(name,elt.getAttribute('dest'));
+        elt.onmouseover=(function () { document.body.style.cursor = 'text'; });
+        elt.onmouseout=(function () { document.body.style.cursor = 'default'; });
+    }
+
+    var videos=document.getElementsByTagName(\"video\");
+    for(var i=0;i<videos.length;i++) videos[i].controls=true;
+}
+
 function loadSlideString(slide,state,str){
     var old_anim=cur_anim;
     if(slide!=current_slide)
@@ -684,70 +754,7 @@ var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     first_displayed=true;
     location.hash=slide+\"_\"+state;
 
-    var withFather=svg.getElementsByClassName('with_father');
-
-    for (var a=0;a<withFather.length;a++) {
-        var elt = withFather[a];
-        var fatherId = elt.getAttribute('father');
-        console.log('move0 '+fatherId+' '+elt.getAttribute('id'));
-    }
-
-    for (var a=0;a<withFather.length;a++) {
-        var elt = withFather[0];
-        var fatherId = elt.getAttribute('father');
-        console.log('move '+fatherId+' '+elt.getAttribute('id'));
-        var father = document.getElementById(fatherId);
-        father.appendChild(elt);
-    }
-
-    var anim2=svg.getElementsByClassName('animation');
-
-    for (var a=0;a<anim2.length;a++) {
-        Animate(anim2[a].getAttribute('id'),
-                anim2[a].getAttribute('nbframes'),
-                anim2[a].getAttribute('mirror'),
-                anim2[a].getAttribute('step')); }
-
-    var buttons=svg.getElementsByClassName('button');
-    for (var a=0;a<buttons.length;a++) {
-        function closure(name,dest) {
-          return(function (e) { send_click(name,dest,e); });
-        }
-        var elt = buttons[a];
-        elt.style.pointerEvents = 'all';
-        elt.onclick=closure(elt.getAttribute('id'),elt.getAttribute('dest'));
-        elt.onmouseover=(function () { document.body.style.cursor = 'crosshair'; });
-        elt.onmouseout=(function () { document.body.style.cursor = 'default'; });
-    }
-
-    var dragable=svg.getElementsByClassName('dragable');
-    for (var a=0;a<dragable.length;a++) {
-        var elt = dragable[a];
-        elt.style.pointerEvents = 'all';
-        var name = elt.getAttribute('id');
-        function closure2(name,dest) {
-          return(function (e) { start_drag(name,dest,e); });
-        }
-        elt.onmousedown=closure2(name,elt.getAttribute('dest'));
-        elt.onmouseover=(function () { document.body.style.cursor = 'move'; });
-        elt.onmouseout=(function () { document.onselectstart = null; document.body.style.cursor = 'default'; });
-    }
-
-    var editable=svg.getElementsByClassName('editable');
-    for (var a=0;a<editable.length;a++) {
-        var elt = editable[a];
-        elt.style.pointerEvents = 'all';
-        var name = elt.getAttribute('id');
-        function closure3(name,dest) {
-          return(function (e) { start_edit(name,dest,e); });
-        }
-        elt.onclick=closure3(name,elt.getAttribute('dest'));
-        elt.onmouseover=(function () { document.body.style.cursor = 'text'; });
-        elt.onmouseout=(function () { document.body.style.cursor = 'default'; });
-    }
-
-    var videos=document.getElementsByTagName(\"video\");
-    for(var i=0;i<videos.length;i++) videos[i].controls=true;
+    setReaction(svg);
 }
 
 var to_refresh = false;
