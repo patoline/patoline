@@ -1053,15 +1053,14 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_contents=(fun _->[OutputCommon.translate 0. offset (Image i)])
   }
   in
-  if scale>0. then resize_drawing scale dr else
-    if width>0. then
-      let drw={ dr with drawing_min_width=width;drawing_max_width=width;drawing_nominal_width=width } in
-      if height>0. then
-        {drw with drawing_y1=offset+.height}
-      else
-        drw
-    else
-      dr
+  let scale =
+    if scale >0. then scale
+    else if width > 0. then width /. i.image_width
+    else if height > 0. then height /. i.image_height
+    else 0.
+  in
+  if scale>0. then resize_drawing scale dr
+  else dr
 
 let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
   let tmp=(try Filename.chop_extension imageFile with _->imageFile) in
