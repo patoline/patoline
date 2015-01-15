@@ -13,9 +13,9 @@ let caml x = x
 let db_info = Mysql Mysql.(
     { defaults with
       dbhost = Some "localhost";
-      dbname = Some "patonet";
-      dbpwd = Some "patonet";
-      dbuser = Some "patonet";})
+      dbname = Some "demo";
+      dbpwd = Some "demo";
+      dbuser = Some "demo";})
 
 (* let db = init_db "demo" db_info *)
 

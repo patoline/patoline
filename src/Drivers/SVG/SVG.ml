@@ -757,10 +757,7 @@ var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     setReaction(svg);
 }
 
-var to_refresh = false;
-
 function loadSlide(n,state,force){
-  to_refresh=false;
   if(n>=0 && n<%d && state>=0 && state<states[n] && (force || n!=current_slide || state!=current_state || !first_displayed)) {
 
     document.body.style.cursor = 'wait';

@@ -180,6 +180,7 @@ let refresh=Str.regexp "refresh_\\([0-9]*\\)_\\([0-9]*\\)"
 let click=Str.regexp "click_\\([0-9]*\\)_\\([0-9]*\\) "
 let edit=Str.regexp "edit_\\([0-9]*\\)_\\([0-9]*\\) "
 let drag=Str.regexp "drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*\\) "
+let ping=Str.regexp "ping"
 
 let filter_options argv = argv
 let driver_options =
@@ -191,20 +192,16 @@ let websocket  =
   Printf.sprintf
 "var websocket;
 setInterval(function () {
-  if (to_refresh)
-    websocket_send(\"refresh_\"+(current_slide)+\"_\"+(current_state));
-}, 5000);
+  websocket_send('ping');
+}, 50000);
 function websocket_msg(evt){
      var st=JSON.parse(evt.data);
      var ch = st.change;
-     if (ch == 'Slide') {
-       to_refresh = false;
+     if (ch == 'Ping') {
+       console.log('answer to ping');
+     } else if (ch == 'Slide') {
        var svg = Base64.decode(st.change_list);
        loadSlideString(st.slide,st.state,svg);
-     } else if (ch == 'Refresh') {
-       if (current_slide == st.slide && current_state == st.state) {
-         to_refresh = true;
-       }
      } else if (ch == 'Dynamics' && current_slide == st.slide && current_state == st.state) {
 /*     var svg = Base64.decode(st.change_list);*/
        var parser=new DOMParser();
@@ -274,9 +271,8 @@ function websocket_send(data){
 "
 
 type change =
-  Nothing
+  Ping
 | Slide of int * int
-| Refresh of int * int
 | Dynamics of int * int * string list(*Typography.OutputCommon.dynamic list*)
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
@@ -781,16 +777,14 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     Rbuffer.contents buf;
   in
 
-  let pushto ?(change=Nothing) a fd =
+  let pushto ?(change=Ping) a fd =
     let a = Unix.out_channel_of_descr a in
     try
       let slide, state, change, change_list = match change with
-          Nothing -> present.cur_slide, present.cur_state, "\"Nothing\"", "[]"
+          Ping -> present.cur_slide, present.cur_state, "\"Ping\"", "[]"
 	| Slide(i,j) -> 
 	  let svg = build_svg i j in
 	  i, j, "\"Slide\"", Printf.sprintf "\"%s\"" (base64_encode svg)
-	| Refresh(i,j) -> 
-	  i, j, "\"Refresh\"", "[]"
 	| Dynamics(i,j,l) ->
 	   let l = List.fold_left
 		     (fun acc label ->
@@ -798,7 +792,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 		      List.fold_left (fun acc ((_,_),(d,ptr)) ->
 				      let c = match !ptr with
 					  Some d -> d
-					| None -> d.dyn_contents ()
+					| None -> 
+					  let r = d.dyn_contents () in ptr := Some r; r
 				      in
 				      Printf.sprintf "{\"dyn_label\":\"%s\", \"dyn_contents\":\"%s\"}" d.dyn_label (base64_encode c)::acc)
 				     acc l)
@@ -821,9 +816,10 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     List.fold_left (fun acc label ->
       try
 	let l = Hashtbl.find dynTable label in
-	List.iter (fun ((i,j),(d,ptr)) -> 
-	  Printf.eprintf "affected (%d,%d) (%d,%d) %s\n%!" slide state i j d.dyn_label;
-	  ptr := None) l;
+	List.iter (fun ((i,j),(d,ptr)) ->
+ 	  if !ptr <> None then (
+	    Printf.eprintf "cache invalidated (%d,%d) %s\n%!" i j d.dyn_label;
+	    ptr := None)) l;
 	acc || List.mem_assoc (slide,state) l
       with Not_found -> acc) false dest
   in
@@ -831,9 +827,10 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
   let push from dest = (*from avoids to send back to the expeditor*)
     List.iter (fun (fd,son) ->
       if fd <> from && affected son.slide son.state dest then
-	pushto ~change:(Refresh(son.slide,son.state)) son.served_sock fd
+	pushto ~change:(Dynamics(son.slide,son.state, dest)) son.served_sock fd
     ) !sonsBySock
   in
+
 
   let http_send ?sessid code ctype datas ouc = 
     Printf.fprintf ouc "HTTP/1.1 %d OK\r\n" code;
@@ -906,6 +903,16 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     http_send 200 "text/css" [css] ouc;
   in
   
+  let read_sessid () = match !Db.sessid with
+    | Some (s,g) -> 
+      Printf.eprintf "Reuse sessid: %s from %s\n%!" s g;
+      s, g
+    | None -> 
+      let s = make_sessid () in
+      Printf.eprintf "New sessid: %s as guest\n%!" s;
+      s, "guest"
+  in
+
   let serve fdfather num fd =
     
     Unix.clear_nonblock fd;
@@ -913,18 +920,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     let inc=Unix.in_channel_of_descr fd in
     let ouc=Unix.out_channel_of_descr fd in
     let fouc=Unix.out_channel_of_descr fdfather in
-    let sessid = Db.sessid in
     Random.self_init ();
     reset_cache ();
-    let read_sessid () = match !sessid with
-      | Some (s,g) -> 
-	Printf.eprintf "Reuse sessid: %s from %s\n%!" s g;
-	s, g
-      | None -> 
-	let s = make_sessid () in
-	Printf.eprintf "New sessid: %s as guest\n%!" s;
-	s, "guest"
-    in
 
     let update slide state ev dest =
       let priv, pub =
@@ -950,7 +947,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	  (*pushto ~change:(Slide(slide,state)) fd fdfather;*)
 	end;
       Printf.eprintf "Public change\n%!"; 
-      Printf.fprintf fouc "change %s\n%!" (String.concat " " pub);
+      Printf.fprintf fouc "change %s\n%!" (String.concat " " pub); 
     in
 
     let _ = Sys.(
@@ -1046,6 +1043,10 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	  in
 	  update slide state (Drag(name,(dx,dy))) dest;
           process_req master "" [] reste
+	) else if Str.string_match ping get 0 then (
+	  Printf.eprintf "ping\n";
+	  pushto ~change:Ping fd fdfather;
+	  process_req master "" [] reste
 	) else	  
 	    process_req master "" [] reste
       ) else 
@@ -1269,9 +1270,10 @@ in
 	  if not (List.mem sock errors) then (
 	  if not (List.mem sock master_sockets) then (
 	    Printf.eprintf "Serving a son\n%!";
+	    let _ = read_sessid () in
 	    let son (*ic, pid, num, fd, sessid_ptr*) = try List.assoc sock !sonsBySock with _ -> assert false in
 	    let cmd = Util.split ' ' (input_line son.fd) in
-	    Printf.eprintf "received from %d %d: %s\n%!" son.num son.pid (String.concat " " cmd);
+	    Printf.eprintf "received () from %d %d: %s\n%!" son.num son.pid (String.concat " " cmd);
 	    match cmd with
 	      ["move";sessid;slide;state] -> (
 		let slide = int_of_string slide and state = int_of_string state in
@@ -1289,6 +1291,7 @@ in
 		    Not_found -> ())
 	      )
 	    | "change"::dest ->
+	      Printf.eprintf "before push\n";
 	      push sock dest;
 
 	    | ["quit";sessid;pid] ->

@@ -109,11 +109,14 @@ let init_db table_name db_info =
 	{name; read; write; reset; distribution};
     }
 
-#ifdef MYSQL
+
+#ifdef SQLITE3
   | Sqlite filename -> 
       (* FIXME: implement Sqlite support, with concurrent access, must manage the Busy error *) 
       Printf.eprintf "Sqlite support not yet implemented\n";
       exit 1
+#endif
+#ifdef MYSQL
   | Mysql db_info ->
     let dbptr = ref None in
 (* FIXME : how to test that data are created only once ?
@@ -142,7 +145,7 @@ let init_db table_name db_info =
      | Some err -> Printf.eprintf "DB Error: %s\n%!" err);
 
     { db = (fun () -> MysqlDb (db ()));
-      disconnect = (fun () -> 
+      disconnect = (fun () ->
 	match !dbptr with None -> ()
 	| Some db -> Mysql.disconnect db);
       create_data = fun ?(global=false) name vinit ->
@@ -163,7 +166,7 @@ let init_db table_name db_info =
 	      (match count with
 		0 -> 
 		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `value`, `createtime`) VALUES ('%s','%s','%s','%s', NOW());"
-		    table_name sessid groupid name v in		    
+		    table_name sessid groupid name v in
 		  let _r = Mysql.exec (db ()) sql in	      
 		  (match Mysql.errmsg (db ()) with
 		  | None -> () 
