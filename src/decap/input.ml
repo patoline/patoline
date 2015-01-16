@@ -59,14 +59,14 @@ let rec read (lazy b as b0) i =
   match compare (i+1) b.length with
     | -1 -> b.contents.[i], b0, i+1
     | 0 -> b.contents.[i], b.next, 0
-    | _ -> read b.next (b.length - i)
+    | _ -> read b.next (i - b.length)
 
 let rec get (lazy b) i =
   if b.is_empty then '\255' else
   if i < b.length then
     b.contents.[i]
   else
-    get b.next (b.length - i)
+    get b.next (i - b.length)
 
 let empty_buffer fn lnum bol =
   let rec res =
@@ -94,7 +94,8 @@ let line_beginning (lazy b) = b.bol
 let line (lazy b) = b.contents
 
 let rec normalize (lazy b as str) pos =
-  if pos >= b.length then normalize b.next (pos - b.length)
+  if pos >= b.length then
+    if b.is_empty then str, 0 else normalize b.next (pos - b.length)
   else str, pos
 
 let lexing_position str pos =
