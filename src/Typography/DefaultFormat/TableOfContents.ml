@@ -203,7 +203,7 @@ let these parameters str tree max_level=
     )]
 
 
-let slides parameters str tree max_level=
+let slides ?(hidden_color=OutputCommon.rgb 0.8 0.8 0.8) parameters str tree max_level=
 
   newPar str ~environment:(fun x->{x with par_indent=[]; lead=phi*.x.lead }) Complete.normal parameters [
     bB (
@@ -242,16 +242,15 @@ let slides parameters str tree max_level=
 
                   let env'=add_features [Opentype.oldStyleFigures] env in
 
-                  let c=0.8 in
                   let env_num=if b0=[] || prefix (List.rev b) (List.rev b0) && level=1 then
                       { env' with fontColor=OutputCommon.rgb 1. 0. 0. }
                     else
-                      { env' with fontColor=OutputCommon.rgb c c c }
+                      { env' with fontColor=hidden_color }
                   in
                   let env_name=if b0=[] || prefix (List.rev b) (List.rev b0) && level=1 then
                       { env' with fontColor=OutputCommon.rgb 0. 0. 0. }
                     else
-                      { env' with fontColor=OutputCommon.rgb c c c }
+                      { env' with fontColor=hidden_color }
                   in
 
                   let num=boxify_scoped env_num

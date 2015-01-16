@@ -431,6 +431,13 @@ module Format=functor (D:Document.DocumentStructure)->(
       follow (t1,[]) (List.rev (List.map fst path))
 
 
+    module MainTableOfContents=struct
+      let do_begin_env ()=
+        let max_depth=1 in
+        TableOfContents.slides ~hidden_color:(OutputCommon.black) center D.structure D.structure max_depth
+      let do_end_env ()=()
+    end
+
     module TableOfContents=struct
       let do_begin_env ()=
         let max_depth=1 in
