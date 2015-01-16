@@ -273,7 +273,7 @@ let ocaml_dir () =
     Unix.mkdir name 0o755;
   name
 
-let test_ocaml ?(run=true) ?filename ?(prefix="") ?(suffix="") writeR prg =
+let test_ocaml ?(run=true) ?preprocessor ?filename ?(prefix="") ?(suffix="") writeR prg =
   let dir, filename, target, exec, run, delete_all =
     match filename with
       None -> 
@@ -300,8 +300,12 @@ let test_ocaml ?(run=true) ?filename ?(prefix="") ?(suffix="") writeR prg =
   close_out ch;
   let tmpfile2 = Filename.temp_file "demo" ".txt" in
   let tmpfile3 = Filename.temp_file "demo" ".txt" in
-  let cmd = Printf.sprintf "cd %s; ocamlbuild -quiet %s >%s" dir target tmpfile3 in
-(*  Printf.eprintf "running: %s\n%!" cmd;*)
+  let prepro = match preprocessor with
+      None -> ""
+    | Some s -> "-pp "^s
+  in
+  let cmd = Printf.sprintf "cd %s; ocamlbuild -quiet %s %s >%s" dir prepro target tmpfile3 in
+  Printf.eprintf "running: %s\n%!" cmd;
   let _ = Sys.command cmd in
   let err = read_file tmpfile3 in
   let err = 
