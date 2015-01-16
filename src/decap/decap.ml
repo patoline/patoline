@@ -90,9 +90,7 @@ let blank_regexp r =
   let rec fn str pos =
     if string_match r (line str) pos then
       let pos' = match_end () in
-      if accept_newline then (
-        let c, str'', pos'' = read str pos' in if c = '\n' then fn str'' pos''
-                                             else str, pos')
+      if accept_newline && pos' = String.length (line str) && not (is_empty str pos') then fn str pos'
       else str, pos'
     else str, pos
   in
