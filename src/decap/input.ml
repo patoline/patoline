@@ -93,6 +93,10 @@ let line_beginning (lazy b) = b.bol
 
 let line (lazy b) = b.contents
 
+let rec normalize (lazy b as str) pos =
+  if pos >= b.length then normalize b.next (pos - b.length)
+  else str, pos
+
 let lexing_position str pos =
   let bol = line_beginning str in
   Lexing.({ pos_fname = fname str

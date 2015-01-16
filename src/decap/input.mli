@@ -110,5 +110,8 @@ val line_beginning : buffer -> int
 (** [line buf] returns the contents of the buffer [buf]. *)
 val line : buffer -> string
 
+(** [normalize buf pos] ensures that pos is less the the line length in str *)
+val normalize : buffer -> int -> buffer * int		       
+
 (** [fname buf] returns the file name associated to the buffer [buf]. *)
 val fname : buffer -> string
