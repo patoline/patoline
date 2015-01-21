@@ -169,7 +169,7 @@ let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 
 let rmaster=Str.regexp "\\(/[0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let slave=Str.regexp "/?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
-let logged=Str.regexp "/?\\([a-zA-Z0-9]+\\)[?]key=\\([a-z0-9]+\\)\\(&group=\\([-a-zA-Z0-9_]+\\)\\(&friends=\\([-a-zA-Z0-9_+,]+\\)\\)?\\)?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
+let logged=Str.regexp "/?\\([a-zA-Z0-9]+\\)[?]key=\\([a-z0-9]+\\)\\(&group=\\([-a-zA-Z0-9_]+\\)\\(&friends=\\([%-a-zA-Z0-9_+,]+\\)\\)?\\)?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css_reg=Str.regexp "/style\\.css"
 let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
@@ -1111,7 +1111,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	    let friends_str = try Str.matched_group 6 get with Not_found -> "" in
 	    let friends = Db.friends_from_string friends_str in
 	    let md5' = Digest.to_hex(Digest.string(login ^ "+" ^ groupid ^ friends_str ^ !secret)) in
-	    Printf.eprintf "serve %d: logged %s from %s friends %s (%s = %s)\n%!" num login groupid friends_str md5 md5';
+	    Printf.eprintf "serve %d: logged '%s' from '%s' friends '%s' (%s = %s)\n%!" num login groupid friends_str md5 md5';
 	    if md5 = md5' then (
 	      let _ = set_sessid (login, groupid, friends) in
   	      http_send ~sessid:(login,groupid, friends) 200 "text/html" [page] ouc;
