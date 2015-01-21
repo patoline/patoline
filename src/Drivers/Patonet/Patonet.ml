@@ -859,12 +859,9 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     flush ouc
   in
 
-  let generate_error ouc =
-    let data =
-      "Not found"
-    in
+  let generate_error ?(message="Erreur") ouc =
     Printf.eprintf "sent 404\n%!";
-    http_send 404 "text/plain" [data] ouc;
+    http_send 404 "text/plain" [message] ouc;
   in
 (*
   let generate_ok sessid ouc =
@@ -888,7 +885,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       Printf.eprintf "sent image/svg+xml %d %s\n%!" num sessid;
       with e -> Printf.eprintf "error building or sending slide\n%!"; raise e
     ) else (
-      generate_error ouc;
+      generate_error ~message:"serve svg failed" ouc;
     )
   in
   
@@ -904,7 +901,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       let data= StrMap.find font fonts in
       http_send 200 "font/opentype" [data] ouc;
     with
-      Not_found->generate_error ouc
+      Not_found->generate_error ~message:"serve font failed" ouc
   in
 
 
@@ -1120,7 +1117,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
   	      http_send ~sessid:(login,groupid, friends) 200 "text/html" [page] ouc;
               process_req false "" [] reste
             ) else (
-	      generate_error ouc
+	      generate_error ~message:"md5 do not match failed" ouc
             )
 
 	  ) else if Str.string_match slave get 0 then (
@@ -1202,27 +1199,27 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
             process_req master "" [] reste
 
 	  ) else (
+	    let name = String.sub get 1 (String.length get-1) in
 	    
-        (try
-	  let name = String.sub get 1 (String.length get-1) in
-	  Printf.eprintf "serve %d: image or js: %s\n%!" num name;
-          let img=StrMap.find name imgs in
-          let ext=
-            if Filename.check_suffix name ".js" then "text/javascript" else
-            if Filename.check_suffix name ".png" then "image/png" else
-            if Filename.check_suffix name ".jpeg" then "image/jpeg" else
-            if Filename.check_suffix name ".jpg" then "image/jpg" else
-            if Filename.check_suffix name ".gif" then "image/gif" else
-            if Filename.check_suffix name ".ico" then "image/vnd.microsoft.icon" else
-              "application/octet-stream"
-          in
- 
-	  http_send 200 ext [img] ouc;
-          fun () -> process_req master "" [] []
-        with
-            Not_found->(
-	      generate_error ouc;
-              fun () -> process_req master "" [] reste)) ()
+            (try
+	      Printf.eprintf "serve %d: image or js: %s\n%!" num name;
+              let img=StrMap.find name imgs in
+              let ext=
+		if Filename.check_suffix name ".js" then "text/javascript" else
+		  if Filename.check_suffix name ".png" then "image/png" else
+		    if Filename.check_suffix name ".jpeg" then "image/jpeg" else
+		      if Filename.check_suffix name ".jpg" then "image/jpg" else
+			if Filename.check_suffix name ".gif" then "image/gif" else
+			  if Filename.check_suffix name ".ico" then "image/vnd.microsoft.icon" else
+			    "application/octet-stream"
+              in
+	      
+	      http_send 200 ext [img] ouc;
+              fun () -> process_req master "" [] []
+            with
+              Not_found->
+	      generate_error ~message:("serve file '"^name^"'failed") ouc;
+	      fun () -> process_req master "" [] reste) ()
       )
 
     ) else (
