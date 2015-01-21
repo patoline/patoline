@@ -11,7 +11,7 @@ let h x y = <:signature<val $lid:x$ : $y$>>
 
 let j a b c d e f g h = <:expr<$bool:a$, $int:b$, $int32:c$, $int64:d$, $natint:e$, $char:f$, $string:g$, $float:h$>>
 
-let k a b c1 c2 = <:structure<type ('$ident:a$) $lid:b$ = $uid:c1$ | $uid:c2$ of '$ident:a$>>
+let k a b c1 c2 cs1 cs2 = <:structure<type ('$ident:a$) $lid:b$ = $uid:c1$ | $uid:c2$ of '$ident:a$ | $cs1$ | $cs2$ >>
 
 let l a b = <:type<[ `$ident:a$ | `$ident:b$ ]>> 
 
