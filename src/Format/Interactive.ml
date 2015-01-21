@@ -265,7 +265,7 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 let ocaml_dir () =
   let sessid = match !Db.sessid with 
     None -> "unknown"
-  | Some(s,_) -> s
+  | Some(s,_,_) -> s
   in
   (* FIXME: use a subfolder per group ? *)
   let name = Filename.concat base_dir sessid in

@@ -146,13 +146,13 @@ type son =
     pid: int;
     num: int; (*internal number, just for printing and debugging*)
     served_sock: Unix.file_descr;
-    mutable sessid: string option;
+    mutable sessid: (string * string) option;
     mutable slide:int;
     mutable state:int
   }
 
 let sonsBySock = ref ([]:(Unix.file_descr * son) list)
-    
+
 let kill_son sock =
   sonsBySock:=List.filter (fun (fd,son) ->
     if fd = sock then (
@@ -163,13 +163,13 @@ let kill_son sock =
       false) 
     else true
   ) !sonsBySock
-
+			  
 let get_reg=Str.regexp "GET \\([^ ]*\\) .*"
 let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 
 let rmaster=Str.regexp "\\(/[0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let slave=Str.regexp "/?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
-let logged=Str.regexp "/?\\([a-zA-Z0-9]+\\)[?]key=\\([a-z0-9]+\\)\\(&group=\\([-a-zA-Z0-9_]+\\)\\)?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
+let logged=Str.regexp "/?\\([a-zA-Z0-9]+\\)[?]key=\\([a-z0-9]+\\)\\(&group=\\([-a-zA-Z0-9_]+\\)\\)?\\(&friends=\\([-a-zA-Z0-9_+,]+\\)\\)?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css_reg=Str.regexp "/style\\.css"
 let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
@@ -824,9 +824,15 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       with Not_found -> acc) false dest
   in
 
-  let push from dest = (*from avoids to send back to the expeditor*)
+  let in_group son g = match son.sessid with
+      None -> false
+    | Some(_,g') -> g = g'
+  in
+  
+  let push from s groupid dest = (*from avoids to send back to the expeditor*)
+    sessid := Some(s,groupid,[]); (* dirty ... very hard to fix *)
     List.iter (fun (fd,son) ->
-      if fd <> from && affected son.slide son.state dest then
+      if fd <> from && in_group son groupid && affected son.slide son.state dest then
 	pushto ~change:(Dynamics(son.slide,son.state, dest)) son.served_sock fd
     ) !sonsBySock
   in
@@ -838,11 +844,14 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     let len = List.fold_left (fun acc s -> acc + String.length s) 0 datas in
     Printf.fprintf ouc "Content-Length: %d\r\n" len;
     (match sessid with
-      Some (sessid, groupid) -> 
+      Some (sessid, groupid, friends) -> 
 	Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" sessid;
 	Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
 	Printf.eprintf "Set-Cookie: GROUPID=%s;\r\n" groupid;
 	Printf.fprintf ouc "Set-Cookie: GROUPID=%s;\r\n" groupid;
+	let str = Db.friends_to_string friends in
+	Printf.eprintf "Set-Cookie: FRIENDS=%s;\r\n" str;
+	Printf.fprintf ouc "Set-Cookie: FRIENDS=%s;\r\n" str;
     | None -> ());
     output_string ouc "\r\n";
     List.iter (output_string ouc) datas;
@@ -902,16 +911,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
   let serve_css ouc=
     http_send 200 "text/css" [css] ouc;
   in
-  
-  let read_sessid () = match !Db.sessid with
-    | Some (s,g) -> 
-      Printf.eprintf "Reuse sessid: %s from %s\n%!" s g;
-      s, g
-    | None -> 
-      let s = make_sessid () in
-      Printf.eprintf "New sessid: %s as guest\n%!" s;
-      s, "guest"
-  in
+
 
   let serve fdfather num fd =
     
@@ -923,6 +923,45 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     Random.self_init ();
     reset_cache ();
 
+    let set_sessid (login,group,friends) = match !sessid with
+      | Some(s,g,fs) when s = login && g = group && fs = friends-> 
+	 Printf.eprintf "Reuse sessid: %s from %s\n%!" s g;
+      | None ->
+	 Printf.eprintf "Set sessid: %s from %s\n%!" login group;
+	 sessid := Some(login,group,friends)
+      | Some(s,g,_) ->
+	 Printf.eprintf "Cancel sessid: %s from %s\n%!" s g;
+	 Printf.eprintf "Set sessid: %s from %s\n%!" login group;
+	 sessid := Some(login,group,friends)
+    in
+    
+    let check_guest () = match !sessid with
+      | Some (s,g,_) when g != "guest" ->
+	 Printf.eprintf "Cancel sessid: %s from %s\n%!" s g;
+	 let s = make_sessid () in
+	 sessid := Some(s, "guest",[]);
+	 Printf.eprintf "New sessid: %s as guest\n%!" s;
+      | None ->
+	 let s = make_sessid () in
+	 sessid := Some(s, "guest",[]);
+	 Printf.eprintf "New sessid: %s as guest\n%!" s;	 
+      | _ -> ()
+    in
+    
+    let read_sessid () = match !sessid with
+      | Some (s,g,_) -> s, g
+      | _ ->
+	 Printf.eprintf "Session not set\n%!";
+	 exit 1;
+    in
+
+    let read_sessid_fs () = match !sessid with
+      | Some (s,g,fs) -> s, g, fs
+      | _ ->
+	 Printf.eprintf "Session not set\n%!";
+	 exit 1;
+    in
+    
     let update slide state ev dest =
       let priv, pub =
 	List.fold_left (fun (priv,pub as acc) ds ->
@@ -946,8 +985,9 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	  pushto ~change:(Dynamics(slide,state,priv)) fd fdfather;
 	  (*pushto ~change:(Slide(slide,state)) fd fdfather;*)
 	end;
-      Printf.eprintf "Public change\n%!"; 
-      Printf.fprintf fouc "change %s\n%!" (String.concat " " pub); 
+      Printf.eprintf "Public change\n%!";
+      let s, g = read_sessid () in
+      Printf.fprintf fouc "change %s %s %s\n%!" s g (String.concat " " pub); 
     in
 
     let _ = Sys.(
@@ -971,8 +1011,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	  Printf.eprintf "Sending to client ...\n%!";
           pushto ~change:(Slide(slide,state)) fd fdfather;
 	  Printf.eprintf "Sending to father ...\n%!";
-	  Printf.fprintf fouc "move %s %d %d\n%!"
-	    (fst (read_sessid ())) slide state;
+	  let s, g = read_sessid () in
+	  Printf.fprintf fouc "move %s %s %d %d\n%!" s g slide state;
 	  Printf.eprintf "Sending to father done\n%!";
 
           process_req master "" [] reste)
@@ -983,8 +1023,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	  Hashtbl.iter (fun label (dyn,ptr) -> ptr := None) dynCache.(slide).(state) ;
           pushto ~change:(Slide(slide,state)) fd fdfather;
 	  Printf.eprintf "Sending to father ...\n%!";
-	  Printf.fprintf fouc "move %s %d %d\n%!"
-	    (fst (read_sessid ())) slide state;
+	  let s, g = read_sessid () in
+	  Printf.fprintf fouc "move %s %s %d %d\n%!" s g slide state;
 	  Printf.eprintf "Sending to father done\n%!";
 
           process_req master "" [] reste)
@@ -1054,6 +1094,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	Printf.eprintf "serve %d: %S %S\n%!" num get x;
 	if x.[0]='\r' then (
 	  if Str.string_match svg get 0 then (
+	    let _ = check_guest () in
 	    Printf.eprintf "serve %d: get %S\n%!" num get;
             let i=int_of_string (Str.matched_group 1 get) in
             let j=int_of_string (Str.matched_group 2 get) in
@@ -1061,27 +1102,31 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
             process_req master "" [] reste
 
 	  ) else if Str.string_match rmaster get 0 && Str.matched_group 1 get = !master_page then (
+	    let _ = check_guest () in
 	    Printf.eprintf "serve %d: master\n%!" num;	
-	    http_send ~sessid:(read_sessid ()) 200 "text/html" [page] ouc;
+	    http_send ~sessid:(read_sessid_fs ()) 200 "text/html" [page] ouc;
             process_req true "" [] reste
 	      
 	  ) else if Str.string_match logged get 0 then (
 	    let login = Str.matched_group 1 get in
             let md5 = Str.matched_group 2 get in
 	    let groupid = try Str.matched_group 4 get with Not_found -> "guest" in
-	    let md5' = Digest.to_hex(Digest.string(login ^ "+" ^ groupid ^ !secret)) in
+	    let friends_str = try Str.matched_group 6 get with Not_found -> "" in
+	    let friends = Db.friends_from_string friends_str in
+	    let md5' = Digest.to_hex(Digest.string(login ^ "+" ^ groupid ^ friends_str ^ !secret)) in
 	    Printf.eprintf "serve %d: logged %s from %s %s %s\n%!" num login groupid md5 md5';
 	    if md5 = md5' then (
-	      sessid := Some (login, groupid);
-  	      http_send ~sessid:(login,groupid) 200 "text/html" [page] ouc;
+	      let _ = set_sessid (login, groupid, friends) in
+  	      http_send ~sessid:(login,groupid, friends) 200 "text/html" [page] ouc;
               process_req false "" [] reste
             ) else (
 	      generate_error ouc
             )
 
 	  ) else if Str.string_match slave get 0 then (
+	    let _ = check_guest () in
 	    Printf.eprintf "serve %d: slave (%s)\n%!" num get;
-	    http_send ~sessid:(read_sessid ()) 200 "text/html" [page]  ouc;
+	    http_send ~sessid:(read_sessid_fs ()) 200 "text/html" [page]  ouc;
             process_req false "" [] reste
 
 	  ) else if get="/etat" then (
@@ -1133,8 +1178,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
               end;
 	      
 	      Printf.eprintf "Sending to father ...\n%!";
-	      Printf.fprintf fouc "move %s %d %d\n%!"
-		(fst (read_sessid ())) slide state;
+	      let s, g = read_sessid () in
+	      Printf.fprintf fouc "move %s %s %d %d\n%!" s g slide state;
 	      Printf.eprintf "Sending to father done\n%!";
 	      websocket := true;
 	      
@@ -1195,7 +1240,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	      [key;v] -> (key,v)::acc
 	    | _ -> acc) [] ls
 	  in
-	  (try sessid := Some (List.assoc "SESSID" ls, List.assoc "GROUPID" ls)
+	  (try sessid := Some (List.assoc "SESSID" ls, List.assoc "GROUPID" ls, Db.friends_from_string (List.assoc "FRIENDS" ls))
 	   with Not_found -> ());
           process_req master get hdr reste)
 	else
@@ -1212,8 +1257,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       (match !sessid with
 	None ->
 	  Printf.fprintf fouc "quit ? %d\n%!" (Unix.getpid ());
-      | Some sessid ->
-	Printf.fprintf fouc "quit %s %d\n%!" (fst sessid) (Unix.getpid ()));
+      | Some(sessid,_,_) ->
+	Printf.fprintf fouc "quit %s %d\n%!" sessid (Unix.getpid ()));
       Printf.eprintf "erreur %d : \"%s\"\n%!" num (Printexc.to_string e);
       exit 0;
 in
@@ -1270,14 +1315,13 @@ in
 	  if not (List.mem sock errors) then (
 	  if not (List.mem sock master_sockets) then (
 	    Printf.eprintf "Serving a son\n%!";
-	    let _ = read_sessid () in
 	    let son (*ic, pid, num, fd, sessid_ptr*) = try List.assoc sock !sonsBySock with _ -> assert false in
 	    let cmd = Util.split ' ' (input_line son.fd) in
 	    Printf.eprintf "received () from %d %d: %s\n%!" son.num son.pid (String.concat " " cmd);
 	    match cmd with
-	      ["move";sessid;slide;state] -> (
+	      ["move";sessid;groupid;slide;state] -> (
 		let slide = int_of_string slide and state = int_of_string state in
-		son.sessid <- Some sessid;
+		son.sessid <- Some (sessid, groupid);
 		son.slide <- slide;
 		son.state <- state;
 		if son.sessid <> None then (
@@ -1290,9 +1334,10 @@ in
 		  with
 		    Not_found -> ())
 	      )
-	    | "change"::dest ->
+	    | "change"::sessid::groupid::dest ->
 	      Printf.eprintf "before push\n";
-	      push sock dest;
+	      push sock sessid groupid dest;
+	      Printf.eprintf "after push\n";
 
 	    | ["quit";sessid;pid] ->
 	      kill_son sock;
@@ -1314,6 +1359,7 @@ in
 		close_all_other conn_sock;
 		Printf.eprintf "Connection started: %d\n%!" num;
 		serve fd1 num conn_sock;
+		assert false;
 	      with _ -> exit 0);
 	    Unix.close fd1;
 	    sonsBySock := (fd2,{ fd = in_channel_of_descr fd2;

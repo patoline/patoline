@@ -1350,7 +1350,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	     !cur_page !cur_state);
 	 match !Db.sessid with
 	   None -> ()
-	 | Some (s ,g)-> Printf.fprintf fo "Set-Cookie: SESSID=%s; GROUPID=%s;\r\n" s g );
+	 | Some (s ,g, friends)->
+	    Printf.fprintf fo "Set-Cookie: SESSID=%s; GROUPID=%s; FRIENDS=%s\r\n" s g (Db.friends_to_string friends));
        !send_changes ();
        Printf.fprintf stderr "Connected\n%!";
        sock_info := Some (sock,fo,fi)

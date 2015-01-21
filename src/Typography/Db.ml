@@ -69,8 +69,11 @@ let interaction_start_hook = ref ([]: (unit -> unit) list)
 let do_interaction_start_hook () = 
   List.iter (fun f -> f ()) (!interaction_start_hook)
 
-let sessid = ref (None: (string * string) option) (* the second string is the group, "guest" is reserved for guest *)
-
+let sessid = ref (None: (string * string * (string * string) list) option)
+(* the first string is the login *)		 
+(* the second string is the group, "guest" is reserved for guest *)
+(* the list of pairs of strings are the "friends login and group" *)
+		 
 let secret = ref ""
 
 let init_db table_name db_info = 
@@ -81,18 +84,26 @@ let init_db table_name db_info =
       disconnect = (fun () -> ());
       create_data = fun ?(global=false) name vinit ->
 	let table = Hashtbl.create 1001 in
-	let sessid () = match !sessid with None -> ("", "") | Some (s,g) -> if global then "shared_variable", g else s, g in 
+	let sessid () = match !sessid with None -> ("", "", []) | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs in 
 	let read = fun () ->
-	  try Hashtbl.find table (sessid ()) with Exit | Not_found -> vinit in
+	  let s,g,_ = sessid () in 
+	  try Hashtbl.find table (s,g) with Exit | Not_found -> vinit in
+	let add_to_table ((s,g) as key) v =
+	  let old = try Hashtbl.find total_table g with Not_found -> [] in
+	  if not (List.mem s old) then Hashtbl.replace total_table g (s::old);
+	  Hashtbl.replace table key v
+	in
 	let write = fun v ->
 	  try
-	    let s, g as sessid = sessid () in
-	    let old = try Hashtbl.find total_table g with Not_found -> [] in
-	    if not (List.mem s old) then Hashtbl.add total_table g (s::old);
-	    Hashtbl.add table sessid v
+	    let s, g, fs = sessid () in
+	    add_to_table (s,g) v;
+	    List.iter (fun key -> add_to_table key v) fs;
 	  with Exit -> ()
 	in
-	let reset () =  Hashtbl.remove table (sessid ()) in
+	let reset () =
+	  let s,g,fs = sessid () in
+	  Hashtbl.remove table (s, g);
+	in
 	let distribution ?group () =
 	  let total = match group with 
 	    | None ->
@@ -152,34 +163,39 @@ let init_db table_name db_info =
 	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
 	Hashtbl.add created name ();
 	let v = base64_encode (Marshal.to_string vinit []) in 
-	let tbl = Hashtbl.create 7 in
-	let sessid () = match !sessid with None -> raise Exit | Some (s,g) -> if global then "shared_variable", g else s, g in 
+	let sessid () = match !sessid with
+	    None -> raise Exit
+	  | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs
+	in 
 	let init () = 
-	  let sessid, groupid = sessid () in
-	  if not (Hashtbl.mem tbl sessid) then (
+	  let sessid, groupid, friends = sessid () in
+	  let fn (sessid, grouid) = 
             let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
-	      table_name sessid groupid name in
+				     table_name sessid groupid name in
             let r = Mysql.exec (db ()) sql in
-            (match Mysql.errmsg (db ()), Mysql.fetch r with	
+            match Mysql.errmsg (db ()), Mysql.fetch r with	
             | None, Some row -> 
-	      let count = match row.(0) with None -> 0 | Some n -> int_of_string n in
-	      (match count with
-		0 -> 
+	       let count = match row.(0) with None -> 0 | Some n -> int_of_string n in
+	       (match count with
+		  0 -> 
 		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `value`, `createtime`) VALUES ('%s','%s','%s','%s', NOW());"
-		    table_name sessid groupid name v in
+					   table_name sessid groupid name v in
 		  let _r = Mysql.exec (db ()) sql in	      
 		  (match Mysql.errmsg (db ()) with
-		  | None -> () 
-		  | Some err -> raise (Failure err))
-              | 1 -> ()
-      	      | _ -> raise (Failure "SQL duplicate data in base"))
+		   | None -> () 
+		   | Some err -> raise (Failure err))
+		| 1 -> ()
+      		| _ -> raise (Failure "SQL duplicate data in base"))
             | Some err, _ -> raise (Failure err)
-            | _ -> raise (Failure "SQL unexpected problem")));
-          sessid, groupid
+            | _ -> raise (Failure "SQL unexpected problem")
+	  in
+	  fn (sessid, groupid);
+	  List.iter fn friends;
+          sessid, groupid, friends
 	in
 	let read () =
 	  try
-            let sessid, groupid = init () in
+            let sessid, groupid, _  = init () in
             let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
 	      table_name sessid groupid name in
 (*	    Printf.eprintf "Sending request\n%!";*)
@@ -195,20 +211,24 @@ let init_db table_name db_info =
 	    | Exit -> vinit
 	in
 	let write v =
-          try
-	    let sessid, groupid = init () in
-            let v = base64_encode (Marshal.to_string v []) in 
-            let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
-	      table_name v name sessid groupid in
-            let _r = Mysql.exec (db ()) sql in
-            match Mysql.errmsg (db ()) with
-            | None -> () 
-            | Some err -> Printf.eprintf "DB Error: %s\n%!" err
-	  with Exit -> ()
+	    let sessid, groupid, friends = init () in
+	    let fn (sessid, groupid) =
+              try
+		let v = base64_encode (Marshal.to_string v []) in 
+		let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
+					 table_name v name sessid groupid in
+		let _r = Mysql.exec (db ()) sql in
+		match Mysql.errmsg (db ()) with
+		    | None -> () 
+		    | Some err -> Printf.eprintf "DB Error: %s\n%!" err
+	      with Exit -> ()
+	    in
+	    fn (sessid, groupid);
+	    List.iter fn friends
 	in
 	let reset () =
 	  try
-	    let sessid, groupid = init () in
+	    let sessid, groupid, _ = init () in
             let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
 	      table_name name sessid groupid in
 	    let _r = Mysql.exec (db ()) sql in
@@ -263,5 +283,19 @@ let make_sessid () =
     in
     str.[i] <- d;
   done;
-  sessid:=Some (str, "guest");
+  sessid:=Some (str, "guest", []);
   str
+
+let friends_from_string str =
+  try
+    List.map (fun s ->
+	      match
+		Str.split (Str.regexp_string ",") s with
+		[s;g] -> s,g
+	      | _ -> raise Exit)
+	     (Str.split (Str.regexp_string "+") str)
+  with Exit -> []
+
+let friends_to_string l =
+  String.concat "+" (List.map (fun (s,g) -> s ^ "," ^ g) l) 
+    
