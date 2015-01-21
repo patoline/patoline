@@ -1111,13 +1111,13 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	    let friends_str = try Str.matched_group 6 get with Not_found -> "" in
 	    let friends = Db.friends_from_string friends_str in
 	    let md5' = Digest.to_hex(Digest.string(login ^ "+" ^ groupid ^ friends_str ^ !secret)) in
-	    Printf.eprintf "serve %d: logged %s from %s %s %s\n%!" num login groupid md5 md5';
+	    Printf.eprintf "serve %d: logged %s from %s friends %s (%s = %s)\n%!" num login groupid friends_str md5 md5';
 	    if md5 = md5' then (
 	      let _ = set_sessid (login, groupid, friends) in
   	      http_send ~sessid:(login,groupid, friends) 200 "text/html" [page] ouc;
               process_req false "" [] reste
             ) else (
-	      generate_error ~message:"md5 do not match failed" ouc
+	      generate_error ~message:"md5 do not match" ouc
             )
 
 	  ) else if Str.string_match slave get 0 then (
