@@ -164,7 +164,7 @@ let init_db table_name db_info =
 	Hashtbl.add created name ();
 	let v = base64_encode (Marshal.to_string vinit []) in 
 	let sessid () = match !sessid with
-	    None -> raise Exit
+	    None -> "", guest, []
 	  | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs
 	in 
 	let init () = 
