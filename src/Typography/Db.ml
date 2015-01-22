@@ -290,12 +290,12 @@ let friends_from_string str =
   try
     List.map (fun s ->
 	      match
-		Str.split (Str.regexp_string "%2C") s with
+		Str.split (Str.regexp_string ",") s with
 		[s;g] -> s,g
 	      | _ -> raise Exit)
-	     (Str.split (Str.regexp_string "%2B") str)
+	     (Str.split (Str.regexp_string "+") str)
   with Exit -> []
 
 let friends_to_string l =
-  String.concat "%2B" (List.map (fun (s,g) -> s ^ "%2C" ^ g) l) 
+  String.concat "+" (List.map (fun (s,g) -> s ^ "," ^ g) l) 
     
