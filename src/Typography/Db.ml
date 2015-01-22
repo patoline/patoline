@@ -297,5 +297,6 @@ let friends_from_string str =
   with Exit -> []
 
 let friends_to_string l =
-  String.concat "+" (List.map (fun (s,g) -> s ^ "," ^ g) l) 
+  let str = String.concat "+" (List.map (fun (s,g) -> s ^ "," ^ g) l) in
+  if str <> "" then "+" ^ str else str
     
