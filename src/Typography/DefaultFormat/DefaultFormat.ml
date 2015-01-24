@@ -1354,9 +1354,9 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
       let max_iterations=ref !Config.atmost
 
       let rec resolve tree i env0=
-        Printf.printf "Compilation %d\n" i; flush stdout;
+        Printf.printf "Pass number %d\n" i; flush stdout;
         let env1,fig_params,params,new_page_list,new_line_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 tree in
-        Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());flush stderr;
+        Printf.fprintf stderr "Optimization starts: %f s\n" (Sys.time ());flush stderr;
         let (logs,opt_pages,figs',user')=TS.typeset
           ~completeLine:compl
           ~figure_parameters:fig_params
@@ -1367,7 +1367,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
           ~badness:badness
           paragraphs
         in
-        Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());flush stderr;
+        Printf.fprintf stderr "Optimization ends: %f s\n" (Sys.time ());flush stderr;
         let env, reboot=update_names env1 figs' user' in
         let env=reset_counters env in
         if i < !max_iterations-1 && reboot && !(env.fixable) then (
