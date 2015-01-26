@@ -1252,7 +1252,11 @@ module Make(Initial:Extension) =
         [Decap.fsequence (Decap.string "{" "{")
            (Decap.sequence field_decl_list (Decap.string "}" "}")
               (fun fds  _  _  -> Ptype_record fds));
-        Decap.apply (fun cds  -> Ptype_variant cds) constr_decl_list]
+        Decap.apply
+          (fun cds  ->
+             if cds = []
+             then raise (Give_up "Illegal empty constructors declaration");
+             Ptype_variant cds) constr_decl_list]
     let type_information =
       Decap.fsequence
         (Decap.option None (Decap.apply (fun x  -> Some x) type_equation))

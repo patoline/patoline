@@ -164,8 +164,8 @@ let apply_option _loc opt visible e =
    )
 
 let default_action _loc l =
-  let l = List.filter (function `Normal((("_",_),false,_,_)) -> false | `Ignore -> false | _ -> true) l in
-  let l = List.map (function `Normal((id,_),_,_,_) -> exp_ident _loc id | _ -> assert false) l in
+  let l = List.filter (function `Normal((("_",_),false,_,_,_)) -> false | `Ignore -> false | _ -> true) l in
+  let l = List.map (function `Normal((id,_),_,_,_,_) -> exp_ident _loc id | _ -> assert false) l in
   let rec fn = function
     | [] -> exp_unit _loc
     | [x] -> x
@@ -346,21 +346,8 @@ struct
     | STR("when") e:expression -> Some e
     | EMPTY -> None
 
-  let glr_action =
-    parser
-    | STR("->>") (def, cond, r):glr_rule -> DepSeq (def, cond, r)
-    | STR("->") action:expression -> Normal action
-    | EMPTY -> Default
-
-  let _ = Decap.set_grammar glr_rule (
-    parser
-      | def:glr_let l:glr_left_member condition:glr_cond ->> let _ = push_frame () in action:glr_action ->
-      let l = fst (List.fold_right (fun x (res,i) ->
-	match x with
-	  `Normal(("_",a),true,c,d) -> (`Normal(("_default_"^string_of_int i,a),true,c,d)::res, i+1)
-	| _ -> (x::res,i)) l ([], 0))
-      in
-      let iter, action = match action with
+  let build_rule (_loc,occur_loc,def, l, condition, action) =
+          let iter, action = match action with
 	| Normal a -> false, a
 	| Default -> false, default_action _loc l
 	| DepSeq(def, cond, a) ->
@@ -369,15 +356,14 @@ struct
 		 | Some cond ->
 		    def (loc_expr _loc (Pexp_ifthenelse(cond,a,Some (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]))))
       in
-      let occur_loc = pop_location "" in
+
       let rec fn first ids l = match l with
 	  [] -> assert false
 	| `Ignore::ls -> assert false
-	| `Normal(id,cst,e,opt)::`Ignore::ls -> 
+	| `Normal(id,cst,e,opt,oc)::`Ignore::ls -> 
 	   let e =  exp_apply _loc (exp_glr_fun _loc "ignore_next_blank") [e] in
-	   fn first ids (`Normal(id,cst,e,opt)::ls)
-	| [`Normal(id,_,e,opt)] ->
-	   let occur_loc_id = fst id <> "_" && pop_location (fst id) in
+	   fn first ids (`Normal(id,cst,e,opt,oc)::ls)
+	| [`Normal(id,_,e,opt,occur_loc_id)] ->
 	   let e = apply_option _loc opt occur_loc_id e in
 	   let f = match find_locate (), first && occur_loc with
 	     | Some _, true -> "apply_position"
@@ -391,9 +377,7 @@ struct
 #endif
 	   | _ ->
 	      exp_apply _loc (exp_glr_fun _loc f) [build_action _loc occur_loc ((id,occur_loc_id)::ids) action; e])
-	| [`Normal(id,_,e,opt); `Normal(id',_,e',opt') ] ->
-	   let occur_loc_id = fst id <> "_" && pop_location (fst id) in
-	   let occur_loc_id' = fst id' <> "_" && pop_location (fst id') in
+	| [`Normal(id,_,e,opt,occur_loc_id); `Normal(id',_,e',opt',occur_loc_id') ] ->
 	   let e = apply_option _loc opt occur_loc_id e in
 	   let e' = apply_option _loc opt' occur_loc_id' e' in
 	   let f = match find_locate (), first && occur_loc with
@@ -402,8 +386,7 @@ struct
 	   in
 	   exp_apply _loc (exp_glr_fun _loc f) [e; e'; build_action _loc occur_loc 
 								    ((id,occur_loc_id)::(id',occur_loc_id')::ids) action]
-	| `Normal(id,_,e,opt) :: ls ->
-	   let occur_loc_id = fst id <> "_" && pop_location (fst id) in
+	| `Normal(id,_,e,opt,occur_loc_id) :: ls ->
 	   let e = apply_option _loc opt occur_loc_id e in 
 	   let f = match find_locate (), first && occur_loc with
 	     | Some _, true -> "fsequence_position"
@@ -412,15 +395,37 @@ struct
 	   exp_apply _loc (exp_glr_fun _loc f) [e; fn false ((id,occur_loc_id)::ids) ls]
       in
       let res = fn true [] l in
-      pop_frame ();
       let res = if iter then exp_apply _loc (exp_glr_fun _loc "iter") [res] else res in
       def, condition, res
+
+  let glr_action =
+    parser
+    | STR("->>") r:glr_rule -> let (a,b,c) = build_rule r in DepSeq (a,b,c)
+    | STR("->") action:expression -> Normal action
+    | EMPTY -> Default
+			
+  let _ = Decap.set_grammar glr_rule (
+    parser
+      | def:glr_let l:glr_left_member condition:glr_cond ->> let _ = push_frame () in action:glr_action ->
+      let l = fst (List.fold_right (fun x (res,i) ->
+	match x with
+	  `Normal(("_",a),true,c,d) ->
+	  (`Normal(("_default_"^string_of_int i,a),true,c,d,false)::res, i+1)
+	| `Normal(id, b,c,d) ->
+	   let occur_loc_id = fst id <> "_" && pop_location (fst id) in
+	   (`Normal(id, b,c,d,occur_loc_id)::res, i)
+	| `Ignore -> (`Ignore::res,i)) l ([], 0))
+      in
+      let occur_loc = pop_location "" in
+      pop_frame ();
+      (_loc, occur_loc, def, l, condition, action)
      )
 
   let glr_rules_aux = 
     parser
-    | { CHR('|') CHR('|')}? r:glr_rule rs:{ CHR('|') CHR('|') r:glr_rule}** -> 
-      (match rs with
+    | { CHR('|') CHR('|')}? r:glr_rule rs:{ CHR('|') CHR('|') r:glr_rule}** ->
+     (let r = build_rule r and rs = List.map build_rule rs in					  
+      match rs with
       | [] -> r
       | l ->
 	let l = List.fold_right (fun (def,cond,x) y -> 
@@ -442,7 +447,7 @@ struct
 	(match cond with
 	  None -> def e
         | Some c -> 
-	  loc_expr _loc (Pexp_ifthenelse(c,e,Some (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]))))
+	  def (loc_expr _loc (Pexp_ifthenelse(c,e,Some (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""])))))
       | r, l ->
 	let l = List.fold_right (fun (def,cond,x) y -> 
 	  match cond with
