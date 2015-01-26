@@ -40,7 +40,6 @@ let output ?state paragraphs figures env (opt_pages:frame)=
   let continued_link=ref None in
   let draw_page i p=
     let y0=ref infinity in
-    let y0'=ref infinity in
     let y1=ref (-.infinity) in
     let x0=ref infinity in
     let x1=ref (-.infinity) in
@@ -60,13 +59,14 @@ let output ?state paragraphs figures env (opt_pages:frame)=
         let rec link_contents u l=match l with
             []->[]
           | (Link h)::s->(
+	    let u = List.rev u in
             if cont then continued_link:=Some (Link h);
             let x0,y0,x1,y1=bounding_box u in
             Link { h with
               link_x0=x0;link_y0=y0;
               link_x1=x1;link_y1=y1;
               link_closed=true;
-              link_contents=List.rev u
+              link_contents=u
             }
           )::s
           | h::s->link_contents (h::u) s
@@ -129,7 +129,6 @@ let output ?state paragraphs figures env (opt_pages:frame)=
             pp.(j).line.height
         in
         y1:=max !y1 y;
-        y0':=min !y0' (fig.drawing_y1+.fig.drawing_y0);
         y0:=min !y0 (fig.drawing_y1+.fig.drawing_y0);
 	if env.show_boxes then
           page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 },
@@ -145,13 +144,10 @@ let output ?state paragraphs figures env (opt_pages:frame)=
         let (yy0,yy1)=line_height paragraphs figures line in
         y1:=max (y+.yy1) !y1;
         y0:=min (y+.yy0) !y0;
-        y0':=min (y+.yy0) !y0';
-
         if line.paragraph<> !par then (
           par:=line.paragraph;
           positions.(!par)<-
-            (i,0.,
-             line.height +. phi*.snd (line_height paragraphs figures line))
+            (i, 0., line.height +. phi*.yy1)
         );
 
         let comp=compression paragraphs param line in

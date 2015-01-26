@@ -1298,7 +1298,7 @@ let boxify buf nbuf env0 l=
         let _=boxify keep_cache env' p in
         boxify keep_cache env s
       )
-    | N _ :: s->(
+    | N t :: s->(
       failwith "boxify: wrong argument (N)";
       (*boxify keep_cache env s*)
     )
@@ -1360,6 +1360,7 @@ let draw_boxes env l=
       let rec link_contents u l=match l with
           []-> assert false
         | (Link h)::s when not h.link_closed->(
+	  let u = List.rev u in
           h.link_contents<-u;
           let (_,y0,_,y1)=bounding_box u in
           h.link_y0<-y0;
@@ -1371,8 +1372,8 @@ let draw_boxes env l=
         | h::s->link_contents (h::u) s
       in
       let dr'=link_contents [] dr in
-      (* List.iter (print_raw) dr'; *)
-      (* Printf.fprintf stderr "***************\n";flush stderr; *)
+(*      List.iter (print_raw stderr) dr';
+      Printf.eprintf "***************\n%!";*)
       draw_boxes x y dr' s
     )
 

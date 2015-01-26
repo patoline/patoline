@@ -401,7 +401,8 @@ module Format=functor (D:Document.DocumentStructure)->(
     let verbEnv x =
 	{ (envFamily x.fontMonoFamily x)
 	with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [];
-	     lead = x.lead *. x.fontMonoRatio *. 0.75}
+	     lead = x.lead *. x.fontMonoRatio *. 0.75;
+	     normalLead = x.normalLead *. x.fontMonoRatio *. 0.75}
 
     let parameters env b c d e f g line=
       { (Default.parameters env b c d e f g line) with

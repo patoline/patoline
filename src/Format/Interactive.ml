@@ -184,6 +184,13 @@ let mk_length lines nb = match nb with
       | n, l::lines -> l::fn lines (n-1)
     in
     fn lines nb
+ 
+let interEnv x =
+    { (envFamily x.fontMonoFamily x)
+      with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [];
+	lead = x.lead *. x.fontMonoRatio *. 0.75;
+	normalLead = x.normalLead *. x.fontMonoRatio *. 0.75;
+        normalLeftMargin = 0.2;}
 
 let editableText ?(global=false) ?(empty_case="Type in here")
       ?nb_lines ?err_lines ?(init_text="") ?(lang=lang_default)
@@ -216,14 +223,10 @@ let editableText ?(global=false) ?(empty_case="Type in here")
            name
 	   [name';name'']
            [bB(fun env -> 
-	     let env = { env with 
-	       normalLead = env.normalLead *. 0.8;
-	       lead = env.normalLead *. 0.8;
-	       normalLeftMargin=env.size *. 0.2;
-	     } in
+	     let env = interEnv env in
 	     List.map (fun x-> Drawing (snd x))
 	       (IntMap.bindings 
-		  (OutputDrawing.minipage (verbEnv env)
+		  (OutputDrawing.minipage env
 		     (let i = ref 0 in 
 		      let next () =
 			incr i;
@@ -231,36 +234,40 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 			let miss = 3 - String.length line in
 			[glue_space miss;tT line;glue_space 1]
 		      in
-		      let lines = mk_length lines nb_lines in
+		      let codeLines = mk_length lines nb_lines in
 		      let acc = List.fold_left (fun acc line ->
 			let para=Paragraph 
 			  {par_contents=next () @ line;
 			   par_env=(fun e -> e);
-			   par_post_env=(fun env1 env2 -> 
+			   par_post_env=(fun env1 env2 ->
 			     { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
 			   par_parameters=ragged_left;
 			   par_badness=badness;
 			   par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
-			in up (newChildAfter acc para)) (Node empty, []) (lang lines)
-		   in		
-		  let lines = match extra with None -> []
-		  | Some f ->
-		    let writeR = if s <> init_text then
-			dataR.write
-		      else
-			fun _ -> dataR.write NotTried
-		    in
-		    mk_length (Util.split '\n' (f writeR (data.read()))) err_lines
-		  in
-       		  (List.fold_left (fun acc line ->
-		    let para=Paragraph
-		      {par_contents= arrow @ line ;
-		       par_env=(fun env -> {env with size = env.size *. 0.8});
-		       par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
-		       par_parameters=ragged_left;
-		       par_badness=badness;
-		       par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
-		    in up (newChildAfter acc para)) acc (lang_default lines))))))]))
+			in up (newChildAfter acc para)) (Node empty, []) (lang codeLines)
+		      in
+		      let resultLines = match extra with None -> []
+			| Some f ->
+			  let writeR = if s <> init_text then
+			      dataR.write
+			    else
+			      fun _ -> dataR.write NotTried
+			  in
+			  mk_length (Util.split '\n' (f writeR (data.read()))) err_lines
+		      in
+       		      (List.fold_left (fun acc line ->
+			let para=Paragraph
+			  {par_contents= arrow @ line ;
+			   par_env=(fun env -> {env with
+			     normalLead = env.normalLead *. 0.8;
+			     lead = env.lead *. 0.8;
+			     size = env.size *. 0.8});
+			   par_post_env=(fun env1 env2 ->
+			     { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
+			   par_parameters=ragged_left;
+			   par_badness=badness;
+			   par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
+			in up (newChildAfter acc para)) (top acc) (lang_default resultLines))))))]))
 
 let ocaml_dir () =
   let sessid = match !Db.sessid with 
