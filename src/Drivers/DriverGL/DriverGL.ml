@@ -227,7 +227,8 @@ type win_info = {
   winId : int;
   glyphCache : (Fonts.glyph * float * Gl.rgb, GlList.t) Hashtbl.t;
   imageCache : (image,  GlTex.texture_id) Hashtbl.t;
-  mutable saved_rectangle :  (([`rgba], [`ubyte]) GlPix.t * ([`depth_component], [`float]) GlPix.t) option; 
+  mutable saved_rectangle :  (([`rgba], [`ubyte]) GlPix.t * ([`depth_component], [`float]) GlPix.t) option;
+  mutable previous_links : link list;
   mutable zoom : float;
   mutable dx : float;
   mutable dy : float;
@@ -257,6 +258,7 @@ let init_win w =
     glyphCache = Hashtbl.create 1001;
     imageCache = Hashtbl.create 101;
     saved_rectangle = None;
+    previous_links = [];
     zoom = 1.0;
     dx = 0.0;
     dy = 0.0;
@@ -917,7 +919,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     );
 
     cur_time := time;
-    win.saved_rectangle <- None;
     if !to_revert then revert ();
     GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
     GlClear.color ~alpha:0.0 (0.0, 0.0, 0.0);
@@ -972,6 +973,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let redraw win =
     Glut.setWindow ~win:win.winId;
     reshape_cb ~w:(Glut.get Glut.WINDOW_WIDTH)  ~h:(Glut.get Glut.WINDOW_HEIGHT);
+    win.saved_rectangle <- None;
+    win.previous_links <- [];
     Glut.postRedisplay ()
   in
 
@@ -1221,37 +1224,36 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	));
   in
 
-  let previous_links = ref [] in
   let next_links = ref [] in
 
   let show_links () =
     let l = !next_links in
-    if l <> !previous_links then (
-      previous_links := l;
-      let win = get_win () in
+    let win = get_win () in
+    if l <> win.previous_links then (
+      win.previous_links <- l;
       (match win.saved_rectangle with
 	None -> ()
        | Some (r,r') ->
 	  GlClear.clear [`color;`depth]; GlPix.draw r; GlPix.draw r');
+
+      if l <> [] then  draw_gl_scene ();
       (if l = [] then Glut.setCursor Glut.CURSOR_INHERIT
        else if win.saved_rectangle = None then (
-	 draw_gl_scene ();
 	 win.saved_rectangle <-
 	   Some (GlPix.read ~x:0 ~y:0 
-		   ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
-		   ~format:`rgba ~kind:`ubyte
+			    ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
+			    ~format:`rgba ~kind:`ubyte
 		,GlPix.read ~x:0 ~y:0 
-		   ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
-		   ~format:`depth_component ~kind:`float)));
-
+			    ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
+			    ~format:`depth_component ~kind:`float)));
+      
       List.iter (fun l ->
 	    let color = match l.link_kind with
 		Extern uri ->
 		  if is_edit uri then (
 		    Glut.setCursor Glut.CURSOR_TEXT;
 		    (1.0,0.0,0.0)
-		  )
-		  else (
+		  ) else (
 		    Glut.setCursor Glut.CURSOR_INFO;
 		    (0.0,1.0,0.0))
 	      | Intern _ ->
