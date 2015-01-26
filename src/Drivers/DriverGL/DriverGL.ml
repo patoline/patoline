@@ -227,6 +227,7 @@ type win_info = {
   winId : int;
   glyphCache : (Fonts.glyph * float * Gl.rgb, GlList.t) Hashtbl.t;
   imageCache : (image,  GlTex.texture_id) Hashtbl.t;
+  mutable saved_rectangle :  (([`rgba], [`ubyte]) GlPix.t * ([`depth_component], [`float]) GlPix.t) option; 
   mutable zoom : float;
   mutable dx : float;
   mutable dy : float;
@@ -255,6 +256,7 @@ let init_win w =
     winId = w;
     glyphCache = Hashtbl.create 1001;
     imageCache = Hashtbl.create 101;
+    saved_rectangle = None;
     zoom = 1.0;
     dx = 0.0;
     dy = 0.0;
@@ -401,7 +403,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     String.length(uri) >= 5 && String.sub uri 0 5 = "edit:"
   in
 
-  let saved_rectangle = ref None in
   let to_revert = ref false in
 
   let old_menu = ref [] in
@@ -494,7 +495,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let other_items = Hashtbl.create 13 in
 
-    let draw_page pixel_width page state =
+  let draw_page pixel_width page state =
       let win = get_win () in
       win.do_animation <- false;
       let graisse =  !prefs.graisse in
@@ -916,7 +917,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     );
 
     cur_time := time;
-    saved_rectangle := None;
+    win.saved_rectangle <- None;
     if !to_revert then revert ();
     GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
     GlClear.color ~alpha:0.0 (0.0, 0.0, 0.0);
@@ -989,8 +990,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | _, [] -> (ds, ev)::(List.rev acc)
       | Drag(n1,(x1,y1)), ((ds',Drag(n2,(x2,y2)))::evs) when n1 == n2 && ds == ds' ->
 	List.rev_append acc ((ds, Drag(n1,(x1+.x2,y1+.y2)))::evs)
-      | Click(n1), ((ds', Click(n2))::evs) when n1 == n2 && ds == ds' ->
-	List.rev_append acc ((ds, Click(n1))::evs)
+      | Click(n1) as e1, ((ds', Click(n2))::evs) when n1 == n2 && ds == ds' ->
+	List.rev_append acc ((ds, e1)::evs)
+      | Edit(n1,_) as e1, ((ds', Edit(n2,_))::evs) when n1 == n2 && ds == ds' ->
+	List.rev_append acc ((ds, e1)::evs)
       | _, ev::evs ->
 	fn (ev::acc) evs
     in
@@ -1200,7 +1203,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       None -> ()
     | Some (x0,y0,x', y',buttons,links) ->
       let dx = x - x' and dy = y - y' in
-(*      Printf.fprintf stderr "Motion (%d;%d) (%d,%d) %d\n%!" x' y' x y (dx * dx + dy * dy);*)
+      (*      Printf.fprintf stderr "Motion (%d;%d) (%d,%d) %d\n%!" x' y' x y (dx * dx + dy * dy);*)
       if (dx * dx + dy * dy >= 4) then (
 	let win = get_win () in
 	let mx = float dx and my = float dy in
@@ -1213,6 +1216,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  motion_ref := Some (x0,y0,x, y,buttons,links);
 	  let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
 	  List.iter (function (name,ds) ->
+            Printf.eprintf "Drag: %S\n%!" name;			      
 	    send_events ds (Drag(name,(x,y)))) buttons;
 	));
   in
@@ -1222,15 +1226,17 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let show_links () =
     let l = !next_links in
-    if l != !previous_links then (
+    if l <> !previous_links then (
       previous_links := l;
-      (match !saved_rectangle with
+      let win = get_win () in
+      (match win.saved_rectangle with
 	None -> ()
-      | Some (r,r') -> 
-	GlClear.clear [`color;`depth]; GlPix.draw r; GlPix.draw r');
+       | Some (r,r') ->
+	  GlClear.clear [`color;`depth]; GlPix.draw r; GlPix.draw r');
       (if l = [] then Glut.setCursor Glut.CURSOR_INHERIT
-       else if !saved_rectangle = None then
-	 (saved_rectangle := 
+       else if win.saved_rectangle = None then (
+	 draw_gl_scene ();
+	 win.saved_rectangle <-
 	   Some (GlPix.read ~x:0 ~y:0 
 		   ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
 		   ~format:`rgba ~kind:`ubyte
@@ -1472,7 +1478,19 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	      end
 	    | Button(Clickable,name,ds) -> 
 	      send_events ds (Click(name))
-	    | Button(_,name,ds) -> 
+	    | Button(Editable(current,init),name,ds) ->
+	       let editor = try Sys.getenv "EDITOR" with Not_found -> "emacs" in
+	       let filename, ch = Filename.open_temp_file "tmp" ".txt" in
+	       output_string ch current;
+	       close_out ch;
+	       Sys.command (editor ^ " " ^ filename);
+	       let ch = open_in filename in
+	       let len = in_channel_length ch in
+	       let buf = String.make len ' ' in
+	       let _ = really_input ch buf 0 len in
+	       close_in ch;	       
+	       send_events ds (Edit(name, buf))
+	    | Button(Dragable,name,ds) -> 
 	      ()
 	  ) links
 	  
