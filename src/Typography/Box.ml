@@ -168,16 +168,9 @@ let print_frame_struct (f,s as p) =
   in
   fn stderr (fst f)
   
-let make_page (w,h) t=
-  let page={empty_frame with
-    frame_x0=0.;frame_y0=0.;frame_x1=w;frame_y1=h;
-    frame_tags=["page"]
-  }
-  in
-  let m=try fst (IntMap.max_binding (fst t).frame_children) with Not_found-> -1 in
-  (page, (m+1,(fst t))::(snd t))
-
-
+(** Creates a new frame with the given top-left and bottom-right
+    corners, appends this frame as a child of the current frame, and
+    moves down to this new frame. *)
 let frame ?(contents=[]) x0 y0 x1 y1 (t,cxt)=
   let i=try fst (IntMap.max_binding t.frame_children) with Not_found->(-1) in
   {empty_frame with frame_x0=x0;
@@ -186,6 +179,10 @@ let frame ?(contents=[]) x0 y0 x1 y1 (t,cxt)=
     frame_y1=y1;
     frame_content=contents;
   }, ((i+1,t)::cxt)
+
+let make_page (w, h) zip =
+  let (page, zip) = frame 0. 0. w h zip in
+  ({page with frame_tags = ["page"]}, zip)
 
 let twocols (t,cxt)=
   let w=t.frame_x1-.t.frame_x0 in

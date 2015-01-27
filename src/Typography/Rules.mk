@@ -74,7 +74,8 @@ $(d)/Break.cmx: $(d)/Break.ml
 
 # Build DefaultFormat
 DEFAULT_FORMAT_ML := $(d)/DefaultFormat/Euler.ml $(d)/DefaultFormat/Numerals.ml \
-  $(d)/DefaultFormat/TableOfContents.ml $(d)/DefaultFormat/DefaultFormat.ml
+  $(d)/DefaultFormat/TableOfContents.ml $(d)/DefaultFormat/PageLayout.ml \
+  $(d)/DefaultFormat/DefaultFormat.ml
 DEFAULTFORMAT_ML:=$(wildcard $(d)/DefaultFormat/*.ml) 
 DEFAULTFORMAT_CMI:= $(DEFAULTFORMAT_ML:.ml=.cmi)
 

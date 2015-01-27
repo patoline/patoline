@@ -319,25 +319,27 @@ let tags=function
 (****************************************************************)
 
 (**/**)
-let default_new_page pageFormat t=
-  let a,b=Box.make_page pageFormat (frame_top t) in
-  let zip={ a with frame_tags=["page"] },b in
-  let w=(fst zip).frame_x1-.(fst zip).frame_x0
-  and h=(fst zip).frame_y1-.(fst zip).frame_y0 in
-  let x0=((fst zip).frame_x0+.1.*.w/.6.) in
-  let y0=((fst zip).frame_y0+.1.*.h/.6.) in
-  let x1=((fst zip).frame_x1-.1.*.w/.6.) in
-  let y1=((fst zip).frame_y1-.1.*.h/.6.) in
+(** Creates a new page, using 1/6th of the given lengths for margins.
+ A page is implemented as two nested frames: the outer frame has the
+ actual size of the whole page, while the inner frame size is the
+ papersize minus margins.
+
+ This function returns the inner frame.
+ *)
+let default_new_page pageFormat zip =
+  let ((page, _) as zip)=Box.make_page pageFormat (frame_top zip) in
+  let w = page.frame_x1 -. page.frame_x0
+  and h = page.frame_y1 -. page.frame_y0 in
+  let x0=(page.frame_x0+.1.*.w/.6.) in
+  let y0=(page.frame_y0+.1.*.h/.6.) in
+  let x1=(page.frame_x1-.1.*.w/.6.) in
+  let y1=(page.frame_y1-.1.*.h/.6.) in
   frame x0 y0 x1 y1 zip
 
-let raw_new_page pageFormat t=
-  let a,b=Box.make_page pageFormat (frame_top t) in
-  let zip={ a with frame_tags=["page"] },b in
-  let x0=((fst zip).frame_x0) in
-  let y0=((fst zip).frame_y0) in
-  let x1=((fst zip).frame_x1) in
-  let y1=((fst zip).frame_y1) in
-  frame x0 y0 x1 y1 zip
+(** Creates a new page without any margin *)
+let raw_new_page pageFormat zip =
+  let (page, _) as zip = Box.make_page pageFormat (frame_top zip) in
+  frame page.frame_x0 page.frame_y0 page.frame_x1 page.frame_y1 zip
 (**/**)
 
 

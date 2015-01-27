@@ -25,7 +25,7 @@ open Util
 open UsualMake
 open Typography.ConfigUtil
 open Fonts
-open Typography.Box
+open Box
 open Typography.Break
 let _=Random.self_init ()
 
@@ -184,8 +184,8 @@ let bitstreamverasansmono=simpleFont "Bitstream Vera Sans Mono"
 let all_fonts = [alegreya; texgyrecursor] (* trick to force same type *)
 
 let break ()=
-  [bB (fun env->[Glue { Box.empty_drawing_box with drawing_min_width=0.;drawing_max_width=env.normalMeasure;drawing_nominal_width=0. };
-                 Glue { Box.empty_drawing_box with
+  [bB (fun env->[Glue { empty_drawing_box with drawing_min_width=0.;drawing_max_width=env.normalMeasure;drawing_nominal_width=0. };
+                 Glue { empty_drawing_box with
                    drawing_min_width=0.;drawing_nominal_width=0.;drawing_max_width=0.;
                    drawing_badness=(fun _->infinity) }])]
 
@@ -276,7 +276,7 @@ let defaultEnv:environment=
     names=StrMap.empty;
     fixable=ref false;
     user_positions=MarkerMap.empty;
-    new_page=Document.default_new_page a4;
+    new_page=PageLayout.default_new_page;
     new_line=(fun env node params nextNode nextParams layout height->
       if node==nextNode && node.layout==layout then (
         let min_height=min height (node.height-.params.min_height_after) in
@@ -1532,9 +1532,9 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                         )
                         | Marker (BeginLink l)->(
 			  let k = match l with
-			      Box.Extern l -> OutputCommon.Extern l;
-			    | Box.Intern l -> Intern(l,Box.layout_page line,0.,0.);
-			    | Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
+			      Extern l -> OutputCommon.Extern l;
+			    | Intern l -> Intern(l,layout_page line,0.,0.);
+			    | Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
 			  in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                      link_order=0;link_closed=false;
@@ -1829,7 +1829,7 @@ module MathsFormat=struct
                let (x0,y0,x1,y1)=OutputCommon.bounding_box_full dr in
                let drawn=(drawing ~offset:y0 dr) in
                let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
-                 [Box.Drawing {
+                 [Drawing {
                     drawn with
                       drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
                       drawing_contents=
@@ -1855,7 +1855,7 @@ module MathsFormat=struct
                let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
                let xm=(x1+.x0)/.2. in
                let y=(y1-.y0)*.phi/.4. in
-                 [Box.Drawing {
+                 [Drawing {
                     drawn with
                       drawing_y0=drawn.drawing_y0-.y;
                       drawing_y1=drawn.drawing_y1+.y;
@@ -1894,7 +1894,7 @@ module MathsFormat=struct
             let drawn=(drawing ~offset:y0 dr) in
             let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
     
-            [Box.Drawing {
+            [Drawing {
               drawn with
                 drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
                 drawing_contents= (fun w ->
@@ -1935,7 +1935,7 @@ module MathsFormat=struct
             let drawn=(drawing ~offset:y0 dr) in
             let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
     
-            [Box.Drawing {
+            [Drawing {
               drawn with
                 drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
                 drawing_contents= (fun w ->
@@ -1984,7 +1984,7 @@ module MathsFormat=struct
             let drawn=(drawing ~offset:y0 dr) in
             let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
     
-            [Box.Drawing {
+            [Drawing {
               drawn with
                 drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
                 drawing_contents= (fun w ->
@@ -2049,7 +2049,7 @@ module MathsFormat=struct
                                                         Array.map (fun y->y*.size-.y0+.y1_+.y_space) v
                                                      ) x)) arr
                in
-                 [Box.Drawing {
+                 [Drawing {
                     drawing_nominal_width=max (w1*.size) boxes_w;
                     drawing_min_width=max (w1*.size+.y_space) boxes_w;
                     drawing_max_width=max (w1*.size+.y_space) boxes_w;
@@ -2102,7 +2102,7 @@ module MathsFormat=struct
                                                         Array.map (fun y->y*.size-.y0+.y1_+.space) v
                                                      ) x)) arr
                in
-                 [Box.Drawing {
+                 [Drawing {
                     drawing_nominal_width=max (w1*.size) boxes_w;
                     drawing_min_width=max (w1*.size) boxes_w;
                     drawing_max_width=max (w1*.size) boxes_w;
