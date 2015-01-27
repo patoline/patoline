@@ -1532,9 +1532,9 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                         )
                         | Marker (BeginLink l)->(
 			  let k = match l with
-			      Extern l -> OutputCommon.Extern l;
-			    | Intern l -> Intern(l,layout_page line,0.,0.);
-			    | Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
+			      Box.Extern l -> OutputCommon.Extern l;
+			    | Box.Intern l -> OutputCommon.Intern(l,layout_page line,0.,0.);
+			    | Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
 			  in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                      link_order=0;link_closed=false;
