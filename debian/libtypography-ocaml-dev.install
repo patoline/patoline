@@ -20,3 +20,4 @@ usr/lib/ocaml/rbuffer/*
 usr/lib/ocaml/patoplot/*
 usr/lib/ocaml/patfonts/*
 usr/lib/ocaml/patutil/*
+usr/lib/ocaml/cesure/*
