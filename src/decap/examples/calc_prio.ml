@@ -1,6 +1,6 @@
 open Decap
 
-let blank = blank_regexp ''"[ \t\n\r]*''
+let blank = blank_regexp ''[ \t\n\r]*''
 
 let float_re = ''[0-9]+\([.][0-9]+\)?\([eE][-]?[0-9]+\)?''
 let ident_re = ''[a-zA-Z_'][a-zA-Z0-9_']*''

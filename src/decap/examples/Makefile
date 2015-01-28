@@ -1,5 +1,5 @@
 FINDLIB = ocamlfind
-CAMLFLAGS = -pp "camlp4o pa_macro.cmo"
+CAMLFLAGS =
 CAMLC = $(FINDLIB) ocamlc $(CAMLFLAGS)
 CAMLOPT = $(FINDLIB) ocamlopt $(CAMLFLAGS)
 CAMLMKLIB = $(FIDLIB) ocamlmklib
@@ -11,9 +11,12 @@ ifeq ("$(METADIR)","")
 	METADIR=$(LIBDIR)
 endif
 
-all: calc
+all: calc calc_prio
 
 calc: calc.cmx ../decap.cmxa
+	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../decap.cmxa $< -o $@
+
+calc_prio: calc.cmx ../decap.cmxa
 	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../decap.cmxa $< -o $@
 
 calc.cmx: calc.ml ../decap.cmx ../pa_glr
