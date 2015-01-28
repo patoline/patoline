@@ -111,9 +111,7 @@ let rec print_stack ch = function
   | EmptyStack -> ()
 
 let pop_stack n = function
-  | Pushed(n',v,l) when n = n' ->
-     (*     Printf.eprintf "POP W %d\n%!" n;*)
-     Obj.obj v, l
+  | Pushed(n',v,l) when n = n' -> Obj.obj v, l
   | _ -> raise Not_found
 	       
 type grouped = {
@@ -172,7 +170,7 @@ type left_rec =
       (n, b, s) is in the list and
       - b = true if there may be nothing after the prefix
       - s is the cahracter set accepted after the prefix *)
-type charset_after_left = (int * (bool * charset)) list
+type charset_after_left = (int * (bool * charset * string_tree)) list
 
 		  
 module rec G: sig
@@ -245,6 +243,23 @@ let next_sym g ={
                  first_syms = first_sym g;
                }
 
+let next_sym' grouped g =
+  match grouped.stack with
+    EmptyStack -> next_sym g
+  | Pushed(n,_,_) ->
+     try
+       let (_,charset,syms) = List.assoc n g.charset_after_left in
+       {
+         accepted_char = charset;
+	 first_syms = syms;
+       }
+     with
+       Not_found ->
+       {
+         accepted_char = empty_charset;
+	 first_syms = Empty;
+       }
+
 let apply_blank grouped str p =
   grouped.blank str p
 
@@ -299,21 +314,13 @@ let merge_list l1 l2 merge =
 
 let sum_charset_after_left l1 l2 =
   merge_list l1 l2.charset_after_left
-	     (fun (b1,c1) (b2,c2) -> b1 || b2, Charset.union c1 c2)
+	     (fun (b1,c1,s1) (b2,c2,s2) -> b1 || b2, Charset.union c1 c2, Node(s1,s2))
 
 let compose_charset_after_left l1 l2 =
-  let l0 = List.map (fun (n,(b,c) as x) ->
-		     if b then (n,(accept_empty l2,Charset.union c l2.firsts)) else x) l1.charset_after_left
+  let l0 = List.map (fun (n,(b,c,s) as x) ->
+		     if b then (n,(accept_empty l2,Charset.union c l2.firsts, Node(s,l2.first_sym))) else x) l1.charset_after_left
   in
   if accept_empty l1 then sum_charset_after_left l0 l2 else l0
-
-let rec is_clear g str pos grouped = true (*
-  if g.left_rec = Left_rec && List.mem g.ident grouped.leftrecs then
-  match grouped.last_leftrec_position with
-    None -> true
-  | Some(str',pos') -> line_num str' < line_num str || pos' < pos
-  else true*)
-	 
 
 let not_ready name _ = failwith ("not_ready: "^name)
 				
@@ -323,7 +330,7 @@ let declare_grammar name = let id = new_ident () in {
   first_sym = Empty;
   accept_empty = Unknown;
   left_rec = Non_rec;
-  charset_after_left = [id,(true,empty_charset)];
+  charset_after_left = [id,(true,empty_charset,Empty)];
   deps = Some (TG.create 7);
   set_info = (fun () -> ());
   parse = (not_ready name);
@@ -348,6 +355,8 @@ let rec update (g : empty_type grammar) =
 let add_deps p1 p2 = match p2.deps with None -> () | Some t -> TG.add t (cast p1)
 
 let tbl = Ahash.create 1001
+
+let debug_leftrec = ref false
 
 let set_grammar p1 p2 =
   let rec fn p =
@@ -374,55 +383,56 @@ let set_grammar p1 p2 =
     fun grouped str pos next g ->
     if p1.left_rec = Left_rec then
       try
-	(*if !debug_leftrec then Printf.eprintf "trying to pop ...\n%!";*)
+	(*	if !debug_leftrec then Printf.eprintf "trying to pop %d in %a...\n%!" p1.ident print_stack grouped.stack;*)
 	let v, stack = pop_stack p1.ident grouped.stack in
-	(*if !debug_leftrec then Printf.eprintf "pop ok\n%!";*)
+	(*	if !debug_leftrec then Printf.eprintf "pop ok\n%!";*)
 	g str pos str pos str pos stack v
       with Not_found -> try
-		       (*if !debug_leftrec then Printf.eprintf "check_rec_info %d...%!" p1.ident;*)
+		       (*	 if !debug_leftrec then Printf.eprintf "check_rec_info %d %a ...%!" p1.ident print_stack grouped.stack;*)
 	check_rec_info p1.ident str pos grouped;
 	raise Error
       with Not_found ->
         let grouped = push_rec_info p1.ident str pos p1.charset_after_left grouped in
-	(*if !debug_leftrec then Printf.eprintf " failed\n%!";*)
-	let after_accepted_char =
+	(*	if !debug_leftrec then Printf.eprintf " failed %a\n%!" print_stack grouped.stack;*)
+	let (_,after_accepted_char,syms) =
 	  try
-	    snd (List.assoc p1.ident p1.charset_after_left)
+	    List.assoc p1.ident p1.charset_after_left
 	  with Not_found -> assert false
 	in
 	let next' =
 	  { accepted_char = union next.accepted_char after_accepted_char;
-	    first_syms = next.first_syms; (* FIXME *)
+	    first_syms = Node(syms, next.first_syms);
 	  }
 	in
-	(*if !debug_leftrec then Printf.eprintf "next' = %a\n%!" print_charset next'.accepted_char;*)
+	(*	if !debug_leftrec then Printf.eprintf "next' = %a\n%!" print_charset next'.accepted_char;*)
 
 	let rec fn str' pos' str'' pos'' stack v =
- 	  (*if !debug_leftrec then Printf.eprintf "PUSH W %d\n%!" p1.ident;*)
+ 	  (*if !debug_leftrec then Printf.eprintf "PUSH W %d in %a\n%!" p1.ident print_stack stack;*)
 	  let grouped' = {
 	    grouped with
 	    leftrecs = [];
 	    stack = Pushed(p1.ident, Obj.repr v, stack) } in
 	  if test grouped next str'' pos'' then
 	    try
-              (*if !debug_leftrec then Printf.eprintf "calling in try %d\n%!" p1.ident;*)
+              (*if !debug_leftrec then Printf.eprintf "calling in try %d %a\n%!" p1.ident print_stack grouped'.stack;*)
 	      p2.parse grouped' str'' pos'' next'
 		       (fun _ _ str0' pos0' str0'' pos0'' stack v ->
-			(*if !debug_leftrec then Printf.eprintf "call continuation %d \n%!" p1.ident;*)
+			(*if !debug_leftrec then Printf.eprintf "call continuation in try %d %a\n%!" p1.ident print_stack stack;*)
 			fn str0' pos0' str0'' pos0'' stack v)
 	    with Error ->
-              (*if !debug_leftrec then Printf.eprintf "capturing Error %d\n%!" p1.ident;*)
+              (*if !debug_leftrec then Printf.eprintf "capturing Error %d %a\n%!" p1.ident print_stack stack;*)
 	      g str pos str' pos' str'' pos'' stack v
 	  else (
-            (*if !debug_leftrec then Printf.eprintf "calling without try %d\n%!" p1.ident;*)
+            (*if !debug_leftrec then Printf.eprintf "calling without try %d %a\n%!" p1.ident print_stack grouped'.stack;*)
 	    p2.parse grouped' str'' pos'' next'
 		     (fun _ _ str0' pos0' str0'' pos0'' stack v ->
+		      (*if !debug_leftrec then Printf.eprintf "call continuation without try %d %a\n%!" p1.ident print_stack stack;*)
 		      fn str0' pos0' str0'' pos0'' stack v))
 	in
 	(*if !debug_leftrec then Printf.eprintf "initial calling %d\n%!" p1.ident;*)
 	p2.parse grouped str pos next'
 		 (fun _ _ str' pos' str'' pos'' stack v ->
-		  (*if !debug_leftrec then Printf.eprintf "initial call continuation %d \n%!" p1.ident;*)
+		  (*if !debug_leftrec then Printf.eprintf "initial call continuation %d %a\n%!" p1.ident print_stack stack;*)
 		  fn str' pos' str'' pos'' stack v)
 		 
     else p2.parse grouped str pos next g
@@ -856,11 +866,11 @@ let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
       parse =
         fun grouped str pos next g ->
 	let next' = union' l2 next in
-        tryif (accept_empty l1 && is_clear l1 str pos grouped && test grouped next' str pos)
-	  (fun () ->  l1.parse grouped str pos next'
+        tryif (accept_empty l1 && test grouped next' str pos)
+	  (fun () -> l1.parse grouped str pos next'
                      (fun str pos str' pos' str'' pos'' stack a ->
 		      let grouped = set_stack_and_reset grouped stack in
-                      tryif (accept_empty l2 && is_clear l2 str' pos' grouped && test grouped next str'' pos'')
+                      tryif (accept_empty l2 && test grouped next str'' pos'')
 			    (fun () -> l2.parse grouped str'' pos'' next
 						(fun _ _ str' pos' str'' pos'' stack x ->
 						 let res = try f a x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
@@ -898,11 +908,11 @@ let sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -
       parse =
         fun grouped str pos next g ->
 	  let next' = union' l2 next in
-          tryif (accept_empty l1 && is_clear l1 str pos grouped && test grouped next' str pos)
+          tryif (accept_empty l1 && test grouped next' str pos)
           (fun () -> l1.parse grouped str pos (union' l2 next)
                    (fun str pos str' pos' str'' pos'' stack a ->
 		    let grouped = set_stack_and_reset grouped stack in
-                    tryif (accept_empty l2 && is_clear l2 str' pos' grouped && test grouped next str'' pos'')
+                    tryif (accept_empty l2 && test grouped next str'' pos'')
 		     (fun () -> l2.parse grouped str'' pos'' next
                              (fun _ _ str' pos' str'' pos'' stack b ->
 			      let res = try f a b str pos str' pos' with Give_up msg -> parse_error grouped (~!msg) str' pos' in
@@ -956,7 +966,7 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
                  (fun str pos str' pos' str'' pos'' stack a ->
 		  let grouped = set_stack_and_reset grouped stack in
 		  let g2 = try f2 a with Give_up msg -> parse_error grouped (~!msg) str' pos' in
-                  tryif (accept_empty g2 && is_clear g2 str pos grouped && test grouped next str'' pos'')
+                  tryif (accept_empty g2 && test grouped next str'' pos'')
 			(fun () -> g2.parse grouped str'' pos'' next
 					    (fun _ _ str' pos' str'' pos'' stack b ->
 					     g str pos str' pos' str'' pos'' stack b))
@@ -1272,14 +1282,15 @@ let alternatives : 'a grammar list -> 'a grammar
     set_info = (fun () -> ());
     left_rec = Non_rec;
     parse =
-        fun grouped str pos next g ->
+      fun grouped str pos next g ->
           let empty_ok = test grouped next str pos in
           let ls = List.filter (fun g ->
                                 (empty_ok && accept_empty g) ||
-                                  test grouped (next_sym g) str pos) ls in
+                                  test grouped (next_sym' grouped g) str pos) ls in
 	  if ls = [] then raise Error else
           let rec fn = function
-            | [l] -> l.parse grouped str pos next g
+            | [l] ->
+	       l.parse grouped str pos next g
             | l::ls ->
               (try
                 l.parse grouped str pos next g
@@ -1323,7 +1334,7 @@ let alternatives' : 'a grammar list -> 'a grammar
           let empty_ok = test grouped next str pos in
           let ls = List.filter (fun g ->
                                 (empty_ok && accept_empty g) ||
-                                  test grouped (next_sym g) str pos) ls in
+                                  test grouped (next_sym' grouped g) str pos) ls in
 	  if ls = [] then raise Error else
           let rec fn = function
             | [l] ->
