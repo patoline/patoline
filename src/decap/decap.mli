@@ -373,3 +373,5 @@ val firsts : 'a grammar -> charset
   [grammar] and the blank function [blank]. It parses the input using the
   [partial_parse_buffer] function and returns the position reached. *)
 val blank_grammar : unit grammar -> blank -> buffer -> int -> (buffer * int)
+
+val debug_leftrec : bool ref

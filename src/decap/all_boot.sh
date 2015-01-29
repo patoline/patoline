@@ -4,6 +4,9 @@ OPATH=$PATH
 
 make pa_ocaml
 
+export PATH=/usr/local402.1/bin:$OPATH
+make clean boot && rm pa_ocaml && make pa_ocaml && ./tests_pa_ocaml.sh
+
 export PATH=/usr/local402/bin:$OPATH
 make clean boot && rm pa_ocaml && make pa_ocaml && ./tests_pa_ocaml.sh
 
