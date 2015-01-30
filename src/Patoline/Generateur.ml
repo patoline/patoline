@@ -110,12 +110,6 @@ module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"]
     cache_name;
 
   let i=ref 0 in
-  List.iter (fun x->
-    Printf.fprintf where "module Patoline_Format%d=%s.Format(D);;\nopen Patoline_Format%d;;\n" !i x !i;
-    incr i
-  ) formats;
-  Printf.fprintf where "module Patoline_Format=Patoline_Format%d\n" (!i-1);
-
   if dynlink then
     Printf.fprintf where "let driver = match !Config.driver with
   None -> %S
@@ -127,6 +121,12 @@ module Driver = (val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver)
     Printf.fprintf where "module Driver = %s;;\n" driver;
 
   Printf.fprintf where "let _ = ParseMainArgs.parse Driver.filter_options Driver.driver_options\n";
+
+  List.iter (fun x->
+    Printf.fprintf where "module Patoline_Format%d=%s.Format(D);;\nopen Patoline_Format%d;;\n" !i x !i;
+    incr i
+  ) formats;
+  Printf.fprintf where "module Patoline_Format=Patoline_Format%d\n" (!i-1);
 
   Printf.fprintf where "module Patoline_Output=Patoline_Format%d.Output(Driver);;\n" (!i-1) ;
 
