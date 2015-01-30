@@ -186,13 +186,16 @@ open Typography.OutputCommon
 open DefaultFormat.MathsFormat
 let %s = ref ([||] : (environment -> Mathematical.style -> box list) array)
 let m%s = ref ([||]  : (environment -> Mathematical.style -> box list) list array)
+let set%s = ref (fun () -> ())
 module Document=functor(Patoline_Output:DefaultFormat.Output) -> functor(D:DocumentStructure)->struct\n"
      (List.hd formats)
      driver
      suppl
      !cache
+     !cache
      !cache);
 
+  Buffer.add_string buf (Printf.sprintf "let _ = !set%s  ()" !cache);
   let i=ref 0 in
   List.iter (fun x->
     Buffer.add_string buf (Printf.sprintf "module Patoline_Format%d=%s.Format(D);;\nopen Patoline_Format%d;;\n" !i x !i);
@@ -817,8 +820,8 @@ let gen_ml noamble formats driver suppl filename from wherename where pdfname =
 	    Sys.remove ftmp;
 	  (* close_in op; *)
             if not noamble then
-              Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend;;\nlet _ = %s:=[|%s|];;\nlet _ = %s:=[|%s|];;\n"
-                tmp_pos !cache (Buffer.contents !cache_buf) ("m" ^ !cache) (Buffer.contents !mcache_buf)
+              Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend;;\nlet _ = set%s := (fun () -> %s:=[|%s|];\nm%s:=[|%s|]);;\n"
+                tmp_pos !cache !cache (Buffer.contents !cache_buf) !cache (Buffer.contents !mcache_buf)
       with
         | Dyp.Syntax_error ->
 	  raise
