@@ -158,7 +158,7 @@ type next = {
 let all_next =
   { accepted_char = full_charset;
     first_syms = Empty;
-    next_after_prefix = []; (* this is incorrect ... FIXME *)
+    next_after_prefix = [(-1,(true,full_charset,Empty))]; (* this is incorrect ... FIXME *)
   }
 
 let print_char_set_after_left ch l =
@@ -279,7 +279,7 @@ let tryif cond f g =
 let test grouped next str p =
   let c = get str p in
   assert (Printf.eprintf "test: %c %a %a\n%!" c print_info grouped print_next next; true);
-  match grouped.stack with
+  next == all_next || match grouped.stack with
   | _, EmptyStack ->
      let res = mem next.accepted_char c in
      if not res then record_error grouped next.first_syms str p;
@@ -295,7 +295,8 @@ let test grouped next str p =
 
 let test_next l1 grouped str p =
   let c = get str p in
-  match grouped.stack with
+  assert (Printf.eprintf "test_next: %c %a %a\n%!" c print_info grouped print_next l1.next; true);
+  l1.next == all_next || match grouped.stack with
   | _, EmptyStack ->
      let res = mem l1.next.accepted_char c in
      if not res then record_error grouped l1.next.first_syms str p;
@@ -335,6 +336,7 @@ let sum_next_after_prefix l1 l2 =
   merge_list l1 l2 (fun (b1,c1,s1) (b2,c2,s2) -> b1 || b2, Charset.union c1 c2, s1 @@ s2)
 
 let sum_next n1 n2 =
+  if n1 == all_next || n2 == all_next then all_next else
   {
     accepted_char = Charset.union n1.accepted_char n2.accepted_char;
     first_syms = n1.first_syms @@ n2.first_syms;
@@ -350,6 +352,7 @@ let compose_next l1 l2 =
   let n1 = l1.next in
   let n2 = l2.next in
   let b = accept_empty l1 in
+  if n1 == all_next || (b && l2.next == all_next) then all_next else
   let res = {
     accepted_char = if b then Charset.union n1.accepted_char n2.accepted_char
 		    else n1.accepted_char;
@@ -373,6 +376,7 @@ let compose_next l1 l2 =
 let compose_next' l1 n2 =
   let b = accept_empty l1 in
   let n1 = l1.next in
+  if n1 == all_next || (b && n2 == all_next) then all_next else
   {
     accepted_char = if b then Charset.union n1.accepted_char n2.accepted_char
 		    else n1.accepted_char;
@@ -1028,7 +1032,7 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
     failwith "dependant sequence with empty prefix are not supported";
   let res =
     { ident = new_ident ();
-      next = l1.next;  (* FIXME: to check *)
+      next = compose_next' l1 all_next;
       accept_empty = Non_empty;
       left_rec = Non_rec;
       set_info = (fun () -> ());
@@ -1051,7 +1055,7 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
   res.set_info <- (fun () ->
 		   if l1.accept_empty <> Non_empty && l1.accept_empty <> Unknown then
 		     failwith "dependant sequence with empty prefix are not supported";
-		   res.next <- l1.next);
+		   res.next <- compose_next' l1 all_next);
   add_deps res l1;
   res
 
