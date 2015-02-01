@@ -1062,6 +1062,46 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
 let iter : 'a grammar grammar -> 'a grammar
   = fun g -> dependent_sequence g (fun x -> x)
 
+let conditional_sequence : 'a grammar -> ('a -> bool) -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
+  = fun l1 cond l2 f ->
+   let res =
+     { ident = new_ident ();
+       next = compose_next l1 l2;
+       accept_empty = case_empty2_and l1 l2 (fun x y str pos -> f (x str pos) (y str pos));
+      left_rec = Non_rec;
+      set_info = (fun () -> ());
+      deps = imit_deps_seq l1 l2;
+      def = None;
+      parse =
+        fun grouped str pos next g ->
+	let next' = compose_next' l2 next in
+        tryif (accept_empty l1 && test grouped next' str pos)
+	  (fun () -> l1.parse grouped str pos next'
+		   (fun str pos str' pos' str'' pos'' stack a ->
+		      if not (cond a) then raise Error;
+		      let grouped = set_stack grouped stack in
+                      tryif (accept_empty l2 && test grouped next str'' pos'')
+			    (fun () -> l2.parse grouped str'' pos'' next
+						(fun _ _ str' pos' str'' pos'' stack x ->
+						 let res = try f a x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
+						 g str pos str' pos' str'' pos'' stack res))
+			    (fun () -> let x = read_empty l2 in
+				       let res = try f a (x str' pos') with Give_up msg -> parse_error grouped (~!msg) str' pos' in
+				       g str pos str' pos' str'' pos'' stack res)))
+	  (fun () ->  let a = read_empty l1 in
+		      l2.parse grouped str pos next
+			       (fun str pos str' pos' str'' pos'' stack x ->
+				let res = try f (a str pos) x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
+				g str pos str' pos' str'' pos'' stack res))
+     } in
+    res.set_info <- (fun () ->
+		   res.next <- compose_next l1 l2;
+		   res.accept_empty <- case_empty2_and l1 l2 (fun x y str pos -> f (x str pos) (y str pos)));
+    add_deps res l1;
+    (* FIXME: if accept_empty l1 becomes false, this dependency could be removed *)
+    if accept_empty l1 then add_deps res l2;
+  res
+
 let change_layout : ?new_blank_before:bool -> ?old_blank_after:bool -> 'a grammar -> blank -> 'a grammar
   = fun ?(new_blank_before=true) ?(old_blank_after=true) l1 blank1 ->
     (* if not l1.ready then failwith "change_layout: illegal recursion"; *)

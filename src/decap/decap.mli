@@ -146,7 +146,7 @@ val empty : 'a -> 'a grammar
   message [msg] on [stderr] for debugging. *)
 val debug : string -> unit grammar
 val active_debug : bool ref
-			
+
 (** [fail msg] always fails, adding [msg] to the list of messages int the
   list of messages to be reported by [Parse_error]. *)
 val fail : string -> 'a grammar
@@ -209,7 +209,7 @@ val sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
   then parses using [g2]. The results of the sequence is then obtained by
   applying [f] to the results of [g1] and [g2], and to the positions (i.e.
   buffer and index) of the corresponding parsed input.
-  
+
   Remark: [sequence g1 g2 f] is equivalent to
   [sequence_position g1 g2 (fun r1 r2 _ _ _ _ -> f r1 r2)]. *)
 val sequence_position : 'a grammar -> 'b grammar
@@ -219,7 +219,7 @@ val sequence_position : 'a grammar -> 'b grammar
 (** [fsequence g1 g2] is a grammar that first parses using [g1], and then
   parses using [g2]. The results of the sequence is then obtained by applying
   the result of [g1] to the result of [g2].
-  
+
   Remark: [fsequence g1 g2] is equivalent to
   [sequence g1 g2 (fun x f -> f x)]. *)
 val fsequence : 'a grammar -> ('a -> 'b) grammar -> 'b grammar
@@ -244,6 +244,11 @@ val sequence3 : 'a grammar -> 'b grammar -> 'c grammar
   which returns a value [x], and then continues to parse with [g2 x] and
   return its result. *)
 val dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
+
+(** [conditional_sequence cond g1 g2 f] is a grammar that first parses using [g1],
+  which returns a value [x], and if [cond x] is true then if
+  continues to parse with [g2] which returns [y] and return [f x y]. *)
+val conditional_sequence : 'a grammar -> ('a -> bool) -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
 
 (** {2 Misc} *)
 
@@ -369,4 +374,3 @@ val accept_empty : 'a grammar -> bool
   [grammar] and the blank function [blank]. It parses the input using the
   [partial_parse_buffer] function and returns the position reached. *)
 val blank_grammar : unit grammar -> blank -> buffer -> int -> (buffer * int)
-
