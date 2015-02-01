@@ -182,7 +182,6 @@ let print_accept_empty ch = function
   | Unknown -> Printf.fprintf ch "Unknown"
   | May_empty _ -> Printf.fprintf ch "May_empty"
 
-
 module rec G: sig
   type 'a grammar = {
     ident : int;
@@ -252,6 +251,30 @@ let parse_error grouped msg str pos =
 
 let apply_blank grouped str p =
   grouped.blank str p
+
+let case_empty e f =
+  match e with
+  | May_empty x -> May_empty(f x)
+  | Non_empty -> Non_empty
+  | Unknown -> Unknown
+
+let case_empty2_and e1 e2 f =
+  match e1.accept_empty, e2.accept_empty with
+  | (Non_empty, _) | (_, Non_empty) -> Non_empty
+  | May_empty x, May_empty y -> May_empty(f x y)
+  | _ -> Unknown
+
+let case_empty2_or e1 e2 f =
+  match e1, e2.accept_empty with
+  | (May_empty x, _) | (_, May_empty x) -> May_empty x
+  | (Unknown, _) | (_, Unknown) -> Unknown
+  | _ -> Non_empty
+
+let tryif cond f g =
+  if cond then
+    try f () with Error -> g ()
+  else
+    f ()
 
 let test grouped next str p =
   let c = get str p in
@@ -451,7 +474,7 @@ let set_grammar p1 p2 =
 	    stack = ((List.map (fun p -> p.ident) companion @ fst grouped.stack), snd grouped.stack)
 	} in
 	assert (Printf.eprintf " failed %a\n%!" print_stack grouped.stack; true);
-	let next' = sum_next p1.next next in
+	let next' = List.fold_left (fun n l -> sum_next l.next n) next companion in
 	assert (Printf.eprintf "next = %a, next' = %a\n%!" print_next next print_next next'; true);
 
 	let rec fn pi str' pos' str'' pos'' stack v =
@@ -474,7 +497,7 @@ let set_grammar p1 p2 =
 	       with Error -> fn' l
 
 	  and gn pi pidef =
-	    assert (Printf.eprintf "testing next = %a\n%!" print_next next; true);
+	    assert (Printf.eprintf "testing %d = %d && next = %a\n%!" p1.ident pi.ident print_next next; true);
 	    if p1 == pi && test grouped next str'' pos'' then
 	      try
 		assert (Printf.eprintf "calling in try %d %a\n%!" pi.ident print_stack grouped'.stack; true);
@@ -492,30 +515,38 @@ let set_grammar p1 p2 =
 			       assert (Printf.eprintf "call continuation without try %d %a\n%!" p1.ident print_stack stack; true);
 			       fn pi str0' pos0' str0'' pos0'' stack v))
 	  in
-	  let companion = List.filter (fun g -> test_next g grouped' str pos) companion in
+	  let companion = List.filter
+			    (fun g -> g.ident == p1.ident || test_next g grouped' str'' pos'')
+			    companion
+	  in
 	  fn' companion
 	in
 	assert (Printf.eprintf "initial calling %d\n%!" p1.ident; true);
+	let fn'' p =
+	  (match p.def with
+	     None -> assert false
+	   | Some p' ->
+	      tryif (accept_empty p')
+		    (fun () ->
+		     (uncast p').parse grouped str pos next'
+				(fun _ _ str' pos' str'' pos'' stack v ->
+				 assert (Printf.eprintf "initial call continuation %d %a\n%!" p.ident print_stack stack; true);
+				 fn (uncast p) str' pos' str'' pos'' stack v))
+		    (fun () ->
+		     let v = read_empty (uncast p') str pos in
+		     fn (uncast p) str pos str pos grouped.stack v))
+	in
 	let rec fn' = function
 	  | [] -> raise Error
-	  | [p] ->
-	     (match p.def with None -> assert false
-	     | Some p' ->
-		(uncast p').parse grouped str pos next'
-		 (fun _ _ str' pos' str'' pos'' stack v ->
-		  assert (Printf.eprintf "initial call continuation %d %a\n%!" p.ident print_stack stack; true);
-		  fn (uncast p) str' pos' str'' pos'' stack v))
-	  | p::l ->
-	     try
-	       (match p.def with None -> assert false
-	       | Some p' ->
- 		(uncast p').parse grouped str pos next'
-		 (fun _ _ str' pos' str'' pos'' stack v ->
-		  assert (Printf.eprintf "initial call continuation %d %a\n%!" p.ident print_stack stack; true);
-		  fn (uncast p) str' pos' str'' pos'' stack v))
-	     with Error -> fn' l
+	  | [p] -> fn'' p
+	  | p::l -> try fn'' p with Error -> fn' l
 	in
-	let companion = List.filter (fun g -> test_next g grouped str pos) companion in
+	let empty_ok = test grouped next str pos in
+	let companion = List.filter
+			  (fun g -> (empty_ok && accept_empty g)
+				    || test_next g grouped str pos)
+			  companion
+	in
 	fn' companion)
 
      | Non_rec -> p2.parse grouped str pos next g
@@ -558,24 +589,6 @@ let grammar_family ?(param_to_string=fun _ -> "<param>") name =
    definition := Some fn)
 
 let imit_deps l = match l.deps with None -> None | Some _ -> Some (TG.create 7)
-
-let case_empty e f =
-  match e with
-  | May_empty x -> May_empty(f x)
-  | Non_empty -> Non_empty
-  | Unknown -> Unknown
-
-let case_empty2_and e1 e2 f =
-  match e1.accept_empty, e2.accept_empty with
-  | (Non_empty, _) | (_, Non_empty) -> Non_empty
-  | May_empty x, May_empty y -> May_empty(f x y)
-  | _ -> Unknown
-
-let case_empty2_or e1 e2 f =
-  match e1, e2.accept_empty with
-  | (May_empty x, _) | (_, May_empty x) -> May_empty x
-  | (Unknown, _) | (_, Unknown) -> Unknown
-  | _ -> Non_empty
 
 let apply : 'a 'b.('a -> 'b) -> 'a grammar -> 'b grammar
   = fun f l ->
@@ -919,12 +932,6 @@ let imit_deps_seq l1 l2 =
     imit_deps l1
   else
     match l1.deps, l2.deps with None, None -> None | _ -> Some (TG.create 7)
-
-let tryif cond f g =
-  if cond then
-    try f () with Error -> g ()
-  else
-    f ()
 
 let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
   = fun l1 l2 f ->

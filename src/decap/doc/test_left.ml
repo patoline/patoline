@@ -1,6 +1,6 @@
 open Decap
 
-let _ = active_debug := true
+let _ = active_debug := false
 
 let parser a : char list grammar =
   | DEBUG"a1" EMPTY DEBUG"a1'" -> []

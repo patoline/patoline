@@ -9,7 +9,7 @@
    *)
 open Decap
 
-let _ = active_debug := true
+let _ = active_debug := false
 
 let parser a : char list grammar =
   | DEBUG"a0" EMPTY -> []
@@ -76,13 +76,11 @@ let parser main = a
 (* The main loop *)
 let _ =
   let blank = blank_regexp ''[ \t\r\n]*'' in
-  Printf.printf "PARSING: %S\n%!" "aafdea";
-  handle_exception (parse_string main blank) "aafdea"
-(*  let n = int_of_string (Sys.argv.(1)) in
+  let n = int_of_string (Sys.argv.(1)) in
   for i = max 0 (-n) to abs n do
     let l = gena [""] i in
     List.iter (
 	fun s -> Printf.printf "PARSING: %S %!" s;
 		 compare s (handle_exception (parse_string main blank) s))
 	      l;
-  done*)
+  done
