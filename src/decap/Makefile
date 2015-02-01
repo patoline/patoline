@@ -1,5 +1,6 @@
-OCAMLC = ocamlc
-OCAMLOPT = ocamlopt
+OCAMLFIND = ocamlfind
+OCAMLC = $(OCAMLFIND) ocamlc $(OCAMLFLAGS)
+OCAMLOPT = $(OCAMLFIND) ocamlopt $(OCAMLFLAGS)
 BINDIR = /usr/local/bin
 LIBDIR = $(shell ocamlc -where)/decap
 
@@ -25,8 +26,10 @@ all: pa_ocaml
 decap.cmi: charset.cmi input.cmi ahash.cmi
 
 decap.cmo: charset.cmi input.cmi ahash.cmi
+decap.cmo: OCAMLFLAGS=-noassert
 
 decap.cmx: charset.cmx charset.cmi input.cmx input.cmi ahash.cmi ahash.cmx
+decap.cmx: OCAMLFLAGS=-noassert
 
 decap.cmxa: charset.cmx input.cmx ahash.cmx decap.cmx
 	$(OCAMLOPT) -a -o $@ $^

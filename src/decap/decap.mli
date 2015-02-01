@@ -363,10 +363,6 @@ val handle_exception : ('a -> 'b) -> 'a -> 'b
   and [false] otherwise. *)
 val accept_empty : 'a grammar -> bool
 
-(** [firsts g] returns the set of characters that are accepted as first
-  characters for the grammar [g]. *)
-val firsts : 'a grammar -> charset
-
 (** {2 Advanced blank function definition} *)
 
 (** [blank_grammar grammar blank] produces a blank function using the grammar
@@ -374,4 +370,3 @@ val firsts : 'a grammar -> charset
   [partial_parse_buffer] function and returns the position reached. *)
 val blank_grammar : unit grammar -> blank -> buffer -> int -> (buffer * int)
 
-val debug_leftrec : bool ref

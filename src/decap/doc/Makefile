@@ -9,6 +9,9 @@ calc_base: calc_base.ml $(PA_OCAML) $(DECAP_DIR)/decap.cma
 calc_prio: calc_prio.ml $(PA_OCAML) $(DECAP_DIR)/decap.cma
 	ocamlc -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) unix.cma str.cma decap.cma $<
 
+calc_prio2: calc_prio2.ml $(PA_OCAML) $(DECAP_DIR)/decap.cma
+	ocamlc -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) unix.cma str.cma decap.cma $<
+
 calc_prio_left: calc_prio_left.ml $(PA_OCAML) $(DECAP_DIR)/decap.cmxa
 	ocamlopt -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) unix.cmxa str.cmxa decap.cmxa $<
 

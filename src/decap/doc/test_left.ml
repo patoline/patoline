@@ -1,13 +1,16 @@
-
 open Decap
 
 let _ = active_debug := true
 
 let parser a : char list grammar =
-  DEBUG"a1" EMPTY DEBUG"a1'" -> [] | DEBUG"a2" l:a DEBUG"a2'" 'a' DEBUG"a2''" -> 'a'::l | DEBUG"a3" l:b DEBUG"a3'" 'c' DEBUG"a3''" -> 'c'::l 
+  | DEBUG"a1" EMPTY DEBUG"a1'" -> []
+  | DEBUG"a2" l:a DEBUG"a2'" 'a' DEBUG"a2''" -> 'a'::l
+  | DEBUG"a3" l:b DEBUG"a3'" 'c' DEBUG"a3''" -> 'c'::l
 
-  and b : char list grammar = 
-  DEBUG"b1" EMPTY DEBUG"b1'" -> [] | DEBUG"b2" l:b DEBUG"b2'" 'b' DEBUG"b2''" -> 'b'::l | DEBUG"b3" l:a DEBUG"b3'" 'd' DEBUG"b3''" -> 'd'::l
+and b : char list grammar =
+  | DEBUG"b1" EMPTY DEBUG"b1'" -> []
+  | DEBUG"b2" l:b DEBUG"b2'" 'b' DEBUG"b2''" -> 'b'::l
+  | DEBUG"b3" l:a DEBUG"b3'" 'd' DEBUG"b3''" -> 'd'::l
 
 let compare s l =
   let s' = String.create (List.length l) in
@@ -19,8 +22,8 @@ let compare s l =
   Printf.printf "-> %S\n%!" s';
   assert (s' = s)
 
-     
-let (^^) s l = List.map (fun x -> s ^ x) l 			
+
+let (^^) s l = List.map (fun x -> s ^ x) l
 
 let rec gena suffix n =
   if n > 0 then
@@ -33,9 +36,9 @@ and genb suffix n =
     genb ("b"^^suffix) (n-1) @
       gena ("d"^^suffix) (n-1)
   else suffix
-	 
+
 let parser main = l:a
-			   
+
 (* The main loop *)
 let _ =
   let blank = blank_regexp ''[ \t\r\n]*'' in
@@ -47,4 +50,3 @@ let _ =
 		 compare s (handle_exception (parse_string main blank) s))
 	      l;
   done
-
