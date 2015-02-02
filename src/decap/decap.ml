@@ -656,8 +656,7 @@ let cache : 'a grammar -> 'a grammar
 		     let tuple = (l, c, l', c', l'', c'', stack, x) in
 		     if not (List.mem tuple !lc) then
 		       lc := (l, c, l', c', l'', c'', stack, x)::!lc;
-		     raise Error);
-	    assert false;
+		     raise Error)
 	  with Error ->
 	    let lc = List.rev !lc in
 	    (*Printf.eprintf "cached %d %d %a %a %d\n%!" (line_num str) pos print_next next print_info grouped (List.length lc);*)
