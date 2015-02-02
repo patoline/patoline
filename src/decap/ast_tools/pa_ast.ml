@@ -8,6 +8,8 @@ type btype =
   | List of btype
   | Location_t | Location_loc
   | Longident_t
+  | Class_infos of btype
+  | Include_infos of btype
   | Var of string
   | Loc of btype
   | Name of string
@@ -23,32 +25,41 @@ type ast =
   | Open of string
 
 let parser base_type =
-  | "bool"             -> Bool
-  | "int"              -> Int
-  | "char"             -> Char
-  | "string"           -> String
-  | "int32"            -> Int32
-  | "int64"            -> Int64
-  | "nativeint"        -> Nativeint
-  | "Location.t"       -> Location_t
-  | "Location.loc"     -> Location_loc
-  | a:arg              -> Var a
-  | n:lid              -> Name n
-  | "Longident.t"      -> Longident_t
-  | t:base_type DEBUG"bla" r:rest ->
+  | "bool"         -> Bool
+  | "int"          -> Int
+  | "char"         -> Char
+  | "string"       -> String
+  | "int32"        -> Int32
+  | "int64"        -> Int64
+  | "nativeint"    -> Nativeint
+  | "Location.t"   -> Location_t
+  | "Location.loc" -> Location_loc
+  | a:arg          -> Var a
+  | n:lid          -> Name n
+  | "Longident.t"  -> Longident_t
+  | '(' base_type ')'
+  | t:base_type "option"        -> Option t
+  | t:base_type "list"          -> List t
+  | t:base_type "loc"           -> Loc t
+  | t:base_type "class_infos"   -> Class_infos t
+  | t:base_type "include_infos" -> Include_infos t
+  | t1:base_type '*' t2:base_type ts:{'*' base_type}* -> Prod (t1 :: t2 :: ts)
+
+(*
+  | t:base_type r:rest ->
       begin
         match r with
         | `Option  -> Option t
         | `List    -> List t
         | `Loc     -> Loc t
-        | `Prod ts -> Prod (t::ts)
+        | `Prod ts -> Prod (t :: ts)
       end
-  | '(' DEBUG"bla" base_type DEBUG"bli" ')'
 and rest =
-  | "option"            -> `Option
-  | "list"              -> `List
-  | "loc"               -> `Loc
-  | ts:{"*" base_type}+ -> `Prod ts
+  | "option" -> `Option
+  | "list"   -> `List
+  | "loc"    -> `Loc
+  | DEBUG"prod" ts:{'*' base_type}+ -> `Prod ts
+*)
 
 let parser cdecl =
   | uid {"of" base_type}?
@@ -68,8 +79,8 @@ let parser any_decl =
   | n:lid '=' b:base_type                                      -> Syn (n,b)
 
 let parser any_rec_decl =
-  | "type" t:any_decl ts:{"and" any_decl}* -> Type (t::ts)
-  | "open" n:uid                           -> Open n
+  | "type" t:any_decl ts:{"and" any_decl}** -> Type (t::ts)
+  | "open" n:uid                            -> Open n
 
 let parser any_decls = | any_rec_decl*
 
@@ -132,6 +143,7 @@ let _ =
     match Array.length Sys.argv with
     | 1 -> Decap.parse_channel grammar blank stdin
     | 2 -> Decap.parse_file grammar blank Sys.argv.(1)
+    | 3 -> let _ = Decap.parse_string base_type blank Sys.argv.(2) in []
     | _ -> failwith "Wrong number of arguments..."
   in
   Printf.eprintf "OK! (%i)\n%!" (List.length ast)

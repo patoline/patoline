@@ -6,11 +6,10 @@ pkgdesc="Modern typesetting system written in OCaml, alternative to TeX/LaTex"
 arch=('any')
 url="http://www.patoline.org"
 license=('GPL3')
-depends=('ocaml' 'ocaml-findlib' 'dypgen' 'ocaml-camomile' 'ocaml-zip')
+depends=('ocaml' 'ocaml-findlib' 'dypgen' 'ocaml-sqlite3' 'ocaml-zip')
 optdepends=('ocaml-cairo-git: cairo driver'
             'ocaml-lablgl: openGL driver'
-            'ocamlnet: presentation control unsing websockets'
-            'ocaml-sqlite3: bibliography support using bibi')
+            'ocamlnet: presentation control unsing websockets')
 makedepends=('wget')
 replaces=('patoline')
 options=(!strip staticlibs)
@@ -21,7 +20,7 @@ build() {
   cd "$srcdir"
   wget http://patoline.org/patoline-current.tar.gz
   tar -xvf patoline-current.tar.gz
-	cd "$pkgname"
+  cd "$pkgname"
   make configure
   ./configure --prefix /usr
   make
