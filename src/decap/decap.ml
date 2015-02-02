@@ -629,8 +629,8 @@ let cache : 'a grammar -> 'a grammar
   register_cache cache;
   let rec fn g = function
       [] -> raise Error
-    | [l, c, l', c', l'', c'', stack, x] -> g l c l' c' l'' c'' stack x
-    | (l, c, l', c', l'', c'', stack, x)::rest ->
+    | [(l'', c'', stack, x, l', c', l, c)] -> g l c l' c' l'' c'' stack x
+    | (l'', c'', stack, x, l', c', l, c)::rest ->
        try g l c l' c' l'' c'' stack x
        with Error -> fn g rest
   in
@@ -650,16 +650,18 @@ let cache : 'a grammar -> 'a grammar
 	  fn g lc
 	with Not_found ->
 	  let lc = ref [] in
+	  let set = Hashtbl.create 5 in
 	  try
 	    l.parse grouped str pos next
 		    (fun l c l' c' l'' c'' stack x ->
-		     let tuple = (l, c, l', c', l'', c'', stack, x) in
-		     if not (List.mem tuple !lc) then
-		       lc := (l, c, l', c', l'', c'', stack, x)::!lc;
+		     let tuple = (l'', c'', stack, x, l', c', l, c) in
+		     let key = line_beginning l'' + c'' in
+		     let old = try Hashtbl.find set key with Not_found -> [] in
+		     if not (List.mem tuple old) then (
+		       Hashtbl.add set key (tuple::old); lc := tuple::!lc);
 		     raise Error)
 	  with Error ->
 	    let lc = List.rev !lc in
-	    (*Printf.eprintf "cached %d %d %a %a %d\n%!" (line_num str) pos print_next next print_info grouped (List.length lc);*)
 	    Hashtbl.add cache (line_num str, pos, fname str, grouped.stack, next) lc;
 	    fn g lc
 
@@ -1529,8 +1531,11 @@ let partial_parse_buffer grammar blank str pos =
   let cont l c l' c' l'' c'' _ x = (l'',c'',x) in
   let str, pos = apply_blank grouped str pos in
   try
-    grammar.parse grouped str pos all_next cont;
+    let res = grammar.parse grouped str pos all_next cont in
+    reset_cache ();
+    res
   with Error ->
+    reset_cache ();
     let str = grouped.err_info.max_err_buf in
     let pos = grouped.err_info.max_err_col in
     let msgs = grouped.err_info.err_msgs in

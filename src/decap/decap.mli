@@ -286,6 +286,10 @@ val alternatives' : 'a grammar list -> 'a grammar
   [g]. *)
 val apply : ('a -> 'b) -> 'a grammar -> 'b grammar
 
+(** cache the parsing of the given grammar. This assumes that object of type
+  'a can be compared using OCaml's polymorphic equality. This allows parsing
+  of any bnf in polynomial time if there are only a polynomial number of
+  possible actions. The cache is reset by the parsing function. *)
 val cache : 'a grammar -> 'a grammar
 
 (** [apply_position f g] applies function [f] to the value returned by the
