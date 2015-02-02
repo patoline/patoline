@@ -1,7 +1,4 @@
-let parser lid = | RE("[a-z][_a-z]*")
-let parser uid = | RE("[A-Z][_a-zA-Z0-9]*")
-let parser arg = | RE("['][a-z]*")
-
+(* AST of types *)
 type btype =
   | Bool | Int | Char | String | Int32 | Int64 | Nativeint
   | Option of btype
@@ -20,9 +17,16 @@ type typetype =
   | Sum of string * (string * btype option) list
   | Rec of string option * string * (string * btype) list
 
-type ast =
+type item =
   | Type of typetype list
   | Open of string
+
+type ast = item list
+
+(* Parser *)
+let parser lid = | RE("[a-z][_a-z]*")
+let parser uid = | RE("[A-Z][_a-zA-Z0-9]*")
+let parser arg = | '\'' - RE("[a-z]+")
 
 let parser base_type =
   | "bool"         -> Bool
@@ -44,22 +48,6 @@ let parser base_type =
   | t:base_type "class_infos"   -> Class_infos t
   | t:base_type "include_infos" -> Include_infos t
   | t1:base_type '*' t2:base_type ts:{'*' base_type}* -> Prod (t1 :: t2 :: ts)
-
-(*
-  | t:base_type r:rest ->
-      begin
-        match r with
-        | `Option  -> Option t
-        | `List    -> List t
-        | `Loc     -> Loc t
-        | `Prod ts -> Prod (t :: ts)
-      end
-and rest =
-  | "option" -> `Option
-  | "list"   -> `List
-  | "loc"    -> `Loc
-  | DEBUG"prod" ts:{'*' base_type}+ -> `Prod ts
-*)
 
 let parser cdecl =
   | uid {"of" base_type}?
@@ -85,69 +73,87 @@ let parser any_rec_decl =
 let parser any_decls = | any_rec_decl*
 
 let blank = Decap.blank_regexp "[ \n\r\t]*"
-let parse = Decap.parse_file any_decls blank
+let parse_file = Decap.parse_file any_decls blank
+let parse_channel = Decap.parse_channel any_decls blank
 
-(*
-let rec print_quote_base = function
-  | Bool         -> "<:expr< quote_bool >>"
-  | Int          -> "<:expr< quote_int >>"
-  | Char         -> "<:expr< quote_char >>"
-  | String       -> "<:expr< quote_string >>"
-  | Int32        -> "<:expr< quote_int32 >>"
-  | Int64        -> "<:expr< quote_int64 >>"
-  | Nativeint    -> "<:expr< quote_nativeint >>"
-  | Option t     -> Printf.sprintf "<:expr< quote_option (%s) >>"
-                    (print_quote_base t)
-  | List t       -> Printf.sprintf "<:expr< quote_list (%s) >>"
-                    (print_quote_base t)
-  | Location_t   -> "<:expr< quote_Location_t >>"
-  | Location_loc -> "<:expr< quote_Location_loc >>"
-  | _            -> assert false
+let parse () =
+  match Array.length Sys.argv with
+  | 1 -> parse_channel stdin
+  | 2 -> parse_file Sys.argv.(1)
+  | _ -> failwith "Wrong number of arguments..."
 
-let print_quote = function
-  | Syn (n,b)         ->
-      begin
-        Printf.printf "let quote_%s =\n%!" n;
-        Printf.printf "  %s\n\n%!" (print_quote_base b)
-      end
-  | Sum (n,cl)        ->
-      begin
-        Printf.printf "let quote_%s = function\n%!" n;
-        let print_case (c, p) =
-          match p with
-          | [] -> Printf.printf "  | %s -> <:expr< %s >>\n%!" c c
-          | _  -> Printf.printf "  | %s ... -> ...\n%!" c
-        in
-        List.iter print_case cl;
-        Printf.printf "\n%!";
-        (* TODO *)
-      end
-  | Rec (None,n,fl)   ->
-      begin
-        Printf.printf "let quote_%s =\n%!" n;
-        Printf.printf "  ...\n\n%!";
-        (* TODO *)
-      end
-  | Rec (Some a,n,fl) ->
-      begin
-        Printf.printf "let quote_%s =\n%!" n;
-        Printf.printf "  ...\n\n%!";
-        (* TODO *)
-      end
-*)
+(* Printer *)
+let rec print_btype ch = function
+  | Bool | Int | Char | String | Int32 | Int64
+  | Nativeint       -> Printf.fprintf ch "(=)"
+  | Option t        -> Printf.fprintf ch "(eq_option %a)" print_btype t
+  | List t          -> Printf.fprintf ch "(eq_list %a)" print_btype t
+  | Location_t      -> Printf.fprintf ch "(fun _ _ -> true)"
+  | Location_loc    -> assert false (* never used *)
+  | Longident_t     -> Printf.fprintf ch "eq_longident"
+  | Class_infos t   -> Printf.fprintf ch "(eq_class_infos %a)" print_btype t
+  | Include_infos t -> Printf.fprintf ch "(eq_include_infos %a)" print_btype t
+  | Var a           -> Printf.fprintf ch "eq_%s" a
+  | Loc t           -> Printf.fprintf ch "(eq_loc %a)" print_btype t
+  | Name n          -> Printf.fprintf ch "eq_%s" n
+  | Prod lt         ->
+      let len = List.length lt in
+      let rec build_list pfx n =
+        if n = 0 then [] else (pfx^(string_of_int n)) :: build_list pfx (n-1)
+      in
+      let xs = build_list "x" len in
+      let ys = build_list "y" len in
+      let cxs = "(" ^ (String.concat "," (List.rev xs)) ^ ")" in
+      let cys = "(" ^ (String.concat "," (List.rev ys)) ^ ")" in
+      let rec zip3 xs ys ts =
+        match xs, ys, ts with
+        | []   , []   , []    -> []
+        | x::xs, y::ys, t::ts -> (x,y,t) :: zip3 xs ys ts
+        | _ -> assert false
+      in
+      let data = zip3 xs ys lt in
+      Printf.fprintf ch "(fun %s %s -> true" cxs cys;
+      let f (x, y, t) =
+        Printf.fprintf ch " && (%a %s %s)" print_btype t x y
+      in
+      List.iter f data;
+      Printf.fprintf ch ")"
 
+let print_type ch = function
+  | Syn (n,t)    -> Printf.fprintf ch "eq_%s = %a" n print_btype t
+  | Sum (n,cl)   ->
+      Printf.fprintf ch "eq_%s c1 c2 =\n  match c1, c2 with\n" n;
+      let f (c, top) =
+        match top with
+        | None   -> Printf.fprintf ch "  | %s, %s -> true\n" c c
+        | Some t -> Printf.fprintf ch "  | %s(x1), %s(x2) -> %a x1 x2\n" c c
+                      print_btype t
+      in
+      List.iter f cl;
+      Printf.fprintf ch "  | _, _ -> false"
+  | Rec (a,n,fl) ->
+      let eq_arg = (match a with None -> "" | Some a -> " eq_" ^ a) in
+      Printf.fprintf ch "eq_%s%s r1 r2 = true" n eq_arg;
+      let f (l,t) =
+        Printf.fprintf ch " && %a r1.%s r2.%s" print_btype t l l
+      in
+      List.iter f fl
+
+let print_types ch = function
+  | []      -> assert false
+  | [x]     -> Printf.fprintf ch "let %a\n" print_type x
+  | x :: xs -> Printf.fprintf ch "let rec %a\n" print_type x;
+               let f t = Printf.fprintf ch "and %a\n" print_type t in
+               List.iter f xs
+
+let rec print ch = function
+  | []           -> ()
+  | Open _ :: xs -> print ch xs
+  | Type l :: xs -> print_types ch l; print ch xs
+
+(* Main program *)
 let _ =
-  let grammar = any_decls in
-  let blank = Decap.blank_regexp "[ \n\r\t]*" in
-  let ast =
-    match Array.length Sys.argv with
-    | 1 -> Decap.parse_channel grammar blank stdin
-    | 2 -> Decap.parse_file grammar blank Sys.argv.(1)
-    | 3 -> let _ = Decap.parse_string base_type blank Sys.argv.(2) in []
-    | _ -> failwith "Wrong number of arguments..."
-  in
-  Printf.eprintf "OK! (%i)\n%!" (List.length ast)
-  (*
-  Printf.printf "let _loc = Location.none\n\n%!";
-  List.iter print_quote ast;
-  *)
+  Printf.eprintf "Parsing ... %!";
+  let ast = parse () in
+  Printf.eprintf "[OK - %i]\nPrinting:\n%!" (List.length ast);
+  print stdout ast
