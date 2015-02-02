@@ -109,10 +109,10 @@ let rec print_btype ch = function
       let rec build_list pfx n =
         if n = 0 then [] else (pfx^(string_of_int n)) :: build_list pfx (n-1)
       in
-      let xs = build_list "x" len in
-      let ys = build_list "y" len in
-      let cxs = "(" ^ (String.concat "," (List.rev xs)) ^ ")" in
-      let cys = "(" ^ (String.concat "," (List.rev ys)) ^ ")" in
+      let xs = List.rev (build_list "x" len) in
+      let ys = List.rev (build_list "y" len) in
+      let cxs = "(" ^ (String.concat "," xs) ^ ")" in
+      let cys = "(" ^ (String.concat "," ys) ^ ")" in
       let rec zip3 xs ys ts =
         match xs, ys, ts with
         | []   , []   , []    -> []
@@ -142,10 +142,10 @@ let print_type ch = function
               if n = 0 then []
               else (pfx^(string_of_int n)) :: build_list pfx (n-1)
             in
-            let xs = build_list "x" len in
-            let ys = build_list "y" len in
-            let cxs = "(" ^ (String.concat "," (List.rev xs)) ^ ")" in
-            let cys = "(" ^ (String.concat "," (List.rev ys)) ^ ")" in
+            let xs = List.rev (build_list "x" len) in
+            let ys = List.rev (build_list "y" len) in
+            let cxs = "(" ^ (String.concat "," xs) ^ ")" in
+            let cys = "(" ^ (String.concat "," ys) ^ ")" in
             let rec zip3 xs ys ts =
               match xs, ys, ts with
               | []   , []   , []    -> []
