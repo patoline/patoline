@@ -156,4 +156,4 @@ let _ =
   Printf.eprintf "Parsing ... %!";
   let ast = parse () in
   Printf.eprintf "[OK - %i]\nPrinting:\n%!" (List.length ast);
-  print stdout ast
+  print stdout ast; Printf.fprintf stdout "\n"
