@@ -14,7 +14,7 @@ type btype =
 
 type typetype =
   | Syn of string * btype
-  | Sum of string * (string * btype option) list
+  | Sum of string * (string * btype list) list
   | Rec of string option * string * (string * btype) list
 
 type item =
@@ -50,7 +50,15 @@ let parser base_type =
   | t1:base_type '*' t2:base_type ts:{'*' base_type}* -> Prod (t1 :: t2 :: ts)
 
 let parser cdecl =
-  | uid {"of" base_type}?
+  | c:uid t:{"of" base_type}? ->
+      begin
+        let ts = 
+          match t with
+          | None           -> []
+          | Some (Prod ts) -> ts
+          | Some t         -> [t]
+        in (c, ts)
+      end
 
 let parser csdecl =
   | '|'? c:cdecl cs:{'|' cdecl}* -> c::cs
@@ -123,11 +131,33 @@ let print_type ch = function
   | Syn (n,t)    -> Printf.fprintf ch "eq_%s = %a" n print_btype t
   | Sum (n,cl)   ->
       Printf.fprintf ch "eq_%s c1 c2 =\n  match c1, c2 with\n" n;
-      let f (c, top) =
-        match top with
-        | None   -> Printf.fprintf ch "  | %s, %s -> true\n" c c
-        | Some t -> Printf.fprintf ch "  | %s(x1), %s(x2) -> %a x1 x2\n" c c
+      let f (c, ts) =
+        match ts with
+        | []     -> Printf.fprintf ch "  | %s, %s -> true\n" c c
+        | [t]    -> Printf.fprintf ch "  | %s(x), %s(y) -> %a x y\n" c c
                       print_btype t
+        | ts     ->
+            let len = List.length ts in
+            let rec build_list pfx n =
+              if n = 0 then []
+              else (pfx^(string_of_int n)) :: build_list pfx (n-1)
+            in
+            let xs = build_list "x" len in
+            let ys = build_list "y" len in
+            let cxs = "(" ^ (String.concat "," (List.rev xs)) ^ ")" in
+            let cys = "(" ^ (String.concat "," (List.rev ys)) ^ ")" in
+            let rec zip3 xs ys ts =
+              match xs, ys, ts with
+              | []   , []   , []    -> []
+              | x::xs, y::ys, t::ts -> (x,y,t) :: zip3 xs ys ts
+              | _ -> assert false
+            in
+            let data = zip3 xs ys ts in
+            Printf.fprintf ch "  | %s%s, %s%s -> true" c cxs c cys;
+            let f (x, y, t) =
+              Printf.fprintf ch " && (%a %s %s)" print_btype t x y
+            in
+            List.iter f data;
       in
       List.iter f cl;
       Printf.fprintf ch "  | _, _ -> false"
