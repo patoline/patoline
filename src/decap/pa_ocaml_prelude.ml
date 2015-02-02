@@ -55,7 +55,7 @@ open Longident
 let memoize1 f =
   let h = Hashtbl.create 1001 in
   (fun x ->
-     try Hashtbl.find h x with 
+     try Hashtbl.find h x with
        Not_found ->
        let res = f x in
        Hashtbl.add h x res;
@@ -64,7 +64,7 @@ let memoize1 f =
 let memoize2 f =
   let h = Hashtbl.create 1001 in
   (fun x y ->
-     try Hashtbl.find h (x, y) with 
+     try Hashtbl.find h (x, y) with
        Not_found ->
        let res = f x y in
        Hashtbl.add h (x, y) res;
@@ -73,7 +73,7 @@ let memoize2 f =
 let memoize2' f =
   let h = Hashtbl.create 1001 in
   (fun a x y ->
-     try Hashtbl.find h (x, y) with 
+     try Hashtbl.find h (x, y) with
        Not_found ->
        let res = f a x y in
        Hashtbl.add h (x, y) res;
@@ -87,7 +87,7 @@ let in_ocamldep = ref false
 type entry = FromExt | Impl | Intf
 let entry = ref FromExt
 let modern = ref false
-  (* if true, 
+  (* if true,
      - let priority is inherited ! 3 * let x = 2 in x + 1 is parser as (3 * let x = 2 in x) + 1
        if a then let x = 3 in b ; c as (if a then let x = 3 in b) ; c
      - val is accepted in structure
@@ -125,13 +125,13 @@ let locate str pos str' pos' =
 let rec merge = function
   | [] -> assert false
   | [loc] -> loc
-  | l1::_ as ls -> 
+  | l1::_ as ls ->
      let ls = List.rev ls in
      let rec fn = function
        | [] -> assert false
        | [loc] -> loc
        | l2::ls when Location.(l2.loc_start = l2.loc_end) -> fn ls
-       | l2::ls -> 
+       | l2::ls ->
 	  Location.(
 	   {loc_start = l1.loc_start; loc_end = l2.loc_end; loc_ghost = l1.loc_ghost && l2.loc_ghost})
      in fn ls
@@ -142,18 +142,18 @@ let merge2 l1 l2 =
 
 let push_frame, pop_frame, push_location, pop_location =
   let loc_tbl = Stack.create () : (string, unit) Hashtbl.t Stack.t in
-  (fun () -> 
+  (fun () ->
    Stack.push (Hashtbl.create 23) loc_tbl),
   (fun () ->
-   try 
+   try
      let h = Stack.pop loc_tbl in
-     Hashtbl.iter (fun l _ -> 
+     Hashtbl.iter (fun l _ ->
 		   try let h' = Stack.top loc_tbl in
 		       Hashtbl.replace h' l ()
 		   with Stack.Empty -> ()) h
    with Stack.Empty -> ()),
-  (fun id -> 
-   try 
+  (fun id ->
+   try
      let h = Stack.top loc_tbl in
      Hashtbl.replace h id ()
    with Stack.Empty -> ()),
@@ -167,7 +167,7 @@ let push_frame, pop_frame, push_location, pop_location =
 
 
 
-type entry_point =   
+type entry_point =
   | Implementation of Parsetree.structure_item list Decap.grammar * blank
   | Interface of Parsetree.signature_item list Decap.grammar * blank
 
@@ -257,7 +257,7 @@ exception Unclosed_comment of int * int
  *)
 let blank str pos =
   let rec fn lvl state prev (str, pos as cur) =
-    let c,str',pos' = read str pos in 
+    let c,str',pos' = read str pos in
     let next =str', pos' in
     (*      Printf.eprintf "%d:%d -> lvl:%d,state:%a,char:%c\n%!" (line_num str) pos lvl print_blank_state state c;*)
     match state, c with
@@ -267,7 +267,7 @@ let blank str pos =
     | `Chr , _                    -> fn lvl `Ini cur next
     | `Str , '\\'                 -> fn lvl `Esc cur next
     | `Str , _                    -> fn lvl `Str cur next
-					
+
     | `StrO(l)    , 'a'..'z'      -> fn lvl (`StrO(c::l)) cur next
     | `StrO(l)    , '|'           -> fn lvl (`StrI(List.rev l)) cur next
     | `StrO(_)    , _             -> fn lvl `Ini cur next
@@ -275,11 +275,11 @@ let blank str pos =
     | `StrC(l',(a::l)) , a' when a = a'-> fn lvl (`StrC(l',l)) cur next
     | `StrC(_,[])   , '}'         -> fn lvl `Ini cur next
     | `StrC(l',_)    , _          -> fn lvl (`StrI(l')) cur next
-					
+
     | _    , '"' when lvl > 0     -> fn lvl `Str cur next
     | _    , '\'' when lvl > 0    -> fn lvl `Chr cur next
     | _    , '{' when lvl > 0     -> fn lvl (`StrO []) cur next
-					
+
     | `Ini , '('                  -> fn lvl `Opn cur next
     | `Opn , '*'                  -> fn (lvl + 1) `Ini cur next
     | `Opn , _   when lvl = 0     -> prev
@@ -289,12 +289,12 @@ let blank str pos =
     | `Cls , '*'                  -> fn lvl `Cls cur next
     | `Cls , ')'                  -> fn (lvl - 1) `Ini cur next
     | `Cls , _                    -> fn lvl `Ini cur next
-					
+
     | _    , (' '|'\t'|'\r'|'\n') -> fn lvl `Ini cur next
     | _    , _ when lvl > 0       -> fn lvl `Ini cur next
     | _    , _                    -> cur
   in fn 0 `Ini (str, pos) (str, pos)
-	
+
 (****************************************************************************)
 
 type expression_prio =
@@ -332,7 +332,7 @@ let next_exp = function
   let signature_item : signature_item list grammar = declare_grammar "signature_item"
   let (parameter : bool -> [`Arg of string * expression option * pattern
            | `Type of string ] grammar), set_parameter = grammar_family "parameter"
-						
+
   let structure =
     parser
       l : {s:structure_item}** -> List.flatten l
@@ -355,7 +355,7 @@ let next_exp = function
     | DashType -> AppType
     | AppType -> AtomType
     | AtomType -> AtomType
-		    
+
   let (typexpr_lvl : type_prio -> core_type grammar), set_typexpr_lvl = grammar_family ~param_to_string:type_prio_to_string "typexpr_lvl"
   let typexpr = typexpr_lvl TopType
   type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | ConstrPat
@@ -391,7 +391,7 @@ let next_exp = function
   let loc_pcf ?(attributes=[]) _loc desc = { pcf_desc = desc; pcf_loc = _loc; pcf_attributes = attributes }
   let mexpr_loc ?(attributes=[]) _loc desc = { pmod_desc = desc; pmod_loc = _loc; pmod_attributes = attributes }
   let mtyp_loc ?(attributes=[]) _loc desc = { pmty_desc = desc; pmty_loc = _loc; pmty_attributes = attributes }
-  let id_loc txt loc = { txt; loc } 
+  let id_loc txt loc = { txt; loc }
 
   let const_string s = Const_string(s, None)
   let constructor_declaration _loc name args res =
@@ -399,7 +399,7 @@ let next_exp = function
   let label_declaration _loc name mut ty =
     { pld_name = name; pld_mutable = mut; pld_type = ty; pld_attributes = []; pld_loc = _loc }
   let params_map _loc params =
-    let fn (name, var) = 
+    let fn (name, var) =
       match name with
 	None -> (loc_typ _loc Ptyp_any, var)
       | Some name -> (loc_typ name.loc (Ptyp_var name.txt), var)
@@ -461,12 +461,12 @@ let next_exp = function
   let mexpr_loc ?(attributes=[]) _loc desc = { pmod_desc = desc; pmod_loc = _loc }
   let mtyp_loc ?(attributes=[]) _loc desc = { pmty_desc = desc; pmty_loc = _loc }
 #ifversion >= 4.00
-  let id_loc txt loc = { txt; loc; } 
+  let id_loc txt loc = { txt; loc; }
 #else
   let id_loc txt loc = txt
-#endif			 
-  let const_string s = Const_string(s)	
-#ifversion >= 4.00		   
+#endif
+  let const_string s = Const_string(s)
+#ifversion >= 4.00
   type constructor_declaration = string Asttypes.loc * Parsetree.core_type list * Parsetree.core_type option * Location.t
   let constructor_declaration _loc name args res = (name, args, res, _loc)
   type label_declaration = string Asttypes.loc * Asttypes.mutable_flag * Parsetree.core_type * Location.t
@@ -509,16 +509,16 @@ let next_exp = function
 #endif
   let value_binding  ?(attributes=[]) _loc pat expr =
     ( pat, expr)
-  let module_binding _loc name mt me = 
+  let module_binding _loc name mt me =
     (name, mt, me)
-  let module_declaration _loc name mt = 
+  let module_declaration _loc name mt =
     (name, mt)
   let ppat_construct(a,b) = Ppat_construct(a,b,false)
   let pexp_construct(a,b) = Pexp_construct(a,b,false)
   let pexp_constraint(a,b) = Pexp_constraint(a,Some b,None)
   let pexp_coerce(a,b,c) = Pexp_constraint(a,b,Some c)
   let pexp_assertfalse _loc = Pexp_assertfalse
-  let map_cases cases = List.map (fun (pat, expr, guard) -> 
+  let map_cases cases = List.map (fun (pat, expr, guard) ->
 			    match guard with None -> (pat, expr)
 					   | Some e -> (pat, loc_expr (merge2 e.pexp_loc expr.pexp_loc) (Pexp_when(e,expr)))) cases
   let pexp_function(cases) =
@@ -540,15 +540,15 @@ let next_exp = function
 
 type quote_env1 = (int * string * Parsetree.expression) list ref
 
-type quote_env2_data = 
+type quote_env2_data =
   | Expression of Parsetree.expression
-  | Expression_list of Parsetree.expression list 
-  | Pattern of Parsetree.pattern 
-  | Pattern_list of Parsetree.pattern list 
-  | Type of Parsetree.core_type 
-  | Type_list of Parsetree.core_type list 
-  | Structure of Parsetree.structure_item list 
-  | Signature of Parsetree.signature_item list 
+  | Expression_list of Parsetree.expression list
+  | Pattern of Parsetree.pattern
+  | Pattern_list of Parsetree.pattern list
+  | Type of Parsetree.core_type
+  | Type_list of Parsetree.core_type list
+  | Structure of Parsetree.structure_item list
+  | Signature of Parsetree.signature_item list
   | Constr_decl of constructor_declaration list
   | Field_decl of label_declaration list
   | Let_binding of value_binding list
@@ -556,13 +556,13 @@ type quote_env2_data =
   | Module_type of module_type
   | Cases of case list
   | String of string
-  | Int of int 
-  | Int32 of int32 
-  | Int64 of int64 
-  | Natint of nativeint 
-  | Float of float 
-  | Char of char 
-  | Bool of bool 
+  | Int of int
+  | Int32 of int32
+  | Int64 of int64
+  | Natint of nativeint
+  | Float of float
+  | Char of char
+  | Bool of bool
 
 type quote_env2 = (int * quote_env2_data) list ref
 
@@ -599,7 +599,7 @@ let push_pop_module_expr pos e =
   try
     match Stack.top quote_stack with
     | First env ->
-       env := (pos,"push_module_expr", e) :: !env; 
+       env := (pos,"push_module_expr", e) :: !env;
        (* dummy value of the correct type *) mexpr_loc Location.none (Pmod_ident (id_loc (Lident "") Location.none))
     | Second env ->
        match List.assoc pos !env with
@@ -617,8 +617,8 @@ let push_module_expr pos e =
 let push_pop_module_type pos e =
   try
     match Stack.top quote_stack with
-    | First env -> 
-       env := (pos,"push_module_type", e) :: !env; 
+    | First env ->
+       env := (pos,"push_module_type", e) :: !env;
        (* dummy value of the correct type *) mtyp_loc Location.none (Pmty_ident (id_loc (Lident "") Location.none))
     | Second env ->
        match List.assoc pos !env with
@@ -718,7 +718,7 @@ let push_pop_type pos e =
     match Stack.top quote_stack with
     | First env ->
        env := (pos,"push_type", e) :: !env;
-       (* dummy value of the correct type *) loc_typ e.pexp_loc Ptyp_any; 
+       (* dummy value of the correct type *) loc_typ e.pexp_loc Ptyp_any;
     | Second env ->
        match List.assoc pos !env with
 	 Type e -> e
@@ -750,7 +750,7 @@ let push_type_list pos e =
 let push_pop_pattern pos e =
   try
     match Stack.top quote_stack with
-    | First env -> 
+    | First env ->
        env := (pos,"push_pattern", e) :: !env;
        (* dummy value of the correct type *) loc_pat e.pexp_loc Ppat_any
     | Second env ->
@@ -950,7 +950,7 @@ let localise _loc e =
   in
   Location.(Lexing.(Printf.sprintf "#%d %S\n%s" (_loc.loc_start.pos_lnum - 1) _loc.loc_start.pos_fname)) cols ^ e
 
-let loc_none = 
+let loc_none =
   let loc = Lexing.({
     pos_fname = "none";
     pos_lnum = 1;
@@ -995,13 +995,13 @@ let quote_expression _loc loc e name =
     loc_expr _loc (Pexp_apply(
 		       loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Stack","push")) _loc )),
 		   ["", loc_expr _loc (Pexp_apply(
-							      (loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Pa_ocaml_prelude","empty_quote_env2")) _loc ))), 
+							      (loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Pa_ocaml_prelude","empty_quote_env2")) _loc ))),
 							      ["", loc_expr _loc (pexp_construct(id_loc (Lident "()") _loc, None))]));
-		   
+
 		    "", loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Pa_ocaml_prelude","quote_stack")) _loc ))]))
   in
   (* on empile les valeurs de toutes les anti-quotations *)
-  let push_expr = 
+  let push_expr =
     List.fold_left
       (fun acc (pos,name, e) ->
        let push_e =
@@ -1022,12 +1022,12 @@ let quote_expression _loc loc e name =
       None -> ["", loc_expr _loc (Pexp_ident( id_loc (Lident "_loc") _loc)); "", loc_expr _loc (Pexp_constant( const_string e ))]
     | Some loc -> ["", loc; "", loc_expr _loc (Pexp_constant( const_string e ))]
   in
-  let parse_expr = 
+  let parse_expr =
     loc_expr _loc (Pexp_apply(
 		       loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Pa_ocaml_prelude","quote_"^name^"_2")) _loc)),
 		       args))
   in
-  loc_expr _loc (Pexp_sequence(push_expr,loc_expr _loc (Pexp_let(Nonrecursive, [value_binding _loc 
+  loc_expr _loc (Pexp_sequence(push_expr,loc_expr _loc (Pexp_let(Nonrecursive, [value_binding _loc
 											      (loc_pat _loc (Ppat_var(id_loc "quote_res" _loc ))) parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident(id_loc (Lident "quote_res") _loc ))))))))
 
 let quote_expression_2 loc e =
@@ -1047,18 +1047,18 @@ let quote_sig_item_2 loc e =
 
 let quote_structure_2 loc e =
   parse_string' structure e
- 
+
 let quote_signature_2 loc e =
-  parse_string' signature e 
+  parse_string' signature e
 
 let quote_constructors_2 loc e =
-  parse_string' constr_decl_list e 
+  parse_string' constr_decl_list e
 
 let quote_fields_2 loc e =
-  parse_string' field_decl_list e 
+  parse_string' field_decl_list e
 
 let quote_let_binding_2 loc e =
-  parse_string' let_binding e 
+  parse_string' let_binding e
 
 let quote_module_expr_2 loc e =
   mexpr_loc loc (parse_string' module_expr e).pmod_desc
@@ -1067,13 +1067,13 @@ let quote_module_type_2 loc e =
   mtyp_loc loc (parse_string' module_type e).pmty_desc
 
 let quote_cases_2 loc e =
-  parse_string' (match_cases Top) e 
+  parse_string' (match_cases Top) e
 
 (****************************************************************************
  * Basic syntactic elements (identifiers and literals)                      *
  ****************************************************************************)
 let par_re s = "\\(" ^ s ^ "\\)"
-let union_re l = 
+let union_re l =
   let l = List.map (fun s -> par_re s ) l in
   String.concat "\\|" l
 
@@ -1112,7 +1112,7 @@ let capitalized_ident =
 
 let lowercase_ident =
   parser
-    id:RE(lident_re) -> 
+    id:RE(lident_re) ->
        let len = String.length id in
        (try
 	   if len >= 4 && String.sub id 0 4 = "_loc" then
@@ -1154,10 +1154,10 @@ let prefix_symbol =
 (****************************************************************************
  * Several shortcuts for flags and keywords                                 *
  ****************************************************************************)
-let key_word s = 
+let key_word s =
    let len_s = String.length s in
    assert(len_s > 0);
-   black_box 
+   black_box
      (fun str pos ->
       let str' = ref str in
       let pos' = ref pos in
@@ -1166,7 +1166,7 @@ let key_word s =
 	if c <> s.[i] then raise (Give_up ("The keyword "^s^" was expected..."));
 	str' := _str'; pos' := _pos'
       done;
-      let str' = !str' and pos' = !pos' in 
+      let str' = !str' and pos' = !pos' in
       let c,_,_ = read str' pos' in
       match c with
 	'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> raise (Give_up ("The keyword "^s^" was expected..."))
@@ -1246,6 +1246,7 @@ let functor_kw = key_word "functor"
 let sig_kw = key_word "sig"
 let lazy_kw = key_word "lazy"
 let parser_kw = key_word "parser"
+let cached_kw = key_word "cached"
 
 (* Integer literals *)
 let int_dec_re = "[0-9][0-9_]*"

@@ -132,15 +132,15 @@ let mutrec2a = declare_grammar "mutrec2a"
 let mutrec2b = declare_grammar "mutrec2b"
 let snoc la c = c :: la
 let _ = set_grammar mutrec2a
-		    (alternatives [
+		    (cache (alternatives [
 			 empty [];
 			 sequence mutrec2a a snoc;
-			 sequence mutrec2b c snoc])
+			 sequence mutrec2b c snoc]))
 let _ = set_grammar mutrec2b
-		    (alternatives [
+		    (cache (alternatives [
 			 empty [];
 			 sequence mutrec2b b snoc;
-			 sequence mutrec2a d snoc])
+			 sequence mutrec2a d snoc]))
 
 let (^^) s l = List.map (fun x -> s ^ x) l
 
@@ -188,20 +188,20 @@ let mutrec3b = declare_grammar "mutrec3b"
 let mutrec3c = declare_grammar "mutrec3c"
 
 let _ = set_grammar mutrec3a
-		    (alternatives [
+		    (cache (alternatives [
 			 empty [];
 			 sequence mutrec3b a snoc;
-			 sequence mutrec3c b snoc])
+			 sequence mutrec3c b snoc]))
 let _ = set_grammar mutrec3b
-		    (alternatives [
+		   (cache  (alternatives [
 			 empty [];
 			 sequence mutrec3a c snoc;
-			 sequence mutrec3c d snoc])
+			 sequence mutrec3c d snoc]))
 let _ = set_grammar mutrec3c
-		    (alternatives [
+		   (cache (alternatives [
 			 empty [];
 			 sequence mutrec3a e snoc;
-			 sequence mutrec3b f snoc])
+			 sequence mutrec3b f snoc]))
 
 let rec genmutrec3a suffix n =
   if n > 0 then
@@ -237,20 +237,20 @@ let mutbirec3c = declare_grammar "mutbirec3c"
 let (@@) l1 l2 = l2 @ l1
 
 let _ = set_grammar mutbirec3a
-		    (alternatives [
+		    (cache (alternatives [
 			 empty [];
 			 sequence mutbirec3b (sequence mutbirec3c a snoc) (@@);
-			 sequence mutbirec3c (sequence mutbirec3b b snoc) (@@)])
+			 sequence mutbirec3c (sequence mutbirec3b b snoc) (@@)]))
 let _ = set_grammar mutbirec3b
-		    (alternatives [
+		    (cache (alternatives [
 			 empty [];
 			 sequence mutbirec3a (sequence mutbirec3c c snoc) (@@);
-			 sequence mutbirec3c (sequence mutbirec3a d snoc) (@@)])
+			 sequence mutbirec3c (sequence mutbirec3a d snoc) (@@)]))
 let _ = set_grammar mutbirec3c
-		    (alternatives [
+		    (cache (alternatives [
 			 empty [];
 			 sequence mutbirec3a (sequence mutbirec3b e snoc) (@@);
-			 sequence mutbirec3b (sequence mutbirec3a f snoc) (@@)])
+			 sequence mutbirec3b (sequence mutbirec3a f snoc) (@@)]))
 
 let rec genmutbirec3a suffix n =
   if n > 0 then
@@ -285,9 +285,9 @@ and genmutbirec3c suffix n =
     !res
   else suffix
 
-let _ = test genmutbirec3a mutbirec3a (test_cases (3, 4, 6))
+let _ = test genmutbirec3a mutbirec3a (test_cases (3, 4, 5))
 let _ = Printf.eprintf "1%!"
-let _ = test genmutbirec3b mutbirec3b (test_cases (3, 4, 6))
+let _ = test genmutbirec3b mutbirec3b (test_cases (3, 4, 5))
 let _ = Printf.eprintf "2%!"
-let _ = test genmutbirec3c mutbirec3c (test_cases (3, 4, 6))
+let _ = test genmutbirec3c mutbirec3c (test_cases (3, 4, 5))
 let _ = Printf.eprintf "3 OK\n%!"

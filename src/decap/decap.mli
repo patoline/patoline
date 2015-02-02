@@ -286,6 +286,8 @@ val alternatives' : 'a grammar list -> 'a grammar
   [g]. *)
 val apply : ('a -> 'b) -> 'a grammar -> 'b grammar
 
+val cache : 'a grammar -> 'a grammar
+
 (** [apply_position f g] applies function [f] to the value returned by the
   grammar [g] and the positions at the beginning and at the end of the
   input parsed input. *)

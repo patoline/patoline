@@ -618,6 +618,61 @@ let apply : 'a 'b.('a -> 'b) -> 'a grammar -> 'b grammar
   add_deps res l;
   res
 
+let all_cache = ref []
+
+let register_cache c = all_cache := (fun () -> Hashtbl.clear c)::!all_cache
+let reset_cache () = List.iter (fun clear -> clear ()) !all_cache
+
+let cache : 'a grammar -> 'a grammar
+  = fun l ->
+  let cache = Hashtbl.create 101 in
+  register_cache cache;
+  let rec fn g = function
+      [] -> raise Error
+    | [l, c, l', c', l'', c'', stack, x] -> g l c l' c' l'' c'' stack x
+    | (l, c, l', c', l'', c'', stack, x)::rest ->
+       try g l c l' c' l'' c'' stack x
+       with Error -> fn g rest
+  in
+  let res = {
+      ident = new_ident ();
+      next = l.next;
+      accept_empty = l.accept_empty;
+      left_rec = Non_rec;
+      deps = imit_deps l;
+      set_info = (fun () -> ());
+      def = None;
+      parse =
+        fun grouped str pos next g ->
+	try
+	  let lc = Hashtbl.find cache (line_num str, pos, fname str, grouped.stack, next) in
+	  (*	  Printf.eprintf "use cache %d %d %a %a %d\n%!" (line_num str) pos print_next next print_info grouped (List.length lc);*)
+	  fn g lc
+	with Not_found ->
+	  let lc = ref [] in
+	  try
+	    l.parse grouped str pos next
+		    (fun l c l' c' l'' c'' stack x ->
+		     let tuple = (l, c, l', c', l'', c'', stack, x) in
+		     if not (List.mem tuple !lc) then
+		       lc := (l, c, l', c', l'', c'', stack, x)::!lc;
+		     raise Error);
+	    assert false;
+	  with Error ->
+	    let lc = List.rev !lc in
+	    (*Printf.eprintf "cached %d %d %a %a %d\n%!" (line_num str) pos print_next next print_info grouped (List.length lc);*)
+	    Hashtbl.add cache (line_num str, pos, fname str, grouped.stack, next) lc;
+	    fn g lc
+
+
+    }
+  in
+  res.set_info <- (fun () ->
+    res.next <- l.next;
+    res.accept_empty <- l.accept_empty);
+  add_deps res l;
+  res
+
 let delim : 'a grammar -> 'a grammar
   = fun l ->
   let res =
@@ -1452,13 +1507,16 @@ let parse_buffer grammar blank str =
   in
   let str, pos = apply_blank grouped str 0 in
   try
-      grammar.parse grouped str pos all_next (fun _ _ _ _ _ _ _ x -> x)
-    with Error ->
-      let str = grouped.err_info.max_err_buf in
-      let pos = grouped.err_info.max_err_col in
-      let msgs = grouped.err_info.err_msgs in
-      let msg, expected = collect_tree msgs in
-        raise (Parse_error (fname str, line_num str, pos, msg, expected))
+    let res = grammar.parse grouped str pos all_next (fun _ _ _ _ _ _ _ x -> x) in
+    reset_cache ();
+    res
+  with Error ->
+    reset_cache ();
+    let str = grouped.err_info.max_err_buf in
+    let pos = grouped.err_info.max_err_col in
+    let msgs = grouped.err_info.err_msgs in
+    let msg, expected = collect_tree msgs in
+    raise (Parse_error (fname str, line_num str, pos, msg, expected))
 
 let partial_parse_buffer grammar blank str pos =
   let grouped = { blank;
