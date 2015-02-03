@@ -3,6 +3,7 @@ all: pa_ast compare.cmx
 pa_ast: pa_ast.ml
 	ocamlopt -pp pa_ocaml -I +decap -I +compiler-libs -o $@ ocamlcommon.cmxa unix.cmxa str.cmxa decap.cmxa decap_ocaml.cmxa $<
 
+# FIXME target construction does not fail if pa_ast fails...
 compare.ml: pa_ast generic.ml
 	cat generic.ml >> $@
 	@echo "(* asttypes.mli *)" >> $@

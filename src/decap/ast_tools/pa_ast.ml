@@ -91,9 +91,6 @@ let parse () =
   match Array.length Sys.argv with
   | 1 -> parse_channel stdin
   | 2 -> parse_file Sys.argv.(1)
-  | 3 -> Decap.parse_string base_type blank Sys.argv.(2);
-         Printf.eprintf "OK!\n";
-         exit 0
   | _ -> failwith "Wrong number of arguments..."
 
 (* Printer *)
