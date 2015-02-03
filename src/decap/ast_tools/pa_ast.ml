@@ -165,12 +165,18 @@ let print_type ch = function
       List.iter f cl;
       Printf.fprintf ch "  | _, _ -> false"
   | Rec (a,n,fl) ->
-      let eq_arg = (match a with None -> "" | Some a -> " eq_" ^ a) in
-      Printf.fprintf ch "eq_%s%s r1 r2 = true" n eq_arg;
-      let f (l,t) =
-        Printf.fprintf ch " && %a r1.%s r2.%s" print_btype t l l
-      in
-      List.iter f fl
+    let eq_arg = (match a with
+      | None ->
+	Printf.fprintf ch "eq_%s = fun r1 r2 -> true" n
+      | Some a ->
+	Printf.fprintf ch
+	  "eq_%s : 'a. ('a -> 'a -> bool) -> 'a %s -> 'a %s -> bool = fun eq_%s r1 r2 -> true"
+	  n n n a)
+    in
+    let f (l,t) =
+      Printf.fprintf ch " && %a r1.%s r2.%s" print_btype t l l
+    in
+    List.iter f fl
 
 let print_types ch = function
   | []      -> assert false
