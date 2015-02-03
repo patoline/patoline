@@ -17,4 +17,5 @@ let rec eq_longident eq i1 i2 =
   | Lident s1     , Lident s2      -> s1 = s2
   | Ldot (e1,s1)  , Ldot (e2, s2)  -> eq e1 e2 && s1 = s2
   | Lapply (e1,f1), Lapply (e2,f2) -> eq e1 e2 && eq f1 f2
+  | _ -> false
 
