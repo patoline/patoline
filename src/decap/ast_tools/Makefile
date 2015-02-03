@@ -42,7 +42,7 @@ compare.ml: pa_ast generic.ml parsetree.mli asttypes.mli
 	./pa_ast parsetree.mli >> $@
 
 compare.cmx: compare.ml
-	ocamlopt $(COMPILER_INC) $(COMPILER_LIBO) $<
+	ocamlopt -c $(COMPILER_INC) $(COMPILER_LIBO) $<
 
 clean:
 	rm -f *.cmi *.cmx *.cmo *.cma *.cmxa *.o

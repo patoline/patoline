@@ -73,13 +73,13 @@ let parser fields =
   | f:field fs:{';' field}* ';'? -> f::fs
 
 let parser any_decl =
+  | n:lid '=' b:base_type                                      -> Syn (n,b)
   | n:lid '=' cl:csdecl                                        -> Sum (n,cl)
   | a:arg? n:lid '=' _:{arg? base_type '='}? '{' fs:fields '}' -> Rec (a,n,fs)
-  | n:lid '=' b:base_type                                      -> Syn (n,b)
 
 let parser any_rec_decl =
-  | "type" t:any_decl ts:{"and" any_decl}** -> Type (t::ts)
-  | "open" n:uid                            -> Open n
+  | "type" t:any_decl ts:{"and" any_decl}* -> Type (t::ts)
+  | "open" n:uid                           -> Open n
 
 let parser any_decls = | any_rec_decl*
 
