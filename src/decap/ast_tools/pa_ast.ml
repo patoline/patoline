@@ -83,7 +83,7 @@ let parser any_rec_decl =
 
 let parser any_decls = | any_rec_decl*
 
-let blank = Decap.blank_regexp "[ \n\r\t]*"
+let blank = Pa_ocaml_prelude.blank
 let parse_file = Decap.parse_file any_decls blank
 let parse_channel = Decap.parse_channel any_decls blank
 
@@ -165,14 +165,13 @@ let print_type ch = function
       List.iter f cl;
       Printf.fprintf ch "  | _, _ -> false"
   | Rec (a,n,fl) ->
-    let eq_arg = (match a with
+    (match a with
       | None ->
 	Printf.fprintf ch "eq_%s = fun r1 r2 -> true" n
       | Some a ->
 	Printf.fprintf ch
 	  "eq_%s : 'a. ('a -> 'a -> bool) -> 'a %s -> 'a %s -> bool = fun eq_%s r1 r2 -> true"
-	  n n n a)
-    in
+	  n n n a);
     let f (l,t) =
       Printf.fprintf ch " && %a r1.%s r2.%s" print_btype t l l
     in
