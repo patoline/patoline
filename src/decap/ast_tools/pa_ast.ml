@@ -28,26 +28,29 @@ let parser lid = | RE("[a-z][_a-z]*")
 let parser uid = | RE("[A-Z][_a-zA-Z0-9]*")
 let parser arg = | '\'' - RE("[a-z]+")
 
-let parser base_type =
-  | "bool"         -> Bool
-  | "int"          -> Int
-  | "char"         -> Char
-  | "string"       -> String
-  | "int32"        -> Int32
-  | "int64"        -> Int64
-  | "nativeint"    -> Nativeint
-  | "Location.t"   -> Location_t
-  | "Location.loc" -> Location_loc
-  | a:arg          -> Var a
-  | n:lid          -> Name n
-  | "Longident.t"  -> Longident_t
-  | '(' base_type ')'
-  | t:base_type "option"        -> Option t
-  | t:base_type "list"          -> List t
-  | t:base_type "loc"           -> Loc t
-  | t:base_type "class_infos"   -> Class_infos t
-  | t:base_type "include_infos" -> Include_infos t
-  | t1:base_type '*' t2:base_type ts:{'*' base_type}* -> Prod (t1 :: t2 :: ts)
+let parser base_type p_auth =
+  | t:(base_type false) "option"                  -> Option t
+  | t:(base_type false) "list"                    -> List t
+  | t:(base_type false) "loc"                     -> Loc t
+  | t:(base_type false) "class_infos"             -> Class_infos t
+  | t:(base_type false) "include_infos"           -> Include_infos t
+  | t:(base_type false) ts:{'*' (base_type false)}++ when p_auth -> Prod (t :: ts)
+  | "bool"                                        -> Bool
+  | "int"                                         -> Int
+  | "char"                                        -> Char
+  | "string"                                      -> String
+  | "int32"                                       -> Int32
+  | "int64"                                       -> Int64
+  | "nativeint"                                   -> Nativeint
+  | "Location.t"                                  -> Location_t
+  | "Location.loc"                                -> Location_loc
+  | a:arg                                         -> Var a
+  | n:lid                                         -> Name n
+  | "Longident.t"                                 -> Longident_t
+  | '(' (base_type true) ')'
+
+
+let base_type = base_type true
 
 let parser cdecl =
   | c:uid t:{"of" base_type}? ->
@@ -88,6 +91,9 @@ let parse () =
   match Array.length Sys.argv with
   | 1 -> parse_channel stdin
   | 2 -> parse_file Sys.argv.(1)
+  | 3 -> Decap.parse_string base_type blank Sys.argv.(2);
+         Printf.eprintf "OK!\n";
+         exit 0
   | _ -> failwith "Wrong number of arguments..."
 
 (* Printer *)
@@ -185,5 +191,5 @@ let rec print ch = function
 let _ =
   Printf.eprintf "Parsing ... %!";
   let ast = parse () in
-  Printf.eprintf "[OK - %i]\nPrinting:\n%!" (List.length ast);
-  print stdout ast; Printf.fprintf stdout "\n"
+  Printf.eprintf "[OK - %i]\n%!" (List.length ast);
+  print stdout ast;
