@@ -55,7 +55,7 @@ let base_type = base_type true
 let parser cdecl =
   | c:uid t:{"of" base_type}? ->
       begin
-        let ts = 
+        let ts =
           match t with
           | None           -> []
           | Some (Prod ts) -> ts
@@ -131,7 +131,7 @@ let rec print_btype ch = function
       Printf.fprintf ch ")"
 
 let print_type ch = function
-  | Syn (n,t)    -> Printf.fprintf ch "eq_%s = %a" n print_btype t
+  | Syn (n,t)    -> Printf.fprintf ch "eq_%s c1 c2 = %a c1 c2" n print_btype t
   | Sum (n,cl)   ->
       Printf.fprintf ch "eq_%s c1 c2 =\n  match c1, c2 with\n" n;
       let f (c, ts) =
