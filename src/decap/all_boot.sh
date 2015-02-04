@@ -1,29 +1,69 @@
 #!/bin/bash
 
-OPATH=$PATH
-MAKEOPTS="-D OCAMLFIND="
-MAKE=make $(MAKEOPTS)
+make pa_ocaml
 
-$(MAKE) pa_ocaml
+export OPATH=$PATH
+export MAKEOPTS="OCAMLFIND= OCAMLOPT=ocamlopt.opt OCAMLC=ocamlc.opt"
+export MAKE="make $MAKEOPTS"
 
-export PATH=/usr/local402.1/bin:$OPATH
-$(MAKE) clean boot && rm pa_ocaml && $(MAKE) pa_ocaml && ./tests_pa_ocaml.sh
+function build {
+    export PATH=/usr/local-$1/bin:$OPATH
+    export OCAMLVERSION=$1
+    echo ==========================================================
+    echo $PATH
+    echo $MAKE clean boot
+    which ocamlopt.opt
+    echo ==========================================================
+    $MAKE clean boot
+    if [ -x ./pa_ocaml ]; then rm pa_ocaml; fi
+    echo ==========================================================
+    echo $MAKE pa_ocaml
+    echo ==========================================================
+    $MAKE pa_ocaml
+    echo ==========================================================
+    echo $MAKE
+    echo ==========================================================
+    $MAKE
+    echo ==========================================================
+    echo cd ast_tools
+    echo $MAKE distclean
+    echo $MAKE compare.ml
+    echo ==========================================================
+    cd ast_tools
+    $MAKE distclean
+    $MAKE compare.ml
+    cd ..
+    echo ==========================================================
+    echo cp ast_tools/compare.ml bootstrap/$1/compare.ml
+    echo $MAKE
+    echo ==========================================================
+    cp ast_tools/compare.ml bootstrap/$1/compare.ml
+    $MAKE
+    echo ==========================================================
+    echo ./tests_pa_ocaml.sh
+    echo ==========================================================
+    ./tests_pa_ocaml.sh
+}
 
-export PATH=/usr/local402/bin:$OPATH
-$(MAKE) clean boot && rm pa_ocaml && $(MAKE) pa_ocaml && ./tests_pa_ocaml.sh
+#we need a pa_ocaml able to bootstrap and 4.00 and 3.12 compiler-libs can't print ast, hence the copy below
 
-export PATH=/usr/local401/bin:$OPATH
-$(MAKE) clean boot && rm pa_ocaml && $(MAKE) pa_ocaml && ./tests_pa_ocaml.sh
+build 4.02.1
+cp -f pa_ocaml pa_ocaml-4.02.1
 
-cp -f pa_ocaml pa_ocaml401 #we need a pa_ocaml able to bootstrap and 4.00 and 3.12 compiler-libs can't print ast
+build 4.02.0
+cp -f pa_ocaml pa_ocaml-4.02.0
 
-export PATH=/usr/local400/bin:$OPATH
-$(MAKE) clean boot && rm pa_ocaml && $(MAKE) pa_ocaml && ./tests_pa_ocaml.sh
+build 4.01.0
+cp -f pa_ocaml pa_ocaml-4.01.0
 
-cp -f pa_ocaml401 pa_ocaml
+cp -f pa_ocaml-4.01.0 pa_ocaml
+build 4.00.1
 
-export PATH=/usr/local312/bin:$OPATH
-$(MAKE) clean boot && rm pa_ocaml && $(MAKE) pa_ocaml && ./tests_pa_ocaml.sh
+cp -f pa_ocaml-4.01.0 pa_ocaml
+build 3.12.1
 
 export PATH=$OPATH
-$(MAKE) distclean #to make sure not to have a pa_ocaml which can not bootstrap
+
+#make sure not to have a pa_ocaml which can not bootstrap
+cp -f pa_ocaml-4.01.0 pa_ocaml
+$MAKE distclean

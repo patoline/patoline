@@ -18,7 +18,7 @@ files="$local/bibi.ml $local/UTF16.ml $local/test_offset.ml $local/image*.ml $lo
        $ocaml/dynlink.mli $ocaml/filename.ml $ocaml/filename.mli $ocaml/format.ml $ocaml/gc.ml \
        $ocaml/gc.mli $ocaml/genlex.ml $ocaml/genlex.mli $ocaml/hashtbl.ml $ocaml/hashtbl.mli \
        $ocaml/lexing.ml $ocaml/lexing.mli $ocaml/listLabels.ml $ocaml/listLabels.mli $ocaml/moreLabels.ml \
-       $ocaml/moreLabels.mli 
+       $ocaml/moreLabels.mli
 "
 
 #files only working on ocaml 4
@@ -30,7 +30,7 @@ files4="$local/test4.ml"
 
 echo $files
 
-make test_parsers
+make $MAKEOPTS test_parsers
 
 ./test_parsers $files
 
@@ -62,7 +62,7 @@ make $examples/pa_do_try
 echo
 
 # echo "test of parser extension"
-# /usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ./examples/calc.ml 
+# /usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ./examples/calc.ml
 # /usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ./examples/calc_all.ml
 # cp ./pa_ocaml_prelude.ml $local/
 # /usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml_prelude.ml
@@ -72,8 +72,8 @@ echo
 # /usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml.ml
 
 echo "********************************************"
-echo TOTAL diff size: 
+echo TOTAL diff size:
 wc $diff/*.diff | grep total
-echo TOTAL diff size with pos: 
+echo TOTAL diff size with pos:
 wc $diff/*.fulldiff | grep total
 echo "********************************************"

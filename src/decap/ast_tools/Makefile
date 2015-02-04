@@ -21,10 +21,8 @@ COMPILER_PARSERO := $(COMPILER_PARSERO:.cmo=.cmx)
 
 all: pa_ast compare.cmx
 
-pa_ast: pa_ast.ml
+pa_ast: pa_ast.ml $(DECAP)/decap.cmxa $(DECAP)/decap_ocaml.cmxa
 	ocamlopt -pp $(PA_OCAML) -I $(DECAP) $(COMPILER_INC) $(COMPILER_LIBO) -o $@ unix.cmxa str.cmxa decap.cmxa decap_ocaml.cmxa $<
-
-
 
 asttypes.mli:
 	cp ast-$(OCAMLVERSION)/asttypes.mli .
@@ -42,6 +40,9 @@ compare.ml: pa_ast generic.ml parsetree.mli asttypes.mli
 	./pa_ast parsetree.mli >> $@
 
 compare.cmx: compare.ml
+	ocamlopt -c $(COMPILER_INC) $(COMPILER_LIBO) $<
+
+compare.cmo: compare.ml
 	ocamlopt -c $(COMPILER_INC) $(COMPILER_LIBO) $<
 
 clean:

@@ -138,15 +138,31 @@ module Ext(In:Extension) =
     let glr_rules = Decap.declare_grammar "glr_rules"
     let glr_rule = Decap.declare_grammar "glr_rule"
     let location_name_re = "_loc\\([a-zA-Z0-9_']*\\)"
+    let parser_prefix =
+      Decap.sequence
+        (Decap.option None (Decap.apply (fun x  -> Some x) cached_kw))
+        parser_kw (fun e  -> fun _default_0  -> e <> None)
     let glr_parser lvl =
       Decap.alternatives
-        [Decap.sequence parser_kw glr_rules
-           (fun _default_0  -> fun p  -> (Atom, p));
-        Decap.fsequence_position parser_kw
+        [Decap.sequence_position parser_prefix glr_rules
+           (fun cached  ->
+              fun p  ->
+                fun __loc__start__buf  ->
+                  fun __loc__start__pos  ->
+                    fun __loc__end__buf  ->
+                      fun __loc__end__pos  ->
+                        let _loc =
+                          locate __loc__start__buf __loc__start__pos
+                            __loc__end__buf __loc__end__pos in
+                        (Atom,
+                          (if cached
+                           then exp_apply _loc (exp_glr_fun _loc "cache") [p]
+                           else p)));
+        Decap.fsequence_position parser_prefix
           (Decap.sequence (Decap.char '*' '*') glr_rules
              (fun _  ->
                 fun p  ->
-                  fun _default_0  ->
+                  fun cached  ->
                     fun __loc__start__buf  ->
                       fun __loc__start__pos  ->
                         fun __loc__end__buf  ->
@@ -155,7 +171,12 @@ module Ext(In:Extension) =
                               locate __loc__start__buf __loc__start__pos
                                 __loc__end__buf __loc__end__pos in
                             (Atom,
-                              (exp_apply _loc (exp_glr_fun _loc "lists") [p]))))]
+                              (exp_apply _loc (exp_glr_fun _loc "lists")
+                                 [if cached
+                                  then
+                                    exp_apply _loc (exp_glr_fun _loc "cache")
+                                      [p]
+                                  else p]))))]
     let glr_binding = Decap.declare_grammar "glr_binding"
     let _ =
       Decap.set_grammar glr_binding
@@ -181,10 +202,10 @@ module Ext(In:Extension) =
                                   fun name  -> (name, arg, ty, r) :: l))))))
     let glr_struct_item =
       Decap.fsequence_position let_kw
-        (Decap.sequence parser_kw glr_binding
-           (fun _default_0  ->
+        (Decap.sequence parser_prefix glr_binding
+           (fun cached  ->
               fun l  ->
-                fun _default_1  ->
+                fun _default_0  ->
                   fun __loc__start__buf  ->
                     fun __loc__start__pos  ->
                       fun __loc__end__buf  ->
@@ -207,7 +228,7 @@ module Ext(In:Extension) =
                                        (let quote_res =
                                           Pa_ocaml_prelude.quote_pattern_2
                                             _loc
-                                            "#202 \"pa_parser.ml\"\n                        $lid:name$ " in
+                                            "#204 \"pa_parser.ml\"\n                        $lid:name$ " in
                                         ignore
                                           (Stack.pop
                                              Pa_ocaml_prelude.quote_stack);
@@ -222,7 +243,7 @@ module Ext(In:Extension) =
                                        (let quote_res =
                                           Pa_ocaml_prelude.quote_pattern_2
                                             _loc
-                                            "#203 \"pa_parser.ml\"\n                               $lid:name$ : $ty$ " in
+                                            "#205 \"pa_parser.ml\"\n                               $lid:name$ : $ty$ " in
                                         ignore
                                           (Stack.pop
                                              Pa_ocaml_prelude.quote_stack);
@@ -237,11 +258,17 @@ module Ext(In:Extension) =
                                        (let quote_res =
                                           Pa_ocaml_prelude.quote_pattern_2
                                             _loc
-                                            "#204 \"pa_parser.ml\"\n                                 $lid:name$ : ('type_of_arg -> $ty$) " in
+                                            "#206 \"pa_parser.ml\"\n                                 $lid:name$ : ('type_of_arg -> $ty$) " in
                                         ignore
                                           (Stack.pop
                                              Pa_ocaml_prelude.quote_stack);
                                         quote_res)) in
+                                let r =
+                                  if cached
+                                  then
+                                    exp_apply _loc (exp_glr_fun _loc "cache")
+                                      [r]
+                                  else r in
                                 (match arg with
                                  | None  ->
                                      (((((Stack.push
@@ -255,7 +282,7 @@ module Ext(In:Extension) =
                                         (let quote_res =
                                            Pa_ocaml_prelude.quote_structure_2
                                              _loc
-                                             "#208 \"pa_parser.ml\"\n                    let $pname$ = Decap.declare_grammar $string:name$" in
+                                             "#211 \"pa_parser.ml\"\n                    let $pname$ = Decap.declare_grammar $string:name$" in
                                          ignore
                                            (Stack.pop
                                               Pa_ocaml_prelude.quote_stack);
@@ -271,7 +298,7 @@ module Ext(In:Extension) =
                                          (let quote_res =
                                             Pa_ocaml_prelude.quote_structure_2
                                               _loc
-                                              "#209 \"pa_parser.ml\"\n                    let _ = Decap.set_grammar $lid:name$ $r$ " in
+                                              "#212 \"pa_parser.ml\"\n                    let _ = Decap.set_grammar $lid:name$ $r$ " in
                                           ignore
                                             (Stack.pop
                                                Pa_ocaml_prelude.quote_stack);
@@ -291,7 +318,7 @@ module Ext(In:Extension) =
                                         (let quote_res =
                                            Pa_ocaml_prelude.quote_structure_2
                                              _loc
-                                             "#212 \"pa_parser.ml\"\n                    let $pname$, $lid:set_name$ = Decap.grammar_family $string:name$" in
+                                             "#215 \"pa_parser.ml\"\n                    let $pname$, $lid:set_name$ = Decap.grammar_family $string:name$" in
                                          ignore
                                            (Stack.pop
                                               Pa_ocaml_prelude.quote_stack);
@@ -311,7 +338,7 @@ module Ext(In:Extension) =
                                          (let quote_res =
                                             Pa_ocaml_prelude.quote_structure_2
                                               _loc
-                                              "#213 \"pa_parser.ml\"\n                    let _ = $lid:set_name$ (fun $arg$ -> $r$) " in
+                                              "#216 \"pa_parser.ml\"\n                    let _ = $lid:set_name$ (fun $arg$ -> $r$) " in
                                           ignore
                                             (Stack.pop
                                                Pa_ocaml_prelude.quote_stack);
