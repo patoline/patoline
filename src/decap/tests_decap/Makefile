@@ -16,6 +16,9 @@ generate_calc.cmx: generate_calc.ml test_kind.cmx $(DECAP_DIR)/decap.cmxa $(DECA
 test_combinators: test_combinators.ml test_kind.cmx $(PA_OCAML) $(DECAP_DIR)/decap.cmxa $(DECAP_DIR)/decap.cmi
 	ocamlopt -I $(DECAP_DIR) unix.cmxa str.cmxa decap.cmxa test_kind.cmx $< -o $@
 
+test_left: test_left.ml test_kind.cmx $(PA_OCAML) $(DECAP_DIR)/decap.cmxa $(DECAP_DIR)/decap.cmi
+	ocamlopt -I $(DECAP_DIR) unix.cmxa str.cmxa decap.cmxa $< -o $@
+
 calc_prio_left: calc_prio_left.ml test_kind.cmx generate_calc.cmx $(PA_OCAML) $(DECAP_DIR)/decap.cmxa $(DECAP_DIR)/decap.cmi
 	ocamlopt -pp $(PA_OCAML) -o $@ -I $(DECAP_DIR) unix.cmxa str.cmxa decap.cmxa test_kind.cmx generate_calc.cmx $<
 

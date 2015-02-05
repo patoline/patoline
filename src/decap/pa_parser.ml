@@ -424,51 +424,83 @@ struct
       (_loc, occur_loc, def, l, condition, action)
      )
 
+  let build_rule' = function
+    | `Treated x -> x
+    | `NotTreated x -> build_rule x
+
+  let apply_def_cond _loc arg =
+    let (def,cond,e) = build_rule' arg in
+    match cond with
+      None -> def e
+    | Some c ->
+      def (loc_expr _loc (Pexp_ifthenelse(c,e,Some (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]))))
+
+  let eq_expression_opt e1 e2 = match e1, e2 with
+    | Some e1, Some e2 -> Compare.eq_expression e1 e2
+    | None, None -> true
+    | _ -> false
+
+  let eq_pattern_opt e1 e2 = match e1, e2 with
+    | Some e1, Some e2 -> Compare.eq_pattern e1 e2
+    | None, None -> true
+    | _ -> false
+
+  let eq_option opt opt' = match opt, opt' with
+    | `Once, `Once -> true
+    | `Option(g,d), `Option(g',d') -> g = g' && eq_expression_opt d d'
+    | `Fixpoint(g,d), `Fixpoint(g',d') -> g = g' && eq_expression_opt d d'
+    | `Fixpoint1(g,d), `Fixpoint1(g',d') -> g = g' && eq_expression_opt d d'
+    | _ -> false
+
+  let factorisable elt1 elt2 = match elt1, elt2 with
+    | (_loc,occur_loc,def, (`Normal(id,cst,e,opt,occur_loc_id)::_), condition, action),
+      (_loc',occur_loc',def', (`Normal(id',cst',e',opt',occur_loc_id')::_), condition', action') ->
+	  fst id = fst id' && cst = cst' &&
+            Compare.eq_expression e e' &&
+            eq_pattern_opt (snd id) (snd id') && eq_option opt opt' &&
+	      Compare.eq_expression (def (exp_ident _loc "@")) (def' (exp_ident _loc "@"))
+    | _ -> false
+
+  let build_alternatives _loc f1 f2 comb ls =
+    match ls with
+    | [] -> f2 (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""])
+    | [r] -> f1 r
+    | _::_ ->
+      (match ls with
+	`NotTreated(elt1)::`NotTreated(elt2)::_ ->
+	  (*	  Format.eprintf "comparing\n  %a\nwith\n  %a\n%!" Pprintast.expression e Pprintast.expression e';*)
+	  if factorisable elt1 elt2 then
+	    Printf.eprintf "can left factorise\n%!"
+      | _ -> ());
+      let l = List.fold_right (fun r y ->
+	let (def,cond,e) = build_rule' r in
+	match cond with
+	  None ->
+	    def (exp_Cons _loc e y)
+        | Some c ->
+	  def (loc_expr _loc (Pexp_let(Nonrecursive,[value_binding _loc (pat_ident _loc "y") y],
+				       loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc
+					 e (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
+      ) ls (exp_Nil _loc) in
+      f2 (exp_apply _loc (exp_glr_fun _loc comb) [l])
+
   let glr_rules_aux =
     parser
     | { CHR('|') CHR('|')}? r:glr_rule rs:{ CHR('|') CHR('|') r:glr_rule}** ->
-     (let r = build_rule r and rs = List.map build_rule rs in
-      match rs with
-      | [] -> r
-      | l ->
-	let l = List.fold_right (fun (def,cond,x) y ->
-	  match cond with
-	    None ->
-	      def (exp_Cons _loc x y)
-          | Some c ->
-	      def (loc_expr _loc (Pexp_let(Nonrecursive,[value_binding _loc (pat_ident _loc "y") y],
-		   loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc
-			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
-	) (r::l) (exp_Nil _loc) in
-	(fun x -> x), None, (exp_apply _loc (exp_glr_fun _loc "alternatives'") [l]))
+      let ls = List.map (fun x -> `NotTreated x) (r::rs) in
+      build_alternatives _loc (fun x -> x) (fun r -> `Treated((fun x -> x), None, r)) "alternatives'" ls
 
   let _ = Decap.set_grammar glr_rules (
     parser
       g:{ CHR('|') -> false | CHR('~') -> true }?[false] r:glr_rules_aux rs:{ CHR('|') r:glr_rules_aux}** ->
-      (match r,rs with
-      | (def,cond,e),  [] ->
-	(match cond with
-	  None -> def e
-        | Some c ->
-	  def (loc_expr _loc (Pexp_ifthenelse(c,e,Some (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""])))))
-      | r, l ->
-	let l = List.fold_right (fun (def,cond,x) y ->
-	  match cond with
-	    None ->
-	      def (exp_Cons _loc x y)
-          | Some c ->
-	      def (loc_expr _loc (Pexp_let(Nonrecursive,[value_binding _loc (pat_ident _loc "y") y],
-		   loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc
-			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
-	) (r::l) (exp_Nil _loc) in
-	let f =
+        let f =
 	  if g then "alternatives" else
 	    (try
-		ignore (Sys.getenv "GREEDY");
-		"alternatives'"
-	      with Not_found -> "alternatives")
+	       ignore (Sys.getenv "GREEDY");
+	       "alternatives'"
+	     with Not_found -> "alternatives")
 	in
-	exp_apply _loc (exp_glr_fun _loc f) [l])
+	build_alternatives _loc (apply_def_cond _loc) (fun x -> x) f (r::rs)
   )
 
 end
