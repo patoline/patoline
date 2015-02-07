@@ -116,7 +116,7 @@ module Mathematical=struct
     right_op_dist:float;
     sqrt_dist:float;
     kerning:bool;
-  (* None means precise, Some x mean unprecise, but subdivise 
+  (* None means precise, Some x mean unprecise, but subdivise
      Bezier curve until the thickness of the polygon is less than x *)
     priorities:float array;
     priority_unit:float;
@@ -360,13 +360,13 @@ let empty:node=
     node_states=[];
     node_paragraph=0 }
 
-(** Contexts identify a position p in a tree t, by providing 
+(** Contexts identify a position p in a tree t, by providing
     a list of pairs (index, tree) such that to insert some tree
     T in such a context [(n1,t1);...;(nN,tN)] one returns
-    
+
     tN with an additional child at index nN, consisting of
 
-    t(N-1) with an additional child at index n(N-1), consisting of 
+    t(N-1) with an additional child at index n(N-1), consisting of
 
     ...
 
@@ -386,8 +386,8 @@ let rec map_paragraphs f = function
   | Paragraph p -> Paragraph (f p)
   | x -> x
 
-(** The next function takes a tree_zipper (t,cxt) and returns the tree_zipper 
-given by the father of (t,cxt). 
+(** The next function takes a tree_zipper (t,cxt) and returns the tree_zipper
+given by the father of (t,cxt).
    Normally, cxt should be a non-empty list of pairs (int, Node ...).
    If the list turns out to be empty, i.e., we are at the root, a new node is created.
    If some pair in cxt has a leaf instead of a Node ..., the function fails.
@@ -400,8 +400,8 @@ let up (t,cxt) = match cxt with
     Printf.fprintf stderr "%s:%d. Document contexts should probably consist only of nodes.\n"
       __FILE__ __LINE__ ;
     flush stderr ;
-    (Node { empty with children = 
-	IntMap.(add 0 b (singleton a t)) }, s) 
+    (Node { empty with children =
+	IntMap.(add 0 b (singleton a t)) }, s)
   end
 
 
@@ -458,8 +458,8 @@ let is_node x=match x with
     Node _->true
   | _->false
 
-(* The next function takes a zipper (t,cxt) and a tree chi, and 
-   adds chi as the last child of 
+(* The next function takes a zipper (t,cxt) and a tree chi, and
+   adds chi as the last child of
  *)
 let rec newChildAfter (t,cxt) chi=
   match t with
@@ -503,13 +503,13 @@ let rec top (a,b)=if b=[] then (a,b) else top (up (a,b))
    point. *)
 let child (t,cxt) i=
   match t with
-    Node x-> 
+    Node x->
       ((try IntMap.find i x.children
 	with
-	  Not_found -> Node empty), 
+	  Not_found -> Node empty),
        (i,t) :: cxt)
   | _-> begin
-    Printf.fprintf stderr "%s:%d. You're asking for the child of a leaf, which is suspect. \n" 
+    Printf.fprintf stderr "%s:%d. You're asking for the child of a leaf, which is suspect. \n"
       __FILE__ __LINE__ ;
     Printf.fprintf stderr "I'm creating a new node with the original leaf as 0th child, and an empty node as ith child.\n" ;
     flush stderr ;
@@ -649,7 +649,7 @@ let family fam t =
   [Scoped ((fun env -> envFamily fam env), t)]
 
 let envMonoFamily fam env =
-  { env with 
+  { env with
     fontMonoFamily = fam;
     fontMonoRatio=font_size_ratio env.fontFamily fam }
 
@@ -891,7 +891,7 @@ let beginFigure name=
 (** Adds a new paragraph with the given parameters, just below the current [node]. *)
 let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=[]) complete parameters par=
   match !str with
-      Paragraph p,path-> 
+      Paragraph p,path->
 	(* Tom: j'ai l'impression que ce bout de code n'est jamais utilise. *)
         str:=up (Paragraph {p with par_contents=p.par_contents@par}, path)
     | _->
@@ -997,7 +997,7 @@ let label ?labelType name=
         let labelType=match labelType with None->env.last_changed_counter | Some t->t in
         { env with names=StrMap.add name (env.counters, labelType, w) (names env) });
    bB (fun env ->
-       [Marker (Label name)])
+     [Marker (Label name)])
   ]
 
 
@@ -1319,7 +1319,7 @@ let draw_boxes env l=
     )
     | Hyphen h::s->(
       let dr1,w1=Array.fold_left (fun (dr',x') box->
-        draw_boxes x' y dr' [box] 
+        draw_boxes x' y dr' [box]
       ) (dr,x) h.hyphen_normal
       in
       draw_boxes w1 y dr1 s
@@ -1400,7 +1400,7 @@ let rec bezier_of_boxes=function
 let adjust_width env buf nbuf =
   (* FIXME : à prendre dans l'env *)
   let alpha = env.adjust_optical_alpha in
-  let beta = env.adjust_optical_beta in 
+  let beta = env.adjust_optical_beta in
   let char_space = env.normalLead *. env.adjust_min_space in
   let epsilon = env.adjust_epsilon in
   let dsup,dinf as dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
@@ -1437,7 +1437,7 @@ let adjust_width env buf nbuf =
 	try while !i0 < !nbuf do
 	  match buf.(!i0) with
 	  | Marker AlignmentMark -> incr i0; raise Exit
-	  | Marker _ -> incr i0	  
+	  | Marker _ -> incr i0
 	  | Drawing x as b when x.drawing_nominal_width = 0.0 ->
 	    if !Distance.debug then Printf.fprintf stderr "0 Drawing(2)\n";
 	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
@@ -1450,8 +1450,8 @@ let adjust_width env buf nbuf =
 	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
 	    incr i0
 	  | Drawing _ | GlyphBox _ | Hyphen _ as y0 -> (
-	    let before = 
-	      match y0 with 
+	    let before =
+	      match y0 with
 		Drawing y when !adjust = None && y.drawing_adjust_before ->
 		  adjust := Some(y0, !i0);
 		  true
@@ -1459,7 +1459,7 @@ let adjust_width env buf nbuf =
 	    in
 	    match !adjust with
 	    | None -> raise Exit
-	    | Some (b,i) -> 
+	    | Some (b,i) ->
 
 
 	      let right = draw_boxes env [y0] in
@@ -1473,12 +1473,12 @@ let adjust_width env buf nbuf =
 	      if !Distance.debug then
 		Printf.fprintf stderr "Drawing(2b): i0 = %d\n" !i0;
 
-	      let d space = 
+	      let d space =
 		let pr = List.map (fun (x,y) -> (x+.space,y)) profile_right in
 		let r = Distance.distance beta dir profile_left pr in
 		r
 	      in
-	
+
 	      let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
 	      let (x0_r',y0_r',x1_r',y1_r')=bounding_box_full right in
 
@@ -1489,7 +1489,7 @@ let adjust_width env buf nbuf =
 	      let da = d min' in
 	      let db = d max' in
 	      let target = nominal' in
-	      
+
 	      if !Distance.debug then
 		Printf.fprintf stderr "start Adjust: min = %f => %f, max = %f => %f, target = %f\n" min' da max' db nominal';
 
@@ -1497,29 +1497,29 @@ let adjust_width env buf nbuf =
 	      let r  =
 		if da > target then min' else
 		  if db < target then max' else (
-		    
+
 		    let rec fn sa da sb db  =
 		      let sc = (sa +. sb) /. 2.0 in
 		      let dc = d sc in
 		      if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
-		      else if dc < target then fn sc dc sb db 
+		      else if dc < target then fn sc dc sb db
 		      else fn sa da sc dc
 		    in
 		    fn min' da max' db)
-												    
+
 	      in
-	 
+
 (*	      let r = r -. x0_r' +. x0_r -. x1_l +. x1_l' in*)
 
 	      if !Distance.debug then Printf.fprintf stderr "end Adjust: r = %f nominal = %f" r !nominal;
-   
-	      buf.(i) <- 
+
+	      buf.(i) <-
 		(match b with
-		| Drawing x when before -> Drawing { x with 
-		  drawing_contents = 
+		| Drawing x when before -> Drawing { x with
+		  drawing_contents =
 		      (fun w -> List.map (OutputCommon.translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
 		}
-		| Drawing x -> Drawing { x with 
+		| Drawing x -> Drawing { x with
 		  drawing_nominal_width = r +. x.drawing_nominal_width;
 		  drawing_min_width = r +. x.drawing_min_width;
 		  drawing_max_width = r +. x.drawing_max_width;
@@ -1531,7 +1531,7 @@ let adjust_width env buf nbuf =
 		}
 		| _ -> assert false);
 	      raise Exit)
-	    | _ -> 
+	    | _ ->
 	      incr i0;
 	      raise Exit
 
@@ -1571,7 +1571,7 @@ let altStates l =
   [uB (fun env->
     let ds = List.map (fun (st,x) -> (st, draw env x)) l in
     (* FIXME : each state should have its own offset !!!*)
-    let off = List.fold_left (fun acc (_,d) -> 
+    let off = List.fold_left (fun acc (_,d) ->
 	let (_,off,_,_) = bounding_box d in
 	min acc off) 0.0 ds
     in

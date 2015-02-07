@@ -976,7 +976,9 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                           page.pageContents<-
                             (List.map (OutputCommon.translate x y) cont_states) @ page.pageContents;
 		          if env.show_boxes then
-                            page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
+                            page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 },
+						      [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)])
+			    :: page.pageContents;
                           w
                         )
                         | Marker (BeginLink l)->(
@@ -991,9 +993,11 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                                   | _->line.line_y1
                                 in
 				OutputCommon.Intern(l,Box.layout_page line,0.,y1)
-			      with
-				  Not_found->
-				    OutputCommon.Intern(l,-1,0.,0.)
+			      with Not_found-> try
+				let _,_,y0,y1,line = StrMap.find l !destinations in
+				OutputCommon.Intern(l,layout_page line,y0,y1)
+			      with Not_found->
+				OutputCommon.Intern(l,0,0.,0.)
                             )
 			    | Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
 			  in
