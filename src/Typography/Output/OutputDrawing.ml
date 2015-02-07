@@ -221,10 +221,11 @@ let output ?state paragraphs figures env (opt_pages:frame)=
               0.
             )
             | Marker (Label l)->(
+	      Printf.eprintf "drawing: adding to dest: %s\n%!" l;
               let y0,y1=line_height paragraphs figures line in
               destinations:=StrMap.add l
                 (i,(fst line.layout).frame_x0+.param.left_margin,
-                 y+.y0,y+.y1) !destinations;
+                 y+.y0,y+.y1,line) !destinations;
               0.
             )
                       (* | User (Footnote (_,g))->( *)
@@ -300,7 +301,16 @@ let output ?state paragraphs figures env (opt_pages:frame)=
       drawing_break_badness=0.;
       drawing_contents=(fun _-> List.map (translate 0. (-. !top_y)) page.pageContents) }
   in
-  IntMap.mapi (fun i a->draw_page i (all_contents a)) opt_pages.frame_children
+  let env=
+    StrMap.fold (fun labl dest env ->
+      let comp_i,lm,y0,y1,line = dest in
+		  (*		  Printf.fprintf stderr "Adding pos %s\n" labl;*)
+      { env with
+        user_positions=MarkerMap.add (Label labl) line (user_positions env) })
+      !destinations env
+  in
+
+  IntMap.mapi (fun i a->draw_page i (all_contents a)) opt_pages.frame_children, env
 
 
 
@@ -317,7 +327,7 @@ let minipage ?state env str=
     ~badness:bads
     pars
   in
-  (output ?state pars figures
+  fst (output ?state pars figures
      env'
      pages)
 
@@ -335,4 +345,4 @@ let minipage' ?state env str=
   in
   (output ?state pars figures
      env'
-     pages,env')
+     pages)

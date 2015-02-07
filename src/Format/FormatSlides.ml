@@ -902,6 +902,10 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
             let draw_slide slide_number (path,tree,paragraphs,figures,figure_trees,env,opts,slide_num)=
               let states=ref [] in
               let destinations=ref StrMap.empty in
+	      let _ = MarkerMap.iter (fun labl dest ->
+		match labl with Label l ->
+		  Printf.eprintf "  pos %s\n" l | _ -> ()
+		) env.user_positions in
 
               for st=0 to Array.length opts-1 do
                 let page={ pageFormat=slidew,slideh; pageContents=[] } in
@@ -985,6 +989,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
 			  let k = match l with
 			      Box.Extern l -> OutputCommon.Extern l;
 			    | Box.Intern l ->(
+			      Printf.eprintf "intern link %s\n%!" l;
 			      try
 				let line=MarkerMap.find (Label l) env.user_positions in
                                 let y1=match classify_float line.line_y1 with
@@ -993,11 +998,9 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                                   | _->line.line_y1
                                 in
 				OutputCommon.Intern(l,Box.layout_page line,0.,y1)
-			      with Not_found-> try
-				let _,_,y0,y1,line = StrMap.find l !destinations in
-				OutputCommon.Intern(l,layout_page line,y0,y1)
 			      with Not_found->
-				OutputCommon.Intern(l,0,0.,0.)
+				Printf.eprintf "not_found %s\n%!" l;
+				OutputCommon.Intern(l,-1,0.,0.)
                             )
 			    | Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
 			  in
@@ -1063,8 +1066,8 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
 		StrMap.fold (fun labl dest env ->
 		  let comp_i,lm,y0,y1,line = dest in
 (*		  Printf.fprintf stderr "Adding pos %s\n" labl;*)
-		  { env0 with
-                    user_positions=MarkerMap.add (Label labl) line env0.user_positions })
+		  { env with
+                    user_positions=MarkerMap.add (Label labl) line (user_positions env)})
 		  !destinations env
               in
               env,Array.of_list (List.rev !states)
