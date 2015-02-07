@@ -28,7 +28,7 @@ open UsualMake
 
 type page={mutable pageContents:raw list}
 
-let output ?state paragraphs figures env (opt_pages:frame)=
+let output ?page_num ?state paragraphs figures env (opt_pages:frame)=
 
   let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
 
@@ -221,10 +221,11 @@ let output ?state paragraphs figures env (opt_pages:frame)=
               0.
             )
             | Marker (Label l)->(
-	      Printf.eprintf "drawing: adding to dest: %s\n%!" l;
+	      let pnum = match page_num with None -> i | Some n -> n in
+	      Printf.eprintf "drawing: adding to dest: %s %d\n%!" l pnum;
               let y0,y1=line_height paragraphs figures line in
               destinations:=StrMap.add l
-                (i,(fst line.layout).frame_x0+.param.left_margin,
+                (pnum,(fst line.layout).frame_x0+.param.left_margin,
                  y+.y0,y+.y1,line) !destinations;
               0.
             )
@@ -301,21 +302,21 @@ let output ?state paragraphs figures env (opt_pages:frame)=
       drawing_break_badness=0.;
       drawing_contents=(fun _-> List.map (translate 0. (-. !top_y)) page.pageContents) }
   in
+
+  let res = IntMap.mapi (fun i a->draw_page i (all_contents a)) opt_pages.frame_children in
+
   let env=
     StrMap.fold (fun labl dest env ->
       let comp_i,lm,y0,y1,line = dest in
-		  (*		  Printf.fprintf stderr "Adding pos %s\n" labl;*)
+      Printf.fprintf stderr "Adding pos to user_positions %s\n" labl;
       { env with
         user_positions=MarkerMap.add (Label labl) line (user_positions env) })
       !destinations env
   in
-
-  IntMap.mapi (fun i a->draw_page i (all_contents a)) opt_pages.frame_children, env
-
+  res, env
 
 
-
-let minipage ?state env str=
+let minipage ?state ?page_num env str=
   let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
   let (_,pages,fig',user')=TS.typeset
     ~completeLine:compl
@@ -327,11 +328,11 @@ let minipage ?state env str=
     ~badness:bads
     pars
   in
-  fst (output ?state pars figures
+  fst (output ?state ?page_num pars figures
      env'
      pages)
 
-let minipage' ?state env str=
+let minipage' ?state ?page_num env str=
   let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
   let (_,pages,fig',user')=TS.typeset
     ~completeLine:compl
@@ -343,6 +344,6 @@ let minipage' ?state env str=
     ~badness:bads
     pars
   in
-  (output ?state pars figures
+  (output ?state ?page_num pars figures
      env'
      pages)
