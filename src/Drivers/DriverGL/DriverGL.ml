@@ -26,7 +26,7 @@ open Util
 type subpixel_anti_aliasing =
   No_SAA | RGB_SAA | BGR_SAA | VRGB_SAA | VBGR_SAA
 
-type init_zoom = 
+type init_zoom =
   FitWidth  | FitHeight | FitPage
 
 type prefs = {
@@ -51,7 +51,7 @@ let prefs = ref {
   second_window = false;
 }
 
-let filter_options argv =		
+let filter_options argv =
   Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double";
   Glut.init argv
 
@@ -119,7 +119,7 @@ let rec last = function
   | [] -> assert false
   | [x] -> x
   | _::l -> last l
-    
+
 type page_mode = Single | Double
 
 (* Handle window reshape events *)
@@ -136,7 +136,7 @@ let overlay_rect (r,g,b) (x,y,x',y') =
   GlDraw.ends ();
   Gl.enable `depth_test
 
-let normalize (a,b) = 
+let normalize (a,b) =
   let n = 1. /. sqrt(a*.a +. b*.b) in
   let n = if classify_float n <> FP_normal then 1.0 else n in
   a *. n, b *. n
@@ -149,10 +149,10 @@ let combine orientation ratio (a,b) (a',b') =
   let c = a *. a' +. b *. b' in
   let s = a *. b' -. a' *. b in
 
-  let (a0,b0),sgn = 
+  let (a0,b0),sgn =
     if c > sqrt(2.0) /. 2.0 then
       normalize (a +. a', b +. b'), 1.0
-    else 
+    else
       normalize (-.b +. b', a -. a'), -1.0
   in
 
@@ -172,13 +172,13 @@ let single ratio (a, b) =
 let add_normals closed ratio beziers =
 
     let tesselation_factor = !prefs.tesselation_factor  in
-  
+
     if closed then
       let beziers = List.filter (fun bs -> bs <> []) beziers in
       let beziers = Bezier.oriente beziers in
-      List.split (List.map (fun (bs, orientation) -> 
+      List.split (List.map (fun (bs, orientation) ->
 	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
-	let prev, bs = 
+	let prev, bs =
 	  let xe, ye = last bs in
 	  let xs, ys = List.hd bs in
 	  let prev = ref ( normalize (Bezier.derivee_approx ye, -. Bezier.derivee_approx xe)) in
@@ -189,38 +189,38 @@ let add_normals closed ratio beziers =
 	  else
 	    prev, bs
 	in
-	List.split (List.map (fun (xs, ys) -> 
+	List.split (List.map (fun (xs, ys) ->
 	  let cur = normalize (Bezier.derivee_approx ys, -. Bezier.derivee_approx xs) in
 	  let n = combine orientation ratio !prev cur in
 	  prev :=  cur;
 	  (xs.(0),ys.(0),0.0),n) bs)
-      ) beziers) 
+      ) beziers)
     else
-      List.split (List.map (fun bs -> 
+      List.split (List.map (fun bs ->
 	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
 	let prev = ref None in
-	let ln = 
-	  List.map (fun (xs, ys) -> 
+	let ln =
+	  List.map (fun (xs, ys) ->
 	    let n =
 	      match !prev with
-		None -> 
+		None ->
 		  single ratio (normalize (Bezier.derivee_start ys, -. Bezier.derivee_start xs))
-	      | Some(_,_,v) -> 
+	      | Some(_,_,v) ->
 		  combine true ratio v (normalize (Bezier.derivee_start ys, -. Bezier.derivee_start xs))
 	    in
 	    prev :=  Some (xs, ys, normalize (Bezier.derivee_end ys, -. Bezier.derivee_end xs));
 	    (xs.(0),ys.(0),0.0),n) bs
 	in
-	let last = 
+	let last =
 	  match !prev with
 	    None -> assert false
-	  | Some(xs,ys,v) -> 
+	  | Some(xs,ys,v) ->
 	    let s = Array.length xs in
 	    let n = single ratio v in
 	    (xs.(s - 1),ys.(s - 1),0.0),n
 	in
 	List.split (ln @ [last])
-    ) beziers)   
+    ) beziers)
 
 
 type win_info = {
@@ -245,7 +245,7 @@ type win_info = {
 
 let all_win = [|None; None|]
 
-let get_wins () = 
+let get_wins () =
   let res = ref [] in
   Array.iter (fun w -> match w with
     None -> ()
@@ -284,33 +284,33 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let cur_state = ref 0 in
   let dynCache = Hashtbl.create 101 in
 
-  let dynContents d = 
+  let dynContents d =
     try Hashtbl.find dynCache d.dyn_label
-    with Not_found -> 
+    with Not_found ->
       let r = d.dyn_contents () in
       Hashtbl.add dynCache d.dyn_label r;
       r
   in
-  
+
   let dynReset d =
     Hashtbl.remove dynCache d
   in
 
   let dynReaction = Hashtbl.create 101 in
 
-  let read_links () = 
+  let read_links () =
     Hashtbl.clear dynReaction;
     links := Array.mapi
       (fun i page ->
 	Array.mapi (fun j state ->
 	  let l = ref [] in
 	  let rec fn ls = List.iter
-	    (function  
-            | Link(l') -> 
+	    (function
+            | Link(l') ->
 	      fn l'.link_contents;
 	      l := l'::!l
 	    | Dynamic d ->
-	      let old = 
+	      let old =
 		try Hashtbl.find dynReaction d.dyn_label
 		with Not_found -> []
 	      in
@@ -372,7 +372,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     GlMat.mode `projection;
     GlMat.load_identity ();
     GlMat.translate3 (xb /. float w , yb /. float h , 0.0);
-    GlMat.frustum ((win.cx -. win.rx)/.1000., (win.cx +. win.rx)/.1000.) 
+    GlMat.frustum ((win.cx -. win.rx)/.1000., (win.cx +. win.rx)/.1000.)
       ((win.cy -. win.ry)/.1000., (win.cy +. win.ry)/.1000.) (1., 10000.);
     GlMat.translate3 (0., 0., -1000.);
     GlMat.mode `modelview;
@@ -420,14 +420,14 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     with Not_found -> ()
   in
 
-  let create_menu structure = 
+  let create_menu structure =
     if structure.substructures <> [||] then begin
       let c = ref 0 in
       List.iter (fun menu -> Glut.destroyMenu ~menu) !old_menu;
       let menu = Glut.createMenu menu_cb in
       old_menu := [menu];
       Glut.setMenu menu;
-      let rec fn menu a i s = 
+      let rec fn menu a i s =
 	Glut.addMenuEntry s.name !c;
 	Hashtbl.replace menu_item !c (a, i);
 	incr c;
@@ -448,7 +448,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let clearCache () =
     Array.iter (function None -> () | Some win ->
-      Glut.setWindow win.winId; 
+      Glut.setWindow win.winId;
       Hashtbl.iter (fun _ l ->  GlList.delete l) win.glyphCache;
       Hashtbl.clear win.glyphCache;
 #ifdef CAMLIMAGES
@@ -458,14 +458,14 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     ) all_win
   in
 
-  let revert () = 
+  let revert () =
     let ch = open_in (fileName^".bin") in
     to_revert := false;
     let prime = input_value ch in
     structure := input_value ch;
     if prime then
       pages := input_value ch
-    else 
+    else
       pages := Array.map (fun x -> [|x|]) (input_value ch);
     create_menu !structure;
     close_in ch;
@@ -510,13 +510,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       draw_blank page state;
 
       let fill_bezier color lines normals =
-	let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) ((xn,yn),_) -> 
+	let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) ((xn,yn),_) ->
 	  (x -. xn *. graisse_x', y -. yn *. graisse_y' , 0.0)) l n) lines normals in
 	GlDraw.color color;
 	GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
-	
+
 	let fn alpha ends (x,y,_) ((xn,yn),quality) =
-	  match quality with 
+	  match quality with
 	  | None ->
 	    GlDraw.color color;
 	    GlDraw.vertex2 (x,y);
@@ -556,10 +556,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  GlDraw.ends ();
 	) lines normals;
 	GlFBO.no_shader ();
-	
+
       in
 
-      
+
 
       let rec fn = function
         | Video _ -> failwith "GL Driver does not support video"
@@ -569,7 +569,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  let len = Array.length a.anim_contents in
 	  let n_step = truncate (t /. a.anim_step) mod (if a.anim_mirror then 2 * len - 1 else len) in
 	  let n_step = if a.anim_mirror && n_step >= len then 2 * len - 1 - n_step else n_step in
-	  List.iter fn (drawing_sort a.anim_contents.(n_step));	  
+	  List.iter fn (drawing_sort a.anim_contents.(n_step));
 
 	| Dynamic d ->
 	  List.iter fn (dynContents d)
@@ -584,8 +584,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	Printf.fprintf stderr "x = %f, y = %f, s = %f, pw = %f, ph = %f, ratio = %f\n"
 	  x y s !pixel_width !pixel_height ratio ;
 *)
-	  
-	let draw_glyph color = 
+
+	let draw_glyph color =
 	  try
 	    GlList.call (Hashtbl.find win.glyphCache (g.glyph, ratio, color))
 	  with
@@ -598,9 +598,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	      Hashtbl.add win.glyphCache (g.glyph, ratio, color) l
 
 	in
-(*	
+(*
 	List.iter (fun bs ->
-	  List.iter (fun (x,y,z) -> 
+	  List.iter (fun (x,y,z) ->
 	    Printf.fprintf stderr "(%f,%f,%f) " x y z) bs;
 
 	  Printf.fprintf stderr "\n") lines; *)
@@ -644,7 +644,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       GlMat.mult mat;
       List.iter fn a.affine_contents;
       GlMat.pop ();
-	
+
     | Path(param, beziers) ->
       let beziers = List.map Array.to_list beziers in
       let lines, normals = add_normals param.close pixel_width beziers in
@@ -659,13 +659,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	None -> ()
       | Some RGB{red = r; green=g; blue=b;} ->
 	let lw = param.lineWidth /. 2.0 in
-	let graisse_x' = lw -. (pixel_width *. (flou_x -. graisse)) 
+	let graisse_x' = lw -. (pixel_width *. (flou_x -. graisse))
 	  and graisse_y' = lw -. (pixel_width *. (flou_y -. graisse)) in
 	let graisse_x =  lw +. (pixel_width *. (3.0 *. flou_x +. graisse))
 	  and graisse_y = lw +. (pixel_width *. (3.0 *. flou_y +. graisse)) in
 
 	let color = (r,g,b) in
-	let lines, normals = 
+	let lines, normals =
 	  if param.close then
 	    List.map (function (x::_ as l) -> l @ [x] | [] -> []) lines,
 	    List.map (function (x::_ as l) -> l @ [x] | [] -> []) normals
@@ -673,8 +673,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	    lines, normals
 	in
 	List.iter2 (fun l n ->
-	  GlDraw.begins `quad_strip; 
-	  GlDraw.color color; 
+	  GlDraw.begins `quad_strip;
+	  GlDraw.color color;
 	  List.iter2
 	    (fun (x,y,_) ((vx, vy),_) ->
 	      let norm = sqrt (vx*.vx +. vy*.vy) in
@@ -724,14 +724,14 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       List.iter fn link.link_contents
     )
 
-    | States (s) -> 
+    | States (s) ->
       if List.mem !cur_state s.states_states then
 	List.iter fn s.states_contents
-	
-    | Image i -> 
+
+    | Image i ->
       Gl.enable `texture_2d;
-      begin     
-	try 	  
+      begin
+	try
 	  GlTex.bind_texture `texture_2d (Hashtbl.find win.imageCache i)
 	with Not_found ->
 	  let image = ReadImg.openfile i.image_file in
@@ -741,7 +741,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  for j=0 to h-1 do
             for i=0 to w-1 do
 	      Image.(read_rgba_pixel image i j (fun ~r ~g ~b ~a ->
-		let r,g,b,a = 
+		let r,g,b,a =
 		  if image.max_val <> 255 then
 		    (r * 255 * 2 + 1) / (2 * image.max_val),
 		    (g * 255 * 2 + 1) / (2 * image.max_val),
@@ -755,14 +755,14 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		Raw.set raw ((j * w + i) * 4 + 3) a));
 	    done
 	  done;
-	  let texture = GlPix.of_raw raw `rgba w h in  
+	  let texture = GlPix.of_raw raw `rgba w h in
 	  let tid = GlTex.gen_texture () in
 	  GlTex.bind_texture `texture_2d tid;
 	  GlTex.image2d texture ~border:false;
 	  GlTex.env (`mode `modulate);
 	  GlTex.env (`color (1.0, 1.0, 1.0, 1.0));
 	  GlTex.parameter ~target:`texture_2d (`min_filter `nearest);
-	  GlTex.parameter ~target:`texture_2d (`mag_filter `nearest);    
+	  GlTex.parameter ~target:`texture_2d (`mag_filter `nearest);
 	  Hashtbl.replace win.imageCache i tid
       end;
       GlDraw.color (1.0,1.0,1.0);
@@ -784,14 +784,14 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       GlFunc.depth_mask false;
       List.iter fn (drawing_sort !pages.(page).(state).pageContents);
 
-      
+
       GlFunc.depth_mask true;
       Gl.disable `blend;
       Hashtbl.iter (fun name f ->
-	try 
+	try
 	  f win ;
-	with e -> Printf.fprintf stderr "other: exception %s\n" name; flush stderr; ) other_items;	  
-  
+	with e -> Printf.fprintf stderr "other: exception %s\n" name; flush stderr; ) other_items;
+
     in
 
 
@@ -811,8 +811,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     in
 
    let draw_saa do_draw set_proj saa =
-     match subpixel saa with 
-	None -> 
+     match subpixel saa with
+	None ->
 	  set_proj 0.0 0.0;
 	  do_draw ();
       | Some (xr,yr, xb,yb) ->
@@ -828,13 +828,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	GlClear.clear [`depth];
 	do_draw ();
 	GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
-   in 
+   in
 
     let draw_fbo fbo w h pw ph page state saa =
       GlDraw.viewport 0 0 w h;
       GlClear.clear [`color;`depth];
       GlMat.load_identity ();
-      let set_proj xb yb = 
+      let set_proj xb yb =
 	GlMat.mode `projection;
 	GlMat.load_identity ();
 	GlMat.translate3 (xb /. float w , yb /. float h , 0.0);
@@ -907,7 +907,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
      GlDraw.ends ();
      Gl.disable `texture_2d;
    in
-*)  
+*)
   let draw_gl_scene () =
     let win = get_win () in
     let time = Unix.gettimeofday () in
@@ -919,6 +919,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     );
 
     cur_time := time;
+
     if !to_revert then revert ();
     GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
     GlClear.color ~alpha:0.0 (0.0, 0.0, 0.0);
@@ -935,14 +936,14 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 (*    Gc.set {(Gc.get ()) with Gc.verbose = 255 };*)
     match !prefs.rotation, i <> i' with
       (None, _) | (Some _, false) -> ()
-    | Some duration, _ -> 
+    | Some duration, _ ->
       let dir = i < i' in
       saved_rectangle := None;
       if !to_revert then revert ();
- 
+
       let fbo1 = draw_off_screen 1 i j in
       let fbo2 = draw_off_screen 1 i' j' in
- 
+
       let nb = ref 0 in
       let time = Unix.gettimeofday () in
       let angle = ref (if dir then 0.0 else 90.0) in
@@ -953,9 +954,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	GlMat.load_identity ();
 	GlMat.rotate3 !angle axe;
 	draw_texture fbo1 i j;
-	if !angle > 15.0 then 
+	if !angle > 15.0 then
 	  begin
-	    GlMat.load_identity ();      
+	    GlMat.load_identity ();
 	    draw_texture fbo2 i' j';
 	  end
 	) set_proj !prefs.subpixel_anti_aliasing;
@@ -965,7 +966,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	angle := if dir then delta /. duration *. 90.0 else (1.0 -. delta /. duration) *. 90.0;
 
       done;
-      
+
       Printf.printf "rotation: %f fps.\n" (float !nb /. duration);
       flush stdout*)
   in
@@ -978,7 +979,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     Glut.postRedisplay ()
   in
 
-  let send_changes = 
+  let send_changes =
     ref (fun () -> ()) in
 
   let redraw_all () =
@@ -989,7 +990,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let events = ref [] in
 
   let send_events ds ev =
-    let rec fn acc evs = match ev, evs with 
+    let rec fn acc evs = match ev, evs with
       | _, [] -> (ds, ev)::(List.rev acc)
       | Drag(n1,(x1,y1)), ((ds',Drag(n2,(x2,y2)))::evs) when n1 == n2 && ds == ds' ->
 	List.rev_append acc ((ds, Drag(n1,(x1+.x2,y1+.y2)))::evs)
@@ -1012,7 +1013,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  let rs = Hashtbl.find dynReaction d in
 	  List.iter (fun r ->
 	    let action = r ev in
-	    if action <> Unchanged then 
+	    if action <> Unchanged then
 	      (update_link := true; dynReset d; redraw_all ())) rs;
 	with
 	  Not_found -> ())
@@ -1044,15 +1045,15 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let (ax,ay,az) as r1 = Vec3.normalize (Vec3.vecp axe r0) in
     let (bx,by,bz) as r2 = Vec3.normalize (Vec3.vecp axe r1) in
     let prec = 32 in
-    GlLight.material ~face:`both (`specular (0.7,0.7,0.7,1.0));   
-    GlLight.material ~face:`both (`diffuse (0.5,0.5,0.7,1.0));   
-    GlLight.material ~face:`both (`ambient (0.5,0.5,0.7,1.0));   
+    GlLight.material ~face:`both (`specular (0.7,0.7,0.7,1.0));
+    GlLight.material ~face:`both (`diffuse (0.5,0.5,0.7,1.0));
+    GlLight.material ~face:`both (`ambient (0.5,0.5,0.7,1.0));
     GlLight.material ~face:`both (`shininess 0.5);
     GlDraw.begins `quad_strip;
     for i = 0 to prec do
       let a = float(i) *. 2.0 *. Vec3.pi /. float(prec) in
       let c' = cos(a) and s' = sin(a) in
-      let c = r *. c' and s = r *. s' in 
+      let c = r *. c' and s = r *. s' in
       GlDraw.normal3 (Vec3.add (Vec3.mul c' r1) (Vec3.mul s' r2));
       GlDraw.vertex3 (Vec3.add v1 (Vec3.add (Vec3.mul c r1) (Vec3.mul s r2)));
       GlDraw.vertex3 (Vec3.add v2 (Vec3.add (Vec3.mul c r1) (Vec3.mul s r2)));
@@ -1075,7 +1076,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     for i = 0 to prec do
       let a = float(i) *. 2.0 *. Vec3.pi /. float(prec) in
       let c' = cos(a) and s' = sin(a) in
-      let c = r *. c' and s = r *. s' in 
+      let c = r *. c' and s = r *. s' in
       GlDraw.vertex3 (Vec3.add v1 (Vec3.add (Vec3.mul c r1) (Vec3.mul s r2)));
       GlDraw.vertex3 (Vec3.add v2 (Vec3.add (Vec3.mul c r1) (Vec3.mul s r2)));
     done;
@@ -1151,7 +1152,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | 112 -> decr_page true
       | 8 -> decr_state ()
       | 103 -> cur_page := min (max 0 !dest) (!num_pages - 1); cur_state := 0; redraw win;
-      | 43 -> 
+      | 43 ->
 	if Glut.getModifiers () = Glut.active_shift then (
 	  Hashtbl.clear win.glyphCache;
 	  prefs := { !prefs with graisse = !prefs.graisse +. 0.05 };
@@ -1219,7 +1220,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  motion_ref := Some (x0,y0,x, y,buttons,links);
 	  let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
 	  List.iter (function (name,ds) ->
-            Printf.eprintf "Drag: %S\n%!" name;			      
+            Printf.eprintf "Drag: %S\n%!" name;
 	    send_events ds (Drag(name,(x,y)))) buttons;
 	));
   in
@@ -1240,13 +1241,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       (if l = [] then Glut.setCursor Glut.CURSOR_INHERIT
        else if win.saved_rectangle = None then (
 	 win.saved_rectangle <-
-	   Some (GlPix.read ~x:0 ~y:0 
-			    ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
+	   Some (GlPix.read ~x:0 ~y:0
+			    ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT)
 			    ~format:`rgba ~kind:`ubyte
-		,GlPix.read ~x:0 ~y:0 
-			    ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
+		,GlPix.read ~x:0 ~y:0
+			    ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT)
 			    ~format:`depth_component ~kind:`float)));
-      
+
       List.iter (fun l ->
 	    let color = match l.link_kind with
 		Extern uri ->
@@ -1259,7 +1260,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	      | Intern _ ->
 		Glut.setCursor Glut.CURSOR_INFO;
 		(0.0,0.0,1.0)
-	      | _ -> 
+	      | _ ->
 		Glut.setCursor Glut.CURSOR_INFO;
 		(1.0,0.0,1.0)
 	    in
@@ -1277,10 +1278,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     flush stderr;
     next_links := l
   in
-  
-  let goto_link l0 c0 = 
+
+  let goto_link l0 c0 =
 (*    Printf.printf "Searching position: line <= %d, col <= %d.\n%!" l0 c0;*)
-    let res = 
+    let res =
       Array.fold_left(fun (acc, (i,j)) linkss ->
 	Array.fold_left(fun (acc, (i,j)) links ->
 	  let acc =
@@ -1291,7 +1292,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		  (match ls with
 		    c::l::_ ->
 		      let l = int_of_string l and c = int_of_string c in
-		      if (l0 > l || (l = l0 && c0 >= c)) && 
+		      if (l0 > l || (l = l0 && c0 >= c)) &&
 			(l0 - l < bl || (l0 - l = bl && c0 - c < bc)) then
 			l0 - l, c0 - c, Some(link, i-1, j)
 		      else
@@ -1305,7 +1306,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     match fst res with
       (_,_,None) ->
 	Printf.fprintf stderr "Edit position not found: line <= %d, col <= %d.\n%!" l0 c0
-    | (_,_,Some(l,i,j)) -> 
+    | (_,_,Some(l,i,j)) ->
       cur_page:= i;
       cur_state := j;
       Array.iter (function None -> () | Some win ->
@@ -1314,7 +1315,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
 	Glut.swapBuffers ()) all_win
   in
-  
+
   let reconnect sock_info =
     assert (!sock_info = None);
     match !prefs.server with
@@ -1327,11 +1328,11 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	 | [s;p] -> s, int_of_string p
 	 | _ -> raise Exit
        in
-       let addrs = 
+       let addrs =
 	 Unix.(getaddrinfo server (string_of_int port) [AI_SOCKTYPE SOCK_STREAM])
        in
        let rec fn = function
-         [] -> 
+         [] ->
 	   Printf.fprintf stderr "Failed to connect to Patonet server\n%!";
 	   raise Exit
 	 | addr::rest -> Unix.(
@@ -1342,7 +1343,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	   Printf.fprintf Pervasives.stderr "Trying connect to %s:%d\n%!"
 	     str_addr port;
 	   let sock= socket addr.ai_family addr.ai_socktype 0 in
-	   try 
+	   try
 	     connect sock addr.ai_addr;
 	     sock
 	   with _ -> fn rest)
@@ -1367,10 +1368,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let handle_request sock_info () =
-    match !sock_info with 
+    match !sock_info with
       None -> if Random.int 100 = 0 then reconnect sock_info;
     | Some (sock,fo,fi) ->
-      try 
+      try
 	let i,_,_ = Unix.select [sock] [] [] 0.0 in
 	match i with
 	| [_] -> (
@@ -1384,7 +1385,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	      goto (int_of_string pg) (int_of_string st)
 	  | _ -> ())
 	| _ -> ()
-	with _ -> 
+	with _ ->
 	  (try Unix.close sock with _ -> ());
 	  sock_info := None;
 	  reconnect sock_info
@@ -1421,7 +1422,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	    Exit ->
 	      Printf.fprintf stderr "Illegal cmd: %s\n" cmd; flush stderr
 	end
-    with 
+    with
       Unix.Unix_error(nb, _, _) as e ->
       Printf.fprintf stderr "Error in select: %s (%s)\n"
 	(Printexc.to_string e)
@@ -1435,7 +1436,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     draw_gl_scene ();
     Glut.swapBuffers ();
   in
-    
+
 
   let mouse_cb ~button ~state ~x ~y =
     let win = get_win () in
@@ -1445,7 +1446,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     | Glut.OTHER_BUTTON(4), Glut.UP -> win.zoom <- win.zoom *. 1.1; redraw win;
 
     | Glut.LEFT_BUTTON, Glut.DOWN ->
-      let links = find_link win x y in 
+      let links = find_link win x y in
       let buttons = List.filter (fun l -> match l.link_kind with Button(_,_,_) -> true | _ -> false) links in
       let buttons = List.map (function { link_kind = Button(_,name,ds) } -> name,ds | _ -> assert false) buttons in
 
@@ -1459,11 +1460,12 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  if (dx * dx + dy * dy <= 9) then links else []
       in
       motion_ref := None;
-      List.iter 
+      List.iter
 	  (fun l ->
 	    match l.link_kind with
 	      Intern(label,dest_page,dest_x,dest_y) ->
 		begin
+		  Printf.eprintf "dest_page %d\n%!" dest_page;
 		  cur_page := dest_page;
 		  cur_state := 0;
 		  redraw win;
@@ -1475,10 +1477,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 (*		  Printf.printf "%s \"%s\"\n%!" browser uri;*)
 		  ignore (Sys.command (Printf.sprintf "%s \"%s\"" browser uri));
 		with
-		  Not_found -> 
+		  Not_found ->
 		    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
 	      end
-	    | Button(Clickable,name,ds) -> 
+	    | Button(Clickable,name,ds) ->
 	      send_events ds (Click(name))
 	    | Button(Editable(current,init),name,ds) ->
 	       let editor = try Sys.getenv "EDITOR" with Not_found -> "emacs" in
@@ -1490,13 +1492,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	       let len = in_channel_length ch in
 	       let buf = String.make len ' ' in
 	       let _ = really_input ch buf 0 len in
-	       close_in ch;	       
+	       close_in ch;
 	       send_events ds (Edit(name, buf))
-	    | Button(Dragable,name,ds) -> 
+	    | Button(Dragable,name,ds) ->
 	      ()
 	  ) links
-	  
-    | b, Glut.UP -> 
+
+    | b, Glut.UP ->
       Printf.fprintf stderr "Unbound button: %s\n%!" (Glut.string_of_button b)
     | _ -> ()
   in
@@ -1516,7 +1518,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	init_gl ();
 	all_win.(1) <- Some (init_win w2)
       );
-      Printf.fprintf stderr "Window created, number of samples: %d\n" 
+      Printf.fprintf stderr "Window created, number of samples: %d\n"
 	(Glut.get Glut.WINDOW_NUM_SAMPLES);
       flush stderr;
     end;
@@ -1539,19 +1541,19 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
 	Sys.set_signal Sys.sighup
 	  (Sys.Signal_handle
-	     (fun s -> 
+	     (fun s ->
 	       to_revert := true;
  	       Array.iter (function None -> () | Some win ->
 		 Glut.setWindow ~win:win.winId;
 		 Glut.postRedisplay ()) all_win));
 	Printf.fprintf stderr "GL setup finished, starting loop\n";
 	flush stderr;
-	(try 
-	  while true do 
-	    (try 
+	(try
+	  while true do
+	    (try
 	       Array.iter (function None -> () | Some win -> win.fps <- Unix.gettimeofday ()) all_win;
 	       Glut.mainLoop ()
-	     with 
+	     with
 	     | Glut.BadEnum _ -> () (* because lablGL does no handle GLUT_SPECIAL_CTRL_L and alike *)
 	     | e ->
                clearCache ();
@@ -1567,7 +1569,5 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
 let output = output_from_prime output'
 
-let _ = 
+let _ =
   Hashtbl.add drivers "DriverGL" (module struct let output = output let output' = output' end:Driver)
-
-
