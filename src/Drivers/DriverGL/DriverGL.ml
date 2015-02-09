@@ -1487,7 +1487,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	       let filename, ch = Filename.open_temp_file "tmp" ".txt" in
 	       output_string ch current;
 	       close_out ch;
-	       Sys.command (editor ^ " " ^ filename);
+	       ignore (Sys.command (editor ^ " " ^ filename));
 	       let ch = open_in filename in
 	       let len = in_channel_length ch in
 	       let buf = String.make len ' ' in

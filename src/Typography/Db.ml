@@ -66,27 +66,27 @@ type db = {
 
 let interaction_start_hook = ref ([]: (unit -> unit) list)
 
-let do_interaction_start_hook () = 
+let do_interaction_start_hook () =
   List.iter (fun f -> f ()) (!interaction_start_hook)
 
 let sessid = ref (None: (string * string * (string * string) list) option)
-(* the first string is the login *)		 
+(* the first string is the login *)
 (* the second string is the group, "guest" is reserved for guest *)
 (* the list of pairs of strings are the "friends login and group" *)
-		 
+
 let secret = ref ""
 
-let init_db table_name db_info = 
+let init_db table_name db_info =
   match db_info with
-  | Memory -> 
+  | Memory ->
     let total_table = Hashtbl.create 1001 in
     { db = (fun () -> MemoryDb);
       disconnect = (fun () -> ());
       create_data = fun ?(global=false) name vinit ->
 	let table = Hashtbl.create 1001 in
-	let sessid () = match !sessid with None -> ("", "", []) | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs in 
+	let sessid () = match !sessid with None -> ("", "", []) | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs in
 	let read = fun () ->
-	  let s,g,_ = sessid () in 
+	  let s,g,_ = sessid () in
 	  try Hashtbl.find table (s,g) with Exit | Not_found -> vinit in
 	let add_to_table ((s,g) as key) v =
 	  let old = try Hashtbl.find total_table g with Not_found -> [] in
@@ -105,10 +105,10 @@ let init_db table_name db_info =
 	  Hashtbl.remove table (s, g);
 	in
 	let distribution ?group () =
-	  let total = match group with 
+	  let total = match group with
 	    | None ->
 	      Hashtbl.fold (fun k l acc -> acc + List.length l) total_table 0
-	    | Some g -> 
+	    | Some g ->
 	      try List.length (Hashtbl.find total_table g) with Not_found -> 1
 	  in
 	  let res = Hashtbl.create 101 in
@@ -122,8 +122,8 @@ let init_db table_name db_info =
 
 
 #ifdef SQLITE3
-  | Sqlite filename -> 
-      (* FIXME: implement Sqlite support, with concurrent access, must manage the Busy error *) 
+  | Sqlite filename ->
+      (* FIXME: implement Sqlite support, with concurrent access, must manage the Busy error *)
       Printf.eprintf "Sqlite support not yet implemented\n";
       exit 1
 #endif
@@ -136,8 +136,8 @@ let init_db table_name db_info =
    But not testing duplicate could lead to segfault, if type differs (due to marshalling) ...
 *)
     let created = Hashtbl.create 1001 in
-    
-    let db () = 
+
+    let db () =
       match !dbptr with
 	None -> let db = Mysql.connect db_info in Printf.eprintf "Reconnected to db\n%!"; dbptr := Some db; db
       | Some db -> db
@@ -152,7 +152,7 @@ let init_db table_name db_info =
       `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);" table_name in
      let _r = Mysql.exec (db ()) sql in
      match Mysql.errmsg (db ()) with
-     | None -> () 
+     | None -> ()
      | Some err -> Printf.eprintf "DB Error: %s\n%!" err);
 
     { db = (fun () -> MysqlDb (db ()));
@@ -162,27 +162,27 @@ let init_db table_name db_info =
       create_data = fun ?(global=false) name vinit ->
 	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
 	Hashtbl.add created name ();
-	let v = base64_encode (Marshal.to_string vinit []) in 
+	let v = base64_encode (Marshal.to_string vinit []) in
 	let sessid () = match !sessid with
 	    None -> "", "guest", []
 	  | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs
-	in 
-	let init () = 
+	in
+	let init () =
 	  let sessid, groupid, friends = sessid () in
-	  let fn (sessid, grouid) = 
+	  let fn (sessid, grouid) =
             let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
 				     table_name sessid groupid name in
             let r = Mysql.exec (db ()) sql in
-            match Mysql.errmsg (db ()), Mysql.fetch r with	
-            | None, Some row -> 
+            match Mysql.errmsg (db ()), Mysql.fetch r with
+            | None, Some row ->
 	       let count = match row.(0) with None -> 0 | Some n -> int_of_string n in
 	       (match count with
-		  0 -> 
+		  0 ->
 		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `value`, `createtime`) VALUES ('%s','%s','%s','%s', NOW());"
 					   table_name sessid groupid name v in
-		  let _r = Mysql.exec (db ()) sql in	      
+		  let _r = Mysql.exec (db ()) sql in
 		  (match Mysql.errmsg (db ()) with
-		   | None -> () 
+		   | None -> ()
 		   | Some err -> raise (Failure err))
 		| 1 -> ()
       		| _ -> raise (Failure "SQL duplicate data in base"))
@@ -204,8 +204,8 @@ let init_db table_name db_info =
             match Mysql.errmsg (db ()), Mysql.fetch r with
     	    | None, Some row -> (match row.(0) with None -> vinit | Some n -> Marshal.from_string (base64_decode n) 0)
             | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; vinit
-            | _ -> assert false   
-            with 
+            | _ -> assert false
+            with
 	      Mysql.Error err ->
 		Printf.eprintf "Mysql Error: %s\n%!" err; vinit
 	    | Exit -> vinit
@@ -214,12 +214,12 @@ let init_db table_name db_info =
 	    let sessid, groupid, friends = init () in
 	    let fn (sessid, groupid) =
               try
-		let v = base64_encode (Marshal.to_string v []) in 
+		let v = base64_encode (Marshal.to_string v []) in
 		let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
 					 table_name v name sessid groupid in
 		let _r = Mysql.exec (db ()) sql in
 		match Mysql.errmsg (db ()) with
-		    | None -> () 
+		    | None -> ()
 		    | Some err -> Printf.eprintf "DB Error: %s\n%!" err
 	      with Exit -> ()
 	    in
@@ -246,12 +246,12 @@ let init_db table_name db_info =
 	      table_name name agroup in
 	    let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` %s" table_name group in
 	    (*Printf.eprintf "total: %s\n%!" sql';*)
-	    
+
 	    let f = function None -> "" | Some s -> s in
 	    let f' = function None -> 0 | Some s -> int_of_string s in
 	    let r = Mysql.exec (db ()) sql' in
 	    let total =
-	      match Mysql.fetch r with 
+	      match Mysql.fetch r with
 		None -> 0
 	      | Some row -> f' row.(0)
 	    in
@@ -259,24 +259,24 @@ let init_db table_name db_info =
 	    let scores =
 	      let l = ref [] in
 	      try while true do
-		  match Mysql.fetch r with 
+		  match Mysql.fetch r with
 		    None -> raise Exit
 		  | Some row -> l := (Marshal.from_string (base64_decode (f row.(0))) 0, f' row.(1))::!l
 		done; []
 	      with Exit -> !l
-	    in 
+	    in
 	    total, scores
 	  with Exit -> 0, []
 	in
 	{name; read; write; reset; distribution}}
 #endif
 
-let make_sessid () = 
+let make_sessid () =
   let size = 32 in
   let str = String.create size in
   for i = 0 to size - 1 do
     let c = Random.int 62 in
-    let d = 
+    let d =
       if c < 26 then Char.chr (c + Char.code 'a')
       else if c < 52 then Char.chr (c - 26 + Char.code 'A')
       else Char.chr (c - 52 + Char.code '0')
@@ -299,4 +299,3 @@ let friends_from_string str =
 let friends_to_string l =
   let str = String.concat "+" (List.map (fun (s,g) -> s ^ "," ^ g) l) in
   if str <> "" then "+" ^ str else str
-    
