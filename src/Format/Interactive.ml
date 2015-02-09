@@ -33,10 +33,10 @@ let read_file file =
   res
 
 
-let arrow = tT ">>" :: hspace(1.0) 
+let arrow = tT ">>" :: hspace(1.0)
 
 module Make(D:DocumentStructure)
- (Format:module type of DefaultFormat.Format(D) 
+ (Format:module type of DefaultFormat.Format(D)
    (* a strange way to remove Output from the
       signature to allow Format to change the
       Output functor *)
@@ -53,7 +53,7 @@ type result =
 | NotTried
 
 let scoreBar ?(vertical=false) envDiagram height width data =
-  let open Diagrams in 
+  let open Diagrams in
   let module EnvDiagram = (val envDiagram : Diagrams.EnvDiagram) in
   let open EnvDiagram in
   let total = max 1 (List.fold_left (fun acc ((_: color),x) -> acc + x) 0 data) in
@@ -95,7 +95,7 @@ let scoreBarProg envDiagram height width data =
   let open EnvDiagram in
   let data = List.sort (fun (x,_) (x',_) -> compare x x') data in
   let data = List.map (fun
-    (x,n) -> 
+    (x,n) ->
       let color = match x with
 	  Ok -> green
 	| FailTest -> yellow
@@ -123,8 +123,8 @@ let drawCheckBox ?(scale=0.5) env checked =
 let checkBox ?(global=false) ?(scale=0.75) ?(destinations=[]) data contents =
   let name = data.Db.name in
   let name' = name^"_dest" in
-  button ~btype:Clickable name (name'::destinations) (contents (fun () -> (dynamic name' 
-    (function Click(name0) when name0 = name -> 
+  button ~btype:Clickable name (name'::destinations) (contents (fun () -> (dynamic name'
+    (function Click(name0) when name0 = name ->
       data.write (not (data.read ())); (if global then Public else Private)
     | _ -> Unchanged)
     []
@@ -152,21 +152,21 @@ let radioButtons ?(global=false) ?(scale=0.5) ?(destinations=[]) data values =
   let dests = Array.init (Array.length values) (fun i -> name ^ "_dest" ^ string_of_int i) in
   let buttons = Array.init (Array.length values) (fun i -> name ^ "_button" ^ string_of_int i) in
   Array.mapi (fun i value contents ->
-    button ~btype:Clickable buttons.(i) (Array.to_list dests@destinations) (contents (fun () -> 
-      (dynamic dests.(i) 
-	 (function Click(name') -> 
+    button ~btype:Clickable buttons.(i) (Array.to_list dests@destinations) (contents (fun () ->
+      (dynamic dests.(i)
+	 (function Click(name') ->
 	   if name' = buttons.(i) then
 	     data.write value; if global then Public else Private
 	 | _ -> Unchanged)
 	 []
-	 (fun () -> 
+	 (fun () ->
 	   [bB (fun env -> drawRadio ~scale env (value = data.read ()))]))))) values
 
 let dataRadioButtons ?(global=false) ?(scale=0.5) ?(destinations=[]) name values =
   let data = db.create_data ~global name values.(0) in
   radioButtons ~global ~scale ~destinations data values
 
-let ascii = 
+let ascii =
   let str = String.make (2*(128-32)) ' ' in
   for i = 32 to 127 do
     str.[2*(i-32)] <- Char.chr i
@@ -184,7 +184,7 @@ let mk_length lines nb = match nb with
       | n, l::lines -> l::fn lines (n-1)
     in
     fn lines nb
- 
+
 let interEnv x =
     { (envFamily x.fontMonoFamily x)
       with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [];
@@ -195,18 +195,18 @@ let interEnv x =
 let editableText ?(global=false) ?(empty_case="Type in here")
       ?nb_lines ?err_lines ?(init_text="") ?(lang=lang_default)
       ?extra ?resultData name =
-    
+
     let name' = name^"_target" in
     let name'' = name^"_target2" in
 
     let data = db.create_data ~global name init_text in
 
-    let dataR = 
-      match resultData with 
-	None -> db.create_data ~global (name^"_results") NotTried 
+    let dataR =
+      match resultData with
+	None -> db.create_data ~global (name^"_results") NotTried
       | Some d -> d
     in
-    
+
     let update () =
       let s = data.read() in
       let s' = if s = "" then empty_case else s in
@@ -214,20 +214,20 @@ let editableText ?(global=false) ?(empty_case="Type in here")
     in
 
     dynamic name'
-      (function Edit(n, t) when name = n -> data.write t; Private 
+      (function Edit(n, t) when name = n -> data.write t; Private
       | _ -> Unchanged)
-      ascii 	  
+      ascii
       (fun () ->
         let s, lines = update () in
         (button ~btype:(Editable(s, init_text))
            name
 	   [name';name'']
-           [bB(fun env -> 
+           [bB(fun env ->
 	     let env = interEnv env in
 	     List.map (fun x-> Drawing (snd x))
-	       (IntMap.bindings 
-		  (OutputDrawing.minipage env
-		     (let i = ref 0 in 
+	       (IntMap.bindings
+		  (let d,_,_ = OutputDrawing.minipage' env
+		     (let i = ref 0 in
 		      let next () =
 			incr i;
  			let line = string_of_int !i in
@@ -236,7 +236,7 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 		      in
 		      let codeLines = mk_length lines nb_lines in
 		      let acc = List.fold_left (fun acc line ->
-			let para=Paragraph 
+			let para=Paragraph
 			  {par_contents=next () @ line;
 			   par_env=(fun e -> e);
 			   par_post_env=(fun env1 env2 ->
@@ -267,10 +267,10 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 			   par_parameters=ragged_left;
 			   par_badness=badness;
 			   par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
-			in up (newChildAfter acc para)) (top acc) (lang_default resultLines))))))]))
+			in up (newChildAfter acc para)) (top acc) (lang_default resultLines))) in d)))]))
 
 let ocaml_dir () =
-  let sessid = match !Db.sessid with 
+  let sessid = match !Db.sessid with
     None -> "unknown"
   | Some(s,_,_) -> s
   in
@@ -283,7 +283,7 @@ let ocaml_dir () =
 let test_ocaml ?(run=true) ?preprocessor ?filename ?(prefix="") ?(suffix="") writeR prg =
   let dir, filename, target, exec, run, delete_all =
     match filename with
-      None -> 
+      None ->
         let prefix = Filename.temp_file "demo" "" in
 	Sys.remove prefix;
 	Unix.mkdir prefix 0o700;
@@ -315,13 +315,13 @@ let test_ocaml ?(run=true) ?preprocessor ?filename ?(prefix="") ?(suffix="") wri
   Printf.eprintf "running: %s\n%!" cmd;
   let _ = Sys.command cmd in
   let err = read_file tmpfile3 in
-  let err = 
-    try 
+  let err =
+    try
       let n = 9 + Str.search_forward (Str.regexp_string "File \"\",") err 0 in
-      String.sub err n (String.length err - n) 
+      String.sub err n (String.length err - n)
     with Not_found -> try
       let n = Str.search_forward (Str.regexp "File \"[^\"]*\",") err 0 in
-      String.sub err n (String.length err - n) 
+      String.sub err n (String.length err - n)
     with Not_found -> err
   in
   let err, out =
@@ -348,7 +348,7 @@ let test_ocaml ?(run=true) ?preprocessor ?filename ?(prefix="") ?(suffix="") wri
     (try Sys.remove (Filename.concat dir filename) with _ -> ());
     (try Unix.rmdir dir with _ -> ());
   );
-  if err <> "" then err else 
+  if err <> "" then err else
   if out <> "" then out else "No error and no output"
 
 let test_python ?(prefix="") ?(suffix="") writeR prg =
@@ -367,7 +367,7 @@ let test_python ?(prefix="") ?(suffix="") writeR prg =
   (try Sys.remove tmpfile with _ -> ());
   (try Sys.remove tmpfile2 with _ -> ());
   (try Sys.remove tmpfile3 with _ -> ());
-  if err <> "" then (writeR FailTest; err) else 
+  if err <> "" then (writeR FailTest; err) else
   (writeR Ok; if out <> "" then out else "No error and no output")
 
 let score ?group data sample display exo =
@@ -377,7 +377,6 @@ let score ?group data sample display exo =
     let scores = List.filter (fun (x,_) -> x <> NotTried) scores in
     let total' = List.fold_left (fun acc (_,n) -> acc + n) 0 scores in
     let scores = (NotTried,total - total') :: scores in
- 
+
     display scores)
 end
-

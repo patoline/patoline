@@ -509,10 +509,10 @@ let defaultEnv:environment=
     end
 
     let glue_space n =
-      bB(fun env -> 
+      bB(fun env ->
 	let font,_,_,_=selectFont env.fontFamily Regular false in
 	let x= Fonts.loadGlyph font
-	  ({empty_glyph with glyph_index=Fonts.glyph_of_char font ' '}) 
+	  ({empty_glyph with glyph_index=Fonts.glyph_of_char font ' '})
 	in
 	let w =  float n *. env.size *. Fonts.glyphWidth x /.1000. in
 	[glue w w w])
@@ -521,7 +521,7 @@ let defaultEnv:environment=
       let len = String.length s in
       let rec fn acc w i0 i =
 	if i >= len then
-	  List.rev (if i <> i0 then tT (String.sub s i0 (len - i0))::acc 
+	  List.rev (if i <> i0 then tT (String.sub s i0 (len - i0))::acc
 	    else acc)
 	else if s.[i] = ' ' then
 	  let j = ref (i+1) in
@@ -547,7 +547,7 @@ let defaultEnv:environment=
 	else if w = Some (is_letter s.[i]) then
 	  fn acc  w i0 (i + 1)
 	else
-	  fn (if i <> i0 then tT (String.sub s i0 (i - i0))::acc 
+	  fn (if i <> i0 then tT (String.sub s i0 (i - i0))::acc
 	    else acc) (Some (is_letter s.[i])) i (i+1)
       in fn [] None 0 0
 
@@ -562,7 +562,7 @@ let defaultEnv:environment=
     let verb_counter filename =
       let get_line env =
 	if filename = "" then 1 else
-	  try 
+	  try
 	    match StrMap.find filename env.counters
 	    with a,[line] -> line
 	    | _ -> raise Not_found
@@ -604,7 +604,7 @@ let defaultEnv:environment=
       let keywords = ["fun";"as";"function";"(";")";"*";";";",";"val";
 		      "and";"=>";"->";"type";"|";"=";"match";"with";
 		      "rec";"let";"begin";"end";"while";"for";"do";"done";
-		      "struct"; "sig"; "module"; "functor"; "if"; "then"; 
+		      "struct"; "sig"; "module"; "functor"; "if"; "then";
           "else"; "try"; "parser"; "in" ] in
       lang_ML keywords specials s
 
@@ -634,13 +634,7 @@ let defaultEnv:environment=
             Node n,x->
               D.structure:=(Node { n with children=IntMap.remove num n.children },x);
           | x->D.structure:=x);
-        let cont=
-          [bB (fun env->
-            let pages=IntMap.bindings (OutputDrawing.minipage env (t,[])) in
-            List.map (fun x->Drawing x) (List.map snd pages)
-            (* List.map (fun x->let c=x.drawing_contents x.drawing_nominal_width in Drawing (drawing c)) (List.map snd pages) *)
-          )]
-        in
+        let cont=OutputDrawing.minipage (t,[]) in
         match lastChild !D.structure with
             Paragraph x,y->
               D.structure:=up (Paragraph {x with par_contents=x.par_contents@cont},y);
@@ -680,7 +674,7 @@ let animation ?(step=1./.24.) ?(duration=600.) ?(mirror=true) ?(default=0) cycle
   }]))]
 
 let dynamic name action sample contents =
-  OutputCommon.([bB (fun env -> 
+  OutputCommon.([bB (fun env ->
     let contents () = draw env (contents ()) in
     let r = Dynamic{
       dyn_label = name;
@@ -715,7 +709,7 @@ module Env_dynamic(X : sig val arg1 : string val arg2 : OutputCommon.event -> Ou
   let do_end_env ()=
     D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
     env_stack:=List.tl !env_stack;
-    
+
     let t,num=match !D.structure with
         t,(h,_)::_->t,h
       | t,[]->t,0
@@ -724,13 +718,7 @@ module Env_dynamic(X : sig val arg1 : string val arg2 : OutputCommon.event -> Ou
       Node n,x->
         D.structure:=(Node { n with children=IntMap.remove num n.children },x);
     | x->D.structure:=x);
-    let cont () =
-      [bB (fun env->
-        let pages=IntMap.bindings (OutputDrawing.minipage env (t,[])) in
-        List.map (fun x->Drawing (snd x)) pages
-          (* List.map (fun x->let c=x.drawing_contents x.drawing_nominal_width in Drawing (drawing c)) (List.map snd pages) *)
-      )]
-    in
+    let cont () = OutputDrawing.minipage (t,[]) in
     let cont = dynamic X.arg1 X.arg2 X.arg3 cont in
     match lastChild !D.structure with
       Paragraph x,y->
@@ -751,9 +739,9 @@ let figure_drawing ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) dra
   let lvl,num=try StrMap.find "figure" env.counters with Not_found -> -1,[] in
   let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
   let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
-  let caption =
-    OutputDrawing.minipage {env with normalLeftMargin=0.} (
-	                     paragraph ((
+  let caption, env, ms = (* FIXME: ms lost !!! no label inside caption will work *)
+    OutputDrawing.minipage' {env with normalLeftMargin=0.}
+	                     (paragraph ((
                                          [ tT "Figure"; tT " ";
                                            tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
                                          @(if caption=[] then [] else tT" "::tT"–"::tT" "::caption)
@@ -797,8 +785,8 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                (fun i x->
                   Array.mapi (fun j y->
                     let minip=try IntMap.find 0
-                                    (OutputDrawing.minipage
-                                       { env with normalMeasure=widths0.(j) } y)
+                                    (let d,_,_ = OutputDrawing.minipage'
+                                       { env with normalMeasure=widths0.(j) } y in d)
                       with _->empty_drawing_box
                     in
                     widths.(j)<-max widths.(j) (minip.drawing_max_width);
@@ -892,11 +880,11 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 
     module Env_mathpar = struct
 
-      let do_begin_env () = 
+      let do_begin_env () =
 	D.structure:=newChildAfter !D.structure (Node Document.empty) ;
-	env_stack := (List.map fst (snd !D.structure)) :: !env_stack 
+	env_stack := (List.map fst (snd !D.structure)) :: !env_stack
 
-      let do_end_env () = 
+      let do_end_env () =
 	D.structure := follow (top !D.structure) (List.rev (List.hd !env_stack)) ;
 	env_stack:=List.tl !env_stack ;
 	let rec truc t = match t with
@@ -1099,13 +1087,13 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                     ]
                 end)
 
-    type number_kind = 
+    type number_kind =
       Arabic | AlphaLower | AlphaUpper | RomanLower | RomanUpper
 
     module type Enumerate_Pattern = sig
       val arg1 : number_kind * (string -> content list)
     end
- 
+
     module Env_genumerate = functor (Pat:Enumerate_Pattern) ->
       Enumerate(struct
 	let c, f = Pat.arg1
@@ -1229,10 +1217,10 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
              )];
         env_stack:=List.tl !env_stack
     end
-    module Env_proof = Env_gproof (struct 
+    module Env_proof = Env_gproof (struct
       let arg1 = italic [tT "Proof.";bB (fun env->let w=env.size in [glue w w w])]
     end)
-    module Env_proofOf(X : sig val arg1 : content list end) = Env_gproof (struct 
+    module Env_proofOf(X : sig val arg1 : content list end) = Env_gproof (struct
       let arg1 = italic (X.arg1 @ [tT ".";bB (fun env->let w=env.size in [glue w w w])])
     end)
 
@@ -1373,16 +1361,16 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
         if i < !max_iterations-1 && reboot && !(env.fixable) then (
           resolve tree (i+1) env
         ) else (
-	  
+
           List.iter (fun x->Printf.fprintf stderr "%s\n" (Typography.TypoLanguage.message x)) logs;
-		  
+
           let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
           let par=ref (-1) in
           let crosslinks=ref [] in (* (page, link, destination) *)
           let crosslink_opened=ref false in
           let destinations=ref StrMap.empty in
           let urilinks=ref None in
-	  
+
           let continued_link=ref None in
             (*
               let o=open_out "graph" in
@@ -1399,13 +1387,13 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
               Printf.fprintf o "}";
               close_out o;
             *)
-	  
+
           let draw_page i layout=
             let page={ pageFormat=(layout.frame_x1-.layout.frame_x0,
                                    layout.frame_y1-.layout.frame_y0);
                        pageContents=[] }
             in
-	    
+
             let endlink cont=
               continued_link:=None;
               if !crosslink_opened then (
@@ -1427,7 +1415,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                 crosslink_opened:=false;
               )
             in
-	    
+
             (match !continued_link with
               None->()
             | Some l->(
@@ -1436,11 +1424,11 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
               continued_link:=None
             )
             );
-	    
+
             (* Affichage des frames (demouchage) *)
             let h=Hashtbl.create 100 in
-	    
-	    
+
+
             let rec draw_all_frames t=
               if env.show_frames then (
                 let r=(t.frame_x0,t.frame_y0,t.frame_x1,t.frame_y1) in
@@ -1451,8 +1439,8 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                   ::page.pageContents;
                 );
               );
-	      
-	      
+
+
               let rec draw_cont last_placed conts=match conts with
                   Placed_line l::s->(
                     if l.line.isFigure then (
@@ -1474,7 +1462,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                       page.pageContents<- (List.map (translate ((fst l.line.layout).frame_x0+.l.line_params.left_margin) y)
                                              (fig.drawing_contents fig.drawing_nominal_width))
                       @ page.pageContents;
-		      
+
                     ) else if l.line.paragraph<Array.length paragraphs then (
                       let line=l.line in
                       let param=l.line_params in
@@ -1566,13 +1554,13 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                             link_x0=(fst line.layout).frame_x0+.param.left_margin;
                             link_x1=(fst line.layout).frame_x0+.param.left_margin;
                             link_y0=line.height;link_y1=line.height }, c)::(a,h,c)::s);
-		      
+
                         (* Écrire la page *)
                       let _=
                         fold_left_line paragraphs (fun x b->x+.draw_box x line.height b)
                           ((fst line.layout).frame_x0+.param.left_margin) line
                       in
-		      
+
                         (* Fermer les liens, et préparer la continuation sur
                            la prochaine ligne. *)
                       endlink true;
@@ -1598,8 +1586,8 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
               IntMap.iter (fun _ a->draw_all_frames a) t.frame_children
             in
             draw_all_frames layout;
-	
-	
+
+
               (*
 		for j=0 to Array.length pp-1 do
                 let param=pp.(j).line_params
@@ -1623,12 +1611,12 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                      le reprendre *)
               done;
               *)
-	
+
             endlink true;
             (match !urilinks with
               None->()
             | Some h->page.pageContents<-Link h::page.pageContents; urilinks:=None);
-	
+
               (*
               ignore (
                 List.fold_left (
@@ -1652,11 +1640,11 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                 List.map (translate ((fst page.pageFormat-.w)/.2.) 30.)
               (draw_boxes env num)
             @page.pageContents;
-	    
+
             page.pageContents<-List.rev page.pageContents;
             page
           in
-	  
+
           let rec draw_all_pages g i pages=
             if List.mem "page" g.frame_tags then (
               i+1, draw_page i g::pages
@@ -1686,7 +1674,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 	    ) pages
 	    in
 	  pages, positions);;
-		
+
      let basic_output _ tree defaultEnv file=
        let pages, structure =
 	 match !Config.input_bin with
@@ -1704,7 +1692,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 	   Printf.fprintf stderr "File %s read.\n" fileName;
 	   pages, structure
        in
-       
+
        M.output ~structure pages file
 
       let output out_params structure defaultEnv file=
@@ -1723,7 +1711,7 @@ module MathFonts = struct
       [] -> assert false
     | x::ls ->
       let x0 = vkern_percent_under' x 0.166 in
-      (fun envs st -> snd (x0 envs st)) :: List.map (fun x envs st -> 
+      (fun envs st -> snd (x0 envs st)) :: List.map (fun x envs st ->
 	let center, _ = x0 envs st in vkern_center x center envs st) ls
 
   let adjusted_asana_delimiters name ls =
@@ -1789,7 +1777,7 @@ module MathsFormat=struct
     let bbFont=Lazy.lazy_from_fun (fun ()->Fonts.loadFont
       (findFont FontPattern.({family = "Euler"; slant = Roman; weight = Regular})))
 
-    let mathbb a=[Maths.Scope (fun _ _->Maths.Env (fun env->Maths.change_fonts 
+    let mathbb a=[Maths.Scope (fun _ _->Maths.Env (fun env->Maths.change_fonts
                                                      (change_font (Lazy.force bbFont) env) (Lazy.force bbFont))::a)]
 
     let mathrm a=[Maths.Scope(
@@ -1890,10 +1878,10 @@ module MathsFormat=struct
             (* Bounding box of a *)
             let dr = draw_boxes envs (Maths.draw [envs] a) in
             let (x0,y0,x1,y1) = OutputCommon.bounding_box_full dr in
-    
+
             let drawn=(drawing ~offset:y0 dr) in
             let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
-    
+
             [Drawing {
               drawn with
                 drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
@@ -1931,10 +1919,10 @@ module MathsFormat=struct
             (* Bounding box of a *)
             let dr = draw_boxes envs (Maths.draw [envs] a) in
             let (x0,y0,x1,y1) = OutputCommon.bounding_box_full dr in
-    
+
             let drawn=(drawing ~offset:y0 dr) in
             let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
-    
+
             [Drawing {
               drawn with
                 drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
@@ -1980,10 +1968,10 @@ module MathsFormat=struct
             (* Bounding box of a *)
             let dr = draw_boxes envs (Maths.draw [envs] a) in
             let (x0,y0,x1,y1) = OutputCommon.bounding_box_full dr in
-    
+
             let drawn=(drawing ~offset:y0 dr) in
             let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
-    
+
             [Drawing {
               drawn with
                 drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
@@ -2138,6 +2126,3 @@ module MathsFormat=struct
 
 
 end
-
-
-

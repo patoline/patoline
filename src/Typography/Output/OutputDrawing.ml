@@ -28,14 +28,14 @@ open UsualMake
 
 type page={mutable pageContents:raw list}
 
-let output ?page_num ?state paragraphs figures env (opt_pages:frame)=
+let output ?state paragraphs figures env (opt_pages:frame)=
 
   let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
 
   let par=ref (-1) in
   let crosslinks=ref [] in (* (page, link, destination) *)
   let crosslink_opened=ref false in
-  let destinations=ref StrMap.empty in
+  let destinations=ref [] in
   let urilinks=ref None in
   let continued_link=ref None in
   let draw_page i p=
@@ -220,14 +220,9 @@ let output ?page_num ?state paragraphs figures env (opt_pages:frame)=
               endlink false;
               0.
             )
-            | Marker (Label l)->(
-	      let pnum = match page_num with None -> i | Some n -> n in
-	      Printf.eprintf "drawing: adding to dest: %s %d\n%!" l pnum;
-              let y0,y1=line_height paragraphs figures line in
-              destinations:=StrMap.add l
-                (pnum,(fst line.layout).frame_x0+.param.left_margin,
-                 y+.y0,y+.y1,line) !destinations;
-              0.
+            | Marker (Label l) as m ->(
+              destinations:=m :: !destinations;
+	      0.
             )
                       (* | User (Footnote (_,g))->( *)
                       (*   footnotes:= g::(!footnotes); *)
@@ -305,18 +300,30 @@ let output ?page_num ?state paragraphs figures env (opt_pages:frame)=
 
   let res = IntMap.mapi (fun i a->draw_page i (all_contents a)) opt_pages.frame_children in
 
-  let env=
-    StrMap.fold (fun labl dest env ->
-      let comp_i,lm,y0,y1,line = dest in
-      Printf.fprintf stderr "Adding pos to user_positions %s\n" labl;
-      { env with
-        user_positions=MarkerMap.add (Label labl) line (user_positions env) })
-      !destinations env
-  in
-  res, env
+  res, !destinations
 
 
-let minipage ?state ?page_num env str=
+let minipage ?state ?(env_mod=fun e -> e) str=
+  [bB (fun env->
+    let env = env_mod env in
+    let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
+    let (_,pages,fig',user')=TS.typeset
+      ~completeLine:compl
+      ~figure_parameters:fig_params
+      ~figures:figures
+      ~parameters:params
+      ~new_page:new_page_list
+      ~new_line:new_line_list
+      ~badness:bads
+      pars
+    in
+    let d,ms = output ?state pars figures env' pages in
+    let pages=IntMap.bindings d in
+    List.map (fun (_,x)->Drawing x) pages @ ms
+          (* List.map (fun x->let c=x.drawing_contents x.drawing_nominal_width in Drawing (drawing c)) (List.map snd pages) *)
+  )]
+
+let minipage' ?state env str=
   let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
   let (_,pages,fig',user')=TS.typeset
     ~completeLine:compl
@@ -328,22 +335,5 @@ let minipage ?state ?page_num env str=
     ~badness:bads
     pars
   in
-  fst (output ?state ?page_num pars figures
-     env'
-     pages)
-
-let minipage' ?state ?page_num env str=
-  let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
-  let (_,pages,fig',user')=TS.typeset
-    ~completeLine:compl
-    ~figure_parameters:fig_params
-    ~figures:figures
-    ~parameters:params
-    ~new_page:new_page_list
-    ~new_line:new_line_list
-    ~badness:bads
-    pars
-  in
-  (output ?state ?page_num pars figures
-     env'
-     pages)
+  let d,ms = output ?state pars figures env' pages in
+  d,env',ms

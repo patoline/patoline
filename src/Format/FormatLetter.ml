@@ -34,7 +34,7 @@ module Format=functor (D:DocumentStructure)->struct
   module Default=DefaultFormat.Format(D)
   include (Default:module type of Default with module Output:=Default.Output)
 
-  let subject_text: content list ref = ref (toggleItalic [tT "Subject:";tT" "]) 
+  let subject_text: content list ref = ref (toggleItalic [tT "Subject:";tT" "])
 
   let rec lines s=try
     let idx=String.index s '\n' in
@@ -70,16 +70,16 @@ module Format=functor (D:DocumentStructure)->struct
                        let pars_recip=node (List.map (fun l->paragraph [tT l]) (lines_recipient)) in
                        let minip_sender=try
                                           snd (IntMap.min_binding
-                                                 (OutputDrawing.minipage { env with
+                                                 (let d,_,_ = OutputDrawing.minipage' { env with
                                                    normalMeasure=w;
-                                                   par_indent=[]} pars_sender)
+                                                   par_indent=[]} pars_sender in d)
                                           )
                          with Not_found->empty_drawing_box
                        in
                        let minip_recip=try
                                          snd (IntMap.min_binding
-                                                (OutputDrawing.minipage { env with normalMeasure=w;
-                                                  par_indent=[] } pars_recip)
+                                                (let d,_,_ = OutputDrawing.minipage' { env with normalMeasure=w;
+                                                  par_indent=[] } pars_recip in d)
                                          )
                          with Not_found->empty_drawing_box
                        in
@@ -122,7 +122,7 @@ module Format=functor (D:DocumentStructure)->struct
       (List.map fst (snd !D.structure))
 
   open Unix
-  let lieu_date_text  = ref (fun lieu x -> 
+  let lieu_date_text  = ref (fun lieu x ->
     (Printf.sprintf "%s, le %d/%d/%d" lieu x.tm_mday (x.tm_mon + 1) (1900 + x.tm_year)))
 
 
@@ -142,5 +142,3 @@ module Format=functor (D:DocumentStructure)->struct
   end
 
 end
-
-

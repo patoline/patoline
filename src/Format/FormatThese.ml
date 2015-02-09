@@ -157,11 +157,12 @@ let postprocess_tree tree=
               let text=
                 let dr=try
                          snd (IntMap.min_binding (
-                           OutputDrawing.minipage {env with hyphenate=(fun _->[||]);
+			   let d,_,_ = (* FIXME: lost Marker(Label ...) ?? *)
+                           OutputDrawing.minipage' {env with hyphenate=(fun _->[||]);
                              normalLeftMargin=0.;
                              normalMeasure=env.normalMeasure-.(x1-.x0)/.2.-.w;
                              size=env.size*.sz}
-                             (paragraph n.displayname)
+                             (paragraph n.displayname) in d
                          ))
                   with
                       Not_found->empty_drawing_box

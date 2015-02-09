@@ -73,11 +73,9 @@ type numbering_kind = SimpleNumbering
 
 let slide_numbering = ref (Some SimpleNumbering)
 
-
 module Format=functor (D:Document.DocumentStructure)->(
   struct
 
-    let page_num = ref 0
     module Default=DefaultFormat.Format(D)
     include (Default:
                (((module type of Default
@@ -105,6 +103,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         (* Fabriquer un paragraphe qui va bien *)
         let stru',_=paragraph ~parameters:center [C (fun env->
           try
+	    env_accessed := true;
             let alpha=0.9 in
             let margin=env.size*.0.2 in
             let mes=env.normalMeasure*.alpha in
@@ -113,17 +112,9 @@ module Format=functor (D:Document.DocumentStructure)->(
               normalMeasure=mes-.2.*.margin
             }
             in
-            let minip,env1=OutputDrawing.minipage' ~page_num:!page_num env0 (map_params stru,[]) in
+            let minip,env1,ms1=OutputDrawing.minipage' env0 (map_params stru,[]) in
             let stru_title,_=paragraph M.arg1 in
-            let minip_title,env2=OutputDrawing.minipage' ~page_num:!page_num {env1 with fontColor=(!block_title_foreground)} (stru_title,[]) in
-	      let _ =
-		Printf.eprintf "block env2 %d:\n" !page_num;
-		MarkerMap.iter (fun labl dest ->
-		match labl with Label l ->
-		  Printf.eprintf "  pos %s" l | _ -> ()
-		) env2.user_positions;
-	      	Printf.eprintf "\n";
-	      in
+            let minip_title,env2,ms2=OutputDrawing.minipage' {env1 with fontColor=(!block_title_foreground)} (stru_title,[]) in
             let minip_title0=try snd (IntMap.min_binding minip_title) with Not_found->empty_drawing_box in
             let minip_title0=
               if minip_title0.drawing_y0=infinity then
@@ -181,7 +172,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
               drawing_contents=(fun w->(List.map (fun a->OutputCommon.translate margin 0. (in_order 2 a)) (tit.drawing_contents w))@frame)
             } in
-            [bB (fun _->[Drawing dr]);Env (fun _->env2)]
+            [bB (fun _->Drawing dr :: ms2 @ ms1);Env (fun _->env2)]
           with
               Invalid_argument _->[]
         )] in
@@ -532,12 +523,11 @@ module Format=functor (D:Document.DocumentStructure)->(
       let output out_params structure defaultEnv file=
 
         let rec resolve comp_i env_resolved=
-          Printf.printf "Compilation %d\n" comp_i; flush stdout;
+          Printf.eprintf "Compilation %d\n" comp_i; flush stdout;
           let tree=structure in
           let slides=ref [] in
           let reboot=ref false in
           let toc=ref [] in
-	  page_num := 0;
           let rec typeset_structure path tree layout env0=
             let env0=
               let labl=String.concat "_" ("_"::List.map string_of_int path) in
@@ -565,7 +555,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 		  { env0 with
 		    new_page=
 		      (fun t->
-			incr page_num;
 		       let zip=Box.make_page (slidew,slideh) (frame_top t) in
 		       let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
 		       let y0= -. slideh in          (* Un peu abusif, mais tout le contenu est censé tenir *)
@@ -577,7 +566,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 		  { env0 with
 		    new_page=
 		      (fun t->
-			incr page_num;
 		       let zip=Box.make_page (slidew,slideh) (frame_top t) in
 		       let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
 		       let y0= -. slideh in          (* Un peu abusif, mais tout le contenu est censé tenir *)
@@ -594,7 +582,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                         (List.fold_left max 0 n.node_states)
                     | _->0
                   in
-
                   let env1,fig_params0,params0,new_page0,new_line0,compl0,badnesses0,paragraphs0,_,
                     figures0,figure_trees0=flatten ~initial_path:path env0 tree
                   in
@@ -705,14 +692,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                     )
                   in
                   let reboot',layout',env'=typeset_states 0 !reboot (Box.frame_top layout) env1 in
-	      let _ =
-		Printf.eprintf "typeset_state env':\n";
-		MarkerMap.iter (fun labl dest ->
-		match labl with Label l ->
-		  Printf.eprintf "  pos %s" l | _ -> ()
-		) env'.user_positions;
-	      	Printf.eprintf "\n";
-	      in
                   reboot:=reboot';
                   (* Fini *)
 
@@ -800,14 +779,6 @@ module Format=functor (D:Document.DocumentStructure)->(
           in
 
           let layout_final,env_final=typeset_structure [] tree (empty_frame,[]) env0 in
-	      let _ =
-		Printf.eprintf "env_final env:\n";
-		MarkerMap.iter (fun labl dest ->
-		match labl with Label l ->
-		  Printf.eprintf "  pos %s" l | _ -> ()
-		) env_final.user_positions;
-	      	Printf.eprintf "\n";
-	      in
 
           Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
           if comp_i < !max_iterations-1 && !reboot then (
@@ -931,14 +902,6 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
             let draw_slide slide_number (path,tree,paragraphs,figures,figure_trees,env,opts,slide_num)=
               let states=ref [] in
               let destinations=ref StrMap.empty in
-	      let _ =
-		Printf.eprintf "user positions for slide %d env:\n";
-		MarkerMap.iter (fun labl dest ->
-		match labl with Label l ->
-		  Printf.eprintf "  pos %s" l | _ -> ()
-		) env.user_positions;
-	      	Printf.eprintf "\n";
-	      in
 
               for st=0 to Array.length opts-1 do
                 let page={ pageFormat=slidew,slideh; pageContents=[] } in
@@ -947,7 +910,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                 let tit=
                   match tree with
                       Node n->(
-                        let minip,_=OutputDrawing.minipage' ~state:st { env with size=0.1 }
+                        let minip,_,_=OutputDrawing.minipage' ~state:st { env with size=0.1 }
                           (paragraph n.displayname)
                         in
                         try let d=snd (IntMap.min_binding minip) in
@@ -1022,7 +985,6 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
 			  let k = match l with
 			      Box.Extern l -> OutputCommon.Extern l;
 			    | Box.Intern l ->(
-			      Printf.eprintf "intern link %s\n%!" l;
 			      try
 				let line=MarkerMap.find (Label l) env_final.user_positions in
                                 let y1=match classify_float line.line_y1 with
@@ -1032,7 +994,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                                 in
 				OutputCommon.Intern(l,Box.layout_page line,0.,y1)
 			      with Not_found->
-				Printf.eprintf "not_found %s\n%!" l;
+				Printf.eprintf "Label not_found %s\n%!" l;
 				OutputCommon.Intern(l,-1,0.,0.)
                             )
 			    | Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
