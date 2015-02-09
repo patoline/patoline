@@ -19,9 +19,12 @@ COMPILER_LIBO := $(COMPILER_LIBO:.cmo=.cmx)
 COMPILER_PARSERO := $(COMPILER_PARSERS:.cma=.cmxa)
 COMPILER_PARSERO := $(COMPILER_PARSERO:.cmo=.cmx)
 
-all: pa_ast compare.cmx
+all: pa_ast pa_quote compare.cmx
 
 pa_ast: pa_ast.ml $(DECAP)/decap.cmxa $(DECAP)/decap_ocaml.cmxa
+	ocamlopt -pp $(PA_OCAML) -I $(DECAP) $(COMPILER_INC) $(COMPILER_LIBO) -o $@ unix.cmxa str.cmxa decap.cmxa decap_ocaml.cmxa $<
+
+pa_quote: pa_quote.ml $(DECAP)/decap.cmxa $(DECAP)/decap_ocaml.cmxa
 	ocamlopt -pp $(PA_OCAML) -I $(DECAP) $(COMPILER_INC) $(COMPILER_LIBO) -o $@ unix.cmxa str.cmxa decap.cmxa decap_ocaml.cmxa $<
 
 asttypes.mli:
