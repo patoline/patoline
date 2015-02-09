@@ -147,7 +147,7 @@ let init_db table_name db_info =
       match !dbptr with None -> () | Some db -> Mysql.disconnect db; dbptr := None; Printf.eprintf "Disconnected from db\n%!")::!interaction_start_hook;
 
     (let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
-      `sessid` CHAR(33), `groupid` CHAR(33), `key` VARCHAR(32), `VALUE` text,
+      `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `VALUE` text,
       `createtime` DATETIME NOT NULL,
       `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);" table_name in
      let _r = Mysql.exec (db ()) sql in
@@ -180,9 +180,10 @@ let init_db table_name db_info =
 		  0 ->
 		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `value`, `createtime`) VALUES ('%s','%s','%s','%s', NOW());"
 					   table_name sessid groupid name v in
+		  (*Printf.eprintf "inserting: %s\n%!" sql;*)
 		  let _r = Mysql.exec (db ()) sql in
 		  (match Mysql.errmsg (db ()) with
-		   | None -> ()
+		  | None -> (*Printf.eprintf "inserting OK\n%!";*)()
 		   | Some err -> raise (Failure err))
 		| 1 -> ()
       		| _ -> raise (Failure "SQL duplicate data in base"))
@@ -198,9 +199,9 @@ let init_db table_name db_info =
             let sessid, groupid, _  = init () in
             let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
 	      table_name sessid groupid name in
-(*	    Printf.eprintf "Sending request\n%!";*)
+	    (*Printf.eprintf "Sending request %s\n%!" sql;*)
             let r = Mysql.exec (db ()) sql in
-(*	    Printf.eprintf "Sent request\n%!";*)
+	    (*Printf.eprintf "Sent request\n%!";*)
             match Mysql.errmsg (db ()), Mysql.fetch r with
     	    | None, Some row -> (match row.(0) with None -> vinit | Some n -> Marshal.from_string (base64_decode n) 0)
             | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; vinit

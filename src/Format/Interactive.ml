@@ -207,14 +207,32 @@ let editableText ?(global=false) ?(empty_case="Type in here")
       | Some d -> d
     in
 
+    let dataO = db.create_data ~global (name^"_ouput") "" in
+
     let update () =
       let s = data.read() in
       let s' = if s = "" then empty_case else s in
       s, Util.split '\n' s'
     in
 
+    let eval t =
+      match extra with
+	None -> Private
+      | Some f ->
+	let writeR = if t <> init_text then
+	    dataR.write
+	  else
+	    fun _ -> dataR.write NotTried
+	in
+	let res = f writeR t in
+	dataO.write res;
+	Public
+    in
     dynamic name'
-      (function Edit(n, t) when name = n -> data.write t; Private
+      (function
+      | Edit(n, t) when name = n ->
+	data.write t;
+	eval t
       | _ -> Unchanged)
       ascii
       (fun () ->
@@ -248,20 +266,20 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 		      in
 		      let resultLines = match extra with None -> []
 			| Some f ->
-			  let writeR = if s <> init_text then
-			      dataR.write
-			    else
-			      fun _ -> dataR.write NotTried
+			  let str = dataO.read () in
+			  let str =
+			    if str = "" && s <> init_text then (ignore (eval (data.read())); dataO.read ())
+			    else str
 			  in
-			  mk_length (Util.split '\n' (f writeR (data.read()))) err_lines
+			  mk_length (Util.split '\n' str) err_lines
 		      in
        		      (List.fold_left (fun acc line ->
 			let para=Paragraph
 			  {par_contents= arrow @ line ;
 			   par_env=(fun env -> {env with
 			     normalLead = env.normalLead *. 0.8;
-			     lead = env.lead *. 0.8;
-			     size = env.size *. 0.8});
+			     lead = env.lead *. 0.9;
+			     size = env.size *. 0.9});
 			   par_post_env=(fun env1 env2 ->
 			     { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
 			   par_parameters=ragged_left;
