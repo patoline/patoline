@@ -42,14 +42,29 @@ compare.ml: pa_ast generic.ml parsetree.mli asttypes.mli
 	@echo "(* parsetree.mli *)" >> $@
 	./pa_ast parsetree.mli >> $@
 
+# FIXME target construction does not fail if pa_ast fails...
+quote.ml: pa_quote generic_quote.ml parsetree.mli asttypes.mli
+	cat generic_quote.ml >> $@
+	@echo "(* asttypes.mli *)" >> $@
+	./pa_quote asttypes.mli >> $@
+	@echo "" >> $@
+	@echo "(* parsetree.mli *)" >> $@
+	./pa_quote parsetree.mli >> $@
+
 compare.cmx: compare.ml
 	ocamlopt -c $(COMPILER_INC) $(COMPILER_LIBO) $<
 
 compare.cmo: compare.ml
 	ocamlopt -c $(COMPILER_INC) $(COMPILER_LIBO) $<
 
+quote.cmx: quote.ml
+	ocamlopt -c $(COMPILER_INC) $(COMPILER_LIBO) $<
+
+quote.cmo: quote.ml
+	ocamlopt -c $(COMPILER_INC) $(COMPILER_LIBO) $<
+
 clean:
 	rm -f *.cmi *.cmx *.cmo *.cma *.cmxa *.o
 
 distclean: clean
-	rm -f pa_ast compare.ml asttypes.mli parsetree.mli
+	rm -f pa_ast compare.ml quote.ml asttypes.mli parsetree.mli

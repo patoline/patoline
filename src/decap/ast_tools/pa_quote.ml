@@ -130,10 +130,11 @@ let rec print_btype ch = function
       let xs = List.rev (build_list "x" len) in
       let cxs = "(" ^ (String.concat "," xs) ^ ")" in
       let xqs = zip xs qs in
-      fprintf ch "(fun %s _loc %s -> quote_tuple _loc [" lqs cxs;
+      fprintf ch "((fun %s _loc %s -> quote_tuple _loc [" lqs cxs;
       let f (x, q) = fprintf ch "%s _loc %s;" q x in
       List.iter f xqs; fprintf ch "])";
-      List.iter (print_btype ch) lt
+      List.iter (fun t -> fprintf ch " %a" print_btype t) lt;
+      fprintf ch ")"
 
 let print_type ch = function
   | Syn (n,t)    -> fprintf ch "quote_%s = %a" n print_btype t
@@ -141,8 +142,8 @@ let print_type ch = function
       fprintf ch "quote_%s _loc = function\n" n;
       let f (c, ts) =
         match ts with
-        | []  -> fprintf ch "  | %s -> quote_const _loc %s []\n" c c
-        | [t] -> fprintf ch "  | %s(x) -> quote_const _loc %s [%a x]\n" c c
+        | []  -> fprintf ch "  | %s -> quote_const _loc \"%s\" []\n" c c
+        | [t] -> fprintf ch "  | %s(x) -> quote_const _loc \"%s\" [%a x]\n" c c
                    print_btype t
         | _   ->
             let len = List.length ts in
@@ -152,7 +153,7 @@ let print_type ch = function
             in
             let xs = List.rev (build_list "x" len) in
             let cxs = "(" ^ (String.concat "," xs) ^ ")" in
-            fprintf ch "  | %s%s -> quote_const _loc %s [" c cxs c;
+            fprintf ch "  | %s%s -> quote_const _loc \"%s\" [" c cxs c;
             let txs = zip ts xs in
             let f (t,x) = Printf.fprintf ch " %a _loc %s;" print_btype t x in
             List.iter f txs;
@@ -162,10 +163,12 @@ let print_type ch = function
   | Rec (a,n,fl) ->
       (match a with
        | None   -> fprintf ch "quote_%s _loc r = " n
-       | Some a -> fprintf ch "quote_%s _loc eq_%s r =\n" n a);
+       | Some a ->
+           let ty = "" in
+           fprintf ch "quote_%s %s= fun quote_%s _loc r ->\n" n ty a);
       fprintf ch "  quote_record _loc [\n";
       let f (l, t) =
-        fprintf ch "    (%s, %a _loc r.%s) ;\n" l print_btype t l
+        fprintf ch "    (\"%s\", %a _loc r.%s) ;\n" l print_btype t l
       in
       List.iter f fl;
       fprintf ch "  ]\n"
