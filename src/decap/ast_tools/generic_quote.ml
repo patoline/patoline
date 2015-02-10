@@ -43,12 +43,33 @@ let quote_tuple : Location.t -> expression list -> expression =
 let quote_const : Location.t -> string -> expression list -> expression =
   Pa_ast.exp_const
 
-let quote_location_t : Location.t -> Location.t -> expression =
-  assert false (* TODO *)
-
-let quote_longident : Location.t -> Longident.t -> expression =
-  assert false (* TODO *)
+let rec quote_longident : Location.t -> Longident.t -> expression =
+  fun _loc l ->
+    match l with
+    | Lident s       -> let s = quote_string _loc s in
+                        Pa_ast.exp_const _loc "Lident" [s]
+    | Ldot (l, s)    -> let l = quote_longident _loc l in
+                        let s = quote_string _loc s in
+                        Pa_ast.exp_const _loc "Ldot" [l, s]
+    | Lapply (l, l') -> let l = quote_longident _loc l in
+                        let l' = quote_longident _loc l' in
+                        Pa_ast.exp_const _loc "Lapply" [l, l']
 
 let quote_record : Location.t -> (string * expression) list -> expression =
   assert false (* TODO *)
 
+let quote_position : Location.t -> Lexing.position -> expression =
+  fun _loc {Lexing.pos_fname = pfn; Lexing.pos_lnum = ln; Lexing.pos_bol = bl; Lexing.pos_cnum = pcn} ->
+    let pfn = quote_string _loc pfn in
+    let ln  = quote_int _loc ln in
+    let bl  = quote_int _loc bl in
+    let pcn = quote_int _loc pcn in
+    quote_record _loc
+      [("pos_fname",pfn); ("pos_lnum",ln); ("pos_bol",bl); ("pos_cnum",pcn)]
+
+let quote_location_t : Location.t -> Location.t -> expression =
+  fun _loc {Location.loc_start = ls; Location.loc_end = le; Location.loc_ghost = g} ->
+    let ls = quote_position _loc ls in
+    let le = quote_position _loc le in
+    let g  = quote_bool _loc g in
+    quote_record _loc [("loc_start",ls); ("loc_end",le); ("loc_ghost",g)]
