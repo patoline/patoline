@@ -58,10 +58,10 @@ compare.cmo: compare.ml
 	ocamlopt -c $(COMPILER_INC) $(COMPILER_LIBO) $<
 
 quote.cmx: quote.ml
-	ocamlopt -c $(COMPILER_INC) $(COMPILER_LIBO) $<
+	ocamlopt -c -I $(DECAP) $(COMPILER_INC) $(COMPILER_LIBO) $<
 
 quote.cmo: quote.ml
-	ocamlopt -c $(COMPILER_INC) $(COMPILER_LIBO) $<
+	ocamlopt -c -I $(DECAP) $(COMPILER_INC) $(COMPILER_LIBO) $<
 
 clean:
 	rm -f *.cmi *.cmx *.cmo *.cma *.cmxa *.o
