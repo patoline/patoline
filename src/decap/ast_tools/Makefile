@@ -19,9 +19,9 @@ COMPILER_LIBO := $(COMPILER_LIBO:.cmo=.cmx)
 COMPILER_PARSERO := $(COMPILER_PARSERS:.cma=.cmxa)
 COMPILER_PARSERO := $(COMPILER_PARSERO:.cmo=.cmx)
 
-all: pa_ast pa_quote compare.cmx quote.cmx
+all: pa_eq pa_quote compare.cmx quote.cmx
 
-pa_ast: pa_ast.ml $(DECAP)/decap.cmxa $(DECAP)/decap_ocaml.cmxa
+pa_eq: pa_eq.ml $(DECAP)/decap.cmxa $(DECAP)/decap_ocaml.cmxa
 	ocamlopt -pp $(PA_OCAML) -I $(DECAP) $(COMPILER_INC) $(COMPILER_LIBO) -o $@ unix.cmxa str.cmxa decap.cmxa decap_ocaml.cmxa $<
 
 pa_quote: pa_quote.ml $(DECAP)/decap.cmxa $(DECAP)/decap_ocaml.cmxa
@@ -33,16 +33,16 @@ asttypes.mli:
 parsetree.mli:
 	cp ast-$(OCAMLVERSION)/parsetree.mli .
 
-# FIXME target construction does not fail if pa_ast fails...
-compare.ml: pa_ast generic.ml parsetree.mli asttypes.mli
-	cat generic.ml >> $@
+# FIXME target construction does not fail if pa_eq fails...
+compare.ml: pa_eq generic_eq.ml parsetree.mli asttypes.mli
+	cat generic_eq.ml >> $@
 	@echo "(* asttypes.mli *)" >> $@
-	./pa_ast asttypes.mli >> $@
+	./pa_eq asttypes.mli >> $@
 	@echo "" >> $@
 	@echo "(* parsetree.mli *)" >> $@
-	./pa_ast parsetree.mli >> $@
+	./pa_eq parsetree.mli >> $@
 
-# FIXME target construction does not fail if pa_ast fails...
+# FIXME target construction does not fail if pa_quote fails...
 quote.ml: pa_quote generic_quote.ml parsetree.mli asttypes.mli
 	cat generic_quote.ml >> $@
 	@echo "(* asttypes.mli *)" >> $@
@@ -67,4 +67,4 @@ clean:
 	rm -f *.cmi *.cmx *.cmo *.cma *.cmxa *.o
 
 distclean: clean
-	rm -f pa_ast compare.ml quote.ml asttypes.mli parsetree.mli
+	rm -f pa_eq pa_quote compare.ml quote.ml asttypes.mli parsetree.mli
