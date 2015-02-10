@@ -3,54 +3,57 @@ open Parsetree
 open Longident
 
 (* Generic functions *)
-let quote_bool _loc b =
+type loct = Location.t
+type exp = expression
+
+let quote_bool : loct -> bool -> exp =
   assert false (* TODO *)
 
-let quote_int _loc i =
+let quote_int : loct -> int -> exp =
   assert false (* TODO *)
 
-let quote_char _loc c =
+let quote_char : loct -> char -> exp =
   assert false (* TODO *)
 
-let quote_string _loc s =
+let quote_string : loct -> string -> exp =
   assert false (* TODO *)
 
-let quote_int32 _loc i =
+let quote_int32 : loct -> int32 -> exp =
   assert false (* TODO *)
 
-let quote_int64 _loc i =
+let quote_int64 : loct -> int64 -> exp =
   assert false (* TODO *)
 
-let quote_nativeint _loc i=
+let quote_nativeint : loct -> nativeint -> exp =
   assert false (* TODO *)
 
-let quote_option qelem _loc eo =
+let quote_option : 'a. (loct -> 'a -> exp) -> loct -> 'a option -> exp =
+  fun qe _loc eo -> assert false (* TODO *)
+
+let quote_list : 'a. (loct -> 'a -> exp) -> loct -> 'a list -> exp =
+  fun qe _loc el -> assert false (* TODO *)
+
+let quote_location_t : loct -> loct -> exp =
   assert false (* TODO *)
 
-let quote_list qelem _loc el =
+let quote_longident : loct -> Longident.t -> exp =
   assert false (* TODO *)
 
-let quote_location_t _loc l =
+let quote_class_infos : 'a. (loct -> 'a -> exp) -> loct -> 'a class_infos -> exp =
+  fun qe _loc eci -> assert false (* TODO *)
+
+let quote_include_infos : 'a. (loct -> 'a -> exp) -> loct -> 'a include_infos -> exp =
+  fun qe _loc eii -> assert false (* TODO *)
+
+let quote_loc : 'a. (loct -> 'a -> exp) -> loct -> 'a loc -> exp =
+  fun qe _loc el -> assert false (* TODO *)
+
+let quote_tuple : loct -> exp list -> exp =
   assert false (* TODO *)
 
-let quote_longident _loc l =
+let quote_const : loct -> string -> exp list -> exp =
   assert false (* TODO *)
 
-let quote_class_infos qelem _loc eci =
-  assert false (* TODO *)
-
-let quote_include_infos qelem _loc eci =
-  assert false (* TODO *)
-
-let quote_loc qelem _loc le =
-  assert false (* TODO *)
-
-let quote_tuple _loc ls =
-  assert false (* TODO *)
-
-let quote_const _loc c es =
-  assert false (* TODO *)
-
-let quote_record _loc fs =
+let quote_record : loct -> (string * exp) list -> exp =
   assert false (* TODO *)
 

@@ -125,25 +125,22 @@ let rec print_btype ch = function
       let rec build_list pfx n =
         if n = 0 then [] else (pfx^(string_of_int n)) :: build_list pfx (n-1)
       in
-      let qs = List.rev (build_list "q" len) in
-      let lqs = String.concat " " qs in
       let xs = List.rev (build_list "x" len) in
       let cxs = "(" ^ (String.concat "," xs) ^ ")" in
-      let xqs = zip xs qs in
-      fprintf ch "((fun %s _loc %s -> quote_tuple _loc [" lqs cxs;
-      let f (x, q) = fprintf ch "%s _loc %s;" q x in
-      List.iter f xqs; fprintf ch "])";
-      List.iter (fun t -> fprintf ch " %a" print_btype t) lt;
-      fprintf ch ")"
+      let txs = zip lt xs in
+      fprintf ch "(fun _loc %s -> quote_tuple _loc [" cxs;
+      let f (t, x) = fprintf ch "%a _loc %s;" print_btype t x in
+      List.iter f txs;
+      fprintf ch "])"
 
 let print_type ch = function
-  | Syn (n,t)    -> fprintf ch "quote_%s = %a" n print_btype t
+  | Syn (n,t)    -> fprintf ch "quote_%s _loc x = %a _loc x" n print_btype t
   | Sum (n,cl)   ->
       fprintf ch "quote_%s _loc = function\n" n;
       let f (c, ts) =
         match ts with
         | []  -> fprintf ch "  | %s -> quote_const _loc \"%s\" []\n" c c
-        | [t] -> fprintf ch "  | %s(x) -> quote_const _loc \"%s\" [%a x]\n" c c
+        | [t] -> fprintf ch "  | %s(x) -> quote_const _loc \"%s\" [%a _loc x]\n" c c
                    print_btype t
         | _   ->
             let len = List.length ts in
@@ -164,8 +161,9 @@ let print_type ch = function
       (match a with
        | None   -> fprintf ch "quote_%s _loc r = " n
        | Some a ->
-           let ty = "" in
-           fprintf ch "quote_%s %s= fun quote_%s _loc r ->\n" n ty a);
+           fprintf ch "quote_%s : 'a. (Location.t -> 'a -> expression) ->" n;
+           fprintf ch " Location.t -> 'a %s -> expression =\n" n;
+           fprintf ch "  fun quote_%s _loc r -> \n  " a);
       fprintf ch "  quote_record _loc [\n";
       let f (l, t) =
         fprintf ch "    (\"%s\", %a _loc r.%s) ;\n" l print_btype t l
