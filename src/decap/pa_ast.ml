@@ -75,6 +75,11 @@ let exp_const _loc c es =
   let c = id_loc (Lident c) _loc in
   loc_expr _loc (pexp_construct(c, None))
 
+let exp_record _loc fs =
+  let f (l, e) = (id_loc (Lident l) _loc, e) in
+  let fs = List.map f fs in
+  loc_expr _loc (Pexp_record (fs, None))
+
 let exp_None _loc =
   let cnone = id_loc (Lident "None") _loc in
   loc_expr _loc (pexp_construct(cnone, None))

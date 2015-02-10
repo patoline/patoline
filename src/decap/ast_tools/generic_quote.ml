@@ -56,7 +56,7 @@ let rec quote_longident : Location.t -> Longident.t -> expression =
                         Pa_ast.exp_const _loc "Lapply" [l, l']
 
 let quote_record : Location.t -> (string * expression) list -> expression =
-  assert false (* TODO *)
+  Pa_ast.exp_record
 
 let quote_position : Location.t -> Lexing.position -> expression =
   fun _loc {Lexing.pos_fname = pfn; Lexing.pos_lnum = ln; Lexing.pos_bol = bl; Lexing.pos_cnum = pcn} ->
