@@ -43,15 +43,6 @@ let quote_location_t : Location.t -> Location.t -> expression =
 let quote_longident : Location.t -> Longident.t -> expression =
   assert false (* TODO *)
 
-let quote_class_infos : 'a. (Location.t -> 'a -> expression) -> Location.t -> 'a class_infos -> expression =
-  fun qe _loc eci -> assert false (* TODO *)
-
-let quote_include_infos : 'a. (Location.t -> 'a -> expression) -> Location.t -> 'a include_infos -> expression =
-  fun qe _loc eii -> assert false (* TODO *)
-
-let quote_loc : 'a. (Location.t -> 'a -> expression) -> Location.t -> 'a loc -> expression =
-  fun qe _loc el -> assert false (* TODO *)
-
 let quote_tuple : Location.t -> expression list -> expression =
   assert false (* TODO *)
 
