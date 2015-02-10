@@ -37,16 +37,16 @@ let quote_list : 'a. (Location.t -> 'a -> expression) -> Location.t -> 'a list -
     let el = List.map (qe _loc) el in
     Pa_ast.exp_list _loc el
 
+let quote_tuple : Location.t -> expression list -> expression =
+  Pa_ast.exp_tuple
+
+let quote_const : Location.t -> string -> expression list -> expression =
+  Pa_ast.exp_const
+
 let quote_location_t : Location.t -> Location.t -> expression =
   assert false (* TODO *)
 
 let quote_longident : Location.t -> Longident.t -> expression =
-  assert false (* TODO *)
-
-let quote_tuple : Location.t -> expression list -> expression =
-  assert false (* TODO *)
-
-let quote_const : Location.t -> string -> expression list -> expression =
   assert false (* TODO *)
 
 let quote_record : Location.t -> (string * expression) list -> expression =

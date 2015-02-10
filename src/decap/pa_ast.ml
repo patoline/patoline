@@ -71,6 +71,10 @@ let exp_int64 _loc i =
 let exp_nativeint _loc i =
   loc_expr _loc (Pexp_constant (Const_nativeint i))
 
+let exp_const _loc c es =
+  let c = id_loc (Lident c) _loc in
+  loc_expr _loc (pexp_construct(c, None))
+
 let exp_None _loc =
   let cnone = id_loc (Lident "None") _loc in
   loc_expr _loc (pexp_construct(cnone, None))
