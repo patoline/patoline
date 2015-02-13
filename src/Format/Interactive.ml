@@ -192,9 +192,13 @@ let interEnv x =
 	normalLead = x.normalLead *. x.fontMonoRatio *. 0.75;
         normalLeftMargin = 0.2;}
 
+let file_table = Hashtbl.create 101
+
+type eval_fun = string option -> (result -> unit) -> string -> string
+
 let editableText ?(global=false) ?(empty_case="Type in here")
       ?nb_lines ?err_lines ?(init_text="") ?(lang=lang_default)
-      ?extra ?resultData ?data name =
+      ?(extra:eval_fun option) ?resultData ?data ?filename name =
 
     let name' = name^"_target" in
     let name'' = name^"_target2" in
@@ -204,6 +208,9 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 	None -> db.create_data ~global name init_text
       | Some d -> d
     in
+    (match filename with
+      Some name -> Hashtbl.add file_table name data
+    | None -> ());
 
     let dataR =
       match resultData with
@@ -228,7 +235,7 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 	  else
 	    fun _ -> dataR.write NotTried
 	in
-	let res = f writeR t in
+	let res = f filename writeR t in
 	dataO.write res;
 	Public
     in
@@ -302,15 +309,19 @@ let ocaml_dir () =
     Unix.mkdir name 0o755;
   name
 
-let do_dep data =
-  let dir = ocaml_dir () in
-  let prg = data.read () in
-  let filename = data.name ^ ".ml" in
-  let ch = open_out (Filename.concat dir filename) in
-  output_string ch prg;
-  close_out ch
+let do_dep filename =
+  try
+    let data = Hashtbl.find file_table filename in
+    let dir = ocaml_dir () in
+    let prg = data.Db.read () in
+    let ch = open_out (Filename.concat dir filename) in
+    output_string ch prg;
+    close_out ch
+  with
+    Not_found ->
+      Printf.eprintf "Missing dependencies %s\n" filename
 
-let test_ocaml ?(run=true) ?(deps=[]) ?preprocessor ?filename ?(prefix="") ?(suffix="") writeR prg =
+let test_ocaml ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") filename writeR prg =
   List.iter do_dep deps;
   let dir, filename, target, exec, run, delete_all =
     match filename with
@@ -382,7 +393,7 @@ let test_ocaml ?(run=true) ?(deps=[]) ?preprocessor ?filename ?(prefix="") ?(suf
   if err <> "" then err else
   if out <> "" then out else "No error and no output"
 
-let test_python ?(prefix="") ?(suffix="") writeR prg =
+let test_python ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") filename writeR prg =
   let tmpfile = Filename.temp_file "demo" ".ml" in
   let ch = open_out tmpfile in
   output_string ch prefix;
