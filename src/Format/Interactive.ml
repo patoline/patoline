@@ -194,12 +194,16 @@ let interEnv x =
 
 let editableText ?(global=false) ?(empty_case="Type in here")
       ?nb_lines ?err_lines ?(init_text="") ?(lang=lang_default)
-      ?extra ?resultData name =
+      ?extra ?resultData ?data name =
 
     let name' = name^"_target" in
     let name'' = name^"_target2" in
 
-    let data = db.create_data ~global name init_text in
+    let data =
+      match data with
+	None -> db.create_data ~global name init_text
+      | Some d -> d
+    in
 
     let dataR =
       match resultData with
@@ -298,7 +302,16 @@ let ocaml_dir () =
     Unix.mkdir name 0o755;
   name
 
-let test_ocaml ?(run=true) ?preprocessor ?filename ?(prefix="") ?(suffix="") writeR prg =
+let do_dep data =
+  let dir = ocaml_dir () in
+  let prg = data.read () in
+  let filename = data.name ^ ".ml" in
+  let ch = open_out (Filename.concat dir filename) in
+  output_string ch prg;
+  close_out ch
+
+let test_ocaml ?(run=true) ?(deps=[]) ?preprocessor ?filename ?(prefix="") ?(suffix="") writeR prg =
+  List.iter do_dep deps;
   let dir, filename, target, exec, run, delete_all =
     match filename with
       None ->
