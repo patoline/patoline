@@ -6,16 +6,16 @@ distributed along ##pa_ocaml##. It allows the user to write parsers using a
 BNF-like syntax. ##OCaml## programs written using this syntax extension need
 to be compiled using the ##-pp pa_ocaml## option of ##ocamlc## or
 ##ocamlopt##. The ##pa_parser## extension is enabled by default when using
-the ##pa_ocaml## parser, but this behavious can be changed.
+the ##pa_ocaml## parser, but this behaviour can be changed.
 
 The entry point of the ##pa_parser## syntax extension is a new expression
 delimited by the keyword ##parser##, which is followed by an optional ##*##
 symbol and the BNF rule for the grammar. If there is no ##*## symbol, the
-parser will raise an exception in case of ambibuity. Otherwise, the list of
+parser will raise an exception in case of ambiguity. Otherwise, the list of
 every possible parse tree is returned by the parser, which will have a type of
 the form ##'a list grammar##.
 
-We give bellow the BNF specification of the ##pa_parser## syntax extension,
+We give below the BNF specification of the ##pa_parser## syntax extension,
 using the following convention: ##|## separates alternatives, ##[…]##
 delimits optional elements and ##(…)+## elements repeated one or more
 times. Terminal symbols are wrapped into double quotes, and entry points are
@@ -70,27 +70,27 @@ each terminal:
       and the result of the parsing is the parse character. The type of this
       atomic parser is hence ##char grammar##.
 \item ##EOF## parses the end of file character, and returns the expression
-      contained in the option field, or unit if it is abscent. This terminal
+      contained in the option field, or unit if it is absent. This terminal
       is almost always useless because all the parsing functions that parse
       the whole input automatically append ##EOF## at the end of the given
       grammar (this is not the case for ##partial_parse_string## for example).
-\item ##EMPTY## parses nothing and and always succeeds. It returns the
-      expression contained in the option field, or unit if it is abscent.
+\item ##EMPTY## parses nothing and always succeeds. It returns the
+      expression contained in the option field, or unit if it is absent.
 \item ##FAIL## fails immediately. If there is an option field, the value of
       The given expression will appear in the error message.
-\item ##DEGUG msg## parses nothing but print debuging information including
+\item ##DEBUG msg## parses nothing but print debugging information including
       the given string ##msg## to ##stderr##.
 \item ##CHR c## parses the character ##c## and returns the expression
       contained in the option field, or the parsed character if the option
-      is abscent. If ##c## is a character literal, ##CHR## can be ommited.
+      is absent. If ##c## is a character literal, ##CHR## can be omitted.
 \item ##STR s## parses the string ##s## an returns the expression contained
-      in the option field, or the parsed string if the option is abscent. If
-      ##s## is a string literal, ##STR## can be ommited.
+      in the option field, or the parsed string if the option is absent. If
+      ##s## is a string literal, ##STR## can be omitted.
 \item ##RE r## parses the input according to the regular expression ##r##,
       which should be a ##string## formated as described in the documentation
       of the ##Str## module. If the option field is not provided, the value
       returned by the parser if the ##string## that was matched. Otherwise,
-      the value of the optional field is returnd. Note that the identifier
+      the value of the optional field is returned. Note that the identifier
       ##group## is bound in the optional field, and can be used to compute
       the return value of the parser. It corresponds to a function that
       maps the natural integer ##n## to the ##n##-th matched group of the
@@ -106,7 +106,7 @@ each terminal:
       \end{noindent}
 
       You may yse ##''regexp''## for a constant regexp. This is a syntax for
-      string constant adapted for regular expression. No need to escape the "##\##" charactere.
+      string constant adapted for regular expression. No need to escape the "##\##" character.
 \end{itemize}
 
 (* FIXME hack for correct indentation... *)
@@ -116,7 +116,7 @@ each terminal:
 
 The usual BNF modifiers for optionality (##?##), repetition zero or more
 times (##*##) and repetition one or more times (##+##) come in two versions.
-The ususal symbols (i.e. the ones that are not doubled) behave in the usual
+The usual symbols (i.e. the ones that are not doubled) behave in the usual
 way, in the sense that backtracking is used to explore every possible parse
 tree. The symbols that are doubled (##??##, ##**##, ##++##) backtrack less, and
 stop backtracking when one parse tree has been found. We also have two kinds
@@ -126,7 +126,7 @@ explores the alternative that parses the more input. Note that there should be
 no difference on non-ambiguous grammars.
 
 Let us now give a first example of a parser, implementing a very simplistic
-calculator having as only operations addition and substraction. The BNF
+calculator having as only operations addition and subtraction. The BNF
 grammar of the parsed language will be the following, where ##<int>##
 matches any integer:
 
@@ -247,7 +247,7 @@ first needs to call the function ##grammar_family##, which takes as argument
 an optional function for printing the argument type into a string, and a name
 for the grammar. These two arguments are used to provide better error
 messages. The function then returns a couple of a family of grammars (in the
-form of a function from the parameter type ##'a## to grammars returing a
+form of a function from the parameter type ##'a## to grammars returning a
 value of type ##'b##), and a function to be called to define the grammar
 family in the end (it more or less plays the same role as the function
 ##set_grammar## for grammars declared using ##declare_grammar##).
@@ -259,9 +259,9 @@ grammar_family : ?param_to_string:('a -> string) -> string
 
 ###
 
-We give bellow the example of a calculator with addition, substraction,
-multiplication and division. The ususal priority of operation is respected
-and implemented using a ##grammar_familly##.
+We give below the example of a calculator with addition, subtraction,
+multiplication and division. The usual priority of operation is respected
+and implemented using a ##grammar_family##.
 
 ###
 
@@ -317,7 +317,7 @@ let _ =
 It is sometimes necessary to build a parser, which parses input depending on
 the result of the parsing of previous input. For example, one could want to
 parse the representation of an integer ##n## followed by a whitespace, and
-then parse exactly ##n## characters. This kind of behavious can be achieved
+then parse exactly ##n## characters. This kind of behaviour can be achieved
 by using the ##dependent_sequence## combinator, which corresponds to the
 //bind// operation of the underlying monad.
 
@@ -414,7 +414,7 @@ let _ =
 
 ###
 
-Blanks can also be controled using the combinator ##ignore_next_blank##, which
+Blanks can also be controlled using the combinator ##ignore_next_blank##, which
 prevents the parsing of blanks before entering the following grammar.
 
 ###
@@ -457,7 +457,7 @@ In order to prevent this, our parsing combinators systematically compute the
 set of allowed characters for the rest of the input stream. This means that if
 one consider the grammar ##"a"* "b"##, and parses the string ##"aaaab"##, the
 parser will know that it is useless not to parse every character ##"a"## in
-the first place. This prediction mechanism is sometimes enough to avoir high
+the first place. This prediction mechanism is sometimes enough to avoid high
 complexity, but not always. It is completely useless in the case of the
 sequence of paragraph as we wrote it.
 
@@ -501,7 +501,7 @@ val locate : buffer -> int -> buffer -> int -> position
 ###
 
 The two first arguments of ##locate## will be the buffer and position at the
-beggining of the text being parsed, and the two last arguments give the same
+beginning of the text being parsed, and the two last arguments give the same
 informations for the end of the text.
 
 The following function from the ##Input## module can be used to produce
@@ -532,7 +532,7 @@ locate function. The position are the accessible in the action rules of a
 parser by using the variable ##_loc## for the global position and ##_loc_id##
 for the position of the left member of the rule named ##id##.
 
-We give bellow a more complete example, which should work with the above
+We give below a more complete example, which should work with the above
 definition of ##locate##:
 
 ### OCaml
