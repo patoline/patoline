@@ -17,7 +17,7 @@ let sum_sym = parser
 
 let cached parser expr =
   | f:float_num -> (Atom,f)
-  | '(' (_,e):expr ')'  -> Atom,e
+  | '(' (_,e):expr ')' -> Atom,e
   | '-' (p,e):expr -> if p < Pow then raise (Give_up ""); Pow, -. e
   | '+' (p,e):expr -> if p < Pow then raise (Give_up ""); Pow, e
   | (p,e):expr ->>

@@ -278,7 +278,7 @@ let tryif cond f g =
 
 let test grouped next str p =
   let c = get str p in
-  assert (Printf.eprintf "test: %c %a %a\n%!" c print_info grouped print_next next; true);
+  (*assert (Printf.eprintf "test: %c %a %a\n%!" c print_info grouped print_next next; true);*)
   next == all_next || match grouped.stack with
   | _, EmptyStack ->
      let res = mem next.accepted_char c in
@@ -290,12 +290,18 @@ let test grouped next str p =
        let res = mem s c in
        if not res then record_error grouped msg str p;
        res
+     with Not_found ->
+     try
+       let (_,s,msg) = List.assoc (-1) next.next_after_prefix in
+       let res = mem s c in
+       if not res then record_error grouped msg str p;
+       res
      with
        Not_found -> false
 
 let test_next l1 grouped str p =
   let c = get str p in
-  assert (Printf.eprintf "test_next: %c %a %a\n%!" c print_info grouped print_next l1.next; true);
+  (*  assert (Printf.eprintf "test_next: %c %a %a\n%!" c print_info grouped print_next l1.next; true);*)
   l1.next == all_next || match grouped.stack with
   | _, EmptyStack ->
      let res = mem l1.next.accepted_char c in
@@ -304,6 +310,12 @@ let test_next l1 grouped str p =
   | _, Pushed(n,_) ->
      try
        let (_,s,msg) = List.assoc n l1.next.next_after_prefix in
+       let res = mem s c in
+       if not res then record_error grouped msg str p;
+       res
+     with Not_found ->
+     try
+       let (_,s,msg) = List.assoc (-1) l1.next.next_after_prefix in
        let res = mem s c in
        if not res then record_error grouped msg str p;
        res
@@ -335,6 +347,22 @@ let empty_next = {
 let sum_next_after_prefix l1 l2 =
   merge_list l1 l2 (fun (b1,c1,s1) (b2,c2,s2) -> b1 || b2, Charset.union c1 c2, s1 @@ s2)
 
+let add_next next n =
+  try let (_,c,s) = List.assoc n next.next_after_prefix in
+  {
+    next with
+    accepted_char = Charset.union next.accepted_char c;
+    first_syms = next.first_syms @@ s;
+  }
+  with Not_found ->
+  try let (_,c,s) = List.assoc (-1) next.next_after_prefix in
+  {
+    next with
+    accepted_char = Charset.union next.accepted_char c;
+    first_syms = next.first_syms @@ s;
+  }
+  with Not_found -> next
+
 let sum_next n1 n2 =
   if n1 == all_next || n2 == all_next then all_next else
   {
@@ -346,7 +374,8 @@ let sum_next n1 n2 =
 let sum_nexts ls =
   List.fold_left (fun s l -> sum_next s l.next) empty_next ls
 
-let accept_empty l1 = l1.accept_empty <> Non_empty
+let accept_empty l1 = match l1.accept_empty with Non_empty -> false | _ -> true
+let accept_empty' l1 = match l1.accept_empty with Unknown | Non_empty -> false | _ -> true
 
 let compose_next l1 l2 =
   let n1 = l1.next in
@@ -370,7 +399,7 @@ let compose_next l1 l2 =
       if b then sum_next_after_prefix l0 n2.next_after_prefix else l0
   }
   in
-  assert (Printf.eprintf "compose %d %d %a %a => %a\n%!" l1.ident l2.ident print_next n1 print_next n2 print_next res; true);
+  (*  assert (Printf.eprintf "compose %d %d %a %a => %a\n%!" l1.ident l2.ident print_next n1 print_next n2 print_next res; true);*)
   res
 
 let compose_next' l1 n2 =
@@ -479,7 +508,9 @@ let set_grammar p1 p2 =
 	} in
 	assert (Printf.eprintf " failed %a\n%!" print_stack grouped.stack; true);
 	let next' = List.fold_left (fun n l -> sum_next l.next n) next companion in
-	assert (Printf.eprintf "next = %a, next' = %a\n%!" print_next next print_next next'; true);
+	let next_tbl =
+	  List.map (fun l -> (l.ident, add_next next' l.ident)) companion
+	in
 
 	let rec fn pi str' pos' str'' pos'' stack v =
 	  if snd stack <> EmptyStack then raise Error;
@@ -501,7 +532,8 @@ let set_grammar p1 p2 =
 	       with Error -> fn' l
 
 	  and gn pi pidef =
-	    assert (Printf.eprintf "testing %d = %d && next = %a\n%!" p1.ident pi.ident print_next next; true);
+	    let next' = try List.assoc pi.ident next_tbl with Not_found -> next' in
+	    assert (Printf.eprintf "testing %d = %d (%d)&& next = %a && next' = %a\n%!" p1.ident pi.ident pidef.ident print_next next print_next next'; true);
 	    if p1 == pi && test grouped next str'' pos'' then
 	      try
 		assert (Printf.eprintf "calling in try %d %a\n%!" pi.ident print_stack grouped'.stack; true);
@@ -512,12 +544,12 @@ let set_grammar p1 p2 =
 	      with Error ->
 		assert (Printf.eprintf "capturing Error %d %a\n%!" pi.ident print_stack stack; true);
 		g str pos str' pos' str'' pos'' stack v
-		else (
-		  assert (Printf.eprintf "calling without try %d %a\n%!" pi.ident print_stack grouped'.stack; true);
-		  pidef.parse grouped' str'' pos'' next'
-			      (fun _ _ str0' pos0' str0'' pos0'' stack v ->
-			       assert (Printf.eprintf "call continuation without try %d %a\n%!" p1.ident print_stack stack; true);
-			       fn pi str0' pos0' str0'' pos0'' stack v))
+	    else (
+	      assert (Printf.eprintf "calling without try %d %a\n%!" pi.ident print_stack grouped'.stack; true);
+	      pidef.parse grouped' str'' pos'' next'
+		(fun _ _ str0' pos0' str0'' pos0'' stack v ->
+		  assert (Printf.eprintf "call continuation without try %d %a\n%!" p1.ident print_stack stack; true);
+		  fn pi str0' pos0' str0'' pos0'' stack v))
 	  in
 	  let companion = List.filter
 			    (fun g -> g.ident == p1.ident || test_next g grouped' str'' pos'')
@@ -532,7 +564,9 @@ let set_grammar p1 p2 =
 	   | Some p' ->
 	      tryif (accept_empty p')
 		    (fun () ->
-		     (uncast p').parse grouped str pos next'
+		      let next' = try List.assoc p.ident next_tbl with Not_found -> next' in
+		      assert (Printf.eprintf "initial calling in (%d,%d) && next = %a && next' = %a\n%!" p'.ident p.ident print_next next print_next next'; true);
+		      (uncast p').parse grouped str pos next'
 				(fun _ _ str' pos' str'' pos'' stack v ->
 				 assert (Printf.eprintf "initial call continuation %d %a\n%!" p.ident print_stack stack; true);
 				 fn (uncast p) str' pos' str'' pos'' stack v))
@@ -548,9 +582,10 @@ let set_grammar p1 p2 =
 	let empty_ok = test grouped next str pos in
 	let companion = List.filter
 			  (fun g -> (empty_ok && accept_empty g)
-				    || test_next g grouped str pos)
+			  || test_next g grouped str pos)
 			  companion
 	in
+	assert(Printf.eprintf "companion length = %d\n" (List.length companion); true);
 	fn' companion)
 
      | Non_rec -> p2.parse grouped str pos next g
@@ -988,10 +1023,10 @@ let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
     }
 
 let imit_deps_seq l1 l2 =
-  if l1.accept_empty = Non_empty then
-    imit_deps l1
-  else
+  if accept_empty l1 then
     match l1.deps, l2.deps with None, None -> None | _ -> Some (TG.create 7)
+  else
+    imit_deps l1
 
 let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
   = fun l1 l2 f ->
@@ -1028,7 +1063,6 @@ let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
 		   res.next <- compose_next l1 l2;
 		   res.accept_empty <- case_empty2_and l1 l2 (fun x y str pos -> f (x str pos) (y str pos)));
     add_deps res l1;
-    (* FIXME: if accept_empty l1 becomes false, this dependency could be removed *)
     if accept_empty l1 then add_deps res l2;
   res
 
@@ -1068,7 +1102,6 @@ let sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -
 		   res.next <- compose_next l1 l2;
 		   res.accept_empty <- case_empty2_and l1 l2 (fun x y str pos -> f (x str pos) (y str pos) str pos str pos));
     add_deps res l1;
-    (* FIXME: if accept_empty l1 becomes false, this dependency could be removed *)
     if accept_empty l1 then add_deps res l2;
   res
 
@@ -1084,7 +1117,7 @@ let sequence3 : 'a grammar -> 'b grammar -> 'c grammar -> ('a -> 'b -> 'c -> 'd)
 
 let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
   = fun l1 f2 ->
-  if l1.accept_empty <> Non_empty && l1.accept_empty <> Unknown then
+  if accept_empty' l1 then
     failwith "dependant sequence with empty prefix are not supported";
   let res =
     { ident = new_ident ();
@@ -1109,7 +1142,7 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
     }
   in
   res.set_info <- (fun () ->
-		   if l1.accept_empty <> Non_empty && l1.accept_empty <> Unknown then
+		   if accept_empty' l1 then
 		     failwith "dependant sequence with empty prefix are not supported";
 		   res.next <- compose_next' l1 all_next);
   add_deps res l1;
