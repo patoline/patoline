@@ -291,3 +291,40 @@ let _ = test genmutbirec3b mutbirec3b (test_cases (3, 4, 5))
 let _ = Printf.eprintf "2%!"
 let _ = test genmutbirec3c mutbirec3c (test_cases (3, 4, 5))
 let _ = Printf.eprintf "3 OK\n%!"
+
+let gA = declare_grammar "gA" and gB = declare_grammar "gB"
+
+let _ = set_grammar gA
+  (alternatives [char 'x' ['x'];
+		 sequence gB (sequence (char 'a' ()) gB (fun _ x -> x))
+		   (fun x y -> y @ 'a' :: x )])
+
+let _ = set_grammar gB
+  (alternatives [gA;
+		 sequence gA (sequence (char 'b' ()) gA (fun _ x -> x))
+     (fun x y -> y @ 'b' :: x)])
+
+let rec gengA suffix n =
+  if n = 1 then "x" ^^ suffix else if n <= 0 then [] else
+    let res = ref [] in
+    for i = 0 to n - 1 do
+      let j = n - 1 - i in
+      res := gengB ("a"^^(gengB suffix i)) j @ !res
+    done;
+    !res
+
+and gengB suffix n =
+    let res = ref (gengA suffix n) in
+    if n > 0 then
+      for i = 0 to n - 1 do
+	let j = n - 1 - i in
+	res := gengA ("b"^^(gengA suffix i)) j @ !res
+      done;
+    !res
+let _ = Printf.eprintf "two mutually recursive grammars that revealed bugs ...%!"
+
+let _ = test gengA gA (test_cases (7, 11, 13))
+let _ = Printf.eprintf "gA%!"
+let _ = test gengB gB (test_cases (7, 11, 13))
+let _ = Printf.eprintf "gB%!"
+let _ = Printf.eprintf " OK%!\n"
