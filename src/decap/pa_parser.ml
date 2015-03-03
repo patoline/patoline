@@ -424,12 +424,8 @@ struct
       (_loc, occur_loc, def, l, condition, action)
      )
 
-  let build_rule' = function
-    | `Treated x -> x
-    | `NotTreated x -> build_rule x
-
   let apply_def_cond _loc arg =
-    let (def,cond,e) = build_rule' arg in
+    let (def,cond,e) = build_rule arg in
     match cond with
       None -> def e
     | Some c ->
@@ -461,19 +457,19 @@ struct
 	      Compare.eq_expression (def (exp_ident _loc "@")) (def' (exp_ident _loc "@"))
     | _ -> false
 
-  let build_alternatives _loc f1 f2 comb ls =
+  let build_alternatives _loc comb ls =
     match ls with
-    | [] -> f2 (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""])
-    | [r] -> f1 r
+    | [] -> exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]
+    | [r] -> apply_def_cond _loc r
     | _::_ ->
       (match ls with
-	`NotTreated(elt1)::`NotTreated(elt2)::_ ->
+	elt1::elt2::_ ->
 	  (*	  Format.eprintf "comparing\n  %a\nwith\n  %a\n%!" Pprintast.expression e Pprintast.expression e';*)
 	  if factorisable elt1 elt2 then
 	    Printf.eprintf "can left factorise\n%!"
       | _ -> ());
       let l = List.fold_right (fun r y ->
-	let (def,cond,e) = build_rule' r in
+	let (def,cond,e) = build_rule r in
 	match cond with
 	  None ->
 	    def (exp_Cons _loc e y)
@@ -482,25 +478,23 @@ struct
 				       loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc
 					 e (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
       ) ls (exp_Nil _loc) in
-      f2 (exp_apply _loc (exp_glr_fun _loc comb) [l])
+      exp_apply _loc (exp_glr_fun _loc comb) [l]
 
-  let glr_rules_aux =
-    parser
-    | { CHR('|') CHR('|')}? r:glr_rule rs:{ CHR('|') CHR('|') r:glr_rule}** ->
-      let ls = List.map (fun x -> `NotTreated x) (r::rs) in
-      build_alternatives _loc (fun x -> x) (fun r -> `Treated((fun x -> x), None, r)) "alternatives'" ls
+  let alt = parser '|' x:'|'? -> x = None
 
   let _ = Decap.set_grammar glr_rules (
     parser
-      g:{ CHR('|') -> false | CHR('~') -> true }?[false] r:glr_rules_aux rs:{ CHR('|') r:glr_rules_aux}** ->
-        let f =
-	  if g then "alternatives" else
-	    (try
-	       ignore (Sys.getenv "GREEDY");
-	       "alternatives'"
-	     with Not_found -> "alternatives")
-	in
-	build_alternatives _loc (apply_def_cond _loc) (fun x -> x) f (r::rs)
-  )
+    | a:alt? r:glr_rule rs:{ a:alt r:glr_rule -> (a,r)}** ->
+      let rec fn a ls = match a, ls with
+	  None, (a,_)::ls -> fn (Some a) ls
+	| Some a', (a,_)::ls when a <> a' -> raise (Decap.Give_up "Inhomogenous alternatives")
+	| _, _::ls -> fn a ls
+	| _, [] -> a
+      in
+      let a = fn a rs in
+      let ls = r::List.map snd rs in
+      let f = if a = Some true then "alternatives'" else "alternatives" in
+      build_alternatives _loc f ls)
+
 
 end
