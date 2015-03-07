@@ -438,7 +438,7 @@ let svg_driver =
 let r_patoline_drivers = ref
   [
     { name = "None"; needs = []; suggests = []; internals = [] };
-    { name = "Pdf"; needs = []; suggests = [Package "zip"; Package "camlimages.all_formats"]; internals = [] };
+    { name = "Pdf"; needs = []; suggests = [Package "zip"]; internals = [] };
     { name = "Bin"; needs = []; suggests = []; internals = [] };
     { name = "Html"; needs = [ Package "unicodelib"]; suggests = []; internals = [] };
     { name = "Patonet"; needs = [ Package "cryptokit"]; suggests = []; internals = [Driver svg_driver] };
