@@ -451,10 +451,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Glut.setWindow win.winId;
       Hashtbl.iter (fun _ l ->  GlList.delete l) win.glyphCache;
       Hashtbl.clear win.glyphCache;
-#ifdef CAMLIMAGES
       Hashtbl.iter (fun _ t -> GlTex.delete_texture t) win.imageCache;
       Hashtbl.clear win.imageCache;
-#endif
     ) all_win
   in
 

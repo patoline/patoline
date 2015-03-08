@@ -564,7 +564,6 @@ let _=
     (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
     (if has_mysql then "-DMYSQL " else "")
     (if has_sqlite3 then "-DSQLITE3 " else "")
-    (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
     (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
     (if !pdf_type3_only then "-DPDF_TYPE3_ONLY " else "")
     (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
