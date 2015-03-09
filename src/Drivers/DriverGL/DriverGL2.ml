@@ -46,9 +46,7 @@ let dy = ref 0.0
 let subpixel = ref (Some(1.0 /. 3.0, 0.0, -. 1.0 /. 3.0, 0.0))
 
 let glyphCache = Hashtbl.create 1001
-#ifdef CAMLIMAGES
 let imageCache = Hashtbl.create 1001
-#endif
 
 let rec last = function
 [] -> assert false
@@ -219,10 +217,8 @@ let output ?(structure:structure={name="";displayname=[]; metadata = []; tags=[]
     num_pages := Array.length !pages;
     read_links ();
     (* Not clearing the caches slows down a lot after redraw *)
-#ifdef CAMLIMAGES
     Hashtbl.iter (fun _ t -> GlTex.delete_texture t) imageCache;
     Hashtbl.clear imageCache;
-#endif
     Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
     Hashtbl.clear glyphCache;
     Gc.compact ();
@@ -446,39 +442,41 @@ let output ?(structure:structure={name="";displayname=[]; metadata = []; tags=[]
 
     | Image i -> 
       Gl.enable `texture_2d;
-#ifdef CAMLIMAGES
       begin     
-	try 	  
-	  GlTex.bind_texture `texture_2d (Hashtbl.find imageCache i)
-	with Not_found ->
-	  let image = Images.load i.image_file [] in
-	  let w,h=Images.size image in
-	  let image32 = match image with
-	      Images.Rgba32 i -> i
-	    | Images.Rgb24 i -> Rgb24.to_rgba32 i
-	    | _ -> failwith "Unsupported"
-	  in 
-	  let raw = Raw.create `ubyte ~len:(4*w*h) in
-	  for j=0 to h-1 do
-            for i=0 to w-1 do
-	      let rgba = Rgba32.get image32 i j in
-	      Raw.set raw ((j * w + i) * 4 + 0) rgba.Color.color.Color.r;
-	      Raw.set raw ((j * w + i) * 4 + 1) rgba.Color.color.Color.g;
-	      Raw.set raw ((j * w + i) * 4 + 2) rgba.Color.color.Color.b;
-	      Raw.set raw ((j * w + i) * 4 + 3) rgba.Color.alpha;
-	    done
-	  done;
-	  let texture = GlPix.of_raw raw `rgba w h in  
-	  let tid = GlTex.gen_texture () in
-	  GlTex.bind_texture `texture_2d tid;
-	  GlTex.image2d texture ~border:false;
-	  GlTex.env (`mode `modulate);
-	  GlTex.env (`color (1.0, 1.0, 1.0, 1.0));
-	  GlTex.parameter ~target:`texture_2d (`min_filter `nearest);
-	  GlTex.parameter ~target:`texture_2d (`mag_filter `nearest);    
-	  Hashtbl.add imageCache i tid
+        try 	  
+          GlTex.bind_texture `texture_2d (Hashtbl.find imageCache i)
+        with Not_found ->
+           let image = ReadImg.openfile i.image_file in
+           let w = Image.(image.width) in
+           let h = Image.(image.height) in
+           let raw = Raw.create `ubyte ~len:(4*w*h) in
+           for j=0 to h-1 do
+             for i=0 to w-1 do
+               Image.(read_rgba_pixel image i j (fun ~r ~g ~b ~a ->
+                 let r,g,b,a =
+                   if image.max_val <> 255 then
+                     ( (r * 255 * 2 + 1) / (2 * image.max_val)
+                     , (g * 255 * 2 + 1) / (2 * image.max_val)
+                     , (b * 255 * 2 + 1) / (2 * image.max_val)
+                     , (a * 255 * 2 + 1) / (2 * image.max_val) )
+                   else r,g,b,a
+                 in
+                 Raw.set raw ((j * w + i) * 4 + 0) r;
+                 Raw.set raw ((j * w + i) * 4 + 1) g;
+                 Raw.set raw ((j * w + i) * 4 + 2) b;
+                 Raw.set raw ((j * w + i) * 4 + 3) a))
+             done
+           done;
+           let texture = GlPix.of_raw raw `rgba w h in  
+           let tid = GlTex.gen_texture () in
+           GlTex.bind_texture `texture_2d tid;
+           GlTex.image2d texture ~border:false;
+           GlTex.env (`mode `modulate);
+           GlTex.env (`color (1.0, 1.0, 1.0, 1.0));
+           GlTex.parameter ~target:`texture_2d (`min_filter `nearest);
+           GlTex.parameter ~target:`texture_2d (`mag_filter `nearest);    
+           Hashtbl.add imageCache i tid
       end;
-#endif
       GlDraw.color (1.0,1.0,1.0);
       GlDraw.begins `quads;
       GlTex.coord2 (0., 1.);
