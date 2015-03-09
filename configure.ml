@@ -558,7 +558,7 @@ let _=
   let emacsdir = Filename.concat !prefix "share/emacs/site-lisp/patoline" in
 
   let make=open_out "src/Makefile.config" in
-  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s%s%s%s%s\n"
+  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s%s%s%s\n"
     (if Sys.os_type="Win32" then "-D__WINDOWS__ " else "")
     (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
     (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
