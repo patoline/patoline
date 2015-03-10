@@ -237,7 +237,7 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 	in
 	let res = f filename writeR t in
 	dataO.write res;
-	Public
+	Private
     in
     dynamic name'
       (function
