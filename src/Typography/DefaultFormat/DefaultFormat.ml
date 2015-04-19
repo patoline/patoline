@@ -472,34 +472,32 @@ let defaultEnv:environment=
     let defaultEnv=defaultEnv
 
     let title str ?label ?(extra_tags=[]) displayname =
-      let displayname=[C (fun _->env_accessed:=true;displayname)] in
+      let displayname = [C (fun _ -> env_accessed := true; displayname)] in
       try
-	let name = string_of_contents displayname in
-	let t0',path=
+        let name = string_of_contents displayname in
+        let t0',path=
           match top !str with
             Node n,path ->
-	      if List.mem_assoc "maintitle" n.node_tags then
-		raise Exit;
-	      Node { n with
+              if List.mem_assoc "maintitle" n.node_tags then
+                raise Exit;
+              Node { n with
                 name=name;
                 node_tags=("maintitle","")::("structural","")::("intoc","")::extra_tags@n.node_tags;
                 displayname = displayname},path
           | t,path->
-	    Node { empty with
+            Node { empty with
               name=name;
               node_tags=["structural","";"intoc",""];
               displayname=displayname;
-	      children=IntMap.singleton 1 t;
+              children=IntMap.singleton 1 t;
               node_env=(fun x->x);
               node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
                 user_positions=y.user_positions });
               node_states=[]
             },path
-	in
+        in
         str:=follow (t0',[]) (List.map fst (List.rev path)); true
-      with
-	Exit ->
-	  newStruct D.structure displayname; false
+      with Exit -> newStruct D.structure displayname; false
 
     module TableOfContents=struct
       let do_begin_env ()=

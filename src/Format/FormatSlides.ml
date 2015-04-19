@@ -180,9 +180,9 @@ module Format=functor (D:Document.DocumentStructure)->(
         (* Supprimer la structure de D.structure *)
         D.structure:=
           (match path with
-              []->(stru',path)
-            | (a,Node b)::s->(Node { b with children=IntMap.add a stru' b.children }, s)
-            | (a,b)::s->(Node { empty with children=IntMap.singleton a stru' }, s));
+           | [] -> (stru',path)
+           | (a,b)::s->(Node { b with children=IntMap.add a stru' b.children }, s)
+          );
 
         env_stack:=List.tl !env_stack
 
