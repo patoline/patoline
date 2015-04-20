@@ -889,18 +889,19 @@ let beginFigure name=
 
 (** Adds a new paragraph with the given parameters, just below the current [node]. *)
 let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=[]) complete parameters par=
-  match !str with
-      Paragraph p,path->
-	(* Tom: j'ai l'impression que ce bout de code n'est jamais utilise. *)
-        str:=up (Paragraph {p with par_contents=p.par_contents@par}, path)
-    | _->
-        let para=Paragraph {par_contents=par; par_env=environment;
-                            par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
-                            par_parameters=parameters;
-                            par_badness=badness;
-                            par_completeLine=complete; par_states=states; par_paragraph=(-1) }
-        in
-          str:=up (newChildAfter !str para)
+  let para =
+    { par_contents     = par
+    ; par_env          = environment
+    ; par_post_env     = (fun env1 env2 ->
+                            { env1 with names = names env2
+                            ; counters        = env2.counters
+                            ; user_positions  = user_positions env2 })
+    ; par_parameters   = parameters
+    ; par_badness      = badness
+    ; par_completeLine = complete
+    ; par_states       = states
+    ; par_paragraph    = (-1) }
+  in str := up (newChildAfter !str (Paragraph para))
 
 let doc_tags n=match n with
     Node n->n.node_tags
