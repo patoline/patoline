@@ -1027,7 +1027,10 @@ let lref ?refType name=
                                 (List.rev (num@sect_num))));
        bB (fun _->[Marker EndLink])]
     with
-        Not_found -> []
+      Not_found ->
+	let refType=match refType with Some x->x | None-> "Default" in
+	Printf.eprintf "Unknown label %S of labelType %S\n%!" name refType;
+	[]
   )]
 
 let generalRef t x = lref ~refType:t x
@@ -1336,7 +1339,7 @@ let draw_boxes env l=
       draw_boxes (x+.w) y (box@dr) s
     )
     | Marker (BeginLink l)::s->(
-      (* Printf.fprintf stderr "****BeginURILink %S****\n" l; *)
+      (*      Printf.fprintf stderr "****BeginURILink %S****\n" l;*)
       let k = match l with
 	  Box.Extern l -> OutputCommon.Extern l;
 	| Box.Intern l ->
@@ -1374,8 +1377,8 @@ let draw_boxes env l=
         | h::s->link_contents (h::u) s
       in
       let dr'=link_contents [] dr in
-(*      List.iter (print_raw stderr) dr';
-      Printf.eprintf "***************\n%!";*)
+      (* List.iter (print_raw) dr'; *)
+      (* Printf.fprintf stderr "***************\n";flush stderr; *)
       draw_boxes x y dr' s
     )
 

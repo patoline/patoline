@@ -218,6 +218,7 @@ let comment_content =
   parser
   | | _:comment
   | | _:string_literal
+  | | _:char_literal
   | | _:any_not_closing
 
 let _ = set_grammar comment
