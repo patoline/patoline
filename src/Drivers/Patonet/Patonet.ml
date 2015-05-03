@@ -104,7 +104,7 @@ let decode_slave fd =
 	let c5 = int_of_char (input_char fd) in
 	let c6 = int_of_char (input_char fd) in
 	let c7 = int_of_char (input_char fd) in
-	(c0 lsl 56) lor (c1 lsl 48) lor (c2 lsl 40) lor (c3 lsl 32) lor 
+	(c0 lsl 56) lor (c1 lsl 48) lor (c2 lsl 40) lor (c3 lsl 32) lor
 	  (c4 lsl 24) lor (c5 lsl 16) lor (c6 lsl 8) lor c7
       else 0
     in
@@ -141,7 +141,7 @@ let str_addr addr = Unix.(match addr with
 any graph) as a follower*)
 
 type son =
-  { 
+  {
     fd: in_channel; (* connection to the son process *)
     pid: int;
     num: int; (*internal number, just for printing and debugging*)
@@ -159,11 +159,11 @@ let kill_son sock =
       Printf.eprintf "kill son %d %d\n%!" son.num son.pid;
       (try Unix.close fd with _ -> ());
       (try Unix.close son.served_sock with _ -> ());
-      (try Unix.kill son.pid 2 with _ -> ()); 
-      false) 
+      (try Unix.kill son.pid 2 with _ -> ());
+      false)
     else true
   ) !sonsBySock
-			  
+
 let get_reg=Str.regexp "GET \\([^ ]*\\) .*"
 let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 
@@ -220,7 +220,7 @@ function websocket_msg(evt){
          }
          setReaction(oldSvg)
        }
-     }  
+     }
 };
 function websocket_err(evt){
   websocket=null;
@@ -282,7 +282,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let dynCache = Array.map (fun t -> Array.map (fun _ -> Hashtbl.create 13) t) pages in
 
   let slides,cache,imgs=SVG.buffered_output' ~structure:structure ~dynCache pages "" in
-  
+
   let dynTable = Hashtbl.create 101 in
 
   Array.iteri (fun slide tbl ->
@@ -310,14 +310,14 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     in
     StrMap.add filename buf m) imgs StrMap.empty
   in
-  
+
   let imgs = StrMap.add "favicon.ico" duck_ico imgs in
   let imgs = StrMap.add "hammer.js" Hammer._Hammer_js imgs in
 
   let read_slide_state get =
     let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
     let state=max 0 (int_of_string (Str.matched_group 2 get)) in
-    
+
     let slide=min asked_slide (Array.length slides-1) in
     let state=if asked_slide>slide then
 	(Array.length slides.(slide)-1)
@@ -326,10 +326,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     in
     slide, state
   in
-  
+
   let mouse_script=
     let w,h = pages.(0).(0).pageFormat in (* FIXME: assume same format for all pages *)
-    Printf.sprintf 
+    Printf.sprintf
 "
 function send_click(name,dest,ev) {
   ev = ev || window.event;
@@ -349,7 +349,7 @@ function draggable(anchor,obj)
         var y = e.pageY + objY0;
          obj.style.left=x+'px';
          obj.style.top=y+'px';
-      };	  
+      };
 
       window.onmouseup = function(e){
         window.onmousemove = null;
@@ -357,7 +357,7 @@ function draggable(anchor,obj)
       };
     };
 }
- 
+
 function start_edit(name,dest,ev) {
   ev = ev || window.event;
   var elt =  document.getElementById(name);
@@ -378,7 +378,7 @@ function start_edit(name,dest,ev) {
       var icontents = elt.getAttribute('initial');
       var textArea = document.getElementById('edit_'+name);
       if (icontents.replace(/\\r\\n/g,'\\n') != textArea.value.replace(/\\r\\n/g,'\\n')) {
-        if (confirm('This will discard your edit and return to the initial text, are you sure ?')) { 
+        if (confirm('This will discard your edit and return to the initial text, are you sure ?')) {
           elt.setAttribute('contents', icontents);
           textArea.value = icontents;
           return false;
@@ -407,7 +407,7 @@ function start_edit(name,dest,ev) {
       var contents = elt.getAttribute('contents');
 
       if (textArea.value.replace(/\\r\\n/g,'\\n') == contents.replace(/\\r\\n/g,'\\n') ||
-        confirm('This will discard your edit, are you sure ?')) { 
+        confirm('This will discard your edit, are you sure ?')) {
           window.onkeydown = manageKey;
           div.parentNode.removeChild(div);
           elt.onclick = restart_edit(name,dest);
@@ -484,20 +484,20 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
 function StringBuffer()
-{ 
-    this.buffer = []; 
-} 
+{
+    this.buffer = [];
+}
 
 StringBuffer.prototype.append = function append(string)
-{ 
-    this.buffer.push(string); 
-    return this; 
-}; 
+{
+    this.buffer.push(string);
+    return this;
+};
 
 StringBuffer.prototype.toString = function toString()
-{ 
-    return this.buffer.join(\"\"); 
-}; 
+{
+    return this.buffer.join(\"\");
+};
 
 var Base64 =
 {
@@ -677,8 +677,8 @@ Base64DecodeEnumerator.prototype =
 };
 " w h
   in
-  
-  let keyboard=Printf.sprintf 
+
+  let keyboard=Printf.sprintf
 "function manageKey(e){
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
 if(current_slide > 0 && (current_state<=0 || e.keyCode==38)) {
@@ -744,13 +744,13 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
   let output_cache out i j =
     Rbuffer.add_string out "<defs id=\"svg_defs\">";
     Hashtbl.iter (fun k (d, ptr) ->
-      try 
+      try
 	let c = match !ptr with
-	    Some c -> (*Printf.eprintf "From cache\n%!";*)  c 
+	    Some c -> (*Printf.eprintf "From cache\n%!";*)  c
 	  | None -> let c = try d.dyn_contents () with _ -> "" in ptr := Some c; c
 	in
-	Rbuffer.add_string out (Printf.sprintf "<g id=\"@%s\">%s</g>" d.dyn_label c) 
-      with e -> 
+	Rbuffer.add_string out (Printf.sprintf "<g id=\"@%s\">%s</g>" d.dyn_label c)
+      with e ->
 	let e = Printexc.to_string e in
 	Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" e d.dyn_label;
 	Printexc.print_backtrace stderr;
@@ -763,7 +763,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     Array.iter (fun tbl ->
       Array.iter (fun tbl ->
 	Hashtbl.iter (fun k (d, ptr) -> ptr := None) tbl
-      ) tbl	
+      ) tbl
     ) dynCache
   in
 
@@ -782,7 +782,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     try
       let slide, state, change, change_list = match change with
           Ping -> present.cur_slide, present.cur_state, "\"Ping\"", "[]"
-	| Slide(i,j) -> 
+	| Slide(i,j) ->
 	  let svg = build_svg i j in
 	  i, j, "\"Slide\"", Printf.sprintf "\"%s\"" (base64_encode svg)
 	| Dynamics(i,j,l) ->
@@ -792,7 +792,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 		      List.fold_left (fun acc ((_,_),(d,ptr)) ->
 				      let c = match !ptr with
 					  Some d -> d
-					| None -> 
+					| None ->
 					  let r = d.dyn_contents () in ptr := Some r; r
 				      in
 				      Printf.sprintf "{\"dyn_label\":\"%s\", \"dyn_contents\":\"%s\"}" d.dyn_label (base64_encode c)::acc)
@@ -803,8 +803,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	   i, j, "\"Dynamics\"", full
       in
       resp_slave a (
-	Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"change\":%s, \"change_list\":%s }" 
-	  slide state 
+	Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"change\":%s, \"change_list\":%s }"
+	  slide state
 	  change change_list
       );
     with
@@ -828,7 +828,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       None -> false
     | Some(_,g') -> g = g'
   in
-  
+
   let push from s groupid dest = (*from avoids to send back to the expeditor*)
     sessid := Some(s,groupid,[]); (* dirty ... very hard to fix *)
     List.iter (fun (fd,son) ->
@@ -838,13 +838,13 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
   in
 
 
-  let http_send ?sessid code ctype datas ouc = 
+  let http_send ?sessid code ctype datas ouc =
     Printf.fprintf ouc "HTTP/1.1 %d OK\r\n" code;
     Printf.fprintf ouc "Content-type: %s\r\n" ctype;
     let len = List.fold_left (fun acc s -> acc + String.length s) 0 datas in
     Printf.fprintf ouc "Content-Length: %d\r\n" len;
     (match sessid with
-      Some (sessid, groupid, friends) -> 
+      Some (sessid, groupid, friends) ->
 	Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" sessid;
 	Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
 	Printf.eprintf "Set-Cookie: GROUPID=%s;\r\n" groupid;
@@ -888,7 +888,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       generate_error ~message:"serve svg failed" ouc;
     )
   in
-  
+
   let fonts = StrMap.fold (fun key font acc ->
   (*  Printf.eprintf "Font: %S\n%!" key;*)
     let key = List.hd (List.rev (Util.split '/' key)) in
@@ -911,17 +911,19 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 
 
   let serve fdfather num fd =
-    
+
     Unix.clear_nonblock fd;
     let websocket = ref false in
     let inc=Unix.in_channel_of_descr fd in
     let ouc=Unix.out_channel_of_descr fd in
     let fouc=Unix.out_channel_of_descr fdfather in
+    let sessid = Db.sessid in
+    sessid := None;
     Random.self_init ();
     reset_cache ();
 
     let set_sessid (login,group,friends) = match !sessid with
-      | Some(s,g,fs) when s = login && g = group && fs = friends-> 
+      | Some(s,g,fs) when s = login && g = group && fs = friends->
 	 Printf.eprintf "Reuse sessid: %s from %s\n%!" s g;
       | None ->
 	 Printf.eprintf "Set sessid: %s from %s\n%!" login group;
@@ -931,7 +933,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	 Printf.eprintf "Set sessid: %s from %s\n%!" login group;
 	 sessid := Some(login,group,friends)
     in
-    
+
     let check_guest () = match !sessid with
       | Some (s,g,_) when g != "guest" ->
 	 Printf.eprintf "Cancel sessid: %s from %s\n%!" s g;
@@ -941,10 +943,10 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       | None ->
 	 let s = make_sessid () in
 	 sessid := Some(s, "guest",[]);
-	 Printf.eprintf "New sessid: %s as guest\n%!" s;	 
+	 Printf.eprintf "New sessid: %s as guest\n%!" s;
       | _ -> ()
     in
-    
+
     let read_sessid () = match !sessid with
       | Some (s,g,_) -> s, g
       | _ ->
@@ -958,7 +960,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	 Printf.eprintf "Session not set\n%!";
 	 exit 1;
     in
-    
+
     let update slide state ev dest =
       let priv, pub =
 	List.fold_left (fun (priv,pub as acc) ds ->
@@ -972,11 +974,11 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	      | Public ->  (ds::priv), (ds::pub))
 	      acc l
 	  with
-	    Not_found -> 
+	    Not_found ->
 	      Printf.eprintf "Warning: dynamic not found: %s\n%!" ds;
 	      acc) ([], []) dest
       in
-      Printf.eprintf "Private change\n%!"; 
+      Printf.eprintf "Private change\n%!";
       if affected slide state priv then
 	begin
 	  pushto ~change:(Dynamics(slide,state,priv)) fd fdfather;
@@ -984,7 +986,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	end;
       Printf.eprintf "Public change\n%!";
       let s, g = read_sessid () in
-      Printf.fprintf fouc "change %s %s %s\n%!" s g (String.concat " " pub); 
+      Printf.fprintf fouc "change %s %s %s\n%!" s g (String.concat " " pub);
     in
 
     let _ = Sys.(
@@ -994,14 +996,14 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     in
 
     let rec process_req master get hdr reste=
-      
+
       ignore (Unix.alarm 300);
-	
+
       if !websocket then (
 	Printf.eprintf "Reading web socket message\n%!";
 	let get = decode_slave inc in
 	Printf.eprintf "Web socket message:%s\n%!" get;
-	
+
 	if Str.string_match move get 0 then (
 	  Printf.eprintf "serve %d: move\n%!" num;
 	  let slide, state = read_slide_state get in
@@ -1030,16 +1032,16 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	  let match_end = Str.match_end () in
 	  let slide, state = read_slide_state get in
 	  let rest =String.sub get match_end (String.length get - match_end) in
-	  
+
 	  Printf.eprintf "click: %d %d %s\n%!" slide state rest;
-	  
+
 	  let name, dest = match Util.split ' ' rest with
 	      name::dest -> name,dest
 	    | _ -> failwith "Bad click"
 	  in
 	  update slide state (Click(name)) dest;
           process_req master "" [] reste)
-	    
+
 	else if Str.string_match edit get 0 then (
 	  Printf.eprintf "serve %d: edit\n%!" num;
 	  let match_end = Str.match_end () in
@@ -1048,32 +1050,32 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 
 	  Printf.eprintf "edit: %d %d %s\n%!" slide state rest;
 
-	  let name, dest, contents = 
-	    try 
+	  let name, dest, contents =
+	    try
 	      match Util.split ' ' rest with
-		name::dest -> 
+		name::dest ->
 		  let dest = List.rev dest in
 		  let contents = List.hd dest in
 		  let dest = List.tl dest in
 		  name,dest, base64_decode contents
 	      | _ -> raise Not_found
-	    with _ -> failwith "Bad edit" 
+	    with _ -> failwith "Bad edit"
 	  in
 	  Printf.eprintf "edited text: %S\n%!" contents;
 
 	  update slide state (Edit(name,contents)) dest;
           process_req master "" [] reste
-	    
+
 	) else if Str.string_match drag get 0 then (
 	  Printf.eprintf "serve %d: drag\n%!" num;
 	  let match_end = Str.match_end () in
-	  let dx = float_of_string (Str.matched_group 3 get) 
+	  let dx = float_of_string (Str.matched_group 3 get)
 	  and dy = float_of_string (Str.matched_group 4 get) in
 	  let slide, state = read_slide_state get in
 	  let rest =String.sub get match_end (String.length get - match_end) in
-	  
+
 	  Printf.eprintf "drag: %d %d %g %g %s\n%!" slide state dx dy rest;
-	  
+
 	  let name, dest = match Util.split ' ' rest with
 	      name::dest -> name,dest
 	    | _ -> failwith "Bad click"
@@ -1084,9 +1086,9 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	  Printf.eprintf "ping\n";
 	  pushto ~change:Ping fd fdfather;
 	  process_req master "" [] reste
-	) else	  
+	) else
 	    process_req master "" [] reste
-      ) else 
+      ) else
 	let x=input_line inc in
 	Printf.eprintf "serve %d: %S %S\n%!" num get x;
 	if x.[0]='\r' then (
@@ -1100,10 +1102,10 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 
 	  ) else if Str.string_match rmaster get 0 && Str.matched_group 1 get = !master_page then (
 	    let _ = check_guest () in
-	    Printf.eprintf "serve %d: master\n%!" num;	
+	    Printf.eprintf "serve %d: master\n%!" num;
 	    http_send ~sessid:(read_sessid_fs ()) 200 "text/html" [page] ouc;
             process_req true "" [] reste
-	      
+
 	  ) else if Str.string_match logged get 0 then (
 	    let login = Str.matched_group 1 get in
             let md5 = Str.matched_group 2 get in
@@ -1118,7 +1120,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
   	      http_send ~sessid:(login,groupid, friends) 200 "text/html" [page] ouc;
               process_req false "" [] reste
             ) else (
-	      generate_error ~message:"md5 do not match" ouc
+	      sessid := None;
+	      generate_error ~message:"md5 do not match" ouc;
             )
 
 	  ) else if Str.string_match slave get 0 then (
@@ -1149,13 +1152,13 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	    let son_descr = String.concat ",\n" son_descr in
             Buffer.add_string data (Printf.sprintf "\"sons\"=[\n%s\n]" son_descr);
             Buffer.add_char data '}';
-	    
+
 	    http_send 200 "text/plain" [Buffer.contents data] ouc;
             process_req master "" [] reste
-	      
+
 	  ) else if Str.string_match tire get 0 || get="/tire" then (
             let slide, state =if get = "/tire" then -1, -1 else
-		read_slide_state get 
+		read_slide_state get
 	    in
 
 	    Printf.eprintf "serve %d: tire\n%!" num;
@@ -1174,34 +1177,34 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 		output_string ouc "\r\n\r\n";
 		flush ouc
               end;
-	      
+
 	      Printf.eprintf "Sending to father ...\n%!";
 	      let s, g = read_sessid () in
 	      Printf.fprintf fouc "move %s %s %d %d\n%!" s g slide state;
 	      Printf.eprintf "Sending to father done\n%!";
 	      websocket := true;
-	      
+
 	      process_req master "" [] reste
-		
+
             with
             | e-> Printf.eprintf "erreur %d websocket \"%s\"\n%!" num (Printexc.to_string e);
-	      
+
 	  ) else if Str.string_match css_reg get 0 then (
-	    
+
 	    Printf.eprintf "serve %d: css\n%!" num;
             serve_css ouc;
             process_req master "" [] reste
-	      
+
 	  ) else if Str.string_match otf get 0 then (
 	    let otf = Str.matched_group 1 get in
-	    
+
 	    Printf.eprintf "serve %d: otf\n%!" num;
             serve_font otf ouc;
             process_req master "" [] reste
 
 	  ) else (
 	    let name = String.sub get 1 (String.length get-1) in
-	    
+
             (try
 	      Printf.eprintf "serve %d: image or js: %s\n%!" num name;
               let img=StrMap.find name imgs in
@@ -1214,7 +1217,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 			  if Filename.check_suffix name ".ico" then "image/vnd.microsoft.icon" else
 			    "application/octet-stream"
               in
-	      
+
 	      http_send 200 ext [img] ouc;
               fun () -> process_req master "" [] []
             with
@@ -1233,7 +1236,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
         let b=Str.matched_group 2 x in
 	if a = "Cookie" || a = "Cookies" then (
 	  let ls = Str.split (Str.regexp ";[ \t]+") b in
-	  let ls = List.fold_left (fun acc s -> 
+	  let ls = List.fold_left (fun acc s ->
 	    match Util.split '=' s with
 	      [key;v] -> (key,v)::acc
 	    | _ -> acc) [] ls
@@ -1251,7 +1254,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
   try
     process_req false "" [] []
   with
-    | e-> 
+    | e->
       (match !sessid with
 	None ->
 	  Printf.fprintf fouc "quit ? %d\n%!" (Unix.getpid ());
@@ -1295,7 +1298,7 @@ in
 
       let master_sockets = fn [] poss_addrs in
 
-      Printf.eprintf 
+      Printf.eprintf
 	"Listening from %d addresses -- master: \"%s\"\n%!"
 	(List.length master_sockets) !master_page;
 
@@ -1364,7 +1367,7 @@ in
 			   pid = pid; num = num;
 			   served_sock = conn_sock;
 			   sessid = None; slide = 0; state = 0})::!sonsBySock))
-          with e -> 
+          with e ->
 	    kill_son sock;
 	    Printf.eprintf "main loop (reading): %s\n%!"
 	    (Printexc.to_string e)) socks
@@ -1376,6 +1379,5 @@ in
 
 let output = output_from_prime output'
 
-let _ = 
+let _ =
   Hashtbl.add drivers "Patonet" (module struct let output = output let output' = output' end:Driver)
-
