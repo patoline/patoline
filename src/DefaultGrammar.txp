@@ -410,6 +410,8 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 \Add_symbol{\ell ℓ}{ℓ}
 
+\Add_symbol{\circl}(MathFonts.asana "\\circl" 644)
+\Add_symbol{\circr}(MathFonts.asana "\\circr" 645)
 
 =<
 

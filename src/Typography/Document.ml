@@ -363,8 +363,6 @@ let empty:node=
 let singleton : tree -> node = fun t ->
   { empty with children = IntMap.singleton 0 t }
 
-let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
-let prev_key t=try fst (IntMap.min_binding t)-1 with Not_found -> 0
 
 
 
@@ -412,6 +410,7 @@ let lastChild : tree_zipper -> tree_zipper = fun (t,cxt) ->
    pointed node. If the pointed subtree is not a node, a new node is
    created to hold t and c. In the end the zipper points to c. *)
 let rec newChildAfter : tree_zipper -> tree -> tree_zipper =
+  let next_key t = try fst (IntMap.max_binding t) + 1 with Not_found -> 0 in
   fun (t,cxt) c ->
     match (t, cxt) with
     | (Node x, _ ) -> (c, (next_key x.children,x)::cxt)
@@ -420,6 +419,7 @@ let rec newChildAfter : tree_zipper -> tree -> tree_zipper =
 
 (* Same as newChildAfter but adds the tree as the first child. *)
 let rec newChildBefore : tree_zipper -> tree -> tree_zipper =
+  let prev_key t = try fst (IntMap.min_binding t) - 1 with Not_found -> 0 in
   fun (t,cxt) c ->
     match (t, cxt) with
     | (Node x, _)  -> (c, (prev_key x.children,x)::cxt)
