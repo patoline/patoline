@@ -476,6 +476,7 @@ let next_exp = function
   let constructor_declaration _loc name args res = (name, args, _loc)
   type label_declaration = string * Asttypes.mutable_flag * Parsetree.core_type * Location.t
 #endif
+  type record_field = Longident.t Asttypes.loc * Parsetree.expression
   type case = pattern * expression
   let label_declaration _loc name mut ty =
     (name, mut, ty, _loc)
@@ -530,6 +531,7 @@ let next_exp = function
 
   let constr_decl_list : constructor_declaration list grammar = declare_grammar "constr_decl_list"
   let field_decl_list : label_declaration list grammar = declare_grammar "field_decl_list"
+  let record_list : record_field list grammar = declare_grammar "record_list"
   let (match_cases : expression_prio -> case list grammar), set_match_cases = grammar_family "match_cases"
   let module_expr : module_expr grammar = declare_grammar "module_expr"
   let module_type : module_type grammar = declare_grammar "module_type"
@@ -552,6 +554,7 @@ type quote_env2_data =
   | Signature of Parsetree.signature_item list
   | Constr_decl of constructor_declaration list
   | Field_decl of label_declaration list
+  | Record of record_field list
   | Let_binding of value_binding list
   | Module_expr of module_expr
   | Module_type of module_type
@@ -681,6 +684,22 @@ let push_field_decl pos e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env -> env := (pos,Field_decl e) :: !env
+
+let push_pop_record pos e =
+  try
+    match Stack.top quote_stack with
+    | First env -> env := (pos,"push_record", e) :: !env; []
+    | Second env ->
+       match List.assoc pos !env with
+	 Record e -> e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise (Give_up "Illegal anti-quotation")
+
+let push_record pos e =
+  match Stack.top quote_stack with
+  | First env -> assert false
+  | Second env -> env := (pos,Record e) :: !env
 
 let push_pop_cases pos e =
   try
@@ -980,6 +999,7 @@ let quote_expression _loc loc e name =
     | "structure"  -> ignore (parse_string' structure e)
     | "signature"  -> ignore (parse_string' signature e)
     | "constructors"  -> ignore (parse_string' constr_decl_list e)
+    | "record"  -> ignore (parse_string' record_list e)
     | "fields"  -> ignore (parse_string' field_decl_list e)
     | "cases"  -> ignore (parse_string' (match_cases Top) e)
     | "let_binding"  -> ignore (parse_string' let_binding e)
@@ -1057,6 +1077,9 @@ let quote_constructors_2 loc e =
 
 let quote_fields_2 loc e =
   parse_string' field_decl_list e
+
+let quote_record_2 loc e =
+  parse_string' record_list e
 
 let quote_let_binding_2 loc e =
   parse_string' let_binding e

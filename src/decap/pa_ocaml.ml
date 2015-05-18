@@ -341,6 +341,9 @@ let maybe_opt_label =
 (****************************************************************************
  * Names                                                                    *
  ****************************************************************************)
+
+(* FIXME: add antiquotations for all as done for field_name *)
+
 (* Naming objects *)
 let infix_op =
   parser
@@ -361,13 +364,15 @@ let tag_name        =
   parser STR("`") c:ident -> c
 
 let typeconstr_name = lowercase_ident
-let field_name      = lowercase_ident
+let field_name      = parser lowercase_ident 
+		    | dol:CHR('$') - STR("lid") CHR(':') e:(expression_lvl App) - CHR('$') ->
+			  push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e
 let module_name     = capitalized_ident
 let modtype_name    = ident
 let class_name      = lowercase_ident
 let inst_var_name   = lowercase_ident
 let method_name     = lowercase_ident
-
+			
 let module_path_gen, set_module_path_gen  = grammar_family "module_path_gen"
 let module_path_suit, set_module_path_suit  = grammar_family "module_path_suit"
 
@@ -1434,10 +1439,10 @@ let record_item =
   | f:field CHR('=') e:(expression_lvl (next_exp Seq)) -> (id_loc f _loc_f,e)
   | f:lowercase_ident -> (let id = id_loc (Lident f) _loc_f in id, loc_expr _loc_f (Pexp_ident(id)))
 
-let record_list =
+let _ = set_grammar record_list (
   parser
   | it:record_item l:{ STR(";") it:record_item }* STR(";")? -> (it::l)
-  | EMPTY -> []
+  | EMPTY -> [])
 
 (****************************************************************************
  * classes and objects                                                      *
@@ -1745,6 +1750,7 @@ let expression_base = memoize1 (fun lvl ->
  		   | STR("structure") -> "structure" | STR("signature") -> "signature"
 		   | STR("constructors") -> "constructors"
 		   | STR("fields") -> "fields"
+		   | STR("record") -> "record"
 		   | STR("bindings") -> "let_binding"
 		   | STR("cases") -> "cases"
 		   | STR("module") ty:STR("type")? -> if ty = None then "module_expr" else "module_type"
