@@ -65,7 +65,7 @@
 
 =<
 
-=> Relation symbols 
+=> Relation symbols
 
 \Add_relation{\eq =}{=}
 \Add_relation{\neq ≠ /=}{≠}
@@ -127,7 +127,7 @@
 \Add_relation{\triangleright ▹} ( MathFonts.asana "triangle right" 893 )
 
 =<
-=> Addition like symbols 
+=> Addition like symbols
 
 \Add_addition_like{+}{+}
 \Add_addition_like{\oplus ⊕}{⊕}
@@ -147,7 +147,7 @@
 
 =<
 
-=> Product like symbols 
+=> Product like symbols
 
 \Add_product_like{\dot \cdot ⋅ ·}{⋅}
 \Add_product_like{\diamond ⋄}{⋄}
@@ -168,7 +168,7 @@
 
 =<
 
-=> Connector symbols 
+=> Connector symbols
 
 \Add_connector{\land &&}(MathFonts.asana "∧" 753)
 \Add_connector{\restriction ↾}(MathFonts.euler "↾" 248)
@@ -176,7 +176,7 @@
 
 =<
 
-=> Arrow symbols 
+=> Arrow symbols
 (* Euler doesn't seem to have all the arrows we might want.
 Wouldn't it be better to take all arrows from Asana-Math??? *)
 
@@ -211,7 +211,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
-=> Punctuation symbols 
+=> Punctuation symbols
 
 \Add_punctuation{,}{,}
 \Add_punctuation{;}{;}
@@ -219,7 +219,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
-=> Prefix symbols 
+=> Prefix symbols
 
 \Add_prefix{+}{+}
 \Add_prefix{-}{-}
@@ -234,7 +234,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
-=> Quantifiers 
+=> Quantifiers
 
 \Add_quantifier{\forall ∀}{∀}
 \Add_quantifier{\exists ∃}{∃}
@@ -242,7 +242,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
-=> Postfix and accent symbols 
+=> Postfix and accent symbols
 
 \Add_postfix{!}{!}
 \Add_accent{* \words}(MathFonts.euler "'" 797)
@@ -254,7 +254,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
-=> Lowercase Greek letters 
+=> Lowercase Greek letters
 
 \Add_symbol{\alpha α}{α}
 \Add_symbol{\beta β}{β}
@@ -286,7 +286,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
-=> Uppercase Greek letters 
+=> Uppercase Greek letters
 
 \Add_symbol{\Alpha Α}{Α}
 \Add_symbol{\Beta Β}{Β}
@@ -372,7 +372,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 =<
 
 
-=> Other symbols 
+=> Other symbols
 
 (*\Add_symbol{\sharp}(Maths.glyphs "#")*)
 \Add_symbol{\sharp ♯}(MathFonts.asana "♯" 1062)
@@ -392,6 +392,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_symbol{⋯ \cdots}{⋯}
 \Add_symbol{□ \wbox \wsquare}(MathFonts.asana "□" 1666)
 \Add_symbol{■ \bbox \bsquare}(MathFonts.asana "■" 1665)
+\Add_symbol{\nabla}(MathFonts.euler "nabla" 268)
 
 
 (* It seems Euler only has a glyph for alef, we'll use Asana-math instead
@@ -415,7 +416,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
-=> Black bold letters 
+=> Black bold letters
 
 \Add_symbol{\bbA}(MathFonts.ams "bbA" 66)
 \Add_symbol{\bbB}(MathFonts.ams "bbB" 67)
@@ -487,7 +488,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
-=> Operators 
+=> Operators
 
 \Add_limits_operator{∑ \sum}(List.map (fun x -> vkern_percent_under (MathFonts.euler "∑" x) 0.20) [778;779])
 \Add_limits_operator{∏ \prod}(List.map (fun x -> vkern_percent_under (MathFonts.euler "∏" x) 0.20) [780;781])
@@ -542,8 +543,8 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 \Configure_environment{genumerate}{ arg_1 = genumerate_item }
 
-\Configure_word_macro{\diagram}{ is_identity 
-                                 arg_1 = diagram 
+\Configure_word_macro{\diagram}{ is_identity
+                                 arg_1 = diagram
                                  arg_1 no_parenthesis }
 
 \Configure_word_macro{\hfill}{ eat_right
@@ -554,4 +555,3 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 =<
 
 \Save_Grammar
-
