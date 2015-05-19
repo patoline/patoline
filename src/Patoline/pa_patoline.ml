@@ -94,13 +94,13 @@ let _ = set_grammar patocomment
   ) no_blank)
 
 let patocomments =
-  parser _:patocomment**
+  parser _:{patocomment}**
 
 let blank_grammar_sline =
-  parser _:''[ \t\r]*'' _:{'\n' _:''[ \t\r]*''}??
+  parser _:''[ \t\r]''** _:{'\n' _:''[ \t\r]''**}??
 
 let blank_grammar_mline =
-  parser _:''[ \t\r]*'' _:{'\n' _:''[ \t\r]*''}**
+  parser _:''[ \t\r]''** _:{'\n' _:''[ \t\r]''**}**
 
 let blank_sline = blank_grammar blank_grammar_sline no_blank
 let blank_mline = blank_grammar blank_grammar_mline no_blank
@@ -333,7 +333,7 @@ let freshUid () =
  * Maths.                                                                   *
  ****************************************************************************)
 
-					 
+
   type 'a indices = { up_right : 'a option; up_right_same_script: bool;
 		      down_right : 'a option; up_left_same_script: bool;
 		      up_left : 'a option;
@@ -341,65 +341,64 @@ let freshUid () =
 
   type symbol=
       SimpleSym of string
-    | MultiSym of string 
+    | MultiSym of string
     | CamlSym of Parsetree.expression
     | ComplexSym of string
-		      
+
   let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None;
 		 up_right_same_script = false; up_left_same_script = false }
-		 
+
 
 let hash_sym = Hashtbl.create 1001
 let count_sym = ref 0
 let hash_msym = Hashtbl.create 1001
 let count_msym = ref 0
 
-let mcache_buf = ref (loc_expr loc_none (Parsetree.Pexp_tuple []))
+let mcache_buf = ref []
 let cache = ref ""
-let cache_buf = ref (loc_expr loc_none (Parsetree.Pexp_tuple []))
-			       
-  let print_math_symbol _loc sym=
-      let s,b = 
-	match sym with
-          SimpleSym s-> <:expr<Maths.glyphs $string:s$>>, false
-	| CamlSym s-> s, false
-	 | _ -> failwith "a faire ds Pa_patoline.print_math_symbol.\n"
-	(* | MultiSym s -> <:expr<$lid:s$>>, true *)
-	(* | ComplexSym s -> Printf.bprintf buf "(%s)" s; raise Exit *)
-      in
-      if b then
-	try
-	  let nom = "m" ^ (!cache) in
-	  let index = Hashtbl.find hash_msym s in
-	  <:expr< ! $lid:nom$.($int:index$) >>
-	with Not_found ->
-	  Hashtbl.add  hash_msym s !count_msym;
-	  mcache_buf := 
-	    <:expr<$!mcache_buf$;$s$>>;
-	  let res = <:expr< ! $lid:("m" ^ !cache)$.($int:(!count_msym)$) >> in
-	  let _ = incr count_msym in
-	  res
-      else
-	try
-	  <:expr< ! $lid:(!cache)$.($int:(Hashtbl.find hash_sym s)$) >>
-	with Not_found ->
-	  Hashtbl.add  hash_sym s !count_sym;
-	  mcache_buf := 
-	    <:expr<$!cache_buf$;$s$>>;
-	  let res = <:expr< ! $lid:(!cache)$.($int:(!count_sym)$) >> in
-	  let _ = incr count_sym in
-	  res
-			       
-  let print_math_deco _loc elt ind =
-    let gn name ind =
-      match ind with 
-	  None -> assert false
-	| Some m ->
-	   <:record< $lid:name$ = $m$ >>
-    in
-    if ind = no_ind then (
-      <:expr< Maths.noad $print_math_symbol _loc elt$ >>
-    ) else failwith "pas encore"
+let cache_buf = ref []
+
+let print_math_symbol _loc sym=
+  let s,b =
+    match sym with
+      SimpleSym s-> <:expr<Maths.glyphs $string:s$>>, false
+    | CamlSym s-> s, false
+    | _ -> failwith "a faire ds Pa_patoline.print_math_symbol.\n"
+      (* | MultiSym s -> <:expr<$lid:s$>>, true *)
+      (* | ComplexSym s -> Printf.bprintf buf "(%s)" s; raise Exit *)
+  in
+  if b then
+    try
+      let nom = "m" ^ (!cache) in
+      let index = Hashtbl.find hash_msym s in
+      <:expr< ! $lid:nom$.($int:index$) >>
+    with Not_found ->
+      Hashtbl.add  hash_msym s !count_msym;
+      mcache_buf := s::!mcache_buf;
+      let res = <:expr< ! $lid:("m" ^ !cache)$.($int:(!count_msym)$) >> in
+      let _ = incr count_msym in
+      res
+  else
+    try
+      let r = Hashtbl.find hash_sym s in
+      <:expr< ! $lid:(!cache)$.($int:r$) >>
+    with Not_found ->
+      Hashtbl.add  hash_sym s !count_sym;
+      cache_buf := s::!cache_buf;
+      let res = <:expr< ! $lid:(!cache)$.($int:(!count_sym)$) >> in
+      let _ = incr count_sym in
+      res
+
+let print_math_deco _loc elt ind =
+  let gn name ind =
+    match ind with
+      None -> assert false
+    | Some m ->
+      <:record< $lid:name$ = $m$ >>
+  in
+  if ind = no_ind then (
+    <:expr< Maths.noad $print_math_symbol _loc elt$ >>
+  ) else failwith "pas encore"
     (*   begin *)
     (*   Printf.bprintf buf "{ (Maths.noad (%a)) with " print_math_symbol elt; *)
     (*   if ind.up_right <> None then ( *)
@@ -415,17 +414,17 @@ let cache_buf = ref (loc_expr loc_none (Parsetree.Pexp_tuple []))
     (*   Printf.bprintf buf "}" *)
     (* end *)
 
-  let math_aux : (unit indices -> Parsetree.expression) Decap.grammar = 
-    parser
+let math_aux : (unit indices -> Parsetree.expression) Decap.grammar =
+  parser
     | | var:''[a-zA-Z]'' -> (fun indices ->
-			     <:expr<[Maths.Ordinary $print_math_deco _loc_var (SimpleSym var) indices$] >>)
-    (* | | 'x' -> <:expr@_loc<Maths.noad (Maths.glyphs "x")>> *)
-                    (* TODO *)
+      <:expr<[Maths.Ordinary $print_math_deco _loc_var (SimpleSym var) indices$] >>)
+  (* | | 'x' -> <:expr@_loc<Maths.noad (Maths.glyphs "x")>> *)
+  (* TODO *)
 
-  let math_toplevel = parser
-			m:math_aux -> m no_ind
+let math_toplevel = parser
+  m:math_aux -> m no_ind
 
-		    
+
 
 (*************************************************************
  *   Type to control which t2t like tags are forbidden       *
@@ -508,11 +507,11 @@ let cache_buf = ref (loc_expr loc_none (Parsetree.Pexp_tuple []))
     | | '$' m:math_toplevel '$' ->
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
-                        [Maths.Ordinary $m$])]>>
+                          $m$)]>>
     | | "[$" m:math_toplevel "$]" ->
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
-                        (displayStyle [Maths.Ordinary $m$]))]>>
+                        (displayStyle $m$))]>>
 
     | | l:word -> <:expr@_loc_l<[tT $string:l$]>>
 
@@ -603,7 +602,7 @@ let cache_buf = ref (loc_expr loc_none (Parsetree.Pexp_tuple []))
                         Complete.normal displayedFormula
                         [bB (fun env0 -> Maths.kdraw
                           [ { env0 with mathStyle = Mathematical.Display } ]
-                          [Maths.Ordinary $m$])];;>>)
+                          $m$)];;>>)
     | | l:paragraph_basic_text -> l
 
   let _ = set_grammar paragraph (
@@ -749,26 +748,33 @@ let wrap basename _loc ast =
     $ast$
     let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
     end;;
-    let _ = $lid:("cache_"^basename)$  :=[||];;
-    let _ = $lid:("mcache_"^basename)$ :=[||];;
+    let _ = $lid:("cache_"^basename)$  := $array:(List.rev !cache_buf)$;;
+    let _ = $lid:("mcache_"^basename)$ := $array:(List.rev !mcache_buf)$;;
   >>
+
+let init =
+  parser EMPTY -> (fun () ->
+    let file = match !file with
+                 | None -> ""
+                 | Some f -> f
+    in
+    let basename = chop_extension' file in
+    cache := "cache_" ^ basename;
+    basename)
 
 let full_text =
   parser
-  | _:header t:title?? txt:text EOF ->
-    begin
-      let t = match t with
-              | None   -> <:structure<>>
-              | Some t -> t
-      in
-      let ast = <:structure<$t$;; $txt$>> in
-      let file = match !file with
-                 | None -> assert false
-                 | Some f -> f
-      in
-      let basename = chop_extension' file in
-      wrap basename _loc ast
-    end
+  | h:header DEBUG "0" basename:init DEBUG "A" ->>
+    let basename = basename () in
+    DEBUG "B" t:title?? DEBUG"1" txt:text DEBUG"2" EOF ->
+      begin
+        let t = match t with
+                | None   -> <:structure<>>
+                | Some t -> t
+        in
+        let ast = <:structure<$t$;; $txt$>> in
+        wrap basename _loc ast
+      end
 
 (* Extension of Ocaml's grammar *********************************************)
 

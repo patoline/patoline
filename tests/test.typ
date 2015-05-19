@@ -8,10 +8,10 @@ This is another paragraph.
 
 (* "... *) This is part of a comment (* " *)
 (* "... *)
-This is again a paragraph.
+This is a paragraph in a multi-line comment.
 (* " *)
 
 Blabla blabla blabla blabla blabla blabla blabla blabla blabla blabla blabla
 blabla blabla blabla blabla blabla blabla blabla blabla blabla blabla blabla
+(* " un guillemet tout seul *)
 blabla blabla blabla blabla blabla blabla blabla blabla blabla blabla blabla.
-

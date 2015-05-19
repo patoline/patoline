@@ -278,7 +278,7 @@ let tryif cond f g =
 
 let test grouped next str p =
   let c = get str p in
-  (*assert (Printf.eprintf "test: %c %a %a\n%!" c print_info grouped print_next next; true);*)
+  (*  Printf.eprintf "test: %c %a %a\n%!" c print_info grouped print_next next; *)
   next == all_next || match grouped.stack with
   | _, EmptyStack ->
      let res = mem next.accepted_char c in
@@ -1117,19 +1117,24 @@ let sequence3 : 'a grammar -> 'b grammar -> 'c grammar -> ('a -> 'b -> 'c -> 'd)
 
 let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
   = fun l1 f2 ->
-  if accept_empty' l1 then
-    failwith "dependant sequence with empty prefix are not supported";
+    let empty () =
+      match l1.accept_empty with
+	May_empty x -> (try (f2 (x (empty_buffer "dep prefix" 0 0) 0)).accept_empty with _ -> Non_empty)
+      | Non_empty -> Non_empty
+      | Unknown -> Unknown
+    in
   let res =
     { ident = new_ident ();
       next = compose_next' l1 all_next;
-      accept_empty = Non_empty;
+      accept_empty = empty ();
       left_rec = Non_rec;
       set_info = (fun () -> ());
       deps = imit_deps l1;
       def = None;
       parse =
         fun grouped str pos next g ->
-	l1.parse grouped str pos all_next
+	  tryif (accept_empty l1)
+	    (fun () -> l1.parse grouped str pos all_next
                  (fun str pos str' pos' str'' pos'' stack a ->
 		  let grouped = set_stack grouped stack in
 		  let g2 = try f2 a with Give_up msg -> parse_error grouped (~!msg) str' pos' in
@@ -1138,12 +1143,15 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
 					    (fun _ _ str' pos' str'' pos'' stack b ->
 					     g str pos str' pos' str'' pos'' stack b))
 			(fun () -> let b = read_empty g2 in
-				   g str pos str' pos' str'' pos'' stack (b str' pos')))
+				   g str pos str' pos' str'' pos'' stack (b str' pos'))))
+	    (fun () ->  let a = read_empty l1 in
+			(f2 (a str pos)).parse grouped str pos next
+			       (fun str pos str' pos' str'' pos'' stack x ->
+				g str pos str' pos' str'' pos'' stack x))
     }
   in
   res.set_info <- (fun () ->
-		   if accept_empty' l1 then
-		     failwith "dependant sequence with empty prefix are not supported";
+                   res.accept_empty <- (empty ());
 		   res.next <- compose_next' l1 all_next);
   add_deps res l1;
   res
@@ -1569,11 +1577,14 @@ let partial_parse_buffer grammar blank str pos =
     res
   with Error ->
     reset_cache ();
-    let str = grouped.err_info.max_err_buf in
-    let pos = grouped.err_info.max_err_col in
-    let msgs = grouped.err_info.err_msgs in
-    let msg, expected = collect_tree msgs in
-    raise (Parse_error (fname str, line_num str, pos, msg, expected))
+    match grammar.accept_empty with
+      May_empty a -> (str,pos,a str pos)
+    | _ ->
+      let str = grouped.err_info.max_err_buf in
+      let pos = grouped.err_info.max_err_col in
+      let msgs = grouped.err_info.err_msgs in
+      let msg, expected = collect_tree msgs in
+      raise (Parse_error (fname str, line_num str, pos, msg, expected))
 
 let partial_parse_string ?(filename="") grammar blank str =
   let str = buffer_from_string ~filename str in
@@ -1610,5 +1621,11 @@ let handle_exception f a =
     Parse_error _ as e -> print_exception e; exit 1
 
 let blank_grammar grammar blank str pos =
-  let (str, pos, _) = partial_parse_buffer grammar blank str pos in
+  let str, pos, _ =
+    try
+      partial_parse_buffer grammar blank str pos
+    with e ->
+      Printf.eprintf "Exception in blank parser\n%!";
+      raise e
+  in
   (str, pos)
