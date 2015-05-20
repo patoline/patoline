@@ -31,7 +31,8 @@ open Printf
 module Format=functor (D:DocumentStructure)->struct
 
 include FormatThese.Format(D)
-
+let defaultEnv = { defaultEnv with hyphenate=DefaultFormat.hyphenate_dict "hyph-fr.hdict"}
+			  
   module Env_defi=Default.Make_theorem
 			  (struct
 			    let refType="definition"
@@ -87,6 +88,13 @@ include FormatThese.Format(D)
 			  let counter="remarque"
 			  let counterLevel=0
 			  let display num=alternative Bold [tT ("Remarque "^num^"."); (tT " ")]
+			end)
+  module Env_notation=Default.Make_theorem
+			(struct
+			  let refType="notation"
+			  let counter="notation"
+			  let counterLevel=0
+			  let display num=alternative Bold [tT ("Notation "^num^"."); (tT " ")]
 			end)
   module Env_exercice=Default.Make_theorem
 			(struct
