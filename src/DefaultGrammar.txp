@@ -57,6 +57,12 @@
 				      [3324;3325;3326;3327])
 \Add_left{ ⌜ \ulcorner}( [MathFonts.asana "ulcorner" 980] )
 \Add_right{ ⌝ \urcorner}( [MathFonts.asana "urcorner" 981] )
+\Add_left{ \lbanana }( [MathFonts.asana "lbanana" 1267] )
+\Add_right{ \rbanana }( [MathFonts.asana "rbanana" 1268] )
+\Add_left{ \lhalfmoon }( [MathFonts.asana "lhalfmoon" 1269] )
+\Add_right{ \rhalfmoon }( [MathFonts.asana "rhalfmoon" 1270] )
+\Add_left{ \llangle }(MathFonts.adjusted_asana_delimiters "llangle" [1112;3220;3221;3222])
+\Add_right{ \rrangle }(MathFonts.adjusted_asana_delimiters "rrangle" [1113;3223;3224;3225])	    
 
 (* From Euler font *)
 \Add_left{ \langle < ⟨}(MathFonts.adjusted_euler_delimiters "\\langle" [1803;1807(*;1809*);1811;1813])
@@ -231,6 +237,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_prefix{↓ \downarrow}( MathFonts.asana "down arrow" 605 )
 \Add_prefix{\diverge}( MathFonts.asana "up arrow" 667 )
 \Add_prefix{\converge}( MathFonts.asana "down arrow" 669 )
+\Add_symbol{\Updownarrow ⇕}( MathFonts.asana "Updownarrow" 671 )
 
 =<
 
@@ -383,7 +390,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_symbol{\top ⊤}{⊤}
 \Add_symbol{\bottom \bot ⊥}{⊥}
 \Add_symbol{\dtop}(MathFonts.asana "\\dtop" 1626)
-\Add_symbol{\dbottom \dbot}(MathFonts.asana "\\dbottom" 1625)
+\Add_symbol{\dbottom \dbot \bbot}(MathFonts.asana "\\dbottom" 1625)
 \Add_symbol{\emptyset ∅}{∅}
 \Add_symbol{… ... \dots}{…}
 \Add_symbol{\vdots ⋮}(MathFonts.asana "\\vdost" 952)
@@ -393,7 +400,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_symbol{□ \wbox \wsquare}(MathFonts.asana "□" 1666)
 \Add_symbol{■ \bbox \bsquare}(MathFonts.asana "■" 1665)
 \Add_symbol{\nabla}(MathFonts.euler "nabla" 268)
-
+\Add_symbol{✓ \checkmark}(MathFonts.asana "✔" 1069)
 
 (* It seems Euler only has a glyph for alef, we'll use Asana-math instead
 \Add_symbol{\alef ℵ}{ℵ}

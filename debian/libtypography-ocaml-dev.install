@@ -7,6 +7,7 @@ usr/lib/ocaml/Typography/FormatLetter.*
 usr/lib/ocaml/Typography/FormatLivre.*
 usr/lib/ocaml/Typography/FormatSlides.*
 usr/lib/ocaml/Typography/FormatThese.*
+usr/lib/ocaml/Typography/FormatMemoire.*
 usr/lib/ocaml/Typography/None.*
 src/Drivers/None/None.META usr/lib/ocaml/Typography/META.d
 usr/lib/ocaml/Typography/ParseMainArgs.*

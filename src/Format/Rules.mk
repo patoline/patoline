@@ -26,7 +26,8 @@ $(PCMX_$(d)): $(TYPOGRAPHY_DIR)/Typography.cmxa
 
 # Other formats
 OTHER_FORMATS := $(d)/FormatArticle.ml $(d)/FormatLivre.ml $(d)/FormatThese.ml \
-  $(d)/FormatLetter.ml $(d)/FormatSlides.ml $(d)/LMFormat.ml $(d)/FormatWeb.ml $(d)/Interactive.ml 
+  $(d)/FormatLetter.ml $(d)/FormatSlides.ml $(d)/LMFormat.ml $(d)/FormatWeb.ml \
+  $(d)/FormatMemoire.ml $(d)/Interactive.ml 
 
 $(OTHER_FORMATS:.ml=.cmxa): %.cmxa: %.cmx
 	$(ECHO) "[OPT]    $<"
