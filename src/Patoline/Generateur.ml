@@ -42,7 +42,7 @@ let line_directive = ref true
 let moduleCounter=ref 0
 
 
-let apply_options n arg opts = 
+let apply_options n arg opts =
   let rec fn = function
   [] -> arg
   | `Arg_pat(i,s)::l when i = n ->
@@ -57,7 +57,7 @@ let _= Build.macros:=
       "let module Res = struct\n "^
       "module EnvDiagram = Env_Diagram (struct let env = env end) \n open EnvDiagram \n"^
       x^
-      "\n end \n"^ 
+      "\n end \n"^
       "in [ Drawing (Res.EnvDiagram.make ()) ])]\n")
   (StrMap.add "genumerate_item" (fun s->
     let pos = StrRegexp.search_forward (StrRegexp.regexp "&\\([1iIaA]\\)") s 0 in
@@ -72,7 +72,7 @@ let _= Build.macros:=
       | 'I' -> "RomanUpper"
       | 'a' -> "AlphaLower"
       | 'A' -> "AlphaUpper"
-      | _ ->   (Printf.fprintf stderr "Invalid argument to genumerate: %c. Falling back to arabic.\n" c ; 
+      | _ ->   (Printf.fprintf stderr "Invalid argument to genumerate: %c. Falling back to arabic.\n" c ;
 		flush stderr ; "Arabic")
     end in
     (* "('"^c^"',(fun num_sec -> " ^ prefix ^ "\" ^ num_sec ^ \"" ^ suffix ^ "))" *)
@@ -151,13 +151,13 @@ let ident_of_filename =
   let rec compare_sub s i s' j len =
     if len = 0 then true else
       if (i + len > (String.length s)) || (j + len > (String.length s')) then false else
-	if s.[i] = s'.[j] then compare_sub s (i + 1) s' (j + 1) (len - 1) 
+	if s.[i] = s'.[j] then compare_sub s (i + 1) s' (j + 1) (len - 1)
 	else false
   in
 
   let underscores = String.make len_dir_sep '_' in
 
-  fun filename -> 
+  fun filename ->
   let _ = begin
     for i = 0 to String.length filename - 1 do
       if compare_sub filename i Filename.dir_sep 0 len_dir_sep then
@@ -267,8 +267,8 @@ let rec print_math_buf parser_pp op buf m =
       | Apply(f,a) ->
 	let ind_left, ind_right = split_ind indices in
 	Printf.bprintf buf "[Maths.bin_invisible 5 (%a) (%a)]" (print_math_expr ind_left) f (print_math_expr ind_right) a
-(*	
-	Printf.bprintf buf "(%a)@(%a)" (print_math_expr ind_left) f (print_math_expr ind_right) a 
+(*
+	Printf.bprintf buf "(%a)@(%a)" (print_math_expr ind_left) f (print_math_expr ind_right) a
 *)
       | MathMacro (macro, args) ->
 	wrap_deco_math_default buf indices
@@ -306,7 +306,7 @@ let rec print_math_buf parser_pp op buf m =
           Printf.bprintf buf ")]";
   and print_math_deco elt buf ind =
     let gn name ind =
-      match ind with 
+      match ind with
 	  None -> assert false
 	| Some m ->
 	  Printf.bprintf buf "%s = (%a);" name (print_math_expr no_ind) m
@@ -316,11 +316,11 @@ let rec print_math_buf parser_pp op buf m =
     ) else begin
       Printf.bprintf buf "{ (Maths.noad (%a)) with " print_math_symbol elt;
       if ind.up_right <> None then (
-	if ind.up_right_same_script then Printf.bprintf buf "Maths.super_right_same_script = true; "; 
+	if ind.up_right_same_script then Printf.bprintf buf "Maths.super_right_same_script = true; ";
 	gn "Maths.superscript_right" ind.up_right
       );
       if ind.up_left <> None then (
-	if ind.up_left_same_script then Printf.bprintf buf "Maths.super_left_same_script = true; "; 
+	if ind.up_left_same_script then Printf.bprintf buf "Maths.super_left_same_script = true; ";
 	gn "Maths.superscript_left" ind.up_left
       );
       if ind.down_right <> None then gn "Maths.subscript_right" ind.down_right;
@@ -342,7 +342,7 @@ let rec print_math_buf parser_pp op buf m =
 
   and print_math_symbol buf sym=
     try
-      let s,b = 
+      let s,b =
 	match sym with
           SimpleSym s->Printf.sprintf "Maths.glyphs \"%s\"" s, false
 	| MultiSym s -> Printf.sprintf "(%s)" s, true
@@ -386,17 +386,17 @@ and print_math_par_buf parser_pp op buf display m =
   print_math_buf parser_pp op buf m;
   Printf.bprintf buf "))] "
 
-and print_math_par pos parser_pp op ch display m = begin 
+and print_math_par pos parser_pp op ch display m = begin
   let buf = Buffer.create 80 in
   print_ext_link pos (fun buf () -> print_math_par_buf parser_pp op buf display m) buf;
-  output_string ch (Buffer.contents buf) 
+  output_string ch (Buffer.contents buf)
 end
 
 and print_macro_buf parser_pp buf op mtype name args opts =
   (* Printf.fprintf stderr "Entering print_macro_buf.\n" ; flush stderr ; *)
   begin
     match mtype with
-      | `Single -> 
+      | `Single ->
 	begin
 	  (if List.mem `Is_idt opts then
 	      Printf.bprintf buf " ("
@@ -476,14 +476,14 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 and print_macro parser_pp ch op mtype name args opts = begin
   let buf = Buffer.create 80 in
   print_macro_buf parser_pp buf op mtype name args opts;
-  output_string ch (Buffer.contents buf) 
+  output_string ch (Buffer.contents buf)
 end
 
-and print_caml_buf parser_pp ld gr op buf s e txps (file,line,bol) = 
+and print_caml_buf parser_pp ld gr op buf s e txps (file,line,bol) =
   (* Printf.fprintf stderr "Entering print_caml_buf.\n" ; flush stderr ; *)
   if !line_directive then Printf.bprintf buf "\n# %d \"%s\"\n%s" line file (String.make (max 0 (s - bol)) ' ');
   match txps with
-  | [] -> 
+  | [] ->
     let size = e - s in
     (* let _ = Buffer.add_buffer buf (op.Source.sub_buffer 0 size) in *)
     let buf'=String.make size (char_of_int 0) in
@@ -535,7 +535,7 @@ and print_caml_buf parser_pp ld gr op buf s e txps (file,line,bol) =
 	let parser_pilot = { (parser_pp) with Dyp.pp_ld = ld ; Dyp.pp_dev = gr;  } in
 	let txp = Dyp.lexparse parser_pilot "allmath" lexbuf_txp in
 	match txp with
-	  | (Obj_allmath docs, _) :: _ -> 
+	  | (Obj_allmath docs, _) :: _ ->
 	    let sub_input source_pos dest pos size =
 	      op (s' + source_pos) dest pos size
 	    in
@@ -549,7 +549,7 @@ and print_caml_buf parser_pp ld gr op buf s e txps (file,line,bol) =
 	let txp = Dyp.lexparse parser_pilot "allparagraph" lexbuf_txp in
 	(* Printf.fprintf stderr "End Dypgen.\n" ; flush stderr ; *)
 	match txp with
-	  | (Obj_allparagraph docs, _) :: _ -> 
+	  | (Obj_allparagraph docs, _) :: _ ->
 	    let sub_input source_pos dest pos size =
 	      op (s' + source_pos) dest pos size
 	    in
@@ -571,28 +571,28 @@ end
 and print_ext_link pos f buf=
   if pos = "" || not !edit_link then f buf ()
   else
-    Printf.bprintf buf 
+    Printf.bprintf buf
       "(let (file, l, c, _) = %s in extLink (\"edit:\"^file^\"@\"^string_of_int l^\"@\"^string_of_int c) %a)"
 	        pos f ()
 
-and print_contents_buf use_par parser_pp op buf l = 
+and print_contents_buf use_par parser_pp op buf l =
   (* Printf.fprintf stderr "Entering print_contents_buf.\n" ; flush stderr ; *)
   if use_par then Printf.bprintf buf "(";
-  let rec fn l = 
+  let rec fn l =
     begin match l with
       [] ->  Printf.bprintf buf "[]";
     | (TC (pos, s) :: l' ) as l ->
       if !edit_link then
 	(print_ext_link pos (fun buf () -> Printf.bprintf buf "[tT(\"%s\")]" (String.escaped s)) buf;
 	 Printf.bprintf buf "@"; fn l')
-      else 
+      else
 	(Printf.bprintf buf "(tT(\""; gn l)
-    | GC :: (MC(_,_,_,opts)::_ as l) when List.mem `Eat_left opts -> 
+    | GC :: (MC(_,_,_,opts)::_ as l) when List.mem `Eat_left opts ->
       fn l
-    | GC :: l -> 
+    | GC :: l ->
       Printf.bprintf buf "(tT \" \")::";
       fn l
-    | MC(mtype, name, args, opts) :: l -> 
+    | MC(mtype, name, args, opts) :: l ->
       Printf.bprintf buf " (";
       print_macro_buf parser_pp buf op mtype name args opts;
       Printf.bprintf buf ")@ ";
@@ -608,35 +608,35 @@ and print_contents_buf use_par parser_pp op buf l =
     end;
   and gn l =
     begin match l with
-    | TC(_pos,s) :: l -> 
+    | TC(_pos,s) :: l ->
       Printf.bprintf buf "%s" (String.escaped s);
       gn l
-    | GC :: ((TC _ :: _) as l) -> 
+    | GC :: ((TC _ :: _) as l) ->
       Printf.bprintf buf " ";
       gn l
     | l ->
       Printf.bprintf buf "\"))::" ;
       fn l
     end
-  in 
+  in
   fn l;
   if use_par then Printf.bprintf buf ")"
 
 and print_contents parser_pp op (ch : out_channel) l = begin
   let buf = Buffer.create 80 in
   print_contents_buf true parser_pp op buf l;
-  output_string ch (Buffer.contents buf) 
+  output_string ch (Buffer.contents buf)
 end
 
-and output_list parser_pp from where no_indent lvl docs = 
+and output_list parser_pp from where no_indent lvl docs =
   (* Printf.fprintf stderr "Entering output_list.\n" ; flush stderr ; *)
   match docs with
       [] ->()
  	(* for i = 1 to lvl - 1 do *)
 	(*   Printf.fprintf where "let _ = go_up D.structure;;(\* 1 *\)\n\n" *)
 	(* done *)
-    | doc::docs -> 
-      let lvl = ref lvl in 
+    | doc::docs ->
+      let lvl = ref lvl in
       let next_no_indent = ref false in
       (match doc with
 	| Paragraph(options, p) ->
@@ -663,7 +663,7 @@ and output_list parser_pp from where no_indent lvl docs =
 	| Struct(title, numbered, docs) ->
 	  let num = if numbered=Toc_num then "" else " ~numbered:false" in
           let toc = if numbered=Not_in_toc then " ~in_toc:false" else "" in
-	  let print_title where title = 
+	  let print_title where title =
 	      print_contents parser_pp from where title
 	  in
 	  (match docs with
@@ -677,12 +677,12 @@ and output_list parser_pp from where no_indent lvl docs =
 		Printf.fprintf where "let _ = go_up D.structure ;;(* 3 *)\n\n"
 	      done;
 	      Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num print_title title;
-	      lvl := l; 
+	      lvl := l;
 	      next_no_indent := true
 	  );
 	| Macro(mtype, name, args,opts) ->
 	  print_macro parser_pp where from mtype name args opts;
-	  Printf.fprintf where "\n\n" 
+	  Printf.fprintf where "\n\n"
 	| Preproc t -> begin
 	    Printf.fprintf where "%s\n\n" t ;
 	    (* Printf.fprintf stderr "Printed : \n %s \n" t ; *)
@@ -690,7 +690,7 @@ and output_list parser_pp from where no_indent lvl docs =
 	| Math(pos, m) ->
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Complete.normal displayedFormula %a;;\n"
 	    (fun ch -> print_math_par pos parser_pp from ch true) m
-        | Ignore -> 
+        | Ignore ->
 	  next_no_indent := no_indent
 	| Verbatim(lang, filename, lines, (line, file)) ->
 	  let lang = match lang with
@@ -776,7 +776,7 @@ let gen_ml noamble formats driver suppl filename from wherename where pdfname =
       try
         let docs = Parser.main lexbuf in
         let nbdocs = List.length docs in
-        Printf.fprintf stderr "%s\n" 
+        Printf.fprintf stderr "%s\n"
 	  (Language.message (Language.End_of_parsing nbdocs));
         flush stderr;
         let source = Source.of_in_channel from' in
@@ -794,7 +794,7 @@ let gen_ml noamble formats driver suppl filename from wherename where pdfname =
               );
               match pre with
 		  None -> ()
-	        | Some(title, at) -> 
+	        | Some(title, at) ->
 		  let extra_tags =
 		    let buf = Buffer.create 80 in
 		    match at with

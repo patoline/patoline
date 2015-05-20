@@ -20,7 +20,7 @@ PA_OCAML := $(PA_OCAML_DIR)/pa_ocaml
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
-DUMMY := $(shell if [ ! -x $(PA_OCAML_DIR)/pa_ocaml ]; then $(MAKE) -e -j 1 -C $(PA_OCAML_DIR) pa_ocaml; fi; $(MAKE) -e -j 1 -C $(PA_OCAML_DIR) decap.cmxa decap_ocaml.cmxa decap.cma decap_ocaml.cma)
+DUMMY := $(shell if [ ! -x $(PA_OCAML_DIR)/pa_ocaml ]; then $(MAKE) -e -j 1 -C $(PA_OCAML_DIR) pa_ocaml; fi; $(MAKE) -e -j 1 -C $(PA_OCAML_DIR) decap.cmxa decap_ocaml.cmxa decap.cma decap_ocaml.cma pa_ocaml)
 endif
 endif
 
