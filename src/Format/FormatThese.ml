@@ -121,8 +121,9 @@ let postprocess_tree tree=
     (*       fst (up (newChildBefore (tree,[]) par)) *)
     (* | _->tree *)
   in
-  let rec sectionize path=function
+  let rec sectionize path numbered=function
       Node n when List.mem_assoc "structural" n.node_tags ->
+          let numbered'=numbered && List.mem_assoc "numbered" n.node_tags in
         let section_name=
           if path=[] then (
             [C (fun env->
@@ -266,12 +267,14 @@ let postprocess_tree tree=
               IntMap.add
                 (try fst (IntMap.min_binding n.children)-1 with Not_found->0)
                 par
-                (IntMap.mapi (fun k a->sectionize (k::path) a) n.children)
+                (IntMap.mapi (fun k a->sectionize (k::path) numbered' a) n.children)
                }
+    | Node n->
+       Node { n with children=IntMap.map (sectionize path numbered) n.children }
     | a->a
   in
   let with_chapters=match with_title with
-      Node n->Node { n with children=IntMap.map (sectionize []) n.children }
+      Node n->Node { n with children=IntMap.map (sectionize [] true) n.children }
     | _->with_title
   in
     with_chapters
