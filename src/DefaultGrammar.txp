@@ -150,6 +150,7 @@
 \Add_addition_like{\vee ∨}(MathFonts.asana "∨" 754)
 \Add_addition_like{\setminus ∖}{∖}
 \Add_addition_like{\uplus ⊎}{⊎}
+\Add_addition_like{\parallel ∥}(MathFonts.asana "∥" 385)
 
 =<
 
