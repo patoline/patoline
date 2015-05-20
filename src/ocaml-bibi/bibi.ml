@@ -391,7 +391,7 @@ let rec default_biblio_format ?follow_crossrefs:(follow_crossrefs=true) row=
           (
             List.concat (intercalate [tT ", "]
                            (List.filter (function []->false | _->true)
-                              (auteurs@[titre;ed;booktitle;pub_in]@[chap;volume;pub;pages;editors;doctype;eprint]))))
+                              (auteurs@[titre;ed;booktitle;jour;pub_in]@[chap;volume;pub;pages;editors;doctype;eprint]))))
         )
     )
 
