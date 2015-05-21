@@ -476,7 +476,6 @@ let next_exp = function
   let constructor_declaration _loc name args res = (name, args, _loc)
   type label_declaration = string * Asttypes.mutable_flag * Parsetree.core_type * Location.t
 #endif
-  type record_field = Longident.t Asttypes.loc * Parsetree.expression
   type case = pattern * expression
   let label_declaration _loc name mut ty =
     (name, mut, ty, _loc)
@@ -528,6 +527,8 @@ let next_exp = function
   let pexp_fun(label, opt, pat, expr) =
     Pexp_function(label,opt,[pat,expr])
 #endif
+
+  type record_field = Longident.t Asttypes.loc * Parsetree.expression
 
   let constr_decl_list : constructor_declaration list grammar = declare_grammar "constr_decl_list"
   let field_decl_list : label_declaration list grammar = declare_grammar "field_decl_list"
