@@ -61,8 +61,8 @@
 \Add_right{ \rbanana ⦆ }( [MathFonts.asana "rbanana" 1268] )
 \Add_left{ \lhalfmoon ⦇ }( [MathFonts.asana "lhalfmoon" 1269] )
 \Add_right{ \rhalfmoon ⦈ }( [MathFonts.asana "rhalfmoon" 1270] )
-\Add_left{ \llangle }(MathFonts.adjusted_asana_delimiters "llangle" [1112;3220;3221;3222])
-\Add_right{ \rrangle }(MathFonts.adjusted_asana_delimiters "rrangle" [1113;3223;3224;3225])	    
+\Add_left{ \llangle ⟪ }(MathFonts.adjusted_asana_delimiters "llangle" [1112;3220;3221;3222])
+\Add_right{ \rrangle ⟫ }(MathFonts.adjusted_asana_delimiters "rrangle" [1113;3223;3224;3225])	    
 
 (* From Euler font *)
 \Add_left{ \langle < ⟨}(MathFonts.adjusted_euler_delimiters "\\langle" [1803;1807(*;1809*);1811;1813])
