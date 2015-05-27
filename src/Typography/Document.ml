@@ -141,49 +141,10 @@ module Mathematical=struct
     | ScriptScript'
 end
 
-(** Document structure. A [node] is an internal node of the document tree. *)
-type node={
-  name:string;
-  displayname:content list;
-  mutable boxified_displayname:raw list;
-  children:tree IntMap.t;       (** The [int] there have nothing to do with section numbering. This only implements an extensible array *)
-  node_tags:(string*string) list;
-  node_env:environment -> environment; (** Environment modification function at node beginning. *)
-  node_post_env:environment -> environment -> environment;(** Environment modification when getting out of the node. *)
-  node_states:int list;                              (** The page states in which the contents of this node appears. *)
-  mutable node_paragraph:int;
-}
-
-(** The first type of leaves in a document: paragraphs. *)
-and paragraph={
-  par_contents:content list;
-  par_env:environment -> environment;
-  par_post_env:environment -> environment -> environment;
-  par_parameters:environment -> Box.box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line MarkerMap.t -> line -> line -> parameters;
-  par_badness: environment -> Box.box array array -> drawingBox array->Break.figurePosition IntMap.t -> Box.line -> Box.box array -> int -> Box.parameters -> float -> Box.line -> Box.box array -> int -> Box.parameters -> float -> float;
-  par_completeLine:environment -> Box.box array array -> Box.drawingBox array -> Break.figurePosition IntMap.t ->line MarkerMap.t -> line -> bool -> line list;
-  par_states:int list;
-  mutable par_paragraph:int
-}
-
-(** Figure definitions. *)
-and figuredef={
-  fig_contents:environment->drawingBox;
-  fig_env:environment -> environment;
-  fig_post_env:environment -> environment -> environment;
-  fig_parameters:environment -> Box.box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line MarkerMap.t -> line -> line -> parameters
-}
-
-(** This is the type of document trees. *)
-and tree=
-    Node of node
-  | Paragraph of paragraph
-  | FigureDef of figuredef
-
 (** Environments. These are typically folded on document trees, and
     control many different things about the fonts, counters, or
     labels. *)
-and environment={
+type environment={
   fontFamily:fontFamily;
   fontMonoFamily:fontFamily;
   fontMonoRatio:float; (* size adjustment of the two previous family *)
@@ -223,57 +184,7 @@ and environment={
   math_break_badness:float; (* pas dans l'environement math, car aucun sens en dehors du TextStyle *)
 }
 
-(** {3 Contents} *)
-
-and content=
-    B of (environment->box list) * box list option ref
-  (** A list of boxes, depending on the environment. The second
-      parameters is a cache, in the case we should iterate compilation
-      to resolve the names. *)
-  | C of (environment->content list)
-  (** A contents list depending on the environment. This may be used
-      for instance to typeset the state of a counter. *)
-  | T of string*(box list IntMap.t option) ref
-  (** Simple text. *)
-  | FileRef of (string*int*int)
-  (** Also simple text, converted to [T] by reading the corresponding
-      file at given offset, for the given number of bytes. *)
-  | Env of (environment -> environment)
-  (** An environment modification function, for instance to register a
-      name or modify the state of a counter. *)
-  | Scoped of (environment->environment)*(content list)
-(** A scoped environment transformation, applied on a small list of contents. *)
-
-  | N of tree
-
-let init_env_hook = ref ([] : (environment -> environment) list)
-let add_env_hook f = init_env_hook := f::!init_env_hook
-
 let env_accessed=ref false
-let bB f = B(f,ref None)
-let uB f = C(fun _->env_accessed:=true;[bB f])
-let tT f = T(f,ref None)
-let uT f = C(fun _->env_accessed:=true;[tT f])
-let string_of_contents l =
-  let buf=Rbuffer.create 1000 in
-  let rec fill_buf t=match t with
-      T (str,_)::s->(
-        if Rbuffer.length buf>0 then (
-          Rbuffer.add_string buf " ";
-        );
-        Rbuffer.add_string buf str;
-        fill_buf s
-      )
-    (* | C f::s->( *)
-    (*   fill_buf (f defaultEnv); *)
-    (*   fill_buf s *)
-    (* ) *)
-    | _::s -> fill_buf s
-    | []->()
-  in
-  fill_buf l;
-  Rbuffer.contents buf
-
 let names env=
   env_accessed:=true;
   env.names
@@ -284,88 +195,112 @@ let displayname n=
   env_accessed:=true;
   n.displayname
 
-let _names env=
-  env.names
-let _user_positions env=
-  env.user_positions
-
-let incr_counter ?(level= -1) name env=
-  { env with
-    last_changed_counter=name;
-    counters=
-      StrMap.add name (try let a,b=StrMap.find name env.counters in
-                         match b with
-                             h::s -> (a,(h+1)::s)
-                           | _->a,[0]
-                       with
-                           Not_found -> level, [0]
-                      ) env.counters }
-
-let pop_counter name env=
-  { env with
-    last_changed_counter=name;
-    counters=
-      StrMap.add name (let a,b=StrMap.find name env.counters in (a,drop 1 b)) env.counters }
-
-let push_counter name env=
-  { env with
-    last_changed_counter=name;
-    counters=
-      StrMap.add name (let a,b=StrMap.find name env.counters in (a,0::b)) env.counters }
-
-let tags=function
-    Node n->n.node_tags
-  | _->[]
-(****************************************************************)
-
-(**/**)
-(** Creates a new page, using 1/6th of the given lengths for margins.
- A page is implemented as two nested frames: the outer frame has the
- actual size of the whole page, while the inner frame size is the
- papersize minus margins.
-
- This function returns the inner frame.
- *)
-let default_new_page pageFormat zip =
-  let ((page, _) as zip)=Box.make_page pageFormat (frame_top zip) in
-  let w = page.frame_x1 -. page.frame_x0
-  and h = page.frame_y1 -. page.frame_y0 in
-  let x0=(page.frame_x0+.1.*.w/.6.) in
-  let y0=(page.frame_y0+.1.*.h/.6.) in
-  let x1=(page.frame_x1-.1.*.w/.6.) in
-  let y1=(page.frame_y1-.1.*.h/.6.) in
-  frame x0 y0 x1 y1 zip
-
-(** Creates a new page without any margin *)
-let raw_new_page pageFormat zip =
-  let (page, _) as zip = Box.make_page pageFormat (frame_top zip) in
-  frame page.frame_x0 page.frame_y0 page.frame_x1 page.frame_y1 zip
-(**/**)
 
 
-(* Le jeu est de construire la structure de document suivante :
-   C'est un arbre, avec du contenu texte à chaque nœud. *)
 
 
-let empty:node=
-  { name="";
-    node_tags=[];
-    displayname = []; boxified_displayname=[];
-    children=IntMap.empty;
-    node_env=(fun x->x);
-    node_post_env=(fun x y->{ x with
-      counters=y.counters;
-      names=names y;
-      user_positions=user_positions y });
-    node_states=[];
-    node_paragraph=0 }
 
+
+
+
+(* Main type used to hold document contents. *)
+type content =
+  (* List of boxes depending on an environment. The second parameters is a
+     cache used when compilation is iterated to resolve names. *)
+  | B of (environment -> box list) * box list option ref
+
+  (* A contents list depending on the environment. This may be used to
+     typeset the state of a counter for example. *)
+  | C of (environment -> content list)
+
+  (* Simple text. *)
+  | T of string * (box list IntMap.t option) ref
+
+  (* Simple text obtained by reading the corresponding file at the given
+     offset for the given number of bytes. *)
+  | FileRef of string * int * int
+
+  (* Environment modification function. It can be used to register a name
+     or modify the state of a counter for instance. *)
+  | Env of (environment -> environment)
+
+  (* A scoped environment transformation applied on a (small) list of
+     contents. *)
+  | Scoped of (environment -> environment) * (content list)
+
+  (* A document tree. *)
+  | N of tree
+
+(* First type of leaves in a document: paragraphs. *)
+and paragraph =
+  { par_contents   : content list
+  ; par_env        : environment -> environment
+  ; par_post_env   : environment -> environment -> environment
+  ; par_parameters : environment -> Box.box array array -> drawingBox array
+                       -> parameters ->  Break.figurePosition IntMap.t
+                       -> line MarkerMap.t -> line -> line -> parameters
+  ; par_badness    : environment -> Box.box array array -> drawingBox array
+                       -> Break.figurePosition IntMap.t -> Box.line
+                       -> Box.box array -> int -> Box.parameters -> float
+                       -> Box.line -> Box.box array -> int
+                       -> Box.parameters -> float -> float
+  ; par_completeLine : environment -> Box.box array array
+                         -> Box.drawingBox array
+                         -> Break.figurePosition IntMap.t -> line MarkerMap.t
+                         -> line -> bool -> line list
+  ; par_states : int list
+  ; mutable par_paragraph : int
+}
+
+(* Second type of leaves in a document: figures. *)
+and figuredef =
+  { fig_contents   : environment -> drawingBox
+  ; fig_env        : environment -> environment
+  ; fig_post_env   : environment -> environment -> environment
+  ; fig_parameters : environment -> Box.box array array -> drawingBox array
+                       -> parameters -> Break.figurePosition IntMap.t
+                       -> line MarkerMap.t -> line -> line -> parameters
+}
+
+(* Internal node of the document tree (e.g. section, chapter...). *)
+and node =
+  { name          : string
+  ; displayname   : content list
+  ; mutable boxified_displayname : raw list
+  (* Extensible array of childrens : *)
+  ; children      : tree IntMap.t
+  ; node_tags     : (string * string) list
+  (* Environment modification function applied when entering the node : *)
+  ; node_env      : environment -> environment
+  (* Environment modification function applied when leavind the node : *)
+  ; node_post_env : environment -> environment -> environment
+  (* Page states in which the contents is visible. *)
+  ; node_states   : int list
+  ; mutable node_paragraph : int }
+
+(* Type of a document tree. *)
+and tree =
+  | Paragraph of paragraph
+  | FigureDef of figuredef
+  | Node      of node
+
+(* Empty node (with no child tree). *)
+let empty : node =
+  { name = ""
+  ; node_tags = []
+  ; displayname = []
+  ; boxified_displayname = []
+  ; children = IntMap.empty
+  ; node_env = (fun x->x)
+  ; node_post_env =
+    (fun x y -> { x with counters = y.counters ; names = names y
+                ; user_positions = user_positions y })
+  ; node_states = []
+  ; node_paragraph = 0 }
+
+(* Build a node with a single child tree. *)
 let singleton : tree -> node = fun t ->
   { empty with children = IntMap.singleton 0 t }
-
-
-
-
 
 (* The main datatype is a zipper over a document tree. It consists in a
    couple which first component is a tree. The second component represents
@@ -443,6 +378,126 @@ let rec follow : tree_zipper -> int list -> tree_zipper =
   fun z -> function
     | []      -> z
     | n :: ns -> follow (child z n) ns
+
+(* Module type of a document format. *)
+module type Format =
+  sig
+    val defaultEnv : environment
+    val postprocess_tree : tree -> tree
+    val title : (tree * (IntMap.key * tree) list) ref -> ?label:'a
+          -> ?extra_tags:(string * string) list -> content list -> bool
+    val parameters : environment -> box array array -> drawingBox array
+          -> parameters -> Break.figurePosition IntMap.t -> line MarkerMap.t
+          -> line -> parameters
+  end
+
+(* Module type to be used as a document wrapper. The document structure is
+   stored in its zipper form in a reference. Functions are provided bellow
+   to edit the document tree. *)
+module type DocumentStructure =
+  sig
+    val structure : tree_zipper ref
+  end
+
+
+
+
+
+
+
+
+
+let doc_tags n=match n with
+    Node n->n.node_tags
+  | _->[]
+
+
+let init_env_hook = ref ([] : (environment -> environment) list)
+let add_env_hook f = init_env_hook := f::!init_env_hook
+
+let bB f = B(f,ref None)
+let uB f = C(fun _->env_accessed:=true;[bB f])
+let tT f = T(f,ref None)
+let uT f = C(fun _->env_accessed:=true;[tT f])
+let string_of_contents l =
+  let buf=Rbuffer.create 1000 in
+  let rec fill_buf t=match t with
+      T (str,_)::s->(
+        if Rbuffer.length buf>0 then (
+          Rbuffer.add_string buf " ";
+        );
+        Rbuffer.add_string buf str;
+        fill_buf s
+      )
+    (* | C f::s->( *)
+    (*   fill_buf (f defaultEnv); *)
+    (*   fill_buf s *)
+    (* ) *)
+    | _::s -> fill_buf s
+    | []->()
+  in
+  fill_buf l;
+  Rbuffer.contents buf
+
+let _names env=
+  env.names
+let _user_positions env=
+  env.user_positions
+
+let incr_counter ?(level= -1) name env=
+  { env with
+    last_changed_counter=name;
+    counters=
+      StrMap.add name (try let a,b=StrMap.find name env.counters in
+                         match b with
+                             h::s -> (a,(h+1)::s)
+                           | _->a,[0]
+                       with
+                           Not_found -> level, [0]
+                      ) env.counters }
+
+let pop_counter name env=
+  { env with
+    last_changed_counter=name;
+    counters=
+      StrMap.add name (let a,b=StrMap.find name env.counters in (a,drop 1 b)) env.counters }
+
+let push_counter name env=
+  { env with
+    last_changed_counter=name;
+    counters=
+      StrMap.add name (let a,b=StrMap.find name env.counters in (a,0::b)) env.counters }
+
+let tags=function
+    Node n->n.node_tags
+  | _->[]
+
+(**/**)
+(** Creates a new page, using 1/6th of the given lengths for margins.
+ A page is implemented as two nested frames: the outer frame has the
+ actual size of the whole page, while the inner frame size is the
+ papersize minus margins.
+
+ This function returns the inner frame.
+ *)
+let default_new_page pageFormat zip =
+  let ((page, _) as zip)=Box.make_page pageFormat (frame_top zip) in
+  let w = page.frame_x1 -. page.frame_x0
+  and h = page.frame_y1 -. page.frame_y0 in
+  let x0=(page.frame_x0+.1.*.w/.6.) in
+  let y0=(page.frame_y0+.1.*.h/.6.) in
+  let x1=(page.frame_x1-.1.*.w/.6.) in
+  let y1=(page.frame_y1-.1.*.h/.6.) in
+  frame x0 y0 x1 y1 zip
+
+(** Creates a new page without any margin *)
+let raw_new_page pageFormat zip =
+  let (page, _) as zip = Box.make_page pageFormat (frame_top zip) in
+  frame page.frame_x0 page.frame_y0 page.frame_x1 page.frame_y1 zip
+(**/**)
+
+
+
 
 
 
@@ -883,11 +938,7 @@ let beginFigure name=
 
 (****************************************************************)
 
-(** {3 Editing document trees} *)
-
-
-
-(** Adds a new paragraph with the given parameters, just below the current [node]. *)
+(* Add a new paragraph (with given parameters) below the current node. *)
 let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=[]) complete parameters par=
   let para =
     { par_contents     = par
@@ -902,10 +953,6 @@ let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=[]) complet
     ; par_states       = states
     ; par_paragraph    = (-1) }
   in str := up (newChildAfter !str (Paragraph para))
-
-let doc_tags n=match n with
-    Node n->n.node_tags
-  | _->[]
 
 (** Adds a new node, just below the last one. *)
 let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
@@ -953,6 +1000,7 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
   }
   in
     str:=newChildAfter !str para
+
 
 (** {3 References, labels and links} *)
 
@@ -1216,8 +1264,8 @@ let nfkc x = x
 
 (** Converts a list of contents into a list of boxes, which is the next Patoline layer. *)
 let boxify buf nbuf env0 l=
-  let rec boxify keep_cache env=function
-      []->env
+  let rec boxify keep_cache env = function
+    | []->env
     | B (b, cache)::s->
       let l = match !cache with
 	  Some l when keep_cache-> l
@@ -1589,24 +1637,6 @@ let altStates l =
 
 
 
-
-module type DocumentStructure=sig
-  val structure:tree_zipper ref
-end
-module type Format=sig
-  val defaultEnv:environment
-  val postprocess_tree:tree->tree
-  val title :
-    (tree *
-       (IntMap.key *
-          tree)
-            list)
-           ref ->
-    ?label:'a ->
-    ?extra_tags:(string * string) list ->
-    content list -> bool
-  val parameters:environment -> box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line MarkerMap.t -> line -> parameters
-end
 
 
 (** "flattens" a document tree to an array of paragraphs, a paragraph
