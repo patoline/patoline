@@ -1,0 +1,102 @@
+\Caml(
+
+type 'a table =
+  | Cell   of 'a
+  | VSplit of 'a table * 'a table
+  | HSplit of 'a table * 'a table
+
+let rect (x0,y0) (x1,y1) =
+  let r = rectangle (x0,y0) (x1,y1) in
+  Path(default,[r])
+
+let line_path (x0,y0) (x1,y1) =
+  let b = line (x0,y0) (x1,y1) in
+  Path(default,[ [| b |] ])
+
+let draw_table env tbl =
+  let hpad = 4. in
+  let vpad = 1. in
+  let rec aux_draw = function
+    | Cell c        -> let bs = draw env c in
+                       let (x0,y0,x1,y1) = bounding_box bs in
+                       let (w,h) = (x1 -. x0, y1 -. y0) in
+                       let tr = translate hpad vpad in
+                       let bs = List.map tr bs in
+                       (w +. 2. *. hpad, h +. 2. *. vpad, bs)
+    | VSplit(t1,t2) -> let (w1, h1, bs1) = aux_draw t1 in
+                       let (w2, h2, bs2) = aux_draw t2 in
+                       let h = max h1 h2 in
+                       let sep = line_path (0.,0.) (0.,h) in
+
+                       let tr1 = translate 0. ((h -. h1) /. 2.) in
+                       let bs1 = List.map tr1 bs1 in
+
+                       let tr2 = translate 0. ((h -. h2) /. 2.) in
+                       let bs2 = sep :: List.map tr1 bs2 in
+
+                       let tr2 = translate w1 0. in
+                       let bs2 = List.map tr2 bs2 in
+                       (w1 +. w2, h, bs1 @ bs2)
+    | HSplit(t1,t2) -> let (w1, h1, bs1) = aux_draw t1 in
+                       let (w2, h2, bs2) = aux_draw t2 in
+                       let w = max w1 w2 in
+                       let sep = line_path (0.,0.) (w,0.) in
+
+                       let tr1 = translate ((w -. w1) /. 2.) 0. in
+                       let bs1 = sep :: List.map tr1 bs1 in
+
+                       let tr2 = translate ((w -. w2) /. 2.) 0. in
+                       let bs2 = List.map tr1 bs2 in
+
+                       let tr1 = translate 0. h2 in
+                       let bs1 = List.map tr1 bs1 in
+                       (w, h1 +. h2, bs1 @ bs2)
+  in
+  let (w,h,bs) = aux_draw tbl in
+  let bs = rect (0.,0.) (w,h) :: bs in
+  let dr =
+    { drawing_min_width     = w
+    ; drawing_nominal_width = w
+    ; drawing_max_width     = w
+    ; drawing_width_fixed   = true
+    ; drawing_adjust_before = false
+    ; drawing_y0            = 0.
+    ; drawing_y1            = h
+    ; drawing_badness       = (fun _ -> 0.)
+    ; drawing_contents      = (fun _ -> bs)
+    ; drawing_break_badness = 0.0
+    ; drawing_states        = []}
+  in
+  [B ((fun _ -> [Drawing dr]), ref None)]
+
+let rec build_line = function
+  | []      -> assert false
+  | [c]     -> c
+  | c :: cs -> VSplit(c, build_line cs)
+
+let rec build_cols = function
+  | []      -> assert false
+  | [c]     -> c
+  | c :: cs -> HSplit(c, build_line cs)
+
+let tab_of_list l = build_cols (List.map build_line l)
+
+let c1 = Cell <<Cell 1>>
+let c2 = Cell <<Cell 2>>
+let c3 = Cell <<Cell 3>>
+let c4 = Cell <<Cell 4>>
+let c5 = Cell <<Cell 5>>
+let c6 = Cell <<Cell 6>>
+let c7 = Cell <<Cell 7>>
+
+(* Tableaux de test *)
+let t = VSplit(HSplit(c1,c2),VSplit(c3,HSplit(c4,c5)))
+let t = HSplit(c1,HSplit(c2,c3))
+let t = tab_of_list [[c1;c2;c3];[c4;c5;c6]]
+let t = HSplit(VSplit(VSplit(HSplit(c1,c2), c3),HSplit(c4,c5)),VSplit(c6,c7))
+
+)
+
+\begin{center}
+\id(draw_table defaultEnv t)
+\end{center}
