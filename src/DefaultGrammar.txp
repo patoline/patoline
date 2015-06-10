@@ -212,9 +212,10 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_arrow{\tostar}{→*}
 \Add_arrow{↛ \nrightarrow}(MathFonts.asana "↛" 613)
 \Add_arrow{⇏ \nRightarrow}(MathFonts.asana "⇏" 635)
-\Add_arrow{\leadsto ↝}(MathFonts.asana "↝" 615)
+\Add_arrow{\leadsto ~> ↝}(MathFonts.asana "↝" 615)
 \Add_arrow{\rtriangle}(MathFonts.asana "⇾" 712)
 \Add_arrow{\ltriangle}(MathFonts.asana "⇽" 711)
+\Add_arrow{\multimap -o ⊸}(MathFonts.asana "⊸" 998)
 
 =<
 
@@ -236,6 +237,8 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_prefix{\lnot \neg ¬}{¬}
 \Add_prefix{↑ \uparrow}( MathFonts.asana "up arrow" 603 )
 \Add_prefix{↓ \downarrow}( MathFonts.asana "down arrow" 605 )
+\Add_prefix{⇑ \Uparrow}( MathFonts.asana "Up arrow" 667 )
+\Add_prefix{⇓ \Downarrow}( MathFonts.asana "Down arrow" 669 )
 \Add_prefix{\diverge}( MathFonts.asana "up arrow" 667 )
 \Add_prefix{\converge}( MathFonts.asana "down arrow" 669 )
 \Add_symbol{\Updownarrow ⇕}( MathFonts.asana "Updownarrow" 671 )
