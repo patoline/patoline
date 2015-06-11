@@ -1,0 +1,38 @@
+(* USAGE: export FONT_PATH=... && patoline fviewer.txp *)
+\Caml(
+  open FTypes
+  open Fonts
+
+  let file = Sys.getenv "FONT_PATH"
+  let name =
+    let n = Filename.basename file in
+    try Filename.chop_extension n with | Invalid_argument _ -> n
+
+  let font = loadFont file
+  let nb_features = List.length (font_features font)
+  let nb_glyphs = Fonts.cardinal font
+
+  let nthglyph n =
+    let sn = Printf.sprintf "%5i " n in
+    let gl = loadGlyph font { empty_glyph with glyph_index = n } in
+    let gl = { glyph_x = 0.0; glyph_kx = 0.0; glyph_y = 0.0; glyph_ky = 0.0;
+             glyph_order = 0; glyph_color = black; glyph_size = 6.0; glyph =
+             gl} in
+    [ tT sn ] @ (hspace 8.0) @ <<$-->$>> @ (hspace 8.) @
+    [ bB (fun _ -> [GlyphBox gl]) ]
+)
+
+==========
+Glyphs of the font \id([ tT name ])
+----------
+(\id([ tT (Printf.sprintf "%i" nb_glyphs) ]) glyphs and
+\id([ tT (Printf.sprintf "%i" nb_features) ]) features)
+==========
+
+\Caml(
+  let _ =
+    for i = 0 to nb_glyphs - 1 do
+      let l = nthglyph i in
+      newPar D.structure Complete.normal Patoline_Format0.parameters l
+    done
+)
