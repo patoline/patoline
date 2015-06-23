@@ -4,3 +4,9 @@ version="0.1"
 archive(native)="decap.cmxa"
 archive(byte)="decap.cma"
 
+
+package "ocaml" (
+requires="decap, compiler-libs.common"
+archive(native)="decap_ocaml.cmxa"
+archive(byte)="decap_ocaml.cma"
+)
