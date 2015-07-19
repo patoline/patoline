@@ -31,6 +31,7 @@ let _=Random.self_init ()
 
 module Euler = Euler
 module Numerals = Numerals
+module TOC = TableOfContents
 
 let replace_utf8 x y z=if String.length x>0 then (
   let buf=Buffer.create (String.length x) in

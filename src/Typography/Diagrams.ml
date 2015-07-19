@@ -1154,8 +1154,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    | `BaseEast -> (fst (Point.middle p2 p3),snd base)
 	    | `BaseWest -> (fst (Point.middle p1 p4),snd base)
 	    | `Line -> (fst base, (snd base -. ex))
-	    | `LineEast -> (fst (Point.middle p2 p3),(snd (Vector.(+) (Point.middle p1 p3) info.pdfAnchor)))
-	    | `LineWest -> (fst (Point.middle p1 p4), snd (Vector.(+) (Point.middle p1 p3) info.pdfAnchor))
+	    | `LineEast -> (fst (Point.middle p2 p3), snd base -. ex)
+	    | `LineWest -> (fst (Point.middle p1 p4), snd base -. ex)
 	    | `East -> Point.middle p2 p3
 	    | `West -> Point.middle p1 p4
 	    | `North -> Point.middle p3 p4
