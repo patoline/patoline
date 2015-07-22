@@ -1292,8 +1292,10 @@ let boxify buf nbuf env0 l=
         boxify keep_cache env' s
       )
     | Env f::s->boxify keep_cache (f env) s
+    (* The following (commented) case is a mistake and causes non-transparent behavior, for instance when defining "tT"s in a global variable. *) (*
     | T (t,cache)::T (t',_)::s->
        boxify keep_cache env (T (t^t',match !cache with Some _->cache | _->cache)::s)
+    *)
     | (T (t,cache))::s->(
       match !cache with
 	    Some l when keep_cache ->(
