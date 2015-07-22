@@ -221,6 +221,14 @@ let more_than_one x=match Typography.TypoLanguage.lang with
   | _->Printf.sprintf "Warning : The request gave more than one result :\n%s" x
 
 module type CitationStyle=sig
+    val item_format: ?separator:string ->
+		     ?and_last:string ->
+		     ?and_:string ->
+		     ?editeur:string ->
+		     ?editeurs:string ->
+		     ?inclusion:string ->
+		     ?follow_crossrefs:bool
+		   -> string option array -> content list
   val citation_format:int->string option array->content list
   val compare:(int*string option array)->(int*string option array)->int
 end
@@ -299,7 +307,14 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
 end
 
 
-let rec default_biblio_format ?follow_crossrefs:(follow_crossrefs=true) row=
+let rec default_biblio_format ?separator:(separator=". ")
+		  ?and_last:(and_last=" et ")
+			 ?and_:(and_=" et ")	   (* en anglais ca serait " and " *)
+			 ?editeur:(editeur=" (éditeur)")
+			 ?editeurs:(editeurs=" (éditeurs)")
+			      ?inclusion:(inclusion="In: ")
+			      ?follow_crossrefs:(follow_crossrefs=true)
+			      row=
   match !bibfile_ with
       None->[]
     | Some bf->(
@@ -318,7 +333,7 @@ let rec default_biblio_format ?follow_crossrefs:(follow_crossrefs=true) row=
               None->[]
             | Some i->(
               match dbCite db true (sprintf "id=%s" i) with
-                h::_ when follow_crossrefs->tT "in: "::(default_biblio_format ~follow_crossrefs:false  h)
+                h::_ when follow_crossrefs->tT inclusion::(default_biblio_format ~follow_crossrefs:false  h)
               | _->[]
             )
           in
@@ -327,41 +342,39 @@ let rec default_biblio_format ?follow_crossrefs:(follow_crossrefs=true) row=
               let jour=ref [] in
               let cb row _=match row.(0) with Some a->jour:=a::(!jour) | None -> () in
               match exec db ~cb:cb (sprintf "SELECT name FROM journals WHERE id=%s" j) with
-                  Rc.OK -> [tT "in: ";tT (List.hd !jour)]
+                  Rc.OK -> [tT inclusion;tT (List.hd !jour)]
                 | r ->(fprintf stderr "%s\n%s\n" (Rc.to_string r) (errmsg db); flush stderr;raise Not_found)
             )
             | _->[]
           in
           let booktitle=match row.(field_num "booktitle") with
               Some j when jour=[] && pub_in=[] && follow_crossrefs->(
-              [tT "in: ";tT j]
+              [tT inclusion;tT j]
             )
             | _->[]
           in
-          let pub=match row.(field_num "publisher") with
+          let date=match row.(field_num "date") with
               None->[]
-            | Some j->(
+            | Some a->[tT (sprintf "%s" a)]
+          in
+	  let date_after = if date=[] then [] else tT ", "::date in
+          let pub_date=match row.(field_num "publisher"),date with
+              None,[]->[]
+	    | None,date-> date
+            | Some j, _ -> (
               let pub=ref [] in
               let cb row _=match row.(0) with Some a->pub:=a::(!pub) | None -> () in
               match exec db ~cb:cb (sprintf "SELECT name FROM publishers WHERE id=%s" j) with
-                  Rc.OK -> [tT (List.hd !pub)]
+                  Rc.OK -> tT (List.hd !pub) :: date_after
                 | r ->(fprintf stderr "%s\n%s\n" (Rc.to_string r) (errmsg db); flush stderr;raise Not_found)
             )
           in
           let volume=if pub_in=[] then (
-            let date=match row.(field_num "date") with
-                None->[]
-              | Some a->[tT (sprintf "(%s)" a)]
-            in
             match row.(field_num "volume"),row.(field_num "series") with
-                None, None->(
-                  match row.(field_num "date") with
-                      None->[]
-                    | Some a->[tT (sprintf "%s" a)]
-                )
-              | Some a,Some b->(tT (sprintf "volume %s of %s" a b))::(if date=[] then [] else tT " "::date)
-              | Some a,_->(tT (sprintf "volume %s" a))::(if date=[] then [] else tT " "::date)
-              | _, Some a->(tT (sprintf "volume %s" a))::(if date=[] then [] else tT " "::date)
+                None, None-> date
+              | Some a,Some b->(tT (sprintf "volume %s of %s" a b)) :: []
+              | Some a,_->(tT (sprintf "volume %s" a))::[]
+              | _, Some a->(tT (sprintf "volume %s" a))::[]
           ) else []
           in
           let chap=match row.(field_num "chapter") with None-> [] | Some a->[tT a] in
@@ -381,7 +394,7 @@ let rec default_biblio_format ?follow_crossrefs:(follow_crossrefs=true) row=
           ) else []
           in
           let doctype=match row.(field_num "type") with
-              Some "phdthesis"->[tT "PhD. thesis"]
+              Some "phdthesis"->[tT "PhD thesis"]
             | _->[]
           in
           let eprint=match row.(field_num "eprint") with
@@ -389,12 +402,11 @@ let rec default_biblio_format ?follow_crossrefs:(follow_crossrefs=true) row=
             | _->[]
           in
           (
-            List.concat (intercalate [tT ", "]
+            List.concat (intercalate [tT separator]
                            (List.filter (function []->false | _->true)
-                              (auteurs@[titre;ed;booktitle;jour;pub_in]@[chap;volume;pub;pages;editors;doctype;eprint]))))
+                              (auteurs@[titre;ed;booktitle;jour;pub_in]@[chap;volume;pub_date;pages;editors;doctype;eprint]))))
         )
     )
-
 
 module MarginBiblio (C:CitationStyle)=struct
 
@@ -446,7 +458,7 @@ module MarginBiblio (C:CitationStyle)=struct
                 bB (fun env->let s=env.size/.3. in
                              [glue s s s;Marker (Label (sprintf "_bibi_%d" i));
                               Marker AlignmentMark])]
-             @default_biblio_format row)
+             @ C.item_format row)
           with
               _->[]
         )];
@@ -496,7 +508,7 @@ module DefaultBiblio (C:CitationStyle)=struct
                  let s=env.size/.3. in
                  [glue s s s;Marker (Label (sprintf "_bibi_%d" i));
                   Marker AlignmentMark])]
-             @default_biblio_format row)
+             @ C.item_format row)
           with
               _->[]
         )];
@@ -513,10 +525,12 @@ module DefaultBiblio (C:CitationStyle)=struct
 end
 
 module CitationInt=struct
+  let item_format = default_biblio_format
   let citation_format i _=[tT (string_of_int i)]
   let compare (a,_) (b,_)=compare a b
 end
 module CitationNames(M:sig val longCite:Document.content list list->Document.content list end)=struct
+  let item_format = default_biblio_format
   let doublons:(string list, int IntMap.t) Hashtbl.t=Hashtbl.create 200
   let compare (_,a) (_,b)=
     match !bibfile_ with
