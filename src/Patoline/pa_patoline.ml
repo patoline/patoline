@@ -332,8 +332,6 @@ let freshUid () =
  * Symbol definitions.                                                      *
  ****************************************************************************)
 
-let verbose_grammar = ref false
-
 type symbol =
   | SimpleSym of string
   | MultiSym of string
@@ -404,17 +402,42 @@ let parser config =
   | "arg_" - n:num "no_parenthesis"       -> ArgNoPar n
   | "is_identity"                         -> IsIdentity
 
+type grammar_state =
+  { mutable verbose          : bool
+  ; mutable word_macros      : (string * config list) list
+  ; mutable math_macros      : (string * config list) list
+  ; mutable paragraph_macros : (string * config list) list
+  ; mutable environment      : (string * config list) list }
+
+let state =
+  { verbose          = false
+  ; word_macros      = []
+  ; math_macros      = []
+  ; paragraph_macros = []
+  ; environment      = [] }
+
+let add_word_macro m = state.word_macros <- m :: state.word_macros
+let add_math_macro m = state.math_macros <- m :: state.math_macros
+let add_para_macro m = state.paragraph_macros <- m :: state.paragraph_macros
+let add_environment m = state.environment <- m :: state.environment
+
+
 let parser symbol_def =
-  | "\\Verbose_Changes" -> verbose_grammar := true; []
+  | "\\Verbose_Changes" -> state.verbose <- true; []
   | "\\Save_Grammar"    -> (* TODO do something ? *) []
   | "\\Add_" - n:sym_type ss:symbols e:symbol_value ->
       Printf.eprintf "Read %s\n%!" (String.concat " " ss); (* TODO register *)
-      if !verbose_grammar then
+      if state.verbose then
         [] (* TODO show new symbol *)
       else []
   | "\\Configure_" - n:conf_type "{" "\\"? - id:lid "}" "{" cs:config* "}" ->
-      Printf.eprintf "Did not configure %s\n%!" id; (* TODO *)
-      []
+      begin
+        match n with
+        | Math_macro      -> add_math_macro (id,cs)
+        | Word_macro      -> add_word_macro (id,cs)
+        | Paragraph_macro -> add_para_macro (id,cs)
+        | Environment     -> add_environment (id,cs)
+      end; []
 
 (****************************************************************************
  * Maths.                                                                   *
@@ -846,9 +869,9 @@ let init =
 
 let full_text =
   parser
-  | h:header DEBUG "0" basename:init DEBUG "A" ->>
+  | h:header basename:init ->>
     let basename = basename () in
-    DEBUG "B" t:title?? DEBUG"1" txt:text DEBUG"2" EOF ->
+    t:title?? txt:text EOF ->
       begin
         let t = match t with
                 | None   -> <:structure<>>
