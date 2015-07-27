@@ -332,6 +332,12 @@ let freshUid () =
  * Symbol definitions.                                                      *
  ****************************************************************************)
 
+type symbol =
+  | SimpleSym of string
+  | MultiSym of string
+  | CamlSym of Parsetree.expression
+  | ComplexSym of string
+
 type sym_kind = Relation | Addition_like | Product_like | Connector
   | Negation | Arrow | Punctuation | Prefix | Quantifier | Postfix
   | Accent | Operator | Limit_operator | Symbol | Left | Right | Combining
@@ -356,7 +362,9 @@ let parser sym_type =
   | "combining"       -> Combining
 
 let parser symbol =
-  | s:''[^ \t\r\n]+'' -> if s.[0] = '}' then raise (Give_up "End of list."); s
+  | s:"\\}"             -> s
+  | s:"\\{"             -> s
+  | s:''[^ \t\r\n{}]+'' -> s
 
 let symbols =
   let space_blank = blank_regexp ''[ ]*'' in
@@ -365,8 +373,12 @@ let symbols =
     | "{" ss:symbol* "}" -> ss
   ) space_blank
 
+let parser symbol_value =
+    | "{" s:symbol "}"    -> SimpleSym s
+    | e:wrapped_caml_expr -> CamlSym e
+
 let parser symbol_def =
-  | "\\Add_" - n:sym_type ss:symbols ->
+  | "\\Add_" - n:sym_type ss:symbols e:symbol_value ->
       (* TODO *)
       Printf.eprintf "%s\n%!" (String.concat " " ss); []
 
@@ -379,12 +391,6 @@ let parser symbol_def =
 		      down_right : 'a option; up_left_same_script: bool;
 		      up_left : 'a option;
 		      down_left : 'a option }
-
-  type symbol=
-      SimpleSym of string
-    | MultiSym of string
-    | CamlSym of Parsetree.expression
-    | ComplexSym of string
 
   let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None;
 		 up_right_same_script = false; up_left_same_script = false }
