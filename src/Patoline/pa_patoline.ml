@@ -388,19 +388,20 @@ let parser symbol_value =
     | e:wrapped_caml_expr -> CamlSym e
 
 let parser lid = id:''[_a-z][_a-zA-Z0-9']*'' -> id
-let parser uid = id:''[A-Z][_a-zA-Z0-9']*'' -> id
+let parser uid = id:''[A-Z][_a-zA-Z0-9']*''  -> id
+let parser num = n:''[0-9]+'' -> int_of_string n
 
 type config = EatR | EatL | Name of string list * string | Arity of int
-  | GivePos | Arg1 of string | Arg1NoParenthesis | IsIdentity
+  | GivePos | Arg of int * string | ArgNoPar of int | IsIdentity
 
 let parser config =
   | "eat_right"                           -> EatR
   | "eat_left"                            -> EatL
   | "name" "=" ms:{u:uid - "."}* - id:lid -> Name (ms,id)
-  | "arity" "=" n:''[0-9]+''              -> Arity (int_of_string n)
+  | "arity" "=" n:num                     -> Arity n
   | "give_position"                       -> GivePos
-  | "arg_1" "=" id:lid                    -> Arg1 id
-  | "arg_1" "no_parenthesis"              -> Arg1NoParenthesis
+  | "arg_" - n:num "=" id:lid             -> Arg (n,id)
+  | "arg_" - n:num "no_parenthesis"       -> ArgNoPar n
   | "is_identity"                         -> IsIdentity
 
 let parser symbol_def =
