@@ -328,6 +328,47 @@ let freshUid () =
   let verbatim_sharp = verbatim_generic "##" "#" "##"
   let verbatim_bquote = verbatim_generic "``" "`" "``"
 
+(****************************************************************************
+ * Symbol definitions.                                                      *
+ ****************************************************************************)
+
+type sym_kind = Relation | Addition_like | Product_like | Connector
+  | Negation | Arrow | Punctuation | Prefix | Quantifier | Postfix
+  | Accent | Operator | Limit_operator | Symbol | Left | Right | Combining
+
+let parser sym_type =
+  | "relation"        -> Relation
+  | "addition_like"   -> Addition_like
+  | "product_like"    -> Product_like
+  | "connector"       -> Connector
+  | "negation"        -> Negation
+  | "arrow"           -> Arrow
+  | "punctuation"     -> Punctuation
+  | "prefix"          -> Prefix
+  | "quantifier"      -> Quantifier
+  | "postfix"         -> Postfix
+  | "accent"          -> Accent
+  | "operator"        -> Operator
+  | "limits_operator" -> Limit_operator
+  | "symbol"          -> Symbol
+  | "left"            -> Left
+  | "right"           -> Right
+  | "combining"       -> Combining
+
+let parser symbol =
+  | s:''[^ \t\r\n]+'' -> if s.[0] = '}' then raise (Give_up "End of list."); s
+
+let symbols =
+  let space_blank = blank_regexp ''[ ]*'' in
+  change_layout (
+    parser
+    | "{" ss:symbol* "}" -> ss
+  ) space_blank
+
+let parser symbol_def =
+  | "\\Add_" - n:sym_type ss:symbols ->
+      (* TODO *)
+      Printf.eprintf "%s\n%!" (String.concat " " ss); []
 
 (****************************************************************************
  * Maths.                                                                   *
@@ -604,6 +645,7 @@ let math_toplevel = parser
                           [ { env0 with mathStyle = Mathematical.Display } ]
                           $m$)];;>>)
     | | l:paragraph_basic_text -> l
+    | | s:symbol_def -> fun _ -> s
 
   let _ = set_grammar paragraph (
                         change_layout (
