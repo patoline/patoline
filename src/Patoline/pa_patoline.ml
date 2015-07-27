@@ -332,6 +332,8 @@ let freshUid () =
  * Symbol definitions.                                                      *
  ****************************************************************************)
 
+let verbose_grammar = ref false
+
 type symbol =
   | SimpleSym of string
   | MultiSym of string
@@ -361,6 +363,14 @@ let parser sym_type =
   | "right"           -> Right
   | "combining"       -> Combining
 
+type conf_kind = Math_macro | Word_macro | Paragraph_macro | Environment
+
+let parser conf_type =
+  | "math_macro"      -> Math_macro
+  | "word_macro"      -> Word_macro
+  | "paragraph_macro" -> Paragraph_macro
+  | "environment"     -> Environment
+
 let parser symbol =
   | s:"\\}"             -> s
   | s:"\\{"             -> s
@@ -377,10 +387,33 @@ let parser symbol_value =
     | "{" s:symbol "}"    -> SimpleSym s
     | e:wrapped_caml_expr -> CamlSym e
 
+let parser lid = id:''[_a-z][_a-zA-Z0-9']*'' -> id
+let parser uid = id:''[A-Z][_a-zA-Z0-9']*'' -> id
+
+type config = EatR | EatL | Name of string list * string | Arity of int
+  | GivePos | Arg1 of string | Arg1NoParenthesis | IsIdentity
+
+let parser config =
+  | "eat_right"                           -> EatR
+  | "eat_left"                            -> EatL
+  | "name" "=" ms:{u:uid - "."}* - id:lid -> Name (ms,id)
+  | "arity" "=" n:''[0-9]+''              -> Arity (int_of_string n)
+  | "give_position"                       -> GivePos
+  | "arg_1" "=" id:lid                    -> Arg1 id
+  | "arg_1" "no_parenthesis"              -> Arg1NoParenthesis
+  | "is_identity"                         -> IsIdentity
+
 let parser symbol_def =
+  | "\\Verbose_Changes" -> verbose_grammar := true; []
+  | "\\Save_Grammar"    -> (* TODO do something ? *) []
   | "\\Add_" - n:sym_type ss:symbols e:symbol_value ->
-      (* TODO *)
-      Printf.eprintf "%s\n%!" (String.concat " " ss); []
+      Printf.eprintf "Read %s\n%!" (String.concat " " ss); (* TODO register *)
+      if !verbose_grammar then
+        [] (* TODO show new symbol *)
+      else []
+  | "\\Configure_" - n:conf_type "{" "\\"? - id:lid "}" "{" cs:config* "}" ->
+      Printf.eprintf "Did not configure %s\n%!" id; (* TODO *)
+      []
 
 (****************************************************************************
  * Maths.                                                                   *
