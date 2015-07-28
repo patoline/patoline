@@ -1,4 +1,5 @@
 open Decap
+open UsualMake
 open FilenameExtra
 open Pa_ocaml_prelude
 
@@ -340,26 +341,9 @@ type symbol =
 
 type sym_kind = Relation | Addition_like | Product_like | Connector
   | Negation | Arrow | Punctuation | Prefix | Quantifier | Postfix
-  | Accent | Operator | Limit_operator | Symbol | Left | Right | Combining
+  | Accent | Symbol
 
-let parser sym_type =
-  | "relation"        -> Relation
-  | "addition_like"   -> Addition_like
-  | "product_like"    -> Product_like
-  | "connector"       -> Connector
-  | "negation"        -> Negation
-  | "arrow"           -> Arrow
-  | "punctuation"     -> Punctuation
-  | "prefix"          -> Prefix
-  | "quantifier"      -> Quantifier
-  | "postfix"         -> Postfix
-  | "accent"          -> Accent
-  | "operator"        -> Operator
-  | "limits_operator" -> Limit_operator
-  | "symbol"          -> Symbol
-  | "left"            -> Left
-  | "right"           -> Right
-  | "combining"       -> Combining
+type msym_kind = Operator | Limit_operator | Left | Right
 
 let parser symbol =
   | s:"\\}"             -> s
@@ -374,12 +358,35 @@ let symbols =
   ) space_blank
 
 let parser symbol_value =
-    | "{" s:symbol "}"    -> SimpleSym s
-    | e:wrapped_caml_expr -> CamlSym e
+  | "{" s:symbol "}"    -> SimpleSym s
+  | e:wrapped_caml_expr -> CamlSym e
+
+let parser symbol_values =
+  | e:wrapped_caml_expr -> e
 
 let parser lid = id:''[_a-z][_a-zA-Z0-9']*'' -> id
 let parser uid = id:''[A-Z][_a-zA-Z0-9']*''  -> id
 let parser num = n:''[0-9]+'' -> int_of_string n
+
+let uchar =
+  let char_range min max = parser c:ANY ->
+    let cc = Char.code c in
+    if cc < min || cc > max then raise (Give_up "Char not in range..."); c
+  in
+  let tail  = char_range 128 191 in
+  let head1 = char_range 0   127 in
+  let head2 = char_range 192 223 in
+  let head3 = char_range 224 239 in
+  let head4 = char_range 240 247 in
+  parser
+  | c0:head1                               ->
+      String.make 1 c0
+  | c0:head2 - c1:tail                     ->
+      let s = String.make 2 c0 in s.[1] <- c1; s
+  | c0:head3 - c1:tail-  c2:tail           ->
+      let s = String.make 3 c0 in s.[1] <- c1; s.[2] <- c2; s
+  | c0:head4 - c1:tail - c2:tail - c3:tail ->
+      let s = String.make 4 c0 in s.[1] <- c1; s.[2] <- c2; s.[3] <- c3; s
 
 type config = EatR | EatL | Name of string list * string | Arity of int
   | GivePos | Arg of int * string | ArgNoPar of int | IsIdentity
@@ -397,6 +404,8 @@ let parser configs = "{" cs:config* "}" -> cs
 
 type grammar_state =
   { mutable verbose          : bool
+  ; mutable infix_symbols    : StrSet.t
+  ; mutable other_symbols    : StrSet.t
   ; mutable word_macros      : (string * config list) list
   ; mutable math_macros      : (string * config list) list
   ; mutable paragraph_macros : (string * config list) list
@@ -404,10 +413,37 @@ type grammar_state =
 
 let state =
   { verbose          = false
+  ; infix_symbols    = StrSet.empty
+  ; other_symbols    = StrSet.empty
   ; word_macros      = []
   ; math_macros      = []
   ; paragraph_macros = []
   ; environment      = [] }
+
+let new_symbol kind is_infix syms value =
+  (* TODO *)
+  Printf.eprintf "Read sym %s\n%!" (String.concat " " syms);
+  if state.verbose then
+    [] (* TODO show new symbol *)
+  else []
+
+let new_multi_symbol kind is_infix syms value =
+  (* TODO *)
+  Printf.eprintf "Read msym %s\n%!" (String.concat " " syms);
+  if state.verbose then
+    [] (* TODO show new symbol *)
+  else []
+
+let new_combining_symbol uchr macro =
+  (* TODO *)
+  Printf.eprintf "Read comb %s\n%!" uchr;
+  if state.verbose then
+    [] (* TODO show new symbol *)
+  else []
+
+let save_grammar () =
+  (* TODO do something ? *)
+  ()
 
 let parser symbol_def =
   | "\\Configure_math_macro" "{" "\\"? - id:lid "}" cs:configs ->
@@ -419,12 +455,44 @@ let parser symbol_def =
   | "\\Configure_environment" "{" id:lid "}" cs:configs ->
       state.environment <- (id, cs) :: state.environment; []
   | "\\Verbose_Changes" -> state.verbose <- true; []
-  | "\\Save_Grammar"    -> (* TODO do something ? *) []
-  | "\\Add_" - n:sym_type ss:symbols e:symbol_value ->
-      Printf.eprintf "Read %s\n%!" (String.concat " " ss); (* TODO register *)
-      if state.verbose then
-        [] (* TODO show new symbol *)
-      else []
+  | "\\Save_Grammar"    -> save_grammar (); []
+  (* Addition of single symbols *)
+  | "\\Add_relation"      ss:symbols e:symbol_value ->
+      new_symbol Relation      false ss e
+  | "\\Add_addition_like" ss:symbols e:symbol_value ->
+      new_symbol Addition_like false ss e
+  | "\\Add_product_like"  ss:symbols e:symbol_value ->
+      new_symbol Product_like  false ss e
+  | "\\Add_connector"     ss:symbols e:symbol_value ->
+      new_symbol Connector     false ss e
+  | "\\Add_negation"      ss:symbols e:symbol_value ->
+      new_symbol Negation      false ss e
+  | "\\Add_arrow"         ss:symbols e:symbol_value ->
+      new_symbol Arrow         false ss e
+  | "\\Add_punctuation"   ss:symbols e:symbol_value ->
+      new_symbol Punctuation   false ss e
+  | "\\Add_quantifier"    ss:symbols e:symbol_value ->
+      new_symbol Quantifier    false ss e
+  | "\\Add_prefix"        ss:symbols e:symbol_value ->
+      new_symbol Prefix        true  ss e
+  | "\\Add_postfix"       ss:symbols e:symbol_value ->
+      new_symbol Postfix       true  ss e
+  | "\\Add_accent"        ss:symbols e:symbol_value ->
+      new_symbol Accent        true  ss e
+  | "\\Add_symbol"        ss:symbols e:symbol_value ->
+      new_symbol Symbol        true  ss e
+  (* Addition of mutliple symbols (different sizes) *)
+  | "\\Add_operator"        ss:symbols e:symbol_values ->
+      new_multi_symbol Operator       false  ss e
+  | "\\Add_limits_operator" ss:symbols e:symbol_values ->
+      new_multi_symbol Limit_operator false  ss e
+  | "\\Add_left"            ss:symbols e:symbol_values ->
+      new_multi_symbol Left           false  ss e
+  | "\\Add_right"           ss:symbols e:symbol_values ->
+      new_multi_symbol Right          false  ss e
+  (* Special case, combining symbol *)
+  | "\\Add_combining" "{" c:uchar "}" "{" "\\" - m:lid "}" ->
+      new_combining_symbol c m
 
 (****************************************************************************
  * Maths.                                                                   *
