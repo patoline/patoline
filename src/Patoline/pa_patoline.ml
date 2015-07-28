@@ -361,14 +361,6 @@ let parser sym_type =
   | "right"           -> Right
   | "combining"       -> Combining
 
-type conf_kind = Math_macro | Word_macro | Paragraph_macro | Environment
-
-let parser conf_type =
-  | "math_macro"      -> Math_macro
-  | "word_macro"      -> Word_macro
-  | "paragraph_macro" -> Paragraph_macro
-  | "environment"     -> Environment
-
 let parser symbol =
   | s:"\\}"             -> s
   | s:"\\{"             -> s
@@ -401,6 +393,7 @@ let parser config =
   | "arg_" - n:num "=" id:lid             -> Arg (n,id)
   | "arg_" - n:num "no_parenthesis"       -> ArgNoPar n
   | "is_identity"                         -> IsIdentity
+let parser configs = "{" cs:config* "}" -> cs
 
 type grammar_state =
   { mutable verbose          : bool
@@ -416,13 +409,15 @@ let state =
   ; paragraph_macros = []
   ; environment      = [] }
 
-let add_word_macro m = state.word_macros <- m :: state.word_macros
-let add_math_macro m = state.math_macros <- m :: state.math_macros
-let add_para_macro m = state.paragraph_macros <- m :: state.paragraph_macros
-let add_environment m = state.environment <- m :: state.environment
-
-
 let parser symbol_def =
+  | "\\Configure_math_macro" "{" "\\"? - id:lid "}" cs:configs ->
+      state.math_macros <- (id, cs) :: state.math_macros; []
+  | "\\Configure_word_macro" "{" "\\"? - id:lid "}" cs:configs ->
+      state.word_macros <- (id, cs) :: state.word_macros; []
+  | "\\Configure_paragraph_macro" "{" "\\"? - id:lid "}" cs:configs ->
+      state.paragraph_macros <- (id, cs) :: state.paragraph_macros; []
+  | "\\Configure_environment" "{" id:lid "}" cs:configs ->
+      state.environment <- (id, cs) :: state.environment; []
   | "\\Verbose_Changes" -> state.verbose <- true; []
   | "\\Save_Grammar"    -> (* TODO do something ? *) []
   | "\\Add_" - n:sym_type ss:symbols e:symbol_value ->
@@ -430,14 +425,6 @@ let parser symbol_def =
       if state.verbose then
         [] (* TODO show new symbol *)
       else []
-  | "\\Configure_" - n:conf_type "{" "\\"? - id:lid "}" "{" cs:config* "}" ->
-      begin
-        match n with
-        | Math_macro      -> add_math_macro (id,cs)
-        | Word_macro      -> add_word_macro (id,cs)
-        | Paragraph_macro -> add_para_macro (id,cs)
-        | Environment     -> add_environment (id,cs)
-      end; []
 
 (****************************************************************************
  * Maths.                                                                   *
