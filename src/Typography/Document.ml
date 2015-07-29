@@ -938,6 +938,20 @@ let beginFigure name=
 
 (****************************************************************)
 
+let new_paragraph ?(env=(fun x->x)) ?(badness=badness) ?(states=[]) complete params par =
+  { par_contents     = par
+  ; par_env          = env
+  ; par_post_env     = (fun env1 env2 ->
+                          { env1 with names = names env2
+                          ; counters        = env2.counters
+                          ; user_positions  = user_positions env2 })
+  ; par_parameters   = params
+  ; par_badness      = badness
+  ; par_completeLine = complete
+  ; par_states       = states
+  ; par_paragraph    = (-1) }
+
+
 (* Add a new paragraph (with given parameters) below the current node. *)
 let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=[]) complete parameters par=
   let para =
