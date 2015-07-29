@@ -333,12 +333,6 @@ let freshUid () =
  * Symbol definitions.                                                      *
  ****************************************************************************)
 
-type symbol =
-  | SimpleSym of string
-  | MultiSym of string
-  | CamlSym of Parsetree.expression
-  | ComplexSym of string
-
 type sym_kind = Relation | Addition_like | Product_like | Connector
   | Negation | Arrow | Punctuation | Prefix | Quantifier | Postfix
   | Accent | Symbol
@@ -358,8 +352,8 @@ let symbols =
   ) space_blank
 
 let parser symbol_value =
-  | "{" s:symbol "}"    -> SimpleSym s
-  | e:wrapped_caml_expr -> CamlSym e
+  | "{" s:symbol "}"    -> <:expr<Maths.glyphs $string:s$>>
+  | e:wrapped_caml_expr -> e
 
 let parser symbol_values =
   | e:wrapped_caml_expr -> e
@@ -387,6 +381,10 @@ let uchar =
       let s = String.make 3 c0 in s.[1] <- c1; s.[2] <- c2; s
   | c0:head4 - c1:tail - c2:tail - c3:tail ->
       let s = String.make 4 c0 in s.[1] <- c1; s.[2] <- c2; s.[3] <- c3; s
+
+let symbol ss =
+  let ss = List.sort (fun x y -> - (String.compare x y)) ss in
+  alternatives (List.map (fun s -> string s ()) ss)
 
 type config = EatR | EatL | Name of string list * string | Arity of int
   | GivePos | Arg of int * string | ArgNoPar of int | IsIdentity
@@ -420,25 +418,69 @@ let state =
   ; paragraph_macros = []
   ; environment      = [] }
 
-let new_symbol kind is_infix syms value =
+let symbol_paragraph _loc syms names =
+  <:structure<
+    let _ = newPar D.structure
+      ~environment:(fun x -> {x with par_indent = []})
+      Complete.normal Patoline_Format.parameters
+      [bB (fun env0 -> Maths.kdraw
+        [ { env0 with mathStyle = Mathematical.Display } ] [
+        Maths.bin 0 (Maths.Normal(false,Maths.noad (Maths.glyphs "⇐"),false))
+        $syms$ $names$
+      ])];;
+  >>
+
+let math_list _loc l =
+  let merge x y =
+    <:expr<[Maths.bin 0
+      (Maths.Normal(false,Maths.noad (Maths.glyphs ","),false))
+      $x$ $y$]>>
+  in
+  List.fold_left merge (List.hd l) (List.tl l)
+
+let new_symbol _loc kind is_infix syms value =
+  (* An parser for the new symbol as an atom. *)
+  let parse_sym = symbol syms in
   (* TODO *)
   Printf.eprintf "Read sym %s\n%!" (String.concat " " syms);
+  (* Displaying no the document. *)
   if state.verbose then
-    [] (* TODO show new symbol *)
+    let sym = <:expr<[Maths.Ordinary (Maths.noad $value$)]>> in
+    let f s = sym in (* TODO *)
+    let names = List.map f syms in
+    symbol_paragraph _loc sym (math_list _loc names)
   else []
 
-let new_multi_symbol kind is_infix syms value =
+let new_multi_symbol _loc kind is_infix syms value =
+  (* An parser for the new symbol as an atom. *)
+  let parse_sym = symbol syms in
   (* TODO *)
   Printf.eprintf "Read msym %s\n%!" (String.concat " " syms);
+  (* Displaying no the document. *)
   if state.verbose then
-    [] (* TODO show new symbol *)
+    let syms =
+      <:expr<[Maths.Ordinary (Maths.noad
+        (fun x y -> List.flatten (Maths.multi_glyphs $value$ x y)))]>>
+    in
+    let names = [syms] in (* TODO *)
+    symbol_paragraph _loc syms (math_list _loc names)
   else []
 
-let new_combining_symbol uchr macro =
+let new_combining_symbol _loc uchr macro =
+  (* An parser for the new symbol as an atom. *)
+  let parse_sym = string uchr () in
   (* TODO *)
   Printf.eprintf "Read comb %s\n%!" uchr;
+  (* Displaying no the document. *)
   if state.verbose then
-    [] (* TODO show new symbol *)
+    let sym =
+      <:expr<[Maths.Ordinary (Maths.noad (Maths.glyphs $string:uchr$))]>>
+    in
+    let macro = "\\" ^ macro in
+    let macro =
+      <:expr<[Maths.Ordinary (Maths.noad (Maths.glyphs $string:macro$))]>>
+    in
+    symbol_paragraph _loc sym macro
   else []
 
 let save_grammar () =
@@ -458,45 +500,51 @@ let parser symbol_def =
   | "\\Save_Grammar"    -> save_grammar (); []
   (* Addition of single symbols *)
   | "\\Add_relation"      ss:symbols e:symbol_value ->
-      new_symbol Relation      false ss e
+      new_symbol _loc Relation      false ss e
   | "\\Add_addition_like" ss:symbols e:symbol_value ->
-      new_symbol Addition_like false ss e
+      new_symbol _loc Addition_like false ss e
   | "\\Add_product_like"  ss:symbols e:symbol_value ->
-      new_symbol Product_like  false ss e
+      new_symbol _loc Product_like  false ss e
   | "\\Add_connector"     ss:symbols e:symbol_value ->
-      new_symbol Connector     false ss e
+      new_symbol _loc Connector     false ss e
   | "\\Add_negation"      ss:symbols e:symbol_value ->
-      new_symbol Negation      false ss e
+      new_symbol _loc Negation      false ss e
   | "\\Add_arrow"         ss:symbols e:symbol_value ->
-      new_symbol Arrow         false ss e
+      new_symbol _loc Arrow         false ss e
   | "\\Add_punctuation"   ss:symbols e:symbol_value ->
-      new_symbol Punctuation   false ss e
+      new_symbol _loc Punctuation   false ss e
   | "\\Add_quantifier"    ss:symbols e:symbol_value ->
-      new_symbol Quantifier    false ss e
+      new_symbol _loc Quantifier    false ss e
   | "\\Add_prefix"        ss:symbols e:symbol_value ->
-      new_symbol Prefix        true  ss e
+      new_symbol _loc Prefix        true  ss e
   | "\\Add_postfix"       ss:symbols e:symbol_value ->
-      new_symbol Postfix       true  ss e
+      new_symbol _loc Postfix       true  ss e
   | "\\Add_accent"        ss:symbols e:symbol_value ->
-      new_symbol Accent        true  ss e
+      new_symbol _loc Accent        true  ss e
   | "\\Add_symbol"        ss:symbols e:symbol_value ->
-      new_symbol Symbol        true  ss e
+      new_symbol _loc Symbol        true  ss e
   (* Addition of mutliple symbols (different sizes) *)
   | "\\Add_operator"        ss:symbols e:symbol_values ->
-      new_multi_symbol Operator       false  ss e
+      new_multi_symbol _loc Operator       false  ss e
   | "\\Add_limits_operator" ss:symbols e:symbol_values ->
-      new_multi_symbol Limit_operator false  ss e
+      new_multi_symbol _loc Limit_operator false  ss e
   | "\\Add_left"            ss:symbols e:symbol_values ->
-      new_multi_symbol Left           false  ss e
+      new_multi_symbol _loc Left           false  ss e
   | "\\Add_right"           ss:symbols e:symbol_values ->
-      new_multi_symbol Right          false  ss e
+      new_multi_symbol _loc Right          false  ss e
   (* Special case, combining symbol *)
   | "\\Add_combining" "{" c:uchar "}" "{" "\\" - m:lid "}" ->
-      new_combining_symbol c m
+      new_combining_symbol _loc c m
 
 (****************************************************************************
  * Maths.                                                                   *
  ****************************************************************************)
+
+type symbol =
+  | SimpleSym of string
+  | MultiSym of string
+  | CamlSym of Parsetree.expression
+  | ComplexSym of string
 
 
   type 'a indices = { up_right : 'a option; up_right_same_script: bool;
