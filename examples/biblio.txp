@@ -1,0 +1,275 @@
+(* #PACKAGES bibi *)
+
+\Caml(
+open Printf
+open Sqlite3
+open Bibi
+
+let _=Bibi.bibfile "bib.bibi"
+
+let rec spatoprint = function
+    [] -> ""
+  | (T (s,_)) :: l -> s ^ (spatoprint l)
+  | _ :: l -> spatoprint l
+		   
+let intercalate_and =
+  let rec intercalate_and_rec singleton a et last b=match b with
+      []->[]
+    | [h]-> if singleton then [h] else last :: [h]
+    | [h0;h1] -> let sep = if singleton then et else last
+                 in [h0 ; sep ; h1]
+    | h0::h1::s->h0::a::(intercalate_and_rec false a et last (h1::s))
+  in fun a et last b -> intercalate_and_rec true a et last b
+let dot = [tT ". "]
+let colon = [tT ":"]	    
+let space = [tT " "]
+let comma = [tT ", "]
+let lparen = [tT "( "]
+let rparen = [tT ") "]
+let vol = [tT "volume "]
+let vOL = [tT "Volume "]			    
+
+let sextract row field  = match row.(field_num field) with
+    None -> ""
+  | Some s -> s
+let sextract_append row field suffix  = match row.(field_num field) with
+    None -> ""
+  | Some s -> s
+
+let extract row field  = match row.(field_num field) with
+    None -> []
+  | Some s -> [tT s]
+let extract_append row field suffix  = match row.(field_num field) with
+    None -> []
+  | Some s -> [tT s ; tT suffix]
+
+let get_str row i = (match row.(i) with Some a -> a | None -> "")
+
+let author_gets table db art=
+  let auteurs=ref [] in
+  let cb row headers=match row.(2) with Some a->(	
+      for i = 0 to Array.length headers - 1 do 
+	fprintf stderr "%s: %s. " (headers.(i)) (get_str row i)
+      done ; fprintf stderr "\n" ; 
+      flush stderr ;
+      auteurs:= (get_str row 0,get_str row 1,get_str row 2)::(!auteurs)
+    ) | None -> () in
+    match exec db ~cb:cb (sprintf "select firstname,middlename,name from authors,%s_publications where %s_publications.article=%Ld and %s_publications.author=authors.id order by ordre ASC" table table art table) with
+        Rc.OK -> List.rev !auteurs
+      | r ->(fprintf stderr "gets %s : %s\n%s\n" table (Rc.to_string r) (errmsg db); flush stderr;raise Not_found)
+		
+let rec my_biblio_format ?separator:(separator=". ")
+			 ?and_last:(and_last=" et ") (* en anglais ca serait ", and " *)
+			 ?and_:(and_=" et ")	   (* en anglais ca serait " and " *)
+			 ?editeur:(editeur=" (éditeur)")
+			 ?editeurs:(editeurs=" (éditeurs)")
+			 ?inclusion:(inclusion="In: ")
+			 ?follow_crossrefs:(follow_crossrefs=true) row =
+
+  let rec format_pub db row = match row.(field_num "publisher") with
+      None-> []
+    | Some j -> (
+      let pub=ref [] in
+      let cb row _=match row.(0) with Some a->pub:=a::(!pub) | None -> () in
+      match exec db ~cb:cb (sprintf "SELECT name FROM publishers WHERE id=%s" j) with
+	Rc.OK ->  [tT (List.hd !pub)]
+      | r ->(fprintf stderr "%s\n%s\n" (Rc.to_string r) (errmsg db); flush stderr;raise Not_found)
+    )
+
+  and sformat_pub db row = match row.(field_num "publisher") with
+      None-> ""
+    | Some j -> (
+      let pub=ref [] in
+      let cb row _=match row.(0) with Some a->pub:=a::(!pub) | None -> () in
+      match exec db ~cb:cb (sprintf "SELECT name FROM publishers WHERE id=%s" j) with
+	Rc.OK ->  (List.hd !pub) 
+      | r ->(fprintf stderr "%s\n%s\n" (Rc.to_string r) (errmsg db); flush stderr;raise Not_found)
+    )
+		  
+  and sformat_pubdate db row =
+    let date=sextract row "date" in
+    let date_after = if date="" then "" else ", " ^ date in
+    let pub=sformat_pub db row in
+    if pub = "" then date else
+      pub ^ date_after 
+		  
+  and format_pubdate db row =
+    let date=extract row "date" in
+    let date_after = if date=[] then [] else tT ", " :: date in
+    let pub=format_pub db row in
+    if pub = [] then date else
+      pub @ date_after 
+
+  and space_if_both_nonempty x y = (if x<>"" && y<>"" then " " else "")
+
+  and format_name_list aut = 
+    (List.map
+       (fun (x,y,z) ->
+	(* let (x,y)=make_name n in *)
+	[tT (sprintf "%s%s%s%s%s" x (space_if_both_nonempty x y) y (space_if_both_nonempty (x ^ y) z) z)]) aut)
+      
+  and format_editors comma and_ authlast db id =
+    match author_gets "editors" db id with
+      []->[]
+    | _::s as l->
+       (List.concat (intercalate_and comma and_ authlast (format_name_list l)))
+       @
+	 [ tT (if s=[] then editeur else editeurs)]
+
+  and format_eprint row = 
+    match row.(field_num "eprint") with
+    | Some x -> extLink x (verb [tT x]) @ dot
+    | None -> []
+    
+  in
+
+  let sep = [tT separator] in
+  let authlast = [tT and_last] in
+  let et = [tT and_] in
+  match !bibfile_ with
+    None->[]
+  | Some bf->
+     let db=db_open bf in
+     match row.(field_num "id") with
+       None->assert false
+     | Some id_->
+        let id=Int64.of_string id_ in
+        let auteurs= intercalate_and comma et authlast (format_name_list (author_gets "authors" db id)) in
+	let _ = fprintf stderr "auteur %s\n" (List.hd (gets "authors" db id)) ; flush stderr in
+        let titre = extract row "title" in
+        let ed= extract row "edition" in
+        let is_pub_in, pub_in, pub_in_pubdate, pub_in_title = match row.(field_num "crossref") with
+            None->false,[],[],[]
+          | Some i->(
+            match dbCite db true (sprintf "id=%s" i) with
+              h::_ when follow_crossrefs->
+	      	   let title = sextract h "title" in
+	      	let _ = fprintf stderr "booktitle %s\n" title ; flush stderr in
+	      true,
+	      [tT inclusion],
+	      format_pubdate db h,
+	      [tT title]
+            | _->true,[],[],[]
+          )
+        in
+	let _ = fprintf stderr "is_pub_in %b\n" is_pub_in ; flush stderr in
+        let date=extract row "date" in
+        let pub=format_pub db row in
+	let pubdate = if is_pub_in then pub_in_pubdate else format_pubdate db row in
+	let _ = fprintf stderr "series %s\n" (sextract row "series") ; flush stderr in
+        let volume=begin
+		     match row.(field_num "volume"),row.(field_num "series"),row.(field_num "journal"),
+		     row.(field_num "number") with
+                       None, None,_,_ -> []
+		     | Some a,Some b,_,_ ->(tT (sprintf ", volume %s of %s" a b)) :: []
+		     | Some a,None,None,None->[]
+		     | Some a,_,_,Some c->(tT (sprintf ", %s(%s)" a c))::[]
+		     | None, Some a,_,_ ->(tT (sprintf ", %s" a))::[]
+		     | _,_,_,_ -> comma @ extract row "volume"
+		   end (* else comma @ extract row "volume" *)
+        in
+	(* let commavolumeifseries = begin *)
+	(*     match row.(field_num "series") with *)
+	(*     | Some _ -> comma @ vol @ volume *)
+	(*     | _ -> [] *)
+	(*   end *)
+	(* in *)
+        let pages=extract row "pages" in
+	let colonpages = if pages = [] then [] else colon @ pages in
+	let commapages = if pages = [] then [] else comma @ [tT "pages "] @ pages in
+        let booktitle= (tT inclusion) :: (toggleItalic
+					    (if is_pub_in then pub_in_title else extract row "booktitle")) in
+	let institutioncomma = extract_append row "institution" ", " in
+	match row.(field_num "type") with
+	| None -> (fprintf stderr "Bibi warning: omitting item without an entry type. \n" ; flush stderr) ; []
+	(* If journal article: *)
+	| Some "article" -> 
+	   begin
+	     let journal = match row.(field_num "journal") with
+	       | Some j -> ( (* when pub_in=[] && follow_crossrefs ->( *)
+		 let jour=ref [] in
+		 let cb row _=match row.(0) with Some a->jour:=a::(!jour) | None -> () in
+		 match exec db ~cb:cb (sprintf "SELECT name FROM journals WHERE id=%s" j) with
+                   Rc.OK -> [tT (List.hd !jour)]
+		 | r ->(fprintf stderr "%s\n%s\n" (Rc.to_string r) (errmsg db); flush stderr;raise Not_found)
+	       )
+	       | _ -> []
+	     in
+             List.concat (auteurs @ [ sep ; titre ; sep ; (toggleItalic journal) ;
+				      volume;colonpages;comma;date;dot])
+	   end
+	(* If inproceedings: *)
+	| Some "inproceedings" ->
+	   begin
+             List.concat (auteurs @ [ sep ; titre ; sep ; booktitle ;
+				      volume ; commapages;
+				      dot; pubdate ; dot])
+	   end
+	| Some "phdthesis" ->
+	   begin
+	     List.concat (auteurs @ [ sep ; (toggleItalic titre) ; sep ;
+				      [tT "Thèse de doctorat, "] ;
+				      institutioncomma;
+				      date ; dot ])
+	   end
+	| Some "book" ->
+	   begin
+	     List.concat (auteurs @ [ sep ; (toggleItalic titre) ; sep ;
+				      pubdate ; dot ])
+	   end
+	| Some "proceedings" ->
+	   begin
+	     (format_editors comma et authlast db id) @ List.concat
+							    [ sep ; (toggleItalic titre) ; sep ; pubdate ; dot ]
+	   end
+	| Some _ -> begin
+		    List.concat (auteurs @ [sep ; (toggleItalic titre) ; sep ; extract row "date" ; dot ;
+					   format_eprint row ])
+		  end
+        | _-> Bibi.default_biblio_format ~separator:separator
+					 ~and_last:and_last
+					 ~inclusion:inclusion
+					 ~follow_crossrefs:follow_crossrefs
+					 row
+					 
+(* My variant of bibitem formatting *)
+module CitationInt=struct
+
+  let item_format = my_biblio_format
+  let citation_format i _=[tT (string_of_int i)]
+  let compare (a,_) (b,_)=compare a b
+end
+
+module ItemInt=MarginBiblio(CitationInt)
+module Bib=Biblio(CitationInt)(ItemInt)
+
+(* module Bib=BiblioInt *)
+include Bib
+
+let mycite author title = cite (authorCite ("name like '%" ^ author ^ "%'")
+        ("title like '%" ^ title ^ "%'"))
+
+let myciteyear author title year = cite (authorCite
+  ("name like '%" ^ author ^ "%'")
+  ("title like '%" ^ title ^ "%' AND date like '%" ^ year ^ "%'"))
+
+)
+
+On cite un article de proceedings sans \emph{series}, les ensembles
+nominaux \myciteyear("Pitts")("Binders")("1999").
+
+Et puis un avec, genre \mycite("Nickau")("Hereditarily").
+
+Et un article de journal \mycite("Bousfield")("").
+
+Et un livre \myciteyear("Ehresmann")("structures")("1965").
+
+Un preprint \myciteyear("Hirschowitz")("Topological")("2008"). Le lien est cliquable.
+
+Pour finir, une thèse \mycite("Lawvere")("Functorial").
+
+== Bibliographie ==
+
+\Caml(
+module X=TheBibliography(D)
+)
