@@ -33,6 +33,8 @@ module Euler = Euler
 module Numerals = Numerals
 module TOC = TableOfContents
 
+let sprint_page_number = ref string_of_int
+
 let replace_utf8 x y z=if String.length x>0 then (
   let buf=Buffer.create (String.length x) in
   let repl=UTF8.init 1 (fun _->UChar.chr y) in
@@ -1632,7 +1634,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
               );
               *)
 
-            let num=boxify_scoped defaultEnv [tT (string_of_int (i+1))] in
+            let num=boxify_scoped defaultEnv [tT (!sprint_page_number (i+1))] in
             let _,w,_=boxes_interval (Array.of_list num) in
             page.contents<-
                 List.map (translate ((fst page.size-.w)/.2.) 30.)
