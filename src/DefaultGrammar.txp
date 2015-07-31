@@ -169,7 +169,7 @@
 \Add_product_like{\wedge \gcd ∧}(MathFonts.asana "∧" 753)
 \Add_product_like{\ast ∗}{∗}
 \Add_product_like{\seq}{;}
-\Add_product_like{\para}{|}
+\Add_product_like{\para |}{|}
 \Add_product_like{\star ★ ⋆}(MathFonts.asana "⋆" 912)
 
 
@@ -399,7 +399,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_symbol{… ... \dots}{…}
 \Add_symbol{\vdots ⋮}(MathFonts.asana "\\vdost" 952)
 \Add_symbol{\wc —}(MathFonts.asana "wild card" 382)
-\Add_symbol{\heartsuit}( MathFonts.asana "white heartsuit" 1051 )
+\Add_symbol{\heartsuit ♥}( MathFonts.asana "white heartsuit" 1051 )
 \Add_symbol{⋯ \cdots}{⋯}
 \Add_symbol{□ \wbox \wsquare}(MathFonts.asana "□" 1666)
 \Add_symbol{■ \bbox \bsquare}(MathFonts.asana "■" 1665)
