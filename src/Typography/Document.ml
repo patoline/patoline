@@ -1825,50 +1825,30 @@ let flatten ?(initial_path=[]) env0 str=
    Array.of_list (List.map snd (IntMap.bindings !figures)),
    Array.of_list (List.map snd (IntMap.bindings !figure_trees)))
 
-let rec make_struct positions tree=
-  match tree with
-      Node s when s.node_paragraph>=0 && s.node_paragraph<Array.length positions -> (
-        let (p,x,y)=positions.(s.node_paragraph) in
-        let rec make=function
-        []->[]
-          | (_,Node u)::s when List.mem_assoc "intoc" u.node_tags -> (make_struct positions (Node u))::(make s)
-          | _ :: s->make s
-        in
-        let a=Array.of_list (make (IntMap.bindings s.children)) in
-        { OutputCommon.name=s.name;
-          OutputCommon.metadata=[];
-	  OutputCommon.displayname=s.boxified_displayname;
-          OutputCommon.tags=s.node_tags;
-          OutputCommon.page=p;
-          OutputCommon.struct_x=x;
-          OutputCommon.struct_y=y;
-          OutputCommon.substructures=a }
-      )
-    | Node s -> (
-      let rec make=function
-      []->[]
-        | (_,Node u)::s when List.mem_assoc "intoc" u.node_tags -> (make_struct positions (Node u))::(make s)
+let rec make_struct positions = function
+  | Node s ->
+      let rec make = function
+        | [] -> []
+        | (_,Node u)::s when List.mem_assoc "intoc" u.node_tags ->
+            (make_struct positions (Node u))::(make s)
         | _ :: s->make s
       in
-      let a=Array.of_list (make (IntMap.bindings s.children)) in
-      { OutputCommon.name=s.name;
-        OutputCommon.metadata=[];
-	OutputCommon.displayname=s.boxified_displayname;
-        OutputCommon.tags=s.node_tags;
-        OutputCommon.page=0;
-        OutputCommon.struct_x=0.;
-        OutputCommon.struct_y=0.;
-        OutputCommon.substructures=a }
-    )
-    | _->
-      { OutputCommon.name="";
-        OutputCommon.metadata=[];
-	OutputCommon.displayname=[];
-        OutputCommon.tags=[];
-        OutputCommon.page=0;
-        OutputCommon.struct_x=0.;
-        OutputCommon.struct_y=0.;
-        OutputCommon.substructures=[||] }
+      let a = Array.of_list (make (IntMap.bindings s.children)) in
+      let (p,x,y) =
+        let lenpos = Array.length positions in
+        if s.node_paragraph >= 0 && s.node_paragraph < lenpos then
+          positions.(s.node_paragraph)
+        else (0,0.,0.)
+      in
+      { OutputCommon.name          = s.name
+      ; OutputCommon.metadata      = []
+      ; OutputCommon.displayname   = s.boxified_displayname
+      ; OutputCommon.tags          = s.node_tags
+      ; OutputCommon.page          = p
+      ; OutputCommon.struct_x      = x
+      ; OutputCommon.struct_y      = y
+      ; OutputCommon.substructures = a }
+  | _ -> OutputCommon.empty_structure
 
 (** Adds a tag to the given structure. *)
 let tag str tags=
