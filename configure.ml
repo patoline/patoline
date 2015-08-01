@@ -110,6 +110,13 @@ let local_packages = [
     subdirs = [];
     has_meta = true;
   };
+  { package_name = "rawlib";
+    macro_suffix = "RAWLIB";
+    local_deps = ["patutil"; "imagelib"; "patfonts"];
+    extern_deps = [];
+    subdirs = [];
+    has_meta = true;
+  };
   { package_name = "unicodelib";
     macro_suffix = "UNICODELIB";
     local_deps = [];
@@ -603,6 +610,7 @@ let _=
   Printf.fprintf make "INSTALL_PA_OCAML_DIR :=%s/decap\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_UTIL_DIR :=%s/patutil\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_IMGLIB_DIR :=%s/imagelib\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_RAWLIB_DIR :=%s/rawlib\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_UNICODELIB_DIR :=%s/unicodelib\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_LIBFONTS_DIR :=%s/patfonts\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_BIBI_DIR :=%s/bibi\n" !ocaml_lib_dir;

@@ -35,7 +35,7 @@ endif
 $(d)/Patoline/Rules.mk: $(UNICODELIB_CMX)
 
 # Visit subdirectories
-MODULES := unicodelib rbuffer patutil imagelib patfonts \
+MODULES := unicodelib rbuffer patutil imagelib patfonts rawlib \
   Typography Drivers Pdf cesure Format \
   $(OCAML_BIBI) plot proof plugins Patoline
 
