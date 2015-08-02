@@ -568,9 +568,6 @@ let _=
   if not has_fontconfig then 
     Printf.eprintf "Warning: fontconfig is missing, patoline will not use it to search for fonts\n";
 
-  let config=open_out "src/Typography/Config.ml" in
-  let config'=open_out "src/Patoline/Config2.ml" in
-
   let emacsdir = Filename.concat !prefix "share/emacs/site-lisp/patoline" in
 
   let make=open_out "src/Makefile.config" in
@@ -744,6 +741,13 @@ let _=
     make_meta_part (Filename.concat "src/Drivers" drv.name) (drv.name ^ ".ml")
   ) !r_patoline_drivers;
   close_out meta;
+
+  let config0 = open_out "src/rawlib/Config0.ml" in
+  Printf.fprintf config0 "let pluginsdir = %S\n" !plugins_dir;
+  close_out config0;
+
+  let config=open_out "src/Typography/Config.ml" in
+  let config'=open_out "src/Patoline/Config2.ml" in
 
       (* Ecriture de la configuration *)
       let conf=if Sys.os_type= "Win32" then (
