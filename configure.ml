@@ -701,7 +701,7 @@ let _=
   let meta=open_out "src/Typography/META" in
     Printf.fprintf meta
       "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"patutil,patfonts,%s\"\n"
-      (String.concat "," (gen_pack_line [Package "str"; Package "unicodelib"; Package "mysql";
+      (String.concat "," (gen_pack_line [Package "str"; Package "unicodelib"; Package "rawlib"; Package "mysql";
                                          Package "zip";
                                          Package "imagelib";Package "dynlink";
                                          Package "fontconfig"; Package
@@ -732,7 +732,7 @@ let _=
         Printf.fprintf meta "%s\n" buf
       with Sys_error _ ->
         Printf.fprintf meta
-          "package \"%s\" (\nrequires=\"Typography\"\narchive(native)=\"%s\"\narchive(byte)=\"%s\"\n)\n"
+          "package \"%s\" (\nrequires=\"rawlib,Typography\"\narchive(native)=\"%s\"\narchive(byte)=\"%s\"\n)\n"
           base_file (base_file^".cmxa") (base_file^".cma")
     )
   in
