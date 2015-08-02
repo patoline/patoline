@@ -28,7 +28,7 @@ let preambule format amble filename=
       Noamble->""
     | _->(
         "open Typography\nopen Typography.Util\n"^
-        "open Typography.Config\nopen Typography.Document\nopen Typography.OutputCommon\n"^
+        "open Typography.Config\nopen Typography.Document\nopen Raw\nopen Color\n"^
           (match amble with
                Main->
                  "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)),\"Adds directories to the font search path\");

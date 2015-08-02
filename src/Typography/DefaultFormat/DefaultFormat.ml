@@ -211,7 +211,7 @@ let paragraph ?(parameters=parameters) ?(par_env=(fun x->x)) cont=
 let stackDrawings drs=
   let w=List.fold_left (fun m x->max m x.drawing_nominal_width) 0. drs in
   let cont,_=List.fold_left (fun (cont,y) x->
-    (List.map (OutputCommon.translate ((w-.x.drawing_nominal_width)/.2.) (y-.x.drawing_y0)) (x.drawing_contents x.drawing_nominal_width)
+    (List.map (Raw.translate ((w-.x.drawing_nominal_width)/.2.) (y-.x.drawing_y0)) (x.drawing_contents x.drawing_nominal_width)
      @cont,
      y+.max 0. (x.drawing_y1-.x.drawing_y0))
   ) ([],0.) drs
@@ -247,7 +247,7 @@ let defaultEnv:environment=
     fontItalic=false;
     fontAlternative=Regular;
     fontFeatures=feat;
-    fontColor=OutputCommon.black;
+    fontColor=Color.black;
     font=f;
     mathsEnvironment=Euler.default;
     mathStyle=Document.Mathematical.Text;
@@ -570,7 +570,7 @@ let defaultEnv:environment=
       C (fun env ->
 	let line = string_of_int (get_line env) in
 	let miss = 4 - String.length line in
-	glue_space miss ::  color OutputCommon.(mix 0.5 white black) [tT line] @ [tT " "])::
+	glue_space miss ::  color Color.(mix 0.5 white black) [tT line] @ [tT " "])::
       Env (fun env ->
 	let line = get_line env in
 	{env with counters = StrMap.add filename (-1,[line+1]) env.counters})::
@@ -648,17 +648,17 @@ let animation ?(step=1./.24.) ?(duration=600.) ?(mirror=true) ?(default=0) cycle
   [bB (fun env -> let contents a = draw env (contents a) in
   let tbl = Array.init cycle contents in
   let d = default in
-  let r = OutputCommon.(Animation{
+  let r = Raw.(Animation{
     anim_contents = tbl;
     anim_step = step;
     anim_duration = duration;
     anim_default = d;
-    anim_order = Array.fold_left (fun acc c -> List.fold_left (fun acc c -> min acc (OutputCommon.drawing_order c)) acc c) max_int tbl;
+    anim_order = Array.fold_left (fun acc c -> List.fold_left (fun acc c -> min acc (Raw.drawing_order c)) acc c) max_int tbl;
     anim_mirror = mirror})
   in
-  let (x0,y0,x1,y1)=OutputCommon.bounding_box [r] in
+  let (x0,y0,x1,y1)=Raw.bounding_box [r] in
   let w = x1 -. x0 in
-  OutputCommon.([Drawing {
+  Raw.([Drawing {
     drawing_min_width=w;
     drawing_max_width=w;
     drawing_nominal_width=w;
@@ -673,12 +673,12 @@ let animation ?(step=1./.24.) ?(duration=600.) ?(mirror=true) ?(default=0) cycle
   }]))]
 
 let dynamic name action sample contents =
-  OutputCommon.([bB (fun env ->
+  Raw.([bB (fun env ->
     let contents () = draw env (contents ()) in
     let r = Dynamic{
       dyn_label = name;
       dyn_contents = contents;
-      dyn_order = List.fold_left (fun acc c -> min acc (OutputCommon.drawing_order c)) max_int (contents ());
+      dyn_order = List.fold_left (fun acc c -> min acc (Raw.drawing_order c)) max_int (contents ());
       dyn_sample = draw env sample;
       dyn_react = action;
     }
@@ -699,7 +699,7 @@ let dynamic name action sample contents =
     drawing_contents=(fun _->[r])
   }])])
 
-module Env_dynamic(X : sig val arg1 : string val arg2 : OutputCommon.event -> OutputCommon.action val arg3 : content list
+module Env_dynamic(X : sig val arg1 : string val arg2 : Raw.event -> Raw.action val arg3 : content list
                        end)=struct
   let do_begin_env ()=
     D.structure:=newChildAfter !D.structure (Node empty);
@@ -813,14 +813,14 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                  let conts=ref [] in
                  for j=0 to Array.length tab_formatted.(i)-1 do
                    let cont=tab_formatted.(i).(j) in
-                   conts:=(List.map (OutputCommon.translate !x 0.)
+                   conts:=(List.map (Raw.translate !x 0.)
                              (cont.drawing_contents (widths.(j)))) @ (!conts);
                    ymin := min !ymin cont.drawing_y0;
                    ymax := max !ymax cont.drawing_y1;
                    x:= !x +. widths0.(j) +. params.h_spacing
                  done;
                  max_x:=max !x !max_x;
-                 contents:=(List.map (OutputCommon.translate 0. !y) !conts)@(!contents);
+                 contents:=(List.map (Raw.translate 0. !y) !conts)@(!contents);
                  max_y:=max !max_y (!y+. !ymax);
                  min_y:=min !min_y (!y+. !ymin);
                  y:=(!y)-. heights.(i)-.params.v_spacing;
@@ -837,7 +837,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                   drawing_break_badness=0.;
                   drawing_states=[];
                   drawing_badness=(fun _->0.);
-                  drawing_contents=(fun _-> List.map (OutputCommon.translate 0. 0.) !contents)
+                  drawing_contents=(fun _-> List.map (Raw.translate 0. 0.) !contents)
                 }]
           )]
 
@@ -1077,9 +1077,9 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                                          drawing_states=[];
                                          drawing_badness=(fun _->0.);
                                          drawing_contents=(fun _->
-                                                             [OutputCommon.Path
-                                                                 ({OutputCommon.default with
-                                                                    OutputCommon.lineWidth=0.3;fillColor=Some env.fontColor; strokingColor=Some env.fontColor},
+                                                             [Raw.Path
+                                                                 ({Raw.default_path_param with
+                                                                    Raw.lineWidth=0.3;fillColor=Some env.fontColor; strokingColor=Some env.fontColor},
                                                                  [[|[|x0;x1|],[|y;y;|]|]])
                                                              ]) }
                                    )])
@@ -1207,10 +1207,10 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
           [bB (fun env->
                 let w=env.size/.phi in
                   [Drawing (
-                     drawing [OutputCommon.Path ({ OutputCommon.default with
-                                                     OutputCommon.close=true;
-                                                     OutputCommon.lineWidth=0.1 },
-                                                 [OutputCommon.rectangle (0.,0.) (w,w)]
+                     drawing [Raw.Path ({ Raw.default_path_param with
+                                                     Raw.close=true;
+                                                     Raw.lineWidth=0.1 },
+                                                 [Raw.rectangle (0.,0.) (w,w)]
                                                 )])
                   ]
              )];
@@ -1325,11 +1325,10 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 
 
 
-    module Output(M:OutputPaper.Driver)=struct
+    module Output(M:Driver.OutputDriver)=struct
       (** Output routines. An output routine is just a functor taking a driver module *)
-      open OutputPaper
-      open OutputCommon
-      module type Driver=OutputPaper.Driver
+      open Raw
+      open Driver
       type output=unit
       (* { *)
       (*   mutable format:Box.box array array->(Document.tree*Document.cxt) array-> *)
@@ -1388,9 +1387,9 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
             *)
 
           let draw_page i layout=
-            let page={ pageFormat=(layout.frame_x1-.layout.frame_x0,
+            let page={ Driver.size=(layout.frame_x1-.layout.frame_x0,
                                    layout.frame_y1-.layout.frame_y0);
-                       pageContents=[] }
+                       Driver.contents=[] }
             in
 
             let endlink cont=
@@ -1410,7 +1409,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                   )::s
                   | h::s->link_contents (h::u) s
                 in
-                page.pageContents<-link_contents [] page.pageContents;
+                page.contents<-link_contents [] page.contents;
                 crosslink_opened:=false;
               )
             in
@@ -1418,7 +1417,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
             (match !continued_link with
               None->()
             | Some l->(
-              page.pageContents<-l::page.pageContents;
+              page.contents<-l::page.contents;
               crosslink_opened:=true;
               continued_link:=None
             )
@@ -1433,9 +1432,9 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                 let r=(t.frame_x0,t.frame_y0,t.frame_x1,t.frame_y1) in
                 if not (Hashtbl.mem h r) then (
                   Hashtbl.add h r ();
-                  page.pageContents<-Path (default,[rectangle (t.frame_x0,t.frame_y0)
+                  page.contents<-Path (default_path_param,[rectangle (t.frame_x0,t.frame_y0)
                                                        (t.frame_x1,t.frame_y1)])
-                  ::page.pageContents;
+                  ::page.contents;
                 );
               );
 
@@ -1458,9 +1457,9 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                             milieu-.(fig.drawing_y1+.fig.drawing_y0)/.2.
                           with Not_found->l.line.height
                       in
-                      page.pageContents<- (List.map (translate ((fst l.line.layout).frame_x0+.l.line_params.left_margin) y)
+                      page.contents<- (List.map (translate ((fst l.line.layout).frame_x0+.l.line_params.left_margin) y)
                                              (fig.drawing_contents fig.drawing_nominal_width))
-                      @ page.pageContents;
+                      @ page.contents;
 
                     ) else if l.line.paragraph<Array.length paragraphs then (
                       let line=l.line in
@@ -1499,29 +1498,29 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                             x'+.w) 0. h.hyphen_normal)
                         )
                         | GlyphBox a->(
-                          page.pageContents<-translate x y (Glyph a):: page.pageContents;
+                          page.contents<-translate x y (Glyph a):: page.contents;
                           let w=a.glyph_size*.Fonts.glyphWidth a.glyph/.1000. in
 	                  if env.show_boxes then (
                             let y0=lower_y box
                                 and y1=upper_y box
                             in
-                            page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.y0) (x+.w,y+.y1)]) :: page.pageContents;
+                            page.contents<- Path ({Raw.default_path_param with close=true;lineWidth=0.1 }, [rectangle (x,y+.y0) (x+.w,y+.y1)]) :: page.contents;
                           );
                           w
                         )
                         | Glue g
                         | Drawing g ->(
                           let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
-                          page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
+                          page.contents<- (List.map (translate x y) (g.drawing_contents w)) @ page.contents;
 	                  if env.show_boxes then
-                            page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
+                            page.contents<- Path ({Raw.default_path_param with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.contents;
                           w
                         )
                         | Marker (BeginLink l)->(
 			  let k = match l with
-			      Box.Extern l -> OutputCommon.Extern l;
-			    | Box.Intern l -> OutputCommon.Intern(l,layout_page line,0.,0.);
-			    | Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
+			      Box.Extern l -> Raw.Extern l;
+			    | Box.Intern l -> Raw.Intern(l,layout_page line,0.,0.);
+			    | Box.Button(drag,n,d) -> Raw.Button(drag,n,d)
 			  in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                      link_order=0;link_closed=false;
@@ -1529,7 +1528,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                           in
                           crosslinks:=(i, link, l) :: !crosslinks;
                           crosslink_opened:=true;
-                          page.pageContents<-Link link::page.pageContents;
+                          page.contents<-Link link::page.contents;
                           0.
                         )
                         | Marker EndLink->(
@@ -1566,7 +1565,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                       (match !continued_link with
                         None->()
                       | Some l->(
-                        page.pageContents<-l::page.pageContents;
+                        page.contents<-l::page.contents;
                         crosslink_opened:=true;
                         continued_link:=None
                       )
@@ -1575,8 +1574,8 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                     draw_cont (Some l) s
                   )
                 | Raw r::s->(
-                  page.pageContents<-List.map (translate t.frame_x0 t.frame_y0) r
-                  @page.pageContents;
+                  page.contents<-List.map (translate t.frame_x0 t.frame_y0) r
+                  @page.contents;
                   draw_cont last_placed s
                 )
                   | []->()
@@ -1596,10 +1595,10 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                 (* * *)
 
 	        if env.show_boxes then
-                  page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 },
+                  page.contents<- Path ({Raw.default_path_param with close=true;lineWidth=0.1 },
                                             [rectangle (param.left_margin,y+.fig.drawing_y0)
                                                 (param.left_margin+.fig.drawing_nominal_width,
-                                                 y+.fig.drawing_y1)]) :: page.pageContents;
+                                                 y+.fig.drawing_y1)]) :: page.contents;
 
                 ) else
 
@@ -1614,33 +1613,33 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
             endlink true;
             (match !urilinks with
               None->()
-            | Some h->page.pageContents<-Link h::page.pageContents; urilinks:=None);
+            | Some h->page.contents<-Link h::page.contents; urilinks:=None);
 
               (*
               ignore (
                 List.fold_left (
                   fun y footnote->
-                    page.pageContents<- (List.map (translate (env.normalLeftMargin) (y-.footnote.drawing_y1-.env.footnote_y))
-                                           (footnote.drawing_contents footnote.drawing_nominal_width)) @ page.pageContents;
+                    page.contents<- (List.map (translate (env.normalLeftMargin) (y-.footnote.drawing_y1-.env.footnote_y))
+                                           (footnote.drawing_contents footnote.drawing_nominal_width)) @ page.contents;
                     y-.(footnote.drawing_y1-.footnote.drawing_y0)
                 ) !footnote_y !footnotes
               );
               if !footnotes<>[] then (
-                page.pageContents<- (Path ({OutputCommon.default with lineWidth=0.01 }, [ [| [| env.normalLeftMargin;
+                page.contents<- (Path ({Raw.default_path_param with lineWidth=0.01 }, [ [| [| env.normalLeftMargin;
                                                                                                 env.normalLeftMargin+.env.normalMeasure*.(2.-.phi) |],
                                                                                            [| !footnote_y-.env.footnote_y;
-                                                                                              !footnote_y-.env.footnote_y |] |] ]))::page.pageContents
+                                                                                              !footnote_y-.env.footnote_y |] |] ]))::page.contents
               );
               *)
 
             let num=boxify_scoped defaultEnv [tT (string_of_int (i+1))] in
             let _,w,_=boxes_interval (Array.of_list num) in
-            page.pageContents<-
-                List.map (translate ((fst page.pageFormat-.w)/.2.) 30.)
+            page.contents<-
+                List.map (translate ((fst page.size-.w)/.2.) 30.)
               (draw_boxes env num)
-            @page.pageContents;
+            @page.contents;
 
-            page.pageContents<-List.rev page.pageContents;
+            page.contents<-List.rev page.contents;
             page
           in
 
@@ -1655,7 +1654,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 	  let pages=Array.of_list (List.rev (snd (draw_all_pages opt_pages 0 []))) in
 	  let pages=Array.map (fun p->
 	      { p with
-                pageContents=List.map (fun a->match a with
+                contents=List.map (fun a->match a with
 		  Link ({ link_kind = Intern(label,dest_page,dest_x,dest_y) } as l)->(
 		    try
                       let (p',x,y0,y1)=StrMap.find label !destinations in
@@ -1668,7 +1667,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                       Not_found->a
 		  )
                 | a->a
-                ) p.pageContents
+                ) p.contents
 	      }
 	    ) pages
 	    in
@@ -1813,7 +1812,7 @@ module MathsFormat=struct
             (fun envs st->
                let dr=draw_boxes envs (Maths.draw [envs] a) in
                let env=Maths.env_style envs.mathsEnvironment st in
-               let (x0,y0,x1,y1)=OutputCommon.bounding_box_full dr in
+               let (x0,y0,x1,y1)=Raw.bounding_box_full dr in
                let drawn=(drawing ~offset:y0 dr) in
                let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
                  [Drawing {
@@ -1821,10 +1820,10 @@ module MathsFormat=struct
                       drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
                       drawing_contents=
                       (fun w->
-                         OutputCommon.Path ({OutputCommon.default with
-                             OutputCommon.fillColor=Some envs.fontColor;
-                             OutputCommon.strokingColor=Some envs.fontColor;
-                             OutputCommon.lineWidth=rul},
+                         Raw.Path ({Raw.default_path_param with
+                             Raw.fillColor=Some envs.fontColor;
+                             Raw.strokingColor=Some envs.fontColor;
+                             Raw.lineWidth=rul},
                            [[|[|x0;x1|],
                            [|y1*.sqrt phi+.2.*.rul;y1*.sqrt phi+.2.*.rul|]|]])
                          ::drawn.drawing_contents w)
@@ -1837,7 +1836,7 @@ module MathsFormat=struct
             (fun envs st->
                let dr=draw_boxes envs (Maths.draw [envs] a) in
                let env=Maths.env_style envs.mathsEnvironment st in
-               let (x0,y0,x1,y1)=OutputCommon.bounding_box_full dr in
+               let (x0,y0,x1,y1)=Raw.bounding_box_full dr in
                let drawn=(drawing ~offset:y0 dr) in
                let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
                let xm=(x1+.x0)/.2. in
@@ -1848,10 +1847,10 @@ module MathsFormat=struct
                       drawing_y1=drawn.drawing_y1+.y;
                       drawing_contents=
                       (fun w->
-                         OutputCommon.Path ({OutputCommon.default with
-                             OutputCommon.fillColor=Some envs.fontColor;
-                             OutputCommon.strokingColor=Some envs.fontColor;
-                             OutputCommon.lineWidth=rul},
+                         Raw.Path ({Raw.default_path_param with
+                             Raw.fillColor=Some envs.fontColor;
+                             Raw.strokingColor=Some envs.fontColor;
+                             Raw.lineWidth=rul},
                            [[|
                              [|xm-.w/.10.;xm+.w/.10.|],
                              [|y0-.y;y1+.y|]
@@ -1876,7 +1875,7 @@ module MathsFormat=struct
             let dot_x1 = (Fonts.glyph_x1 gl_dot) *. envs.size *. env.Mathematical.mathsSize /. 1000. in
             (* Bounding box of a *)
             let dr = draw_boxes envs (Maths.draw [envs] a) in
-            let (x0,y0,x1,y1) = OutputCommon.bounding_box_full dr in
+            let (x0,y0,x1,y1) = Raw.bounding_box_full dr in
 
             let drawn=(drawing ~offset:y0 dr) in
             let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
@@ -1885,15 +1884,15 @@ module MathsFormat=struct
               drawn with
                 drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
                 drawing_contents= (fun w ->
-                  OutputCommon.Glyph {
-                    OutputCommon.glyph_x = (x0 +. x1) /. 2. -. (dot_x1 +. dot_x0) /. 2.;
-                    OutputCommon.glyph_kx = 0.;
-                    OutputCommon.glyph_y = y1-.dot_y0 +. 2. *. rul;
-                    OutputCommon.glyph_ky = 0.;
-                    OutputCommon.glyph_order = 1;
-                    OutputCommon.glyph_color = envs.fontColor;
-                    OutputCommon.glyph_size = envs.size *. env.Mathematical.mathsSize;
-                    OutputCommon.glyph = gl_dot
+                  Raw.Glyph {
+                    Raw.glyph_x = (x0 +. x1) /. 2. -. (dot_x1 +. dot_x0) /. 2.;
+                    Raw.glyph_kx = 0.;
+                    Raw.glyph_y = y1-.dot_y0 +. 2. *. rul;
+                    Raw.glyph_ky = 0.;
+                    Raw.glyph_order = 1;
+                    Raw.glyph_color = envs.fontColor;
+                    Raw.glyph_size = envs.size *. env.Mathematical.mathsSize;
+                    Raw.glyph = gl_dot
                   }::drawn.drawing_contents w
                 )
             }]
@@ -1917,7 +1916,7 @@ module MathsFormat=struct
             let dot_r = (dot_x1 -. dot_x0) /. 2. in
             (* Bounding box of a *)
             let dr = draw_boxes envs (Maths.draw [envs] a) in
-            let (x0,y0,x1,y1) = OutputCommon.bounding_box_full dr in
+            let (x0,y0,x1,y1) = Raw.bounding_box_full dr in
 
             let drawn=(drawing ~offset:y0 dr) in
             let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
@@ -1926,24 +1925,24 @@ module MathsFormat=struct
               drawn with
                 drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
                 drawing_contents= (fun w ->
-                  OutputCommon.Glyph {
-                    OutputCommon.glyph_x = (x0 +. x1) /. 2. -. (dot_x1 +. dot_x0) /. 2. -. dot_r -. rul /. 2.;
-                    OutputCommon.glyph_kx = 0.;
-                    OutputCommon.glyph_y = y1-.dot_y0 +. 2. *. rul;
-                    OutputCommon.glyph_ky = 0.;
-                    OutputCommon.glyph_order = 1;
-                    OutputCommon.glyph_color = envs.fontColor;
-                    OutputCommon.glyph_size = envs.size *. env.Mathematical.mathsSize;
-                    OutputCommon.glyph = gl_dot
-                  }::OutputCommon.Glyph {
-                    OutputCommon.glyph_x = (x0 +. x1) /. 2. -. (dot_x1 +. dot_x0) /. 2. +. dot_r +. rul /. 2.;
-                    OutputCommon.glyph_kx = 0.;
-                    OutputCommon.glyph_y = y1-.dot_y0 +. 2. *. rul;
-                    OutputCommon.glyph_ky = 0.;
-                    OutputCommon.glyph_order = 1;
-                    OutputCommon.glyph_color = envs.fontColor;
-                    OutputCommon.glyph_size = envs.size *. env.Mathematical.mathsSize;
-                    OutputCommon.glyph = gl_dot
+                  Raw.Glyph {
+                    Raw.glyph_x = (x0 +. x1) /. 2. -. (dot_x1 +. dot_x0) /. 2. -. dot_r -. rul /. 2.;
+                    Raw.glyph_kx = 0.;
+                    Raw.glyph_y = y1-.dot_y0 +. 2. *. rul;
+                    Raw.glyph_ky = 0.;
+                    Raw.glyph_order = 1;
+                    Raw.glyph_color = envs.fontColor;
+                    Raw.glyph_size = envs.size *. env.Mathematical.mathsSize;
+                    Raw.glyph = gl_dot
+                  }::Raw.Glyph {
+                    Raw.glyph_x = (x0 +. x1) /. 2. -. (dot_x1 +. dot_x0) /. 2. +. dot_r +. rul /. 2.;
+                    Raw.glyph_kx = 0.;
+                    Raw.glyph_y = y1-.dot_y0 +. 2. *. rul;
+                    Raw.glyph_ky = 0.;
+                    Raw.glyph_order = 1;
+                    Raw.glyph_color = envs.fontColor;
+                    Raw.glyph_size = envs.size *. env.Mathematical.mathsSize;
+                    Raw.glyph = gl_dot
                   }::drawn.drawing_contents w
                 )
             }]
@@ -1966,7 +1965,7 @@ module MathsFormat=struct
             let dot_x1 = (Fonts.glyph_x1 gl_dot) *. envs.size *. env.Mathematical.mathsSize /. 1000. in
             (* Bounding box of a *)
             let dr = draw_boxes envs (Maths.draw [envs] a) in
-            let (x0,y0,x1,y1) = OutputCommon.bounding_box_full dr in
+            let (x0,y0,x1,y1) = Raw.bounding_box_full dr in
 
             let drawn=(drawing ~offset:y0 dr) in
             let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
@@ -1975,15 +1974,15 @@ module MathsFormat=struct
               drawn with
                 drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
                 drawing_contents= (fun w ->
-                  OutputCommon.Glyph {
-                    OutputCommon.glyph_x = (x0 +. x1) /. 2. -. (dot_x1 +. dot_x0) /. 2.;
-                    OutputCommon.glyph_kx = 0.;
-                    OutputCommon.glyph_y = y1-.dot_y0 +. 2. *. rul;
-                    OutputCommon.glyph_ky = 0.;
-                    OutputCommon.glyph_order = 1;
-                    OutputCommon.glyph_color = envs.fontColor;
-                    OutputCommon.glyph_size = envs.size *. env.Mathematical.mathsSize;
-                    OutputCommon.glyph = gl_dot
+                  Raw.Glyph {
+                    Raw.glyph_x = (x0 +. x1) /. 2. -. (dot_x1 +. dot_x0) /. 2.;
+                    Raw.glyph_kx = 0.;
+                    Raw.glyph_y = y1-.dot_y0 +. 2. *. rul;
+                    Raw.glyph_ky = 0.;
+                    Raw.glyph_order = 1;
+                    Raw.glyph_color = envs.fontColor;
+                    Raw.glyph_size = envs.size *. env.Mathematical.mathsSize;
+                    Raw.glyph = gl_dot
                   }::drawn.drawing_contents w
                 )
             }]
@@ -1993,7 +1992,7 @@ module MathsFormat=struct
 
     let binomial a b=
       [Maths.Fraction { Maths.numerator=b; Maths.denominator=a;
-                        Maths.line=(fun _ _->{OutputCommon.default with OutputCommon.fillColor=None;OutputCommon.strokingColor=None}) }]
+                        Maths.line=(fun _ _->{Raw.default_path_param with Raw.fillColor=None;Raw.strokingColor=None}) }]
 
     (* Une chirurgie esthétique de glyphs. Ce n'est sans doute pas très
        bien fait, et il faut kerner en haut. Un truc generique pour
@@ -2010,7 +2009,7 @@ module MathsFormat=struct
                                       w+.w_x) 0. boxes)
                in
                let dr=draw_boxes envs boxes in
-               let (x0_,y0_,x1_,y1_)=OutputCommon.bounding_box_full dr in
+               let (x0_,y0_,x1_,y1_)=Raw.bounding_box_full dr in
 
                let env=Maths.env_style envs.mathsEnvironment st in
                let font=Lazy.force (env.Mathematical.mathsFont) in
@@ -2049,11 +2048,11 @@ module MathsFormat=struct
                     drawing_states=[];
                     drawing_contents=
                       (fun w->
-                         OutputCommon.Path ({OutputCommon.default with
-                                               OutputCommon.strokingColor=None;
-                                               OutputCommon.fillColor=Some envs.fontColor
+                         Raw.Path ({Raw.default_path_param with
+                                               Raw.strokingColor=None;
+                                               Raw.fillColor=Some envs.fontColor
                                             },arr')
-                         ::(List.map (OutputCommon.translate (max 0. ((w1*.size-.x1_)/.2.)) 0.) dr))
+                         ::(List.map (Raw.translate (max 0. ((w1*.size-.x1_)/.2.)) 0.) dr))
                   }]
             ))]
 
@@ -2068,7 +2067,7 @@ module MathsFormat=struct
                                       w+.w_x) 0. boxes)
                in
                let dr=draw_boxes envs boxes in
-               let (x0_,y0_,x1_,y1_)=OutputCommon.bounding_box_full dr in
+               let (x0_,y0_,x1_,y1_)=Raw.bounding_box_full dr in
 
                let env=Maths.env_style envs.mathsEnvironment st in
                let font=Lazy.force (env.Mathematical.mathsFont) in
@@ -2102,11 +2101,11 @@ module MathsFormat=struct
                     drawing_states=[];
                     drawing_contents=
                       (fun w->
-                         OutputCommon.Path ({OutputCommon.default with
-                                               OutputCommon.strokingColor=None;
-                                               OutputCommon.fillColor=Some envs.fontColor
+                         Raw.Path ({Raw.default_path_param with
+                                               Raw.strokingColor=None;
+                                               Raw.fillColor=Some envs.fontColor
                                             },arr')
-                         ::(List.map (OutputCommon.translate (max 0. ((w1*.size-.x1_)/.2.)) 0.) dr))
+                         ::(List.map (Raw.translate (max 0. ((w1*.size-.x1_)/.2.)) 0.) dr))
                   }]
             ))]
 

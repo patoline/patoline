@@ -17,10 +17,11 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Typography
 open FTypes
 open Fonts
-open OutputCommon
+open Raw
+open Color
+open Driver
 
 (* Configuration *)
 let margin      = 10.0
@@ -59,23 +60,22 @@ let build_font_file file =
                else
                  translate x 0.
                    (resize (size/.1000.)
-                      (Path ({OutputCommon.default with lineWidth=0.01},
+                      (Path ({default_path_param with lineWidth=0.01},
                              (List.map (fun a->Array.of_list a) (outlines gl))))) :: l
              ))
       )
     in
     let l,y0,y1=make_line i0 (i0+10) 0. 0. 0. [] in
-      if l=[] then [{ pageFormat = page_format;
-                      pageContents=p}] else (
+      if l=[] then [{ size = page_format; contents=p}] else (
         if line<nb_lines (* y -. (y1-.y0)*.size/.1000. >= bot *) then (
           let finaly= y -. y1*.size/.1000. in
             make_pages (i0+10) (line+1) (finaly +. y0*.size/.1000.-.margin )
-              ((Path ({OutputCommon.default with lineWidth=0.01; strokingColor=Some (rgb 0.8 0.8 0.8)},
+              ((Path ({default_path_param with lineWidth=0.01; strokingColor=Some (rgb 0.8 0.8 0.8)},
                [ [|[|0.;210.|],[|finaly;finaly|]|] ]))::
                (* (Path ({Drivers.default with lineWidth=0.1}, [|[|0.;210.|],[|y;y|]|])):: *)
                (List.map (translate margin (finaly)) l) @ p)
         ) else
-          ({ pageFormat=page_format; pageContents=p})::(make_pages i0 0 280. [])
+          ({ size=page_format; contents=p})::(make_pages i0 0 280. [])
       )
   in
   Pdf.output (Array.of_list (make_pages 0 0 280. [])) ofile

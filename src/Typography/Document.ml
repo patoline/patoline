@@ -23,7 +23,8 @@ open Util
 open UsualMake
 open Fonts
 open FTypes
-open OutputCommon
+open Raw
+open Driver
 open Box
 
 type fontAlternative = Regular | Bold | Caps | Demi
@@ -151,7 +152,7 @@ type environment={
   fontItalic:bool;
   fontAlternative:fontAlternative;
   fontFeatures:string list;
-  fontColor:OutputCommon.color;
+  fontColor:Color.color;
   font:font;
   mathsEnvironment:Mathematical.environment;
   mathStyle:Mathematical.style;
@@ -193,7 +194,7 @@ let user_positions env=
   env.user_positions
 let displayname n=
   env_accessed:=true;
-  n.displayname
+  n.raw_name
 
 
 
@@ -1105,7 +1106,7 @@ let button ?(btype=Clickable) name destinations b=bB (fun _->[Marker (BeginLink 
 (** {3 Images} *)
 
 let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
-  let i=OutputCommon.image imageFile in
+  let i=Raw.image imageFile in
   let dr={
     drawing_min_width=i.image_width;
     drawing_max_width=i.image_width;
@@ -1117,7 +1118,7 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_break_badness=0.;
     drawing_states=[];
     drawing_badness=(fun _->0.);
-    drawing_contents=(fun _->[OutputCommon.translate 0. offset (Image i)])
+    drawing_contents=(fun _->[Raw.translate 0. offset (Image i)])
   }
   in
   let scale =
@@ -1174,7 +1175,7 @@ let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_break_badness=0.;
     drawing_states=[];
     drawing_badness=(fun _->0.);
-    drawing_contents=(fun _->[OutputCommon.Video i])
+    drawing_contents=(fun _->[Raw.Video i])
   }
 
 let includeGraphics ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile=
@@ -1376,7 +1377,7 @@ let boxify buf nbuf env0 l=
 
 
 (** Typesets boxes on a single line, then converts them to a list of basic
-    drawing elements: [OutputCommon.raw]. *)
+    drawing elements: [Raw.raw]. *)
 let draw_boxes env l=
   let rec draw_boxes x y dr l=match l with
       []->dr,x
@@ -1392,20 +1393,20 @@ let draw_boxes env l=
       draw_boxes w1 y dr1 s
     )
     | GlyphBox a::s->(
-      let box=OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y } in
+      let box=Raw.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y } in
       let w=a.glyph_size*.Fonts.glyphWidth a.glyph/.1000. in
       draw_boxes (x+.w) y (box::dr) s
     )
     | Glue g::s
     | Drawing g ::s->(
       let w=g.drawing_nominal_width in
-      let box=(List.map (OutputCommon.translate (x) (y)) (g.drawing_contents w)) in
+      let box=(List.map (Raw.translate (x) (y)) (g.drawing_contents w)) in
       draw_boxes (x+.w) y (box@dr) s
     )
     | Marker (BeginLink l)::s->(
       (*      Printf.fprintf stderr "****BeginURILink %S****\n" l;*)
       let k = match l with
-	  Box.Extern l -> OutputCommon.Extern l;
+	  Box.Extern l -> Raw.Extern l;
 	| Box.Intern l ->
 	  let dest_page=
             try
@@ -1414,8 +1415,8 @@ let draw_boxes env l=
             with
               Not_found->(-1)
 	  in
-	  OutputCommon.Intern(l,dest_page,0.,0.);
-	| Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
+	  Raw.Intern(l,dest_page,0.,0.);
+	| Box.Button(drag,n,d) -> Raw.Button(drag,n,d)
       in
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                  link_order=0;
@@ -1584,7 +1585,7 @@ let adjust_width env buf nbuf =
 		(match b with
 		| Drawing x when before -> Drawing { x with
 		  drawing_contents =
-		      (fun w -> List.map (OutputCommon.translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
+		      (fun w -> List.map (Raw.translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
 		}
 		| Drawing x -> Drawing { x with
 		  drawing_nominal_width = r +. x.drawing_nominal_width;
@@ -1840,15 +1841,15 @@ let rec make_struct positions = function
           positions.(s.node_paragraph)
         else (0,0.,0.)
       in
-      { OutputCommon.name          = s.name
-      ; OutputCommon.metadata      = []
-      ; OutputCommon.displayname   = s.boxified_displayname
-      ; OutputCommon.tags          = s.node_tags
-      ; OutputCommon.page          = p
-      ; OutputCommon.struct_x      = x
-      ; OutputCommon.struct_y      = y
-      ; OutputCommon.substructures = a }
-  | _ -> OutputCommon.empty_structure
+      { Driver.name     = s.name
+      ; Driver.metadata = []
+      ; Driver.raw_name = s.boxified_displayname
+      ; Driver.tags     = s.node_tags
+      ; Driver.page     = p
+      ; Driver.struct_x = x
+      ; Driver.struct_y = y
+      ; Driver.children = a }
+  | _ -> Driver.empty_structure
 
 (** Adds a tag to the given structure. *)
 let tag str tags=

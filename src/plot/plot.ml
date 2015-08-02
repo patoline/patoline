@@ -18,7 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Typography.Document
-open Typography.OutputCommon
+open Color
+open Raw
 open Util
 open Typography.Box
 open Typography
@@ -82,14 +83,14 @@ module Plot(D:Document.DocumentStructure)=struct
             )
           in
           let x0,y0,x1,y1=bounding_box label in
-          tx:=Path(default,
+          tx:=Path(default_path_param,
                    [[|line (scalex*. !x,0.) (scalex*. !x,-.1.)|]])
-          ::(List.map (OutputCommon.translate (scalex*. !x-.(x1-.x0)/.2.) (-.2.-.y1) ) label)
+          ::(List.map (Raw.translate (scalex*. !x-.(x1-.x0)/.2.) (-.2.-.y1) ) label)
           @(!tx);
 
           x:= !x+.inter
         done;
-        tx:=Path(default,[[|line (0.,0.) (scalex*. (!x-.inter/.2.),0.)|]]):: !tx
+        tx:=Path(default_path_param,[[|line (0.,0.) (scalex*. (!x-.inter/.2.),0.)|]]):: !tx
       );
       if floor (maxy-.miny) < 1. || List.length points > (int_of_float (floor(maxy-.miny)*.5.))
       then (
@@ -111,14 +112,14 @@ module Plot(D:Document.DocumentStructure)=struct
             )
           in
           let x0,y0,x1,y1=bounding_box label in
-          ty:=Path(default,
+          ty:=Path(default_path_param,
                    [[|line (0.,scaley*. !y) (-.1.,scaley*. !y)|]])
-          ::(List.map (OutputCommon.translate (-.2.-.x1) (scaley*. !y-.(y1-.y0)/.2.)) label)
+          ::(List.map (Raw.translate (-.2.-.x1) (scaley*. !y-.(y1-.y0)/.2.)) label)
           @(!ty);
 
           y:= !y+.inter
         done;
-        ty:=Path(default,[[|line (0.,0.) (0.,scaley*. (!y-.inter/.2.))|]]):: !ty
+        ty:=Path(default_path_param,[[|line (0.,0.) (0.,scaley*. (!y-.inter/.2.))|]]):: !ty
       );
 
       let drawn_curves=ref [] in
@@ -135,7 +136,7 @@ module Plot(D:Document.DocumentStructure)=struct
       in
       let i=ref 0 in
       List.iter (fun (_,cur)->
-        let par={default with strokingColor=Some (colors !i (List.length points))} in
+        let par={default_path_param with strokingColor=Some (colors !i (List.length points))} in
         drawn_curves:=
           List.concat (List.map (croix par) cur)@
           (Path (par,[Array.of_list (draw_curve cur [])]))::(!drawn_curves);
@@ -165,7 +166,7 @@ module Plot(D:Document.DocumentStructure)=struct
             [|paragraph [bB (fun _->b)];
               paragraph [bB (fun env->
                 incr i;
-                let l=Path ({default with strokingColor=Some (colors !i (List.length points))},
+                let l=Path ({default_path_param with strokingColor=Some (colors !i (List.length points))},
                             [[|line (0.,0.) (env.size*.4.,0.)|]]) in
                 let xsize=env.size/.2. in
                 [Drawing (drawing ~offset:(xsize/.2.) [l])]

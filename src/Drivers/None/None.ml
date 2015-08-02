@@ -18,8 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Typography.OutputCommon
-open Typography.OutputPaper
+open Driver
 
 let driver_options = []
 let filter_options argv = argv			    
@@ -28,8 +27,8 @@ let output  ?(structure : structure = empty_structure) _ _ = ()
 let output' ?(structure : structure = empty_structure) _ _ = ()
 
 let _ =
-  Hashtbl.add drivers "None"
+  Hashtbl.add DynDriver.drivers "None"
     (module struct
        let output  = output
        let output' = output'
-     end : Driver)
+     end : OutputDriver)

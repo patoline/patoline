@@ -43,3 +43,8 @@ module type OutputDriver =
 function given an "output" function. *)
 val output_to_prime : (?structure:structure -> page array -> 'b -> 'c)
   -> ?structure:structure -> page array array -> 'b -> 'c
+
+(* Similar, but going the other direction. *)
+val output_from_prime :
+  (?structure:structure -> 'a array array -> 'b -> 'c) ->
+  ?structure:structure -> 'a array -> 'b -> 'c

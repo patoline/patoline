@@ -19,10 +19,11 @@
 *)
 open Typography
 open Typography.Document
-open Typography.OutputCommon
-open Typography.OutputPaper
+open Raw
+open Color
 open Util
 open UsualMake
+open Driver
 
 open Typography.Box
 open Fonts
@@ -144,7 +145,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
             let frame=
               if M.arg1=[] then [
-                Path ({default with close=true;fillColor=Some (!block_foreground)},
+                Path ({default_path_param with close=true;fillColor=Some (!block_foreground)},
                       [rounded_corners ~r
                           (0.,minip0.drawing_y0-.margin)
                           (max mes minip0.drawing_nominal_width+.margin,
@@ -152,12 +153,12 @@ module Format=functor (D:Document.DocumentStructure)->(
               ]
               else
                 [
-                Path ({default with close=true;fillColor=Some (!block_foreground)},
+                Path ({default_path_param with close=true;fillColor=Some (!block_foreground)},
                       [rounded_corners ~r
                           (0.,minip0.drawing_y0-.margin)
                           (max mes minip0.drawing_nominal_width+.margin,
                            tx+.minip_title0.drawing_y1+.margin)]);
-                Path ({default with path_order=1;fillColor=Some !block_background;strokingColor=None },
+                Path ({default_path_param with path_order=1;fillColor=Some !block_background;strokingColor=None },
                       [rounded_corners ~ne:r ~nw:r
                           (0.,tx+.minip_title0.drawing_y0-.margin)
                           (max mes minip0.drawing_nominal_width+.margin,
@@ -170,7 +171,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               drawing_y1=tit.drawing_y1+.margin_bottom_top;
               drawing_y0=tit.drawing_y0-.margin_bottom_top;
               drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
-              drawing_contents=(fun w->(List.map (fun a->OutputCommon.translate margin 0. (in_order 2 a)) (tit.drawing_contents w))@frame)
+              drawing_contents=(fun w->(List.map (fun a->Raw.translate margin 0. (in_order 2 a)) (tit.drawing_contents w))@frame)
             } in
             [bB (fun _->Drawing dr :: ms2 @ ms1);Env (fun _->env2)]
           with
@@ -434,7 +435,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     module MainTableOfContents=struct
       let do_begin_env ()=
         let max_depth=1 in
-        TableOfContents.slides ~hidden_color:(OutputCommon.black) center D.structure D.structure max_depth
+        TableOfContents.slides ~hidden_color:(Color.black) center D.structure D.structure max_depth
       let do_end_env ()=()
     end
 
@@ -861,13 +862,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                 |]
               in
               let cont=ref [
-                Path ({default with fillColor=Some !toc_background},
+                Path ({default_path_param with fillColor=Some !toc_background},
                       [rect])
               ]
               in
               let _=IntMap.fold (fun _ a m->
                 cont:=(List.map (fun x->in_order 1
-                  (OutputCommon.translate m y_menu (OutputCommon.resize alpha x)))
+                  (Raw.translate m y_menu (Raw.resize alpha x)))
                          (draw_boxes env_final a))@(!cont);
                 let w=List.fold_left (fun w x->let _,w',_=box_interval x in w +. alpha *. w') 0. a in
                 m+.inter+.w
@@ -894,7 +895,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                  let boxes=boxify_scoped env [tT num] in
                 let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in
                 let x=draw_boxes env boxes in
-                List.map (fun y->OutputCommon.translate (slidew-.w-.2.) 2. (in_order max_int y)) x)
+                List.map (fun y->Raw.translate (slidew-.w-.2.) 2. (in_order max_int y)) x)
             in
 
             (* Dessin du slide complet *)
@@ -904,8 +905,8 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
               let destinations=ref StrMap.empty in
 
               for st=0 to Array.length opts-1 do
-                let page={ pageFormat=slidew,slideh; pageContents=[] } in
-                page.pageContents<-if IntMap.cardinal toc>0 then draw_toc env else [];
+                let page = empty_page (slidew,slideh) in
+                page.contents<-if IntMap.cardinal toc>0 then draw_toc env else [];
 
                 let tit=
                   match tree with
@@ -920,7 +921,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                     | _->[]
                 in
                 let (x0,_,x1,_)=bounding_box tit in
-                page.pageContents<-(List.map (OutputCommon.translate (slidew/.2.-.(x0+.x1)/.2.) (slideh-.hoffset*.1.1)) tit)@page.pageContents;
+                page.contents<-(List.map (Raw.translate (slidew/.2.-.(x0+.x1)/.2.) (slideh-.hoffset*.1.1)) tit)@page.contents;
                 let pp=Array.of_list opts.(st) in
                 let crosslinks=ref [] in (* (page, link, destination) *)
                 let crosslink_opened=ref false in
@@ -933,13 +934,13 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                   if line.isFigure then (
                     let fig=figures.(line.lastFigure) in
 	            if env.show_boxes then
-                      page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 },
+                      page.contents<- Path ({default_path_param with close=true;lineWidth=0.1 },
                                                 [rectangle (param.left_margin,y+.fig.drawing_y0)
                                                     (param.left_margin+.fig.drawing_nominal_width,
-                                                     y+.fig.drawing_y1)]) :: page.pageContents;
-                    page.pageContents<- (List.map (OutputCommon.translate param.left_margin y)
+                                                     y+.fig.drawing_y1)]) :: page.contents;
+                    page.contents<- (List.map (Raw.translate param.left_margin y)
                                            (fig.drawing_contents fig.drawing_nominal_width))
-                    @ page.pageContents;
+                    @ page.contents;
 
                   ) else if line.paragraph<Array.length paragraphs then (
 
@@ -957,9 +958,9 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                             x'+.w) 0. h.hyphen_normal)
                         )
                         | GlyphBox a->(
-                          page.pageContents<-
-                            (OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
-                          :: page.pageContents;
+                          page.contents<-
+                            (Raw.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
+                          :: page.contents;
                           a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
                         )
                         | Glue g
@@ -973,17 +974,17 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                               | _->true
                             ) cont
                           in
-                          page.pageContents<-
-                            (List.map (OutputCommon.translate x y) cont_states) @ page.pageContents;
+                          page.contents<-
+                            (List.map (Raw.translate x y) cont_states) @ page.contents;
 		          if env.show_boxes then
-                            page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 },
+                            page.contents<- Path ({default_path_param with close=true;lineWidth=0.1 },
 						      [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)])
-			    :: page.pageContents;
+			    :: page.contents;
                           w
                         )
                         | Marker (BeginLink l)->(
 			  let k = match l with
-			      Box.Extern l -> OutputCommon.Extern l;
+			      Box.Extern l -> Raw.Extern l;
 			    | Box.Intern l ->(
 			      try
 				let line=MarkerMap.find (Label l) env_final.user_positions in
@@ -992,19 +993,19 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                                       0.
                                   | _->line.line_y1
                                 in
-				OutputCommon.Intern(l,Box.layout_page line,0.,y1)
+				Raw.Intern(l,Box.layout_page line,0.,y1)
 			      with Not_found->
 				Printf.eprintf "Label not_found %s\n%!" l;
-				OutputCommon.Intern(l,-1,0.,0.)
+				Raw.Intern(l,-1,0.,0.)
                             )
-			    | Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
+			    | Box.Button(drag,n,d) -> Raw.Button(drag,n,d)
 			  in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                      link_order=0;link_closed=false;
                                      link_contents=[] }
                           in
                           crosslinks:=(comp_i, link, l) :: !crosslinks;
-                          page.pageContents<-Link link::page.pageContents;
+                          page.contents<-Link link::page.contents;
                           crosslink_opened:=true;
                           0.
                         )
@@ -1027,7 +1028,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                             )
                             | h::s->link_contents (h::u) s
                           in
-                          page.pageContents<-link_contents [] page.pageContents;
+                          page.contents<-link_contents [] page.contents;
                           crosslinks:=(match !crosslinks with []->[] | _::s->s);
                           0.
                         )
@@ -1044,8 +1045,8 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                   List.iter (fun x->match x with
                       Placed_line l->()
                     | Raw r->(
-                      page.pageContents<-
-                        (in_state st r)@page.pageContents
+                      page.contents<-
+                        (in_state st r)@page.contents
                     )
                   ) f.frame_content;
                   IntMap.iter (fun k a->more_contents a) f.frame_children;
@@ -1054,7 +1055,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                    more_contents (IntMap.find slide_num (fst (frame_top layout_final)).frame_children)
                  with
                      Not_found->());
-                page.pageContents<-(draw_slide_number env slide_number)@page.pageContents;
+                page.contents<-(draw_slide_number env slide_number)@page.contents;
                 states:=page:: !states
               done;
               let env=
@@ -1077,16 +1078,16 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                   let num= !slide_num in
                   let sub=IntMap.fold (fun _ a m->(make_structure pages a)@m) n.children [] in
                   let n_name = n.name in
-                  let open Typography.OutputCommon in
+                  let open Driver in
                       [{name=n_name;
-                        displayname=[];metadata=[];tags=n.node_tags;
+                        raw_name=[];metadata=[];tags=n.node_tags;
 		        page=num;struct_x=fst !structPosition;struct_y=snd !structPosition;
-                        substructures=Array.of_list (List.rev sub)
+                        children=Array.of_list (List.rev sub)
                        }]
                 )
                 | Node n when List.mem_assoc "slide" n.node_tags ->
                   ((*Position: tout en haut du slide *)
-                    structPosition:=(snd pages.(!slide_num)).(0).pageFormat;
+                    structPosition:=Driver.((snd pages.(!slide_num)).(0).size);
                     incr slide_num;
                     [])
                 | Node n->

@@ -18,8 +18,9 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Document
-module Drivers = OutputCommon
-open OutputCommon
+module Drivers = Raw
+open Raw
+open Color
 open Proj3d
 open Geometry
 
@@ -143,13 +144,13 @@ module Curve = struct
   let nb_beziers curve = List.length curve
   let of_point_lists l = List.map bezier_of_point_list l
   let of_contents = function
-    | OutputCommon.Path (_, beziers) -> List.map Array.to_list beziers
-    | _ -> failwith "Attempt to convert a non-path value of type OutputCommon.content to Curve.t."
+    | Raw.Path (_, beziers) -> List.map Array.to_list beziers
+    | _ -> failwith "Attempt to convert a non-path value of type Raw.content to Curve.t."
   let draw
-    ?parameters:(parameters=OutputCommon.default)
+    ?parameters:(parameters=Raw.default_path_param)
     (curve:t) =
     if curve = [] then [] else
-      [OutputCommon.Path (parameters, [Array.of_list curve])]
+      [Raw.Path (parameters, [Array.of_list curve])]
 
   let translate (x,y) curves = List.map (fun (xs,ys) ->
     (Array.map ((+.) x) xs,
@@ -800,7 +801,7 @@ module Transfo (X : Set.OrderedType) = struct
   module Gentity = struct
   type t = { curve : Curve.t ;	(* The curve is used to determine the start and end of edges *)
 	     anchor : anchor -> Point.t ; (* Anchors are used for relative placement *)
-	     contents : OutputCommon.raw list (* What's needed to actually draw the node *)
+	     contents : Raw.raw list (* What's needed to actually draw the node *)
 	   }
   end
   type gentity = Gentity.t
@@ -824,7 +825,7 @@ module Transfo (X : Set.OrderedType) = struct
     let translate v node =
       { curve = Curve.translate v node.curve ;
 	anchor = (fun a -> Vector.(+) (node.anchor a) v) ;
-	contents = let x,y = v in List.map (OutputCommon.translate x y) node.contents }
+	contents = let x,y = v in List.map (Raw.translate x y) node.contents }
 
 
   (* Two important ways of constructing gentities are nodes and edges between them.  *)
@@ -833,7 +834,7 @@ module Transfo (X : Set.OrderedType) = struct
   module Node = struct
 
     type info = {
-      params : path_parameters ;
+      params : path_param ;
       mainAnchor : anchor ;
 
       innerSep : float ;
@@ -842,7 +843,7 @@ module Transfo (X : Set.OrderedType) = struct
       bb : float * float * float * float ;
       center : Point.t ;
       pdfAnchor: Point.t ;
-      node_contents : OutputCommon.raw list ;
+      node_contents : Raw.raw list ;
 
       button : (button_kind * string * string list) option;
       (* textDepth : float ; *)
@@ -861,12 +862,12 @@ module Transfo (X : Set.OrderedType) = struct
       z : float
     }
 
-    and decoration = Curve of path_parameters * Curve.t
+    and decoration = Curve of path_param * Curve.t
 		       | Node of info
 
     type t = info
 
-    let default_params = { OutputCommon.default with close = false ; strokingColor=None ;
+    let default_params = { Raw.default_path_param with close = false ; strokingColor=None ;
       lineWidth = !default_line_width }
 
     let default = { at = (0.,0.) ;
@@ -967,7 +968,7 @@ module Transfo (X : Set.OrderedType) = struct
       Pet.register "node draw" (fun pet ->
 	{ pet = pet ; transfo = (fun transfos info ->
 	  { info with params = { info.params with
-	    strokingColor = Some OutputCommon.black } } ) })
+	    strokingColor = Some black } } ) })
 
     let setZ,setZ_pet =
       Pet.register "node setZ" (fun pet z ->
@@ -1001,7 +1002,7 @@ module Transfo (X : Set.OrderedType) = struct
 	    (* Printf.fprintf stderr "contents\n" ;  *)
 	    let (x0,y0,x1,y1) as bb = match contents with
 	      | [] -> (0.,0.,0.,0.)
-	      | _ -> OutputCommon.bounding_box contents
+	      | _ -> Raw.bounding_box contents
 	    in
 	    (* let text_depth = -. y0 in *)
 	    (* let text_height = y1 in *)
@@ -1466,7 +1467,7 @@ Doing a rectangle.\n" ;
 	  let bb = BB.translate v info.bb in
 	  let center = Vector.(+) info.center v in
 	  let pdfAnchor = Vector.(+) info.pdfAnchor v in
-	  let contents = List.map (OutputCommon.translate xt yt) info.node_contents in (* Center the contents *)
+	  let contents = List.map (Raw.translate xt yt) info.node_contents in (* Center the contents *)
 	  let innerCurve = Curve.translate v info.innerCurve in
 	  let midCurve = Curve.translate v info.midCurve in
 	  let outerCurve = Curve.translate v info.outerCurve in
@@ -1919,15 +1920,15 @@ Doing a rectangle.\n" ;
       type info = { tip_info : tip_info ;
 			 start : Gentity.t ;
 			 finish : Gentity.t ;
-			 params : path_parameters ;
+			 params : path_param ;
 			 given_curve : Curve.t ;
 			 underlying_curve : Curve.t ;
-			 curves : (path_parameters * Curve.t) list ;
+			 curves : (path_param * Curve.t) list ;
 			 decorations : decoration list ;
 			 z_curve : float array list ;
 			 anchor : anchor -> Point.t
 		  }
-      and decoration = Curve of path_parameters * Curve.t
+      and decoration = Curve of path_param * Curve.t
 		       | Node of Node.t
 
       let evaluate_z info (i,t) = match info.z_curve with
@@ -1961,7 +1962,7 @@ Doing a rectangle.\n" ;
 
       let default_tip_info = { tip_line_width = !default_line_width ; is_double = false }
 
-      let default_params = { OutputCommon.default with
+      let default_params = { Raw.default_path_param with
 	strokingColor = Some black }
 
       let default_edge_info s e underlying_curve =
@@ -1984,7 +1985,7 @@ Doing a rectangle.\n" ;
 
       let empty =
 	{ (default_edge_info (coord (0.,0.)) (coord (0.,0.)) (Curve.of_point_lists [[(0.,0.)]]))
-	  with params = { OutputCommon.default with strokingColor = None } }
+	  with params = { Raw.default_path_param with strokingColor = None } }
 
       let transform styles s e underlying_curve =
 	let edge_info = Transfo.transform styles (default_edge_info s e underlying_curve)  in
@@ -2359,7 +2360,7 @@ Doing a rectangle.\n" ;
 
       let foreground, foreground_pet =
 	Pet.register ~depends:[draw_pet;shorten_pet;params_pet] "foreground"
-	  (fun pet ?shortens:(shortens=3.) ?shortene:(shortene=3.) ?color:(color=Drivers.white) margin ->
+	  (fun pet ?shortens:(shortens=3.) ?shortene:(shortene=3.) ?color:(color=white) margin ->
 	  { pet = pet ; transfo = (fun transfos info ->
 	    let white_paths = List.map (fun (params, curve) ->
 	      { info.params with
@@ -2484,7 +2485,7 @@ Doing a rectangle.\n" ;
 	  decorations = []
 	}
 
-      let put_forth info lt ?color:(color=OutputCommon.white) epsilon margin =
+      let put_forth info lt ?color:(color=white) epsilon margin =
 	let gt = Curve.global_time info.underlying_curve lt  in
 	let cut x = min (max x 0.) 1. in
 	let gt1 = cut (gt -. epsilon) in
@@ -2510,7 +2511,7 @@ Doing a rectangle.\n" ;
 
 
     module Entity = struct
-      type raw={raw_contents:OutputCommon.raw list;raw_anchor:float*float}
+      type raw={raw_contents:Raw.raw list;raw_anchor:float*float}
       type t =
 	Node of Node.t
       | Matrix of Matrix.t
@@ -2539,7 +2540,7 @@ Doing a rectangle.\n" ;
 	| raw :: contents ->
 	  order
 	    (succ i)
-	    ((OutputCommon.in_order i raw) :: res) contents
+	    ((Raw.in_order i raw) :: res) contents
 
       let to_contents stack =
 	let contents = List.flatten (List.rev_map to_raw_list stack) in
@@ -2553,7 +2554,7 @@ Doing a rectangle.\n" ;
       open Entity
       let stack : entity list ref = ref []
       let env = Args.env
-      let compute_intersections = ref (Some (fun x -> Edge.put_forth ~color:OutputCommon.white x))
+      let compute_intersections = ref (Some (fun x -> Edge.put_forth ~color:white x))
       let epsilon = ref 1.0
       let margin = ref 1.0
       let t_margin = ref 0.05
@@ -2589,7 +2590,7 @@ Doing a rectangle.\n" ;
 
       let raw (x,y) l=
         let r= { raw_anchor=(x,y);
-                 raw_contents=List.map (OutputCommon.translate x y) l }
+                 raw_contents=List.map (Raw.translate x y) l }
         in
         stack:=Raw r :: !stack;
         r
@@ -2908,7 +2909,7 @@ Doing a rectangle.\n" ;
 		let dr=Document.draw_boxes env
 		  (Maths.draw [{env with mathStyle = Maths.scriptStyle env.mathStyle}] a)
 		in
-		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> OutputCommon.bounding_box dr
+		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> Raw.bounding_box dr
 		in
 		let scale = 0.2*.(scale_env env) in
 		(* let _ = Printf.fprintf stderr "Bb: %f,%f,%f,%f\n" x0 y0 x1 y1 ; flush stderr in *)

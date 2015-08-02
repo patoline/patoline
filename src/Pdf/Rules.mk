@@ -24,33 +24,33 @@ $(d)/pdf_parser.cmx: $(d)/pdf_parser.cmo
 
 # Building stuff
 all: $(d)/pdf_parser.cmxa $(d)/pdf_parser.a $(d)/pdf_parser.cmi
-$(d)/%.depends $(d)/%.cmx $(d)/%.cmo: INCLUDES:=-I $(d) -package $(CAMLZIP),Typography
+$(d)/%.depends $(d)/%.cmx $(d)/%.cmo: INCLUDES:=-I $(d) -package $(CAMLZIP),rawlib
 
 $(d)/pdf_parser.cmi: $(d)/pdf_parser.cmx ;
 
-$(d)/obj_parser.cmx $(d)/pdf_parser.cmx $(d)/pdfutil.cmx: $(TYPOGRAPHY_DIR)/Typography.cmxa
-$(d)/obj_parser.cmo $(d)/pdf_parser.cmo $(d)/pdfutil.cmo: $(TYPOGRAPHY_DIR)/Typography.cma
+$(d)/obj_parser.cmx $(d)/pdf_parser.cmx $(d)/pdfutil.cmx: $(RAWLIB_DIR)/rawlib.cmxa
+$(d)/obj_parser.cmo $(d)/pdf_parser.cmo $(d)/pdfutil.cmo: $(RAWLIB_DIR)/rawlib.cma
 
 PDF_PARSER_SOURCES := $(d)/pdfutil.ml $(d)/obj_lexer.ml $(d)/obj_parser.ml $(d)/pdf_parser.ml
 
 $(d)/pdf_parser.a: $(d)/pdf_parser.cmxa ;
-$(d)/pdf_parser.cmxa: $(PDF_PARSER_SOURCES:.ml=.cmx) $(TYPOGRAPHY_DIR)/Typography.cmxa
+$(d)/pdf_parser.cmxa: $(PDF_PARSER_SOURCES:.ml=.cmx) $(RAWLIB_DIR)/rawlib.cmxa
 	$(ECHO) "[BYT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -a -o $@ $(filter-out $(TYPOGRAPHY_DIR)/Typography.cmxa,$^)
+	$(Q)$(OCAMLOPT) -a -o $@ $(filter-out $(RAWLIB_DIR)/rawlib.cmxa,$^)
 
-$(d)/pdf_parser.cma: $(PDF_PARSER_SOURCES:.ml=.cmo) $(TYPOGRAPHY_DIR)/Typography.cma
+$(d)/pdf_parser.cma: $(PDF_PARSER_SOURCES:.ml=.cmo) $(RAWLIB_DIR)/rawlib.cma
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLC) -a -o $@ $(filter-out $(TYPOGRAPHY_DIR)/Typography.cma,$^)
+	$(Q)$(OCAMLC) -a -o $@ $(filter-out $(RAWLIB_DIR)/rawlib.cma,$^)
 
-$(d)/pdf_parser.p.cmxa: $(PDF_PARSER_SOURCES:.ml=.p.cmx) $(TYPOGRAPHY_DIR)/Typography.p.cmxa
+$(d)/pdf_parser.p.cmxa: $(PDF_PARSER_SOURCES:.ml=.p.cmx) $(RAWLIB_DIR)/rawlib.p.cmxa
 	$(ECHO) "[OPT.p]  ... -> $@"
-	$(Q)$(OCAMLOPT) -p -a -o $@ $(filter-out $(TYPOGRAPHY_DIR)/Typography.p.cmxa,$^)
+	$(Q)$(OCAMLOPT) -p -a -o $@ $(filter-out $(RAWLIB_DIR)/rawlib.p.cmxa,$^)
 
 # Installing
 install: install-pdf
 .PHONY: install-pdf
 install-pdf: install-typography $(d)/pdf_parser.cmxa $(d)/pdf_parser.a $(d)/pdf_parser.cmi
-	install -m 644 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
+	install -m 644 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_RAWLIB_DIR)
 
 # Cleaning
 CLEAN += $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi \

@@ -92,8 +92,8 @@ module Format=functor (D:DocumentStructure)->struct
                        let c0=(minip_sender.drawing_contents minip_sender.drawing_nominal_width) in
                        let c1=(minip_recip.drawing_contents minip_recip.drawing_nominal_width) in
                        let contents=
-                         (List.map (OutputCommon.translate x0 y0) c0)@
-                           (List.map (OutputCommon.translate x1 y1) c1)
+                         (List.map (Raw.translate x0 y0) c0)@
+                           (List.map (Raw.translate x1 y1) c1)
                        in
                          [Drawing {
                             drawing_min_width= env.normalMeasure;
@@ -133,7 +133,7 @@ module Format=functor (D:DocumentStructure)->struct
   let subject x= !subject_text @ x
 
 
-  module Output (M:OutputPaper.Driver)=struct
+  module Output (M:Driver.OutputDriver)=struct
     module O=Default.Output(M)
     type output=O.output
     let outputParams=O.outputParams

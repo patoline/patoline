@@ -19,8 +19,9 @@
 *)
 open Typography
 open Fonts.FTypes
-open OutputCommon
-open OutputPaper
+open Raw
+open Color
+open Driver
 open Util
 
 let cur_page = ref 0
@@ -78,7 +79,7 @@ let output ?(structure:structure={name="";displayname=[]; metadata = []; tags=[]
             Link(l') -> 
 	      l := l'::!l
 	  | _ -> ())
-	  page.pageContents;
+	  page.contents;
 	!l)
       !pages;
   in
@@ -92,7 +93,7 @@ let output ?(structure:structure={name="";displayname=[]; metadata = []; tags=[]
   let reshape_cb ~width:w ~height:h =
     let ratio = (float_of_int w) /. (float_of_int h) in
     let page = !cur_page in
-    let pw,ph = !pages.(page).pageFormat in
+    let pw,ph = !pages.(page).size in
     let cx = pw /. 2.0 +. !dx in
     let cy = ph /. 2.0 +. !dy in
     let rx = (ph *. ratio) /. 2.0 *. !zoom in
@@ -134,7 +135,7 @@ let output ?(structure:structure={name="";displayname=[]; metadata = []; tags=[]
     let x = float x and y = h -. float y in
     let ratio = w /. h in
     let page = !cur_page in
-    let pw,ph = !pages.(page).pageFormat in
+    let pw,ph = !pages.(page).size in
     let cx = pw /. 2.0 +. !dx in
     let cy = ph /. 2.0 +. !dy in
     let dx = (ph *. ratio) *. !zoom in
@@ -278,7 +279,7 @@ let output ?(structure:structure={name="";displayname=[]; metadata = []; tags=[]
   let mode = ref Single in
 
     let draw_blank page =
-      let pw,ph = !pages.(page).pageFormat in
+      let pw,ph = !pages.(page).size in
       GlDraw.color (1.0, 1.0, 1.0);
       GlDraw.begins `quads;
       GlDraw.vertex2 (0., 0.);
@@ -489,7 +490,7 @@ let output ?(structure:structure={name="";displayname=[]; metadata = []; tags=[]
       GlDraw.vertex2 (i.image_x, i.image_y +. i.image_height);
       GlDraw.ends ();
       Gl.disable `texture_2d;
-    ) !pages.(page).pageContents
+    ) !pages.(page).contents
     in
 
     let do_draw () =
@@ -498,7 +499,7 @@ let output ?(structure:structure={name="";displayname=[]; metadata = []; tags=[]
 	  draw_page !cur_page
       | Double ->
 	let page = (!cur_page / 2) * 2 in
-	let pw,ph = !pages.(!cur_page).pageFormat in
+	let pw,ph = !pages.(!cur_page).size in
 	if page - 1 >= 0 && page - 1 < !num_pages then draw_page (page - 1) else draw_blank !cur_page;
 	GlMat.push ();
 	GlMat.translate3 (pw +. 1.0, 0.0, 0.0);

@@ -17,14 +17,14 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Typography
 open Typography.Document
-open Typography.OutputCommon
+open Raw
 open UsualMake
-open Typography.Box
+open Box
 open Fonts
 open FTypes
-open Typography.Document
 open HtmlFonts
 
 module MathFonts=DefaultFormat.MathFonts
@@ -35,11 +35,10 @@ type div={ div_children:page array; title:string }
 and page=Div of div | Par of string list
 
 
-module Format=functor (D:Document.DocumentStructure)->(
-  struct
+module Format (D : Document.DocumentStructure) = struct
+  module Default = DefaultFormat.Format(D)
 
-    module Default=DefaultFormat.Format(D)
-    include (Default:
+  include (Default:
                (((module type of Default
                  with
                    module Output:=Default.Output)
@@ -49,7 +48,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   module TableOfContents:=Default.TableOfContents))
 
 
-    module Output(M:OutputPaper.Driver)=struct
+    module Output(M:Driver.OutputDriver)=struct
 
       type output=unit
       let outputParams=()
@@ -129,7 +128,8 @@ module Format=functor (D:Document.DocumentStructure)->(
             | Hyphen x->Array.iter output_contents x.hyphen_normal
             | Glue g->Rbuffer.add_string buf " "
             | Drawing d->(
-              let i=SVG.images_of_boxes ~cache:cache ~css:"" prefix env [|[b]|] in
+              let i = assert false in (* FIXME FIXME FIXME *)
+              (*let i = SVG.images_of_boxes ~cache:cache ~css:"" prefix env [|[b]|] in *)
               if Array.length i>0 then
                 Rbuffer.add_string buf i.(0)
             )
@@ -191,4 +191,4 @@ module Format=functor (D:Document.DocumentStructure)->(
         done
 
     end
-  end)
+end

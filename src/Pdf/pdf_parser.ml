@@ -21,10 +21,11 @@
 (* module StrMap=Map.Make(struct type t=string let compare=compare end) *)
 
 open Pdfutil
-open Typography.OutputCommon
-open Typography.OutputPaper
 open Util
 open UsualMake
+open Driver
+open Color
+open Raw
 
 let buf=String.create 10000
 let buf_start=ref 1
@@ -200,7 +201,7 @@ let parse file=
       | _->failwith "/Pages not a dictionary"
   in
   let pages=make_pages pages_obj in
-  let pages_arr=Array.make !n_pages { pageFormat=(0.,0.); pageContents=[] } in
+  let pages_arr=Array.make !n_pages (empty_page (0.,0.)) in
 
   let parse_number sf i=
     let int=read_int sf i in
@@ -291,11 +292,11 @@ let parse file=
               (* Printf.fprintf stderr "operator %S\n" op;flush stderr; *)
               (match op with
                   "RG"->(match stack with
-                      b::g::r::_->cur_stroke:=Typography.OutputCommon.rgb r g b
+                      b::g::r::_->cur_stroke:=rgb r g b
                     | _->failwith "not enough operands for operator RG"
                   )
                 | "rg"->(match stack with
-                    b::g::r::_->cur_fill:=Typography.OutputCommon.rgb r g b
+                    b::g::r::_->cur_fill:=rgb r g b
                     | _->failwith "not enough operands for operator RG"
                 )
                 | "w"->(match stack with
@@ -305,7 +306,7 @@ let parse file=
                   if !cur_path<>[] then cur_paths:=(!cur_path)::(!cur_paths);
                   cur_path:=[];
                   contents:=
-                    Path ({ default with
+                    Path ({ default_path_param with
                       lineWidth=mm_of_pt !curw;
                       strokingColor=None;
                       fillColor=Some !cur_fill },
@@ -381,8 +382,8 @@ let parse file=
                       in
                       let w=h2-.h0 in
                       let h=h3-.h1 in
-                      pages_arr.(i)<-{pageFormat=(mm_of_pt w,mm_of_pt h);
-                                      pageContents=parse_page cont h0 h1};
+                      pages_arr.(i)<-{size=(mm_of_pt w,mm_of_pt h);
+                                      contents=parse_page cont h0 h1};
                       (i+1)
                     )
                   | _->failwith "invalid /MediaBox"

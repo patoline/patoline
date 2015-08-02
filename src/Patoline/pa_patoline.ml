@@ -941,7 +941,9 @@ let wrap basename _loc ast =
     open Typography.Box
     open Typography.Config
     open Typography.Document
-    open Typography.OutputCommon
+    open Raw
+    open Color
+    open Driver
     open DefaultFormat.MathsFormat
     let $lid:("cache_"^basename)$ =
       ref ([||] : (environment -> Mathematical.style -> box list) array)

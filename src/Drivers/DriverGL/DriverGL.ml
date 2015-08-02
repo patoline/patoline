@@ -19,8 +19,9 @@
 *)
 open Typography
 open FTypes
-open OutputCommon
-open OutputPaper
+open Raw
+open Color
+open Driver
 open Util
 
 type subpixel_anti_aliasing =
@@ -321,7 +322,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	    | Animation _ -> ()
 	    | Glyph _ | Image _ | Path _ | Video _ -> ()) ls
 	  in
-	  fn (drawing_sort state.pageContents);
+	  fn (drawing_sort state.contents);
 	  !l) page)
       !pages;
   in
@@ -335,7 +336,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let ratio = w /. h in
     let page = !cur_page in
     let state = !cur_state in
-    let pw,ph = !pages.(page).(state).pageFormat in
+    let pw,ph = !pages.(page).(state).size in
     let cx = pw /. 2.0 +. win.dx in
     let cy = ph /. 2.0 +. win.dy in
     let dx = (ph *. ratio) *. win.zoom in
@@ -383,7 +384,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let ratio = (float_of_int w) /. (float_of_int h) in
     let page = !cur_page in
     let state = !cur_state in
-    let pw,ph = !pages.(page).(state).pageFormat in
+    let pw,ph = !pages.(page).(state).size in
     let win = get_win () in
     if !init_zoom then begin
       init_zoom := false; win.dx <- 0.0; win.dy <- 0.0;
@@ -483,7 +484,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let mode = ref Single in
 
   let draw_blank page state =
-    let pw,ph = !pages.(page).(state).pageFormat in
+    let pw,ph = !pages.(page).(state).size in
     GlDraw.color ~alpha:0.0 (1.0, 1.0, 1.0);
     GlDraw.begins `quads;
     GlDraw.vertex2 (0., 0.);
@@ -780,7 +781,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Gl.enable `blend;
       GlFBO.merge_blend ();
       GlFunc.depth_mask false;
-      List.iter fn (drawing_sort !pages.(page).(state).pageContents);
+      List.iter fn (drawing_sort !pages.(page).(state).contents);
 
 
       GlFunc.depth_mask true;
@@ -799,7 +800,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  draw_page pixel_width !cur_page !cur_state
       | Double -> () (*
 	let page = (!cur_page / 2) * 2 in
-	let pw,ph = !pages.(!cur_page).(!cur_state).pageFormat in
+	let pw,ph = !pages.(!cur_page).(!cur_state).size in
 	if page - 1 >= 0 && page - 1 < !num_pages then draw_page (page - 1) else draw_blank !cur_page;
 	GlMat.push ();
 	GlMat.translate3 (pw +. 1.0, 0.0, 0.0);
@@ -843,7 +844,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     in
 (*
   let draw_off_screen pixel_width samples page state =
-    let pw,ph = !pages.(page).(state).pageFormat in
+    let pw,ph = !pages.(page).(state).size in
     let w, h = int_of_float (pw /. pixel_width),  int_of_float (ph /. pixel_width) in
     let fbo = GlFBO.create_fbo_texture (samples*w) (samples*h) true in
     GlFBO.bind_fbo fbo;
@@ -853,7 +854,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 *)
   let get_pix samples w h saa page state =
-    let pw,ph = !pages.(page).(state).pageFormat in
+    let pw,ph = !pages.(page).(state).size in
     let w, h = match w, h with
 	None, None -> 400, int_of_float (ph /. pw *. float 400)
       | Some w, None -> w, int_of_float (ph /. pw *. float w)
@@ -889,7 +890,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 (*
    let draw_texture fbo page state =
-     let pw,ph = !pages.(page).(state).pageFormat in
+     let pw,ph = !pages.(page).(state).size in
      Gl.enable `texture_2d;
      GlFBO.bind_texture fbo;
      GlDraw.color (1.0, 1.0, 1.0);
@@ -1026,7 +1027,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     GlMisc.hint `polygon_smooth `nicest;
     Gl.enable `light0;
     let w = float w in
-    let pw,ph = !pages.(!cur_page).(!cur_state).pageFormat in
+    let pw,ph = !pages.(!cur_page).(!cur_state).size in
     let (xl,yl,zl,_) as posl = (win.cx, win.cy *. 1.9, 2.0 *. max win.rx win.ry, 1.0) in
     GlLight.light ~num:0 (`position posl);
     GlLight.light ~num:0 (`ambient(0.2,0.2,0.2,1.0));

@@ -99,7 +99,8 @@ let write_main_file dynlink where formats driver suppl main_mod outfile=
 open Typography
 open Typography.Box
 open Typography.Document
-open Typography.OutputCommon
+open Raw
+open Color
 open DefaultFormat.MathsFormat
 
 let _ = Distance.read_cache \"%s\"
@@ -114,8 +115,8 @@ module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"]
     Printf.fprintf where "let driver = match !Config.driver with
   None -> %S
 | Some s -> s
-let _ = OutputPaper.load_driver driver
-module Driver = (val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver);;\n"
+let _ = DynDriver.load_driver driver
+module Driver = (val Hashtbl.find DynDriver.drivers driver:Driver:OutputDriver);;\n"
       driver
   else
     Printf.fprintf where "module Driver = %s;;\n" driver;
@@ -182,7 +183,9 @@ open Typography.Box
 open Util
 open Typography.Config
 open Typography.Document
-open Typography.OutputCommon
+open Raw
+open Color
+open Driver
 open DefaultFormat.MathsFormat
 let %s = ref ([||] : (environment -> Mathematical.style -> box list) array)
 let m%s = ref ([||]  : (environment -> Mathematical.style -> box list) list array)

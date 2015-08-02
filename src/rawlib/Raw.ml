@@ -78,7 +78,7 @@ type raw =
   | Affine    of affine    (* Afine transformation on a list of contents. *)
   | States    of states    (* ??? *)
   | Animation of animation (* ??? *)
-  | Dynamic   of dynamic   (* ??? *)
+  | Dynamic   of raw list dynamic (* ??? *)
 
 (* Link on some contents. *)
 and button_kind =
@@ -129,10 +129,10 @@ and action =
   | Unchanged
   | Private
   | Public
-and dynamic =
+and 'a dynamic =
   { dyn_label    : string
-  ; dyn_contents : unit -> raw list
-  ; dyn_sample   : raw list
+  ; dyn_contents : unit -> 'a
+  ; dyn_sample   : 'a
   ; dyn_react    : event -> action
   ; dyn_order    : int }
 

@@ -18,7 +18,7 @@ endif
 endif
 
 # Building
-RAWLIB_MODS:= Color Bezier Raw Driver
+RAWLIB_MODS:= Color Bezier Raw Driver DynDriver
 
 RAWLIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(RAWLIB_MODS)))
 
@@ -54,7 +54,7 @@ DISTCLEAN += $(wildcard $(d)/*.depends)
 # Installing
 install: install-rawlib
 .PHONY: install-rawlib
-install-util: $(d)/rawlib.cma $(d)/rawlib.cmxa $(d)/rawlib.cmxs $(d)/rawlib.a $(RAWLIB_CMI) $(RAWLIB_CMX) $(RAWLIB_CMO) $(d)/META
+install-rawlib: $(d)/rawlib.cma $(d)/rawlib.cmxa $(d)/rawlib.cmxs $(d)/rawlib.a $(RAWLIB_CMI) $(RAWLIB_CMX) $(RAWLIB_CMO) $(d)/META
 	install -m 755 -d $(DESTDIR)/$(INSTALL_RAWLIB_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_RAWLIB_DIR)
 

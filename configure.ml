@@ -113,7 +113,7 @@ let local_packages = [
   { package_name = "rawlib";
     macro_suffix = "RAWLIB";
     local_deps = ["patutil"; "imagelib"; "patfonts"];
-    extern_deps = [];
+    extern_deps = ["dynlink"];
     subdirs = [];
     has_meta = true;
   };
@@ -154,14 +154,14 @@ let local_packages = [
   };
   { package_name = "Typography";
     macro_suffix = "TYPOGRAPHY";
-    local_deps = ["patutil";"patfonts";"imagelib";"unicodelib";"cesure"];
-    extern_deps = ["zip";"mysql";"dynlink";"fontconfig"];
-    subdirs = ["Output";"DefaultFormat"];
+    local_deps = ["patutil";"patfonts";"imagelib";"unicodelib";"cesure";"rawlib"];
+    extern_deps = ["zip";"mysql";"fontconfig"];
+    subdirs = ["DefaultFormat"];
     has_meta = true;
   };
   { package_name = "plot";
     macro_suffix = "PLOT";
-    local_deps = ["Typography"];
+    local_deps = ["Typography"; "rawlib"];
     extern_deps = [];
     subdirs = [];
     has_meta = true;
@@ -169,7 +169,7 @@ let local_packages = [
   (* FAKE: no META yet *)
   { package_name = "Format"; 
     macro_suffix = "FORMAT";
-    local_deps = ["Typography";"cesure"];
+    local_deps = ["Typography";"cesure";"rawlib"];
     extern_deps = [];
     subdirs = [];
     has_meta = false;
@@ -183,7 +183,7 @@ let local_packages = [
   };
   { package_name = "Drivers";
     macro_suffix = "DRIVERS";
-    local_deps = ["Typography"];
+    local_deps = ["rawlib"];
     extern_deps = [];
     subdirs = [];
     has_meta = false;
@@ -197,7 +197,7 @@ let local_packages = [
   };
   { package_name = "proof";
     macro_suffix = "PROOF";
-    local_deps = ["Typography";"imagelib"]; (* Pdf Driver no yet managed, added by hand *)
+    local_deps = ["rawlib"]; (* Pdf Driver no yet managed, added by hand *)
     extern_deps = [];
     subdirs = [];
     has_meta = false;
@@ -217,7 +217,9 @@ let find_local name =
   [] -> raise Not_found
     | p::l -> if p.package_name = name then p else fn l
   in
-  try fn local_packages with Not_found -> assert false
+  try fn local_packages with Not_found ->
+    Printf.printf "Did not find local package \"%s\"...\n%!" name;
+    assert false
 
 let packages_local names =
   let add d acc = 

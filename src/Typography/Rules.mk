@@ -2,13 +2,12 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-TYPOGRAPHY_INCLUDES := -I $(d) -I $(d)/Output $(PACK_TYPOGRAPHY)
-TYPOGRAPHY_DEPS_INCLUDES := -I $(d) -I $(d)/Output $(DEPS_PACK_TYPOGRAPHY)
+TYPOGRAPHY_INCLUDES := -I $(d) $(PACK_TYPOGRAPHY)
+TYPOGRAPHY_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_TYPOGRAPHY)
 
 # Compute ML files dependencies
-$(d)/%.depends $(d)/Output/%.depends: INCLUDES:=$(TYPOGRAPHY_DEPS_INCLUDES)
+$(d)/%.depends: INCLUDES:=$(TYPOGRAPHY_DEPS_INCLUDES)
 $(d)/%.cmx $(d)/%.cmo $(d)/%.cmi: INCLUDES:=$(TYPOGRAPHY_INCLUDES)
-$(d)/Output/%.cmx $(d)/Output/%.cmo $(d)/Output/%.cmi: INCLUDES:=$(TYPOGRAPHY_INCLUDES)
 
 SRC_$(d):=$(wildcard $(d)/*.ml) \
   $(wildcard $(d)/*.mli) \
@@ -20,9 +19,9 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-TYPOGRAPHY_MODS:= TypoLanguage FindPath FontPattern $(FINDFONT) Config ConfigUtil Bezier Distance \
-  Offset Output/OutputCommon Box Badness Break Document Complete Maths \
-	Output/OutputPaper Output/OutputDrawing Geometry Proj3d Diagrams ProofTree Db
+TYPOGRAPHY_MODS:= TypoLanguage FindPath FontPattern $(FINDFONT) Config ConfigUtil Distance \
+  Offset Box Badness Break Document Complete Maths \
+	OutputDrawing Geometry Proj3d Diagrams ProofTree Db
 
 TYPOGRAPHY_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(TYPOGRAPHY_MODS)))
 TYPOGRAPHY_CMO:=$(TYPOGRAPHY_ML:.ml=.cmo)
@@ -105,12 +104,10 @@ all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cma $(d)/Defaul
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.a $(d)/*.cmxs \
   $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o \
-  $(d)/Output/*.cmo $(d)/Output/*.cmx $(d)/Output/*.cmi $(d)/Output/*.o \
   $(d)/DefaultFormat/*.cmo $(d)/DefaultFormat/*.cmx $(d)/DefaultFormat/*.cmi $(d)/DefaultFormat/*.o \
   $(d)/_tags
 
 DISTCLEAN += $(wildcard $(d)/*.depends) \
-	     $(wildcard $(d)/Output/*.depends) \
 	     $(wildcard $(d)/DefaultFormat/*.depends) \
 
 # Installing

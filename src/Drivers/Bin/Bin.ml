@@ -17,15 +17,14 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Typography.OutputCommon
-open Typography.OutputPaper
+open Driver
 
 let driver_options = []
 let filter_options argv = argv
 
 let bin_output structure pages filename isoutput' =
   (* For marshalling, do database retain pointer that can not be marshalled *)
-  Typography.Db.do_interaction_start_hook ();
+  (* Typography.Db.do_interaction_start_hook (); FIXME FIXME FIXME*)
   let base_name = try Filename.chop_extension filename with _ -> filename in
   let outputfile = base_name ^ ".bin" in
   let ch = open_out_bin outputfile in
@@ -43,8 +42,8 @@ let output' ?(structure:structure=empty_structure) (pages : page array array)
             (filename : string) = bin_output structure pages filename true
 
 let _ =
-  Hashtbl.add drivers "Bin"
+  Hashtbl.add DynDriver.drivers "Bin"
     (module struct
       let output  = output
       let output' = output'
-    end : Driver)
+    end : OutputDriver)

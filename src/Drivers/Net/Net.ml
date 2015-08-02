@@ -18,11 +18,9 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Typography.OutputCommon
-open Typography.OutputPaper
 open UsualMake
-open Typography.ConfigUtil
 open HtmlFonts
+open Driver
 
 let driver_options = []
 let filter_options argv = argv			    
@@ -68,13 +66,11 @@ window.onbeforeunload = function() {
     (if is_master then "+\"_\"+current_slide+\"_\"+current_state" else "")
     (if is_master then "+\"_\"+current_slide+\"_\"+current_state" else "")
 
-let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    pages filename=
+let output' ?(structure:structure=empty_structure) pages filename=
   let prefix=try Filename.chop_extension filename with _->filename in
   let svg_files,cache,imgs=SVG.buffered_output' ~structure:structure pages prefix in
   let html,style=SVG.basic_html
-    ~script:(websocket false (fst (pages.(0)).(0).pageFormat))
+    ~script:(websocket false (fst (pages.(0)).(0).size))
     ~onload:"start_socket();"
     ~keyboard:""
     cache structure pages prefix
@@ -119,7 +115,7 @@ function gotoSlide(n){
 
 
   let master,_=SVG.basic_html
-    ~script:(websocket true (fst (pages.(0)).(0).pageFormat))
+    ~script:(websocket true (fst (pages.(0)).(0).size))
     ~onload:"to=0;start_socket();"
     ~onhashchange:"xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send();"
     ~keyboard:master_keyboard
@@ -213,7 +209,8 @@ function gotoSlide(n){
   Printf.fprintf o "]\n";
 *)
   let patonet=
-    let pato=Typography.FindPath.findPath "patonet.c" ((!Typography.Config.pluginspath)@["."]) in
+    (* let pato=Typography.FindPath.findPath "patonet.c" ((!Typography.Config.pluginspath)@["."]) in*)
+    let pato = assert false in (* FIXME FIXME FIXME *)
     let patof=open_in pato in
     let s=String.create (in_channel_length patof) in
     really_input patof s 0 (String.length s);

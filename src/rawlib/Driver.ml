@@ -100,3 +100,8 @@ let output_to_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
   in
   translate_struct structure;
   output ~structure pages' fileName
+
+
+let output_from_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
+    ?(structure:structure=empty_structure) pages fileName =
+   output ~structure (Array.map (fun x -> [|x|]) pages) fileName

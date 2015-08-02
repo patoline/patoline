@@ -17,14 +17,16 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Typography
 open UsualMake
 open Fonts
 open FTypes
-open Typography.OutputCommon
-open Typography.OutputPaper
+open Raw
 
-module ClassMap=Map.Make(struct type t=int*float*OutputCommon.color let compare=compare end)
+module ClassMap = Map.Make(
+  struct
+    type t = int * float * Color.color
+    let compare = compare
+  end)
 
 type font_cache={
   subfonts:(Fonts.font * (FTypes.glyph_id*int) IntMap.t) StrMap.t;

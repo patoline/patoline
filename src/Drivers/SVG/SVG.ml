@@ -17,14 +17,15 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Typography
 open FTypes
 open Box
-open OutputCommon
-open OutputPaper
 open Util
 open UsualMake
 open HtmlFonts
+open Driver
+open Raw
+open Color
+
 exception Bezier_degree of int
 
 let font_filter = ref ""
@@ -103,17 +104,16 @@ svg .dragable rect{pointer-events:all;}
     Rbuffer.add_string def_buf (
       Printf.sprintf ".%s%d { font-family:f%d;font-size:%g%s;" class_prefix k fam size units
     );
-    (match col with
-        RGB fc ->
-          if fc.red<>0. || fc.green<>0. || fc.blue<>0. then
-            let r=min 1. (max 0. fc.red)
-            and g=min 1. (max 0. fc.green)
-            and b=min 1. (max 0. fc.blue) in
-            Rbuffer.add_string def_buf
-              (Printf.sprintf "fill:#%02x%02x%02x; "
-                 (round (255.*.r))
-                 (round (255.*.g))
-                 (round (255.*.b)))
+    (let (r,g,b) = to_rgb col in
+     if r<>0. || g<>0. || b<>0. then
+       let r = min 1. (max 0. r) in
+       let g = min 1. (max 0. g) in
+       let b = min 1. (max 0. b) in
+       Rbuffer.add_string def_buf
+         (Printf.sprintf "fill:#%02x%02x%02x; "
+            (round (255.*.r))
+            (round (255.*.g))
+            (round (255.*.b)))
     );
     Rbuffer.add_string def_buf "}\n";
   ) fontCache.classes;
@@ -218,24 +218,24 @@ let draw ?fontCache ?dynCache prefix w h contents=
         ) l;
       Rbuffer.add_string svg_buf "<path ";
       (match args.fillColor with
-          Some (RGB fc) ->
+        | Some col ->
+            let (r,g,b,a) = to_rgba col in
             Rbuffer.add_string svg_buf (
               Printf.sprintf "fill=\"#%02X%02X%02X\" fill-opacity=\"%f\" "
-                (round (255.*.fc.red))
-                (round (255.*.fc.green))
-                (round (255.*.fc.blue))
-                fc.alpha
+                (round (255.0 *. r)) (round (255.0 *. g)) (round (255.0 *. b))
+                a
             );
         | None->Rbuffer.add_string svg_buf "fill=\"none\" ");
       (match args.strokingColor with
-          Some (RGB fc) ->
+          Some col ->
+            let (r,g,b,a) = to_rgba col in
             Rbuffer.add_string svg_buf (
               Printf.sprintf "stroke=\"#%02X%02X%02X\" stroke-width=\"%f\" stroke-opacity=\"%f\" "
-                (round (255.*.fc.red))
-                (round (255.*.fc.green))
-                (round (255.*.fc.blue))
+                (round (255.0 *. r))
+                (round (255.0 *. g))
+                (round (255.0 *. b))
                 (args.lineWidth)
-                fc.alpha
+                a
             );
         | None->
           Rbuffer.add_string svg_buf "stroke=\"none\" "
@@ -494,12 +494,10 @@ let draw ?fontCache ?dynCache prefix w h contents=
 
 
 
-let buffered_output' ?dynCache ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    pages prefix=
+let buffered_output' ?dynCache ?(structure:structure=empty_structure) pages prefix=
 
   let total=Array.fold_left (fun m x->m+Array.length x) 0 pages in
-  let all_pages=Array.make total OutputCommon.defaultPage in
+  let all_pages=Array.make total (empty_page (0.0,0.0)) in
   let _=Array.fold_left (fun m0 x->
     Array.fold_left (fun m x->
       all_pages.(m)<-x;
@@ -507,20 +505,20 @@ let buffered_output' ?dynCache ?(structure:structure={name="";displayname=[];met
     ) m0 x
   ) 0 pages
   in
-  let cache=build_font_cache prefix (Array.map (fun x->x.pageContents) all_pages) in
+  let cache=build_font_cache prefix (Array.map (fun x->x.contents) all_pages) in
   let imgs=ref StrMap.empty in
   let svg_files=Array.mapi (fun slide pi->
     Array.mapi (fun state page ->
       let file0=Rbuffer.create 10000 in
       let file=Rbuffer.create 10000 in
         (* Printf.sprintf "%s_%d_%d.svg" chop_file i j *)
-      let w,h=page.pageFormat in
+      let w,h=page.size in
       Rbuffer.add_string file0 (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <?xml-stylesheet href=\"style.css\" type=\"text/css\"?>
 <svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));
       
-      let sorted_pages=OutputCommon.sort_raw page.pageContents in
+      let sorted_pages = sort_raw page.contents in
       let dynCache = match dynCache with
 	  None -> None 
 	| Some c -> Some c.(slide).(state)
@@ -542,7 +540,7 @@ let basic_html ?script:(script=default_script) ?onload:(onload="") ?onhashchange
     ?keyboard
     cache structure pages prefix=
   let html=Rbuffer.create 10000 in
-  let w,h=if Array.length pages>0 then (pages.(0)).(0).pageFormat else 0.,0. in
+  let w,h=if Array.length pages>0 then (pages.(0)).(0).size else 0.,0. in
   let keyboard=match keyboard with
       None->Printf.sprintf "window.onkeydown=function(e){
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
@@ -828,9 +826,7 @@ if(h0!=current_slide || h1!=current_state){
 
 
 
-let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-	    pages filename=
+let output' ?(structure:structure=empty_structure) pages filename=
   let prefix=try Filename.chop_extension filename with _->filename in
   let rec unlink_rec dir=
     if Sys.file_exists dir then (
@@ -872,9 +868,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	      ) svg_files;
   output_fonts cache
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    pages filename=
+let output ?(structure:structure=empty_structure) pages filename=
   output' ~structure (Array.map (fun x->[|x|]) pages) filename
 
 
@@ -967,4 +961,8 @@ let images ?cache ?(css="style.css") prefix env conts=
     | None->images_of_boxes ~css:css prefix env conts_box
 
 let _ = 
-  Hashtbl.add drivers "SVG" (module struct let output = output let output' = output' end:Driver)
+  Hashtbl.add DynDriver.drivers "SVG" (
+    module struct
+      let output  = output
+      let output' = output'
+    end : OutputDriver)

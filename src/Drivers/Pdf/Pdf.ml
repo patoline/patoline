@@ -17,14 +17,14 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Typography
 open Fonts
 open Printf
 open Util
 open UsualMake
 open FTypes
-open OutputCommon
-open OutputPaper
+open Raw
+open Color
+open Driver
 
 let driver_options = []
 let filter_options argv = argv
@@ -82,11 +82,11 @@ let stream buf="",buf
 #endif
 
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
+				  page= -1;struct_x=0.;struct_y=0.;children=[||]})
     pages fileName=
   let pages=if Array.length pages>0 then pages else
-      [|{pageFormat=(0.,0.);pageContents=[]}|]
+      [|{size=(0.,0.);contents=[]}|]
   in
   let fileName = filename fileName in
   if Sys.file_exists fileName then Unix.unlink fileName;
@@ -164,7 +164,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           ) path
         ))
     ) paths;
-    match Typography.OutputCommon.(params.fillColor, params.strokingColor) with
+    match Raw.(params.fillColor, params.strokingColor) with
         None, None-> Rbuffer.add_string pageBuf "n "
       | None, Some col -> (
         if params.close then Rbuffer.add_string pageBuf "s " else
@@ -285,51 +285,47 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let change_stroking_color col =
       if (Some col)<> (!state).strokingColor then (
         close_text();
-        match col with
-            RGB color -> (
-              close_text ();
-              let r=max 0. (min 1. color.red) in
-              let g=max 0. (min 1. color.green) in
-              let b=max 0. (min 1. color.blue) in
-              let alpha=try FloatMap.find color.alpha !sopacities with
-                  Not_found->(
-                    incr opacitiesCounter;
-                    sopacities:=FloatMap.add color.alpha !opacitiesCounter !sopacities;
-                    !opacitiesCounter
-                  )
-              in
-              if alpha <> (!state).strokingOpacity then (
-                (!state).strokingOpacity<-alpha;
-                Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
-              );
-              (!state).strokingColor<-Some col;
-              Rbuffer.add_string pageBuf (sprintf "%f %f %f RG " r g b);
+        let (cr,cg,cb,ca) = to_rgba col in
+        close_text ();
+        let r=max 0. (min 1. cr) in
+        let g=max 0. (min 1. cg) in
+        let b=max 0. (min 1. cb) in
+        let alpha=try FloatMap.find ca !sopacities with
+            Not_found->(
+              incr opacitiesCounter;
+              sopacities:=FloatMap.add ca !opacitiesCounter !sopacities;
+              !opacitiesCounter
             )
+        in
+        if alpha <> (!state).strokingOpacity then (
+          (!state).strokingOpacity<-alpha;
+          Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
+        );
+        (!state).strokingColor<-Some col;
+        Rbuffer.add_string pageBuf (sprintf "%f %f %f RG " r g b);
       )
     in
     let change_non_stroking_color col =
       if Some col<> (!state).nonStrokingColor then (
         close_text();
-        match col with
-            RGB color -> (
-              close_text ();
-              let r=max 0. (min 1. color.red) in
-              let g=max 0. (min 1. color.green) in
-              let b=max 0. (min 1. color.blue) in
-              let alpha=try FloatMap.find color.alpha !nsopacities with
-                  Not_found->(
-                    incr opacitiesCounter;
-                    nsopacities:=FloatMap.add color.alpha !opacitiesCounter !nsopacities;
-                    !opacitiesCounter
-                  )
-              in
-              if alpha <> (!state).nonstrokingOpacity then (
-                (!state).nonstrokingOpacity<-alpha;
-                Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
-              );
-              (!state).nonStrokingColor<-Some col;
-              Rbuffer.add_string pageBuf (sprintf "%f %f %f rg " r g b);
+        let (cr,cg,cb,ca) = to_rgba col in
+        close_text ();
+        let r=max 0. (min 1. cr) in
+        let g=max 0. (min 1. cg) in
+        let b=max 0. (min 1. cb) in
+        let alpha=try FloatMap.find ca !nsopacities with
+            Not_found->(
+              incr opacitiesCounter;
+              nsopacities:=FloatMap.add ca !opacitiesCounter !nsopacities;
+              !opacitiesCounter
             )
+        in
+        if alpha <> (!state).nonstrokingOpacity then (
+          (!state).nonstrokingOpacity<-alpha;
+          Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
+        );
+        (!state).nonStrokingColor<-Some col;
+        Rbuffer.add_string pageBuf (sprintf "%f %f %f rg " r g b);
       )
     in
     let set_line_join j=
@@ -444,14 +440,14 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | Path (params,[])->()
       | Path (params,paths) ->(
         close_text ();
-        set_line_join Typography.OutputCommon.(params.lineJoin);
-        set_line_cap Typography.OutputCommon.(params.lineCap);
-        set_line_width (pt_of_mm Typography.OutputCommon.(params.lineWidth));
-        set_dash_pattern Typography.OutputCommon.(params.dashPattern);
-        (match Typography.OutputCommon.(params.strokingColor) with
+        set_line_join Raw.(params.lineJoin);
+        set_line_cap Raw.(params.lineCap);
+        set_line_width (pt_of_mm Raw.(params.lineWidth));
+        set_dash_pattern Raw.(params.dashPattern);
+        (match Raw.(params.strokingColor) with
             None->()
           | Some col -> change_stroking_color col);
-        (match Typography.OutputCommon.(params.fillColor) with
+        (match Raw.(params.fillColor) with
             None->()
           | Some col -> change_non_stroking_color col);
         writePath pageBuf pt_of_mm paths params
@@ -512,7 +508,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       IntMap.fold (fun _ a x->x@a)
         (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
     in
-    List.iter output_contents (sort_contents pages.(page).pageContents);
+    List.iter output_contents (sort_contents pages.(page).contents);
         close_text ();
         (* Objets de la page *)
         let contentObj=beginObject () in
@@ -523,7 +519,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           fprintf outChan "\nendstream";
           endObject ();
           resumeObject pageObjects.(page);
-          let w,h=pages.(page).pageFormat in
+          let w,h=pages.(page).size in
           fprintf outChan "<< /Type /Page /Parent 1 0 R /MediaBox [ 0 0 %f %f ] " (pt_of_mm w) (pt_of_mm h);
 	  fprintf outChan "/Group << /Type /Group /S /Transparency /I false /K true /CS /DeviceRGB >>";
           fprintf outChan "/Resources << /ProcSet [/PDF /Text%s] "
@@ -787,7 +783,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           Array.iter (fun u->y0:=min u !y0;y1:=max u !y1) y
         )) outlines;
         Rbuffer.add_string bu (sprintf "%f %d %f %f %f %f d1 " w 0 !x0 !y0 !x1 !y1);
-        writePath bu (fun x->x)(List.map (Array.of_list) outlines) OutputCommon.default;
+        writePath bu (fun x->x)(List.map (Array.of_list) outlines) default_path_param;
         Rbuffer.add_string bu "f ";
         let filt, data=stream bu in
         let len=Rbuffer.length data in
@@ -1092,30 +1088,30 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
     endObject ();
 
     let cat=futureObject () in
-    if structure.name="" && Array.length structure.substructures=0 then (
+    if structure.name="" && Array.length structure.children=0 then (
       resumeObject cat;
       fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Metadata %d 0 R /MarkInfo %s %s /StructTreeRoot %d 0 R >>" metadata markinfo outputIntents structTreeRoot;
       endObject ()
     ) else (
       let count=ref 0 in
       let rec make_outlines str par=
-        let hijosObjs=Array.map (fun _-> futureObject ()) str.substructures in
-        for i=0 to Array.length str.substructures-1 do
-          let (a,b)=make_outlines str.substructures.(i) hijosObjs.(i) in
+        let hijosObjs=Array.map (fun _-> futureObject ()) str.children in
+        for i=0 to Array.length str.children-1 do
+          let (a,b)=make_outlines str.children.(i) hijosObjs.(i) in
           incr count;
 
           resumeObject hijosObjs.(i);
-          fprintf outChan "<< /Title <%s> /Parent %d 0 R " (pdf_string str.substructures.(i).name) par;
+          fprintf outChan "<< /Title <%s> /Parent %d 0 R " (pdf_string str.children.(i).name) par;
           if i>0 then fprintf outChan "/Prev %d 0 R " hijosObjs.(i-1);
-          if i<Array.length str.substructures-1 then fprintf outChan "/Next %d 0 R " hijosObjs.(i+1);
+          if i<Array.length str.children-1 then fprintf outChan "/Next %d 0 R " hijosObjs.(i+1);
           if a>0 then
             fprintf outChan "/First %d 0 R /Last %d 0 R /Count %d "
-              a b (Array.length str.substructures.(i).substructures);
+              a b (Array.length str.children.(i).children);
 
-          if str.substructures.(i).page>=0 && str.substructures.(i).page<Array.length pageObjects then
-            fprintf outChan "/Dest [%d 0 R /XYZ %f %f null] " pageObjects.(str.substructures.(i).page)
-              (pt_of_mm str.substructures.(i).struct_x)
-              (pt_of_mm str.substructures.(i).struct_y);
+          if str.children.(i).page>=0 && str.children.(i).page<Array.length pageObjects then
+            fprintf outChan "/Dest [%d 0 R /XYZ %f %f null] " pageObjects.(str.children.(i).page)
+              (pt_of_mm str.children.(i).struct_x)
+              (pt_of_mm str.children.(i).struct_y);
           fprintf outChan ">> ";
           endObject ()
         done;
@@ -1129,10 +1125,10 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
       let outlines=futureObject () in
       let a,b=make_outlines { name="";
                               page=0; struct_x=0.; struct_y=0.;
-                              substructures=[|structure|];
+                              children=[|structure|];
                               metadata=[];
                               tags=[];
-                              displayname=[] } outlines
+                              raw_name=[] } outlines
       in
       (*let a,b=make_outlines structure outlines in*)
 
@@ -1161,4 +1157,8 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
 let output' = output_to_prime output
 
 let _ = 
-  Hashtbl.add drivers "Pdf" (module struct let output = output let output' = output' end:Driver)
+  Hashtbl.add DynDriver.drivers "Pdf" (
+    module struct
+      let output = output
+      let output' = output'
+    end:OutputDriver)

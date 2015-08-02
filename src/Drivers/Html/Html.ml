@@ -17,12 +17,11 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Typography
 open FTypes
-open OutputCommon
-open OutputPaper
 open Util
 open HtmlFonts
+open Driver
+open Raw
 
 let driver_options = []
 let filter_options argv = argv			    
@@ -31,16 +30,14 @@ exception Bezier_degree
 
 let filename x= try (Filename.chop_extension x)^".html" with _ -> x^".html"
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    pages fileName=
+let output ?(structure:structure=empty_structure) pages fileName =
 
   let fileName = filename fileName in
   (* m : (font * (((glyph*int) IntMap.t) IntMap.t)) StrMap.t *)
   (* Pour chaque police, on associe au premier caractère c du glyphe
      la map de tous les glyphs qui commencent par c vers le numéro de
      sous-police où on doit stocker ce glyphe. *)
-  let cache=build_font_cache (Filename.dirname fileName) (Array.map (fun x->x.pageContents) pages) in
+  let cache=build_font_cache (Filename.dirname fileName) (Array.map (fun x->x.contents) pages) in
 
   for i=0 to Array.length pages-1 do
     let html_name= ((Filename.chop_extension fileName)^(Printf.sprintf "%d" i)^".html") in
@@ -56,7 +53,7 @@ body{line-height:0;}\n" structure.name;
     Rbuffer.output_buffer o (make_style cache);
     Printf.fprintf o "</style></head><body>\n";
 
-    let w,h=pages.(i).pageFormat in
+    let w,h=pages.(i).size in
     let cur_x=ref 0. in
     let cur_y=ref 0. in
     let cur_class=ref (-1) in
@@ -95,7 +92,7 @@ body{line-height:0;}\n" structure.name;
       | Path (args, l)->(
       )
       | _->()
-    ) pages.(i).pageContents;
+    ) pages.(i).contents;
 
     Printf.fprintf o "</nobr>\n";
     Printf.fprintf o "</body></html>\n";
@@ -107,4 +104,8 @@ body{line-height:0;}\n" structure.name;
 let output' = output_to_prime output
 
 let _ = 
-  Hashtbl.add drivers "Html" (module struct let output = output let output' = output' end:Driver)
+  Hashtbl.add DynDriver.drivers "Html" (
+    module struct
+      let output  = output
+      let output' = output'
+    end : OutputDriver)

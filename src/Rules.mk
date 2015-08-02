@@ -7,6 +7,7 @@ SRC_DIR := $(d)
 PATOLINE_IN_SRC := $(d)/Patoline/patoline
 PATOLINE_DIR := $(d)/Patoline
 TYPOGRAPHY_DIR := $(d)/Typography
+RAWLIB_DIR := $(d)/rawlib
 DRIVERS_DIR := $(d)/Drivers
 FORMAT_DIR := $(d)/Format
 UTIL_DIR := $(d)/patutil

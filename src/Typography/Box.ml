@@ -17,7 +17,7 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open OutputCommon
+open Raw
 open Util
 open UsualMake
 open FTypes
@@ -46,7 +46,7 @@ and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
                    drawing_badness : float -> float;
                    drawing_break_badness : float;
                    drawing_states:int list;
-                   drawing_contents:float -> OutputCommon.raw list }
+                   drawing_contents:float -> Raw.raw list }
 
 
 and hyphenBox= { hyphen_normal: box array; hyphenated:(box array* box array) array }
@@ -107,7 +107,7 @@ and placed_line=
 
 
 (* Layout definitions *)
-and frame_content=Placed_line of placed_line | Raw of OutputCommon.raw list
+and frame_content=Placed_line of placed_line | Raw of Raw.raw list
 and frame={
   frame_children:frame IntMap.t;
   frame_tags:string list;
@@ -322,7 +322,7 @@ let drawing ?offset:(offset=0.) ?states:(states=[]) cont=
     | _->st0
   ) states cont
   in
-  let (a,b,c,d)=OutputCommon.bounding_box_full cont in
+  let (a,b,c,d)=Raw.bounding_box_full cont in
     {
       drawing_min_width=c-.a;
       drawing_nominal_width=c-.a;
@@ -343,7 +343,7 @@ let drawing' ?offset:(offset=0.) ?states:(states=[]) cont=
     | _->st0
   ) states cont
   in
-  let (a,b,c,d)=OutputCommon.bounding_box_full cont in
+  let (a,b,c,d)=Raw.bounding_box_full cont in
     {
       drawing_min_width=c;
       drawing_nominal_width=c;
@@ -364,7 +364,7 @@ let drawing_inline ?offset:(offset=0.) ?states:(states=[]) cont=
     | _->st0
   ) states cont
   in
-  let (a,b,c,d)=OutputCommon.bounding_box cont in
+  let (a,b,c,d)=Raw.bounding_box cont in
     {
       drawing_min_width=c-.a;
       drawing_nominal_width=c-.a;
@@ -385,7 +385,7 @@ let drawing_inline' ?offset:(offset=0.) ?states:(states=[]) cont=
     | _->st0
   ) states cont
   in
-  let (a,b,c,d)=OutputCommon.bounding_box cont in
+  let (a,b,c,d)=Raw.bounding_box cont in
     {
       drawing_min_width=c;
       drawing_nominal_width=c;
@@ -509,7 +509,7 @@ let resize_drawing l x=
     drawing_y0=x.drawing_y0*.l;
     drawing_y1=x.drawing_y1*.l;
     drawing_nominal_width= x.drawing_nominal_width*.l;
-    drawing_contents=(fun w->List.map (OutputCommon.resize l) (x.drawing_contents w))
+    drawing_contents=(fun w->List.map (Raw.resize l) (x.drawing_contents w))
   }
 
 let rec resize l=function
@@ -523,7 +523,7 @@ let rec resize l=function
     drawing_y0=x.drawing_y0*.l;
     drawing_y1=x.drawing_y1*.l;
     drawing_nominal_width= x.drawing_nominal_width*.l;
-    drawing_contents=(fun w->List.map (OutputCommon.resize l) (x.drawing_contents w))
+    drawing_contents=(fun w->List.map (Raw.resize l) (x.drawing_contents w))
   }
   | Kerning x -> Kerning { advance_width = l*.x.advance_width;
                            advance_height = l*.x.advance_height;
@@ -540,12 +540,12 @@ let rec translate x y=function
                        drawing_y0=d.drawing_y0 +. y;
                        drawing_y1=d.drawing_y1 +. y;
                        drawing_nominal_width= d.drawing_nominal_width;
-                       drawing_contents=(fun w->List.map (OutputCommon.translate x y) (d.drawing_contents w))
+                       drawing_contents=(fun w->List.map (Raw.translate x y) (d.drawing_contents w))
                    }
   | Glue g -> Glue { g with
     drawing_y0=g.drawing_y0 +. y;
     drawing_y1=g.drawing_y1 +. y;
-    drawing_contents=(fun w->List.map (OutputCommon.translate x y) (g.drawing_contents w))
+    drawing_contents=(fun w->List.map (Raw.translate x y) (g.drawing_contents w))
   }
   | Kerning k -> Kerning { k with 
                            kern_x0 = k.kern_x0 +. x;
@@ -793,7 +793,7 @@ let compression paragraphs (parameters) (line)=comp paragraphs parameters.measur
 
 
 
-module GlMap=Map.Make (struct type t=(string*int*float*color) let compare=compare end)
+module GlMap=Map.Make (struct type t=(string*int*float*Color.color) let compare=compare end)
 let glyphCache_=ref GlMap.empty
 
 let glyphCache cur_font gl fcolor fsize=
