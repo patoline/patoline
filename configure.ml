@@ -152,10 +152,17 @@ let local_packages = [
     subdirs = [];
     has_meta = true;
   };
+  { package_name = "db";
+    macro_suffix = "DB";
+    local_deps = ["patutil"];
+    extern_deps = ["mysql"];
+    subdirs = [];
+    has_meta = true;
+  };
   { package_name = "Typography";
     macro_suffix = "TYPOGRAPHY";
     local_deps = ["patutil";"patfonts";"imagelib";"unicodelib";"cesure";"rawlib"];
-    extern_deps = ["zip";"mysql";"fontconfig"];
+    extern_deps = ["zip";"fontconfig"];
     subdirs = ["DefaultFormat"];
     has_meta = true;
   };
@@ -169,7 +176,7 @@ let local_packages = [
   (* FAKE: no META yet *)
   { package_name = "Format"; 
     macro_suffix = "FORMAT";
-    local_deps = ["Typography";"cesure";"rawlib"];
+    local_deps = ["Typography";"cesure";"rawlib";"db"];
     extern_deps = [];
     subdirs = [];
     has_meta = false;
@@ -183,7 +190,7 @@ let local_packages = [
   };
   { package_name = "Drivers";
     macro_suffix = "DRIVERS";
-    local_deps = ["rawlib"];
+    local_deps = ["rawlib";"db"];
     extern_deps = [];
     subdirs = [];
     has_meta = false;
@@ -613,6 +620,7 @@ let _=
   Printf.fprintf make "INSTALL_UTIL_DIR :=%s/patutil\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_IMGLIB_DIR :=%s/imagelib\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_RAWLIB_DIR :=%s/rawlib\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_DB_DIR :=%s/db\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_UNICODELIB_DIR :=%s/unicodelib\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_LIBFONTS_DIR :=%s/patfonts\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_BIBI_DIR :=%s/bibi\n" !ocaml_lib_dir;

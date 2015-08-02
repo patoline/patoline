@@ -1,0 +1,6 @@
+name="db"
+version="1.0"
+description="Database library, part of Patoline."
+requires="patutil"
+archive(native)="db.cmxa"
+archive(byte)="db.cma"

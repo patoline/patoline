@@ -24,7 +24,7 @@ let filter_options argv = argv
 
 let bin_output structure pages filename isoutput' =
   (* For marshalling, do database retain pointer that can not be marshalled *)
-  (* Typography.Db.do_interaction_start_hook (); FIXME FIXME FIXME*)
+  Db.do_interaction_start_hook ();
   let base_name = try Filename.chop_extension filename with _ -> filename in
   let outputfile = base_name ^ ".bin" in
   let ch = open_out_bin outputfile in
