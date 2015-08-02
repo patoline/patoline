@@ -209,8 +209,9 @@ function gotoSlide(n){
   Printf.fprintf o "]\n";
 *)
   let patonet=
-    (* let pato=Typography.FindPath.findPath "patonet.c" ((!Typography.Config.pluginspath)@["."]) in*)
-    let pato = assert false in (* FIXME FIXME FIXME *)
+    (* let paths = !Typography.Config.pluginspath @ ["."] in *)
+    let paths = assert false in (* FIXME FIXME FIXME *)
+    let pato = FilenameExtra.findPath "patonet.c" paths in
     let patof=open_in pato in
     let s=String.create (in_channel_length patof) in
     really_input patof s 0 (String.length s);

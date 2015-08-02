@@ -77,7 +77,7 @@ let hyphenate_dict dict=
      Array.of_list (hyphenated)
     )
   with
-      FindPath.File_not_found (f,p)->
+      FilenameExtra.No_matching_path (f,p)->
 	(Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;
          List.iter (Printf.fprintf stderr "%s\n") p;
          fun x->[||])

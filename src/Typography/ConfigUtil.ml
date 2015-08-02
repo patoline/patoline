@@ -18,7 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Config
-open FindPath
+open FilenameExtra
 
 let findFont = Config.findFont
 
