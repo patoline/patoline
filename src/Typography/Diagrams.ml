@@ -20,7 +20,6 @@
 open Document
 module Drivers = Raw
 open Raw
-open Color
 open Proj3d
 open Geometry
 
@@ -955,20 +954,20 @@ module Transfo (X : Set.OrderedType) = struct
       { pet = params_pet ;
 	transfo = (fun transfos info ->
 	  { info with params = { info.params with lineWidth = w ;
-	    strokingColor = Some black } } ) }
+	    strokingColor = Some Color.black } } ) }
 
     let dashed,dashed_pet =
       Pet.register "node dashed" (fun pet pattern ->
 	{ pet = pet ; transfo = (fun transfos info ->
 	  { info with params = { info.params with
-	    strokingColor = Some black ;
+	    strokingColor = Some Color.black ;
 	    dashPattern = pattern } } ) })
 
     let draw,draw_pet =
       Pet.register "node draw" (fun pet ->
 	{ pet = pet ; transfo = (fun transfos info ->
 	  { info with params = { info.params with
-	    strokingColor = Some black } } ) })
+	    strokingColor = Some Color.black } } ) })
 
     let setZ,setZ_pet =
       Pet.register "node setZ" (fun pet z ->
@@ -1963,7 +1962,7 @@ Doing a rectangle.\n" ;
       let default_tip_info = { tip_line_width = !default_line_width ; is_double = false }
 
       let default_params = { Raw.default_path_param with
-	strokingColor = Some black }
+	strokingColor = Some Color.black }
 
       let default_edge_info s e underlying_curve =
 	(* let tip_info = *)
@@ -2059,7 +2058,7 @@ Doing a rectangle.\n" ;
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
 	  { edge_info with params = { edge_info.params with strokingColor = None }})}
 
-      let black = color black
+      let black = color Color.black
 
       let lineWidth w =
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
@@ -2209,7 +2208,7 @@ Doing a rectangle.\n" ;
 	  let white_paths = List.map (fun (params, curve) ->
 	    { params with
 	      (* path_order = (-1) ; *)
-	      strokingColor = Some (rgb 1. 1. 1.);
+        strokingColor = Some Color.white;
 	      lineWidth = margin },
 	    curve)
 	    info.curves
@@ -2360,7 +2359,7 @@ Doing a rectangle.\n" ;
 
       let foreground, foreground_pet =
 	Pet.register ~depends:[draw_pet;shorten_pet;params_pet] "foreground"
-	  (fun pet ?shortens:(shortens=3.) ?shortene:(shortene=3.) ?color:(color=white) margin ->
+	  (fun pet ?shortens:(shortens=3.) ?shortene:(shortene=3.) ?color:(color=Color.white) margin ->
 	  { pet = pet ; transfo = (fun transfos info ->
 	    let white_paths = List.map (fun (params, curve) ->
 	      { info.params with
@@ -2485,7 +2484,7 @@ Doing a rectangle.\n" ;
 	  decorations = []
 	}
 
-      let put_forth info lt ?color:(color=white) epsilon margin =
+      let put_forth info lt ?color:(color=Color.white) epsilon margin =
 	let gt = Curve.global_time info.underlying_curve lt  in
 	let cut x = min (max x 0.) 1. in
 	let gt1 = cut (gt -. epsilon) in
@@ -2554,7 +2553,7 @@ Doing a rectangle.\n" ;
       open Entity
       let stack : entity list ref = ref []
       let env = Args.env
-      let compute_intersections = ref (Some (fun x -> Edge.put_forth ~color:white x))
+      let compute_intersections = ref (Some (fun x -> Edge.put_forth ~color:Color.white x))
       let epsilon = ref 1.0
       let margin = ref 1.0
       let t_margin = ref 0.05
