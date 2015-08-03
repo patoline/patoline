@@ -154,10 +154,7 @@ let rotation_matrix th =
 
 let pi = 4.0 *. atan 1.0
 
-let rotate a l =
-  let m = rotation_matrix a in
-  Affine { affine_matrix = m; affine_contents = l; affine_order = 0 }
-
+let rotate a = affine (rotation_matrix a)
 
 (* Set the drawing order of a raw element. *)
 let rec in_order i = function
