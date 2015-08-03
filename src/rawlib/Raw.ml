@@ -140,6 +140,23 @@ and 'a dynamic =
 let states states_states states_contents =
   States { states_contents ; states_states ; states_order = 0 }
 
+(* Shortcut functionto build an affine transformation of raw elements. *)
+let affine matrix l =
+  Affine { affine_matrix = matrix ; affine_contents = l ; affine_order = 0 }
+
+(* Rotation of raw elements using an affine transformation. *)
+let rotation_matrix th =
+  let costh = cos th in
+  let sinth = sin th in
+  [| [| costh ; -.sinth ; 0.0 |]
+  ;  [| sinth ; costh   ; 0.0 |]
+  ;  [| 0.0   ; 0.0     ; 1.0 |] |]
+
+let pi = 4.0 *. atan 1.0
+
+let rotate a l =
+  let m = rotation_matrix a in
+  Affine { affine_matrix = m; affine_contents = l; affine_order = 0 }
 
 
 (* Set the drawing order of a raw element. *)
@@ -263,7 +280,7 @@ let rec resize al = function
       Affine { a with affine_matrix = m }
 
 (* Transform a path given a matrix. *)
-let rec affine m =
+let rec affine_path_transform m =
   let f (u,v) =
     let f1 i x = m.(0).(0) *. x +. m.(0).(1) *. v.(i) +. m.(0).(2) in
     let f2 i x = m.(1).(0) *. x +. m.(1).(1) *. v.(i) +. m.(1).(2) in
@@ -315,7 +332,7 @@ let rec toPaths = function
       List.concat (List.map toPaths c)
   | Dynamic d -> List.concat (List.map toPaths (d.dyn_contents ()))
   | Affine a ->
-      affine a.affine_matrix
+      affine_path_transform a.affine_matrix
       (List.concat (List.map toPaths a.affine_contents))
 
 type bounding_box_opt =
@@ -393,7 +410,7 @@ let bounding_box_opt opt l =
         bbox x0' y0' x1' y1' l
     | Affine a :: l ->
         let paths = List.concat (List.map toPaths a.affine_contents) in
-        let paths = affine a.affine_matrix paths in
+        let paths = affine_path_transform a.affine_matrix paths in
         let (x0',y0',x1',y1') = paths_bounding_box x0 y0 x1 y1 paths in
         bbox x0' y0' x1' y1' l
   in bbox infinity infinity (-.infinity) (-.infinity) l
