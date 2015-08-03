@@ -30,9 +30,9 @@ let hsv h s v =
 (* Read a color from a string with the format "#RRGGBB" in hexadecimal. *)
 let colorHex s =
   let (rx,gx,bx) = Scanf.sscanf s "#%2X%2X%2X" (fun r g b -> (r,g,b)) in
-  let r = float_of_int rx /. 256. in
-  let g = float_of_int gx /. 256. in
-  let b = float_of_int bx /. 256. in
+  let r = float_of_int rx /. 255. in
+  let g = float_of_int gx /. 255. in
+  let b = float_of_int bx /. 255. in
   rgb r g b
 
 (* Sets the alpha channel of a color. *)
