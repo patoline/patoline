@@ -273,8 +273,8 @@ let init_win w =
     cfps = 0; fps = 0.0;
   }
 
-let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
+				  page= -1;struct_x=0.;struct_y=0.;children=[||]})
     pages fileName=
 
   let pages = ref pages in
@@ -422,7 +422,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let create_menu structure =
-    if structure.substructures <> [||] then begin
+    if structure.children <> [||] then begin
       let c = ref 0 in
       List.iter (fun menu -> Glut.destroyMenu ~menu) !old_menu;
       let menu = Glut.createMenu menu_cb in
@@ -432,17 +432,17 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	Glut.addMenuEntry s.name !c;
 	Hashtbl.replace menu_item !c (a, i);
 	incr c;
-	if s.substructures <> [||] then
+	if s.children <> [||] then
 	  begin
 	    let menu' = Glut.createMenu menu_cb in
 	    old_menu := menu' :: !old_menu;
 	    Glut.setMenu menu';
-	    Array.iteri (fn menu' s.substructures) s.substructures;
+	    Array.iteri (fn menu' s.children) s.children;
 	    Glut.setMenu menu;
 	    Glut.addSubMenu "  ==>" menu';
 	  end
       in
-      Array.iteri (fn menu structure.substructures)  structure.substructures;
+      Array.iteri (fn menu structure.children)  structure.children;
       Glut.attachMenu Glut.RIGHT_BUTTON
     end
   in
@@ -603,9 +603,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	    Printf.fprintf stderr "(%f,%f,%f) " x y z) bs;
 
 	  Printf.fprintf stderr "\n") lines; *)
-	let r,g,b = match g.glyph_color with
-	    RGB{red = r; green=g; blue=b;} -> r,g,b
-	in
+	let (r,g,b) = Color.to_rgb g.glyph_color in
 	flush stderr;
 (*
 	let x = (floor (x /. !pixel_width +. 1.0 /. 3.0) -. 0.5 /. 3.0) *. !pixel_width in
@@ -650,20 +648,23 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
       (match param.fillColor with
 	None -> ()
-      | Some RGB{red = r; green=g; blue=b;} ->
-	let color = (r,g,b) in
-	fill_bezier color lines normals);
+      | Some c ->
+          let color = Color.to_rgb c in
+	        fill_bezier color lines normals);
+          (match param.strokingColor with
+	         | None   -> ()
+           | Some c ->
+               let color = Color.to_rgb c in
+	             let lw = param.lineWidth /. 2.0 in
+               let graisse_x' = lw -. (pixel_width *. (flou_x -. graisse)) in
+               let graisse_y' = lw -. (pixel_width *. (flou_y -. graisse)) in
+               let graisse_x = 
+                 lw +. (pixel_width *. (3.0 *. flou_x +. graisse))
+               in
+               let graisse_y =
+                 lw +. (pixel_width *. (3.0 *. flou_y +. graisse))
+               in
 
-      (match param.strokingColor with
-	None -> ()
-      | Some RGB{red = r; green=g; blue=b;} ->
-	let lw = param.lineWidth /. 2.0 in
-	let graisse_x' = lw -. (pixel_width *. (flou_x -. graisse))
-	  and graisse_y' = lw -. (pixel_width *. (flou_y -. graisse)) in
-	let graisse_x =  lw +. (pixel_width *. (3.0 *. flou_x +. graisse))
-	  and graisse_y = lw +. (pixel_width *. (3.0 *. flou_y +. graisse)) in
-
-	let color = (r,g,b) in
 	let lines, normals =
 	  if param.close then
 	    List.map (function (x::_ as l) -> l @ [x] | [] -> []) lines,
@@ -1569,4 +1570,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 let output = output_from_prime output'
 
 let _ =
-  Hashtbl.add drivers "DriverGL" (module struct let output = output let output' = output' end:Driver)
+  Hashtbl.add DynDriver.drivers "DriverGL"
+    (module struct
+      let output = output
+      let output' = output'
+     end:OutputDriver)
