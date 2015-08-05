@@ -20,6 +20,7 @@
 open Raw
 open Driver
 open Util
+open Color 
 
 let driver_options = []
 let filter_options argv = argv			    
@@ -65,21 +66,21 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
           ) path;
           (match param.strokingColor, param.fillColor with
             | (Some cx, Some cy) ->
-                let (rx,gx,bx) = to_rgb cx
-                let (ry,gy,by) = to_rgb cy
+                let (rx,gx,bx) = to_rgb cx in
+                let (ry,gy,by) = to_rgb cy in
                 Cairo.set_source_rgb ctx ~red:ry ~green:gy ~blue:by;
                 Cairo.fill_preserve ctx ;
                 Cairo.set_source_rgb ctx ~red:rx ~green:gx ~blue:bx;
                 Cairo.stroke ctx 
             | (Some cx, None   ) ->
-                let (rx,gx,bx) = to_rgb cx
+                let (rx,gx,bx) = to_rgb cx in
                 Cairo.set_source_rgb ctx ~red:rx ~green:gx ~blue:bx;
                 Cairo.stroke ctx 
             | (None   , Some cy) ->
-                let (ry,gy,by) = to_rgb cy
+                let (ry,gy,by) = to_rgb cy in
                 Cairo.set_source_rgb ctx ~red:ry ~green:gy ~blue:by;
                 Cairo.fill ctx
-            | (None   , None   )_-> ()
+            | (None   , None   ) -> ()
           );
           draw_page s
         )
@@ -90,7 +91,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
            Array.map (fun xx->(xx*.g.glyph_size/.1000.+.g.glyph_y)) y)
         ) morceau)) out
         in
-        draw_page ((Path ({default with close=true;fillColor=Some g.glyph_color;strokingColor=None},
+        draw_page ((Path ({default_path_param with close=true;fillColor=Some g.glyph_color;strokingColor=None},
                           l))::s)
       )
       | Link l::s->draw_page (l.link_contents@s)
@@ -118,7 +119,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         draw_page s)
       | []->()
     in
-    draw_page (drawing_sort x.pageContents);
+    draw_page (drawing_sort x.contents);
     let fname = Printf.sprintf "%s_%d.png" f i in
     Printf.fprintf stderr "Writing %s\n" fname;
     Cairo_png.surface_write_to_file surface fname;
