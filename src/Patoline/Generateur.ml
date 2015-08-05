@@ -99,7 +99,7 @@ let write_main_file dynlink where formats driver suppl main_mod outfile=
 open Typography
 open Typography.Box
 open Typography.Document
-open Raw
+open RawContent
 open Color
 open DefaultFormat.MathsFormat
 
@@ -183,7 +183,7 @@ open Typography.Box
 open Util
 open Typography.Config
 open Typography.Document
-open Raw
+open RawContent
 open Color
 open Driver
 open DefaultFormat.MathsFormat

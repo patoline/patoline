@@ -25,7 +25,7 @@ open Util
 open UsualMake
 open Driver
 open Color
-open Raw
+open RawContent
 
 let buf=String.create 10000
 let buf_start=ref 1

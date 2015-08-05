@@ -4,7 +4,7 @@ open Document.Mathematical
 open Box 
 open Util
 open FTypes
-open Raw
+open RawContent
 
 let rec spacing right left = 
   let above y l = match l with
@@ -204,7 +204,7 @@ module ProofTree = struct
 
           let contents _ = 
             let l = 
-              [Path ({Raw.default_path_param with strokingColor=Some env_.fontColor; lineWidth=ln}, [ [|line (rx0,cy1 +. sb) (rx1, cy1 +. sb)|] ]) ] @
+              [Path ({default_path_param with strokingColor=Some env_.fontColor; lineWidth=ln}, [ [|line (rx0,cy1 +. sb) (rx1, cy1 +. sb)|] ]) ] @
                 (List.map (translate dx 0.0) conclusion_box) @
                 (List.map (translate 0.0 dy) numerator) @
                 (List.map (translate dnx dny) name_box)
@@ -313,7 +313,7 @@ module ProofTree = struct
                         ; [|line (rpx0,cy1 +. hsp) (rcx0, cy1 +. sb)|]
                         ; [|line (rcx1,cy1 +. sb) (rpx1, cy1 +. hsp)|] ] in
             let l = 
-              [Path ({Raw.default_path_param with strokingColor=Some env_.fontColor; lineWidth=ln}, lines)] @
+              [Path ({default_path_param with strokingColor=Some env_.fontColor; lineWidth=ln}, lines)] @
                 (List.map (translate dx 0.0) conclusion_box) @
                 (List.map (translate 0.0 dy) premices) @
                 match name with None -> [] | Some n -> n

@@ -19,7 +19,7 @@
 *)
 
 open Db
-open Raw
+open RawContent
 open Driver
 open Util
 open UsualMake

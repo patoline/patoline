@@ -23,7 +23,7 @@ open Util
 open UsualMake
 open HtmlFonts
 open Driver
-open Raw
+open RawContent
 open Color
 
 exception Bezier_degree of int

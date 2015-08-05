@@ -941,7 +941,7 @@ let wrap basename _loc ast =
     open Typography.Box
     open Typography.Config
     open Typography.Document
-    open Raw
+    open RawContent
     open Color
     open Driver
     open DefaultFormat.MathsFormat

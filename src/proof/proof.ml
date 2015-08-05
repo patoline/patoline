@@ -19,7 +19,7 @@
 *)
 open FTypes
 open Fonts
-open Raw
+open RawContent
 open Color
 open Driver
 

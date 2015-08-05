@@ -21,7 +21,7 @@ open FTypes
 open Util
 open HtmlFonts
 open Driver
-open Raw
+open RawContent
 
 let driver_options = []
 let filter_options argv = argv			    

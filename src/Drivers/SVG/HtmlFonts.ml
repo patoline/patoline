@@ -20,7 +20,7 @@
 open UsualMake
 open Fonts
 open FTypes
-open Raw
+open RawContent
 
 module ClassMap = Map.Make(
   struct

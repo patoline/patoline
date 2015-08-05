@@ -19,7 +19,7 @@
 *)
 open Typography.Document
 open Color
-open Raw
+open RawContent
 open Util
 open Typography.Box
 open Typography
@@ -85,7 +85,7 @@ module Plot(D:Document.DocumentStructure)=struct
           let x0,y0,x1,y1=bounding_box label in
           tx:=Path(default_path_param,
                    [[|line (scalex*. !x,0.) (scalex*. !x,-.1.)|]])
-          ::(List.map (Raw.translate (scalex*. !x-.(x1-.x0)/.2.) (-.2.-.y1) ) label)
+          ::(List.map (RawContent.translate (scalex*. !x-.(x1-.x0)/.2.) (-.2.-.y1) ) label)
           @(!tx);
 
           x:= !x+.inter
@@ -114,7 +114,7 @@ module Plot(D:Document.DocumentStructure)=struct
           let x0,y0,x1,y1=bounding_box label in
           ty:=Path(default_path_param,
                    [[|line (0.,scaley*. !y) (-.1.,scaley*. !y)|]])
-          ::(List.map (Raw.translate (-.2.-.x1) (scaley*. !y-.(y1-.y0)/.2.)) label)
+          ::(List.map (RawContent.translate (-.2.-.x1) (scaley*. !y-.(y1-.y0)/.2.)) label)
           @(!ty);
 
           y:= !y+.inter

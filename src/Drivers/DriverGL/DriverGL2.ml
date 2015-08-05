@@ -18,8 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Fonts.FTypes
-open Raw (* from Lablgl *)
-open Rawlib.Raw
+open Raw
+open RawContent
 open Color
 open Driver
 open Util

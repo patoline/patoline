@@ -23,7 +23,7 @@ open Util
 open UsualMake
 open Fonts
 open FTypes
-open Raw
+open RawContent
 open Driver
 open Box
 
@@ -1106,7 +1106,7 @@ let button ?(btype=Clickable) name destinations b=bB (fun _->[Marker (BeginLink 
 (** {3 Images} *)
 
 let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
-  let i=Raw.image imageFile in
+  let i=RawContent.image imageFile in
   let dr={
     drawing_min_width=i.image_width;
     drawing_max_width=i.image_width;
@@ -1118,7 +1118,7 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_break_badness=0.;
     drawing_states=[];
     drawing_badness=(fun _->0.);
-    drawing_contents=(fun _->[Raw.translate 0. offset (Image i)])
+    drawing_contents=(fun _->[RawContent.translate 0. offset (Image i)])
   }
   in
   let scale =
@@ -1175,7 +1175,7 @@ let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_break_badness=0.;
     drawing_states=[];
     drawing_badness=(fun _->0.);
-    drawing_contents=(fun _->[Raw.Video i])
+    drawing_contents=(fun _->[RawContent.Video i])
   }
 
 let includeGraphics ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile=
@@ -1377,7 +1377,7 @@ let boxify buf nbuf env0 l=
 
 
 (** Typesets boxes on a single line, then converts them to a list of basic
-    drawing elements: [Raw.raw]. *)
+    drawing elements: [RawContent.raw]. *)
 let draw_boxes env l=
   let rec draw_boxes x y dr l=match l with
       []->dr,x
@@ -1393,20 +1393,20 @@ let draw_boxes env l=
       draw_boxes w1 y dr1 s
     )
     | GlyphBox a::s->(
-      let box=Raw.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y } in
+      let box=RawContent.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y } in
       let w=a.glyph_size*.Fonts.glyphWidth a.glyph/.1000. in
       draw_boxes (x+.w) y (box::dr) s
     )
     | Glue g::s
     | Drawing g ::s->(
       let w=g.drawing_nominal_width in
-      let box=(List.map (Raw.translate (x) (y)) (g.drawing_contents w)) in
+      let box=(List.map (RawContent.translate (x) (y)) (g.drawing_contents w)) in
       draw_boxes (x+.w) y (box@dr) s
     )
     | Marker (BeginLink l)::s->(
       (*      Printf.fprintf stderr "****BeginURILink %S****\n" l;*)
       let k = match l with
-	  Box.Extern l -> Raw.Extern l;
+	  Box.Extern l -> RawContent.Extern l;
 	| Box.Intern l ->
 	  let dest_page=
             try
@@ -1415,8 +1415,8 @@ let draw_boxes env l=
             with
               Not_found->(-1)
 	  in
-	  Raw.Intern(l,dest_page,0.,0.);
-	| Box.Button(drag,n,d) -> Raw.Button(drag,n,d)
+	  RawContent.Intern(l,dest_page,0.,0.);
+	| Box.Button(drag,n,d) -> RawContent.Button(drag,n,d)
       in
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                  link_order=0;
@@ -1585,7 +1585,7 @@ let adjust_width env buf nbuf =
 		(match b with
 		| Drawing x when before -> Drawing { x with
 		  drawing_contents =
-		      (fun w -> List.map (Raw.translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
+		      (fun w -> List.map (RawContent.translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
 		}
 		| Drawing x -> Drawing { x with
 		  drawing_nominal_width = r +. x.drawing_nominal_width;

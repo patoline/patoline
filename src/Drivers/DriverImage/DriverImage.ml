@@ -17,10 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Typography
 open FTypes
-open OutputCommon
-open OutputPaper
+open Driver
 open Util
 open Language
 
@@ -48,8 +46,8 @@ let filename' file i j =
   try "page_"^string_of_int i^"."^ !format with _->"page_"^string_of_int i^"_"^string_of_int j^"."^ !format
 
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
+				  page= -1;struct_x=0.;struct_y=0.;children=[||]})
     pages fileName=
 
   Printf.printf "format: %s\n" !format;
@@ -84,4 +82,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 let output' = output_to_prime output
 
 let _ =
-  Hashtbl.add drivers "Image" (module struct let output = output let output' = output' end:Driver)
+  Hashtbl.add DynDriver.drivers "Image"
+    (module struct
+      let output = output
+      let output' = output'
+     end : OutputDriver)

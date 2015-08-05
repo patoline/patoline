@@ -18,8 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Document
-module Drivers = Raw
-open Raw
+module Drivers = RawContent
+open RawContent
 open Proj3d
 open Geometry
 
@@ -143,13 +143,13 @@ module Curve = struct
   let nb_beziers curve = List.length curve
   let of_point_lists l = List.map bezier_of_point_list l
   let of_contents = function
-    | Raw.Path (_, beziers) -> List.map Array.to_list beziers
-    | _ -> failwith "Attempt to convert a non-path value of type Raw.content to Curve.t."
+    | RawContent.Path (_, beziers) -> List.map Array.to_list beziers
+    | _ -> failwith "Attempt to convert a non-path value of type RawContent.content to Curve.t."
   let draw
-    ?parameters:(parameters=Raw.default_path_param)
+    ?parameters:(parameters=RawContent.default_path_param)
     (curve:t) =
     if curve = [] then [] else
-      [Raw.Path (parameters, [Array.of_list curve])]
+      [RawContent.Path (parameters, [Array.of_list curve])]
 
   let translate (x,y) curves = List.map (fun (xs,ys) ->
     (Array.map ((+.) x) xs,
@@ -800,7 +800,7 @@ module Transfo (X : Set.OrderedType) = struct
   module Gentity = struct
   type t = { curve : Curve.t ;	(* The curve is used to determine the start and end of edges *)
 	     anchor : anchor -> Point.t ; (* Anchors are used for relative placement *)
-	     contents : Raw.raw list (* What's needed to actually draw the node *)
+	     contents : RawContent.raw list (* What's needed to actually draw the node *)
 	   }
   end
   type gentity = Gentity.t
@@ -824,7 +824,7 @@ module Transfo (X : Set.OrderedType) = struct
     let translate v node =
       { curve = Curve.translate v node.curve ;
 	anchor = (fun a -> Vector.(+) (node.anchor a) v) ;
-	contents = let x,y = v in List.map (Raw.translate x y) node.contents }
+	contents = let x,y = v in List.map (RawContent.translate x y) node.contents }
 
 
   (* Two important ways of constructing gentities are nodes and edges between them.  *)
@@ -842,7 +842,7 @@ module Transfo (X : Set.OrderedType) = struct
       bb : float * float * float * float ;
       center : Point.t ;
       pdfAnchor: Point.t ;
-      node_contents : Raw.raw list ;
+      node_contents : RawContent.raw list ;
 
       button : (button_kind * string * string list) option;
       (* textDepth : float ; *)
@@ -866,7 +866,7 @@ module Transfo (X : Set.OrderedType) = struct
 
     type t = info
 
-    let default_params = { Raw.default_path_param with close = false ; strokingColor=None ;
+    let default_params = { RawContent.default_path_param with close = false ; strokingColor=None ;
       lineWidth = !default_line_width }
 
     let default = { at = (0.,0.) ;
@@ -1001,7 +1001,7 @@ module Transfo (X : Set.OrderedType) = struct
 	    (* Printf.fprintf stderr "contents\n" ;  *)
 	    let (x0,y0,x1,y1) as bb = match contents with
 	      | [] -> (0.,0.,0.,0.)
-	      | _ -> Raw.bounding_box contents
+	      | _ -> RawContent.bounding_box contents
 	    in
 	    (* let text_depth = -. y0 in *)
 	    (* let text_height = y1 in *)
@@ -1466,7 +1466,7 @@ Doing a rectangle.\n" ;
 	  let bb = BB.translate v info.bb in
 	  let center = Vector.(+) info.center v in
 	  let pdfAnchor = Vector.(+) info.pdfAnchor v in
-	  let contents = List.map (Raw.translate xt yt) info.node_contents in (* Center the contents *)
+	  let contents = List.map (RawContent.translate xt yt) info.node_contents in (* Center the contents *)
 	  let innerCurve = Curve.translate v info.innerCurve in
 	  let midCurve = Curve.translate v info.midCurve in
 	  let outerCurve = Curve.translate v info.outerCurve in
@@ -1961,7 +1961,7 @@ Doing a rectangle.\n" ;
 
       let default_tip_info = { tip_line_width = !default_line_width ; is_double = false }
 
-      let default_params = { Raw.default_path_param with
+      let default_params = { RawContent.default_path_param with
 	strokingColor = Some Color.black }
 
       let default_edge_info s e underlying_curve =
@@ -1984,7 +1984,7 @@ Doing a rectangle.\n" ;
 
       let empty =
 	{ (default_edge_info (coord (0.,0.)) (coord (0.,0.)) (Curve.of_point_lists [[(0.,0.)]]))
-	  with params = { Raw.default_path_param with strokingColor = None } }
+	  with params = { RawContent.default_path_param with strokingColor = None } }
 
       let transform styles s e underlying_curve =
 	let edge_info = Transfo.transform styles (default_edge_info s e underlying_curve)  in
@@ -2510,7 +2510,7 @@ Doing a rectangle.\n" ;
 
 
     module Entity = struct
-      type raw={raw_contents:Raw.raw list;raw_anchor:float*float}
+      type raw={raw_contents:RawContent.raw list;raw_anchor:float*float}
       type t =
 	Node of Node.t
       | Matrix of Matrix.t
@@ -2539,7 +2539,7 @@ Doing a rectangle.\n" ;
 	| raw :: contents ->
 	  order
 	    (succ i)
-	    ((Raw.in_order i raw) :: res) contents
+	    ((RawContent.in_order i raw) :: res) contents
 
       let to_contents stack =
 	let contents = List.flatten (List.rev_map to_raw_list stack) in
@@ -2589,7 +2589,7 @@ Doing a rectangle.\n" ;
 
       let raw (x,y) l=
         let r= { raw_anchor=(x,y);
-                 raw_contents=List.map (Raw.translate x y) l }
+                 raw_contents=List.map (RawContent.translate x y) l }
         in
         stack:=Raw r :: !stack;
         r
@@ -2908,7 +2908,7 @@ Doing a rectangle.\n" ;
 		let dr=Document.draw_boxes env
 		  (Maths.draw [{env with mathStyle = Maths.scriptStyle env.mathStyle}] a)
 		in
-		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> Raw.bounding_box dr
+		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> RawContent.bounding_box dr
 		in
 		let scale = 0.2*.(scale_env env) in
 		(* let _ = Printf.fprintf stderr "Bb: %f,%f,%f,%f\n" x0 y0 x1 y1 ; flush stderr in *)

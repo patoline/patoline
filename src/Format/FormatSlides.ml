@@ -19,7 +19,7 @@
 *)
 open Typography
 open Typography.Document
-open Raw
+open RawContent
 open Color
 open Util
 open UsualMake
@@ -171,7 +171,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               drawing_y1=tit.drawing_y1+.margin_bottom_top;
               drawing_y0=tit.drawing_y0-.margin_bottom_top;
               drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
-              drawing_contents=(fun w->(List.map (fun a->Raw.translate margin 0. (in_order 2 a)) (tit.drawing_contents w))@frame)
+              drawing_contents=(fun w->(List.map (fun a->RawContent.translate margin 0. (in_order 2 a)) (tit.drawing_contents w))@frame)
             } in
             [bB (fun _->Drawing dr :: ms2 @ ms1);Env (fun _->env2)]
           with
@@ -868,7 +868,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               in
               let _=IntMap.fold (fun _ a m->
                 cont:=(List.map (fun x->in_order 1
-                  (Raw.translate m y_menu (Raw.resize alpha x)))
+                  (RawContent.translate m y_menu (RawContent.resize alpha x)))
                          (draw_boxes env_final a))@(!cont);
                 let w=List.fold_left (fun w x->let _,w',_=box_interval x in w +. alpha *. w') 0. a in
                 m+.inter+.w
@@ -895,7 +895,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                  let boxes=boxify_scoped env [tT num] in
                 let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in
                 let x=draw_boxes env boxes in
-                List.map (fun y->Raw.translate (slidew-.w-.2.) 2. (in_order max_int y)) x)
+                List.map (fun y->RawContent.translate (slidew-.w-.2.) 2. (in_order max_int y)) x)
             in
 
             (* Dessin du slide complet *)
@@ -921,7 +921,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                     | _->[]
                 in
                 let (x0,_,x1,_)=bounding_box tit in
-                page.contents<-(List.map (Raw.translate (slidew/.2.-.(x0+.x1)/.2.) (slideh-.hoffset*.1.1)) tit)@page.contents;
+                page.contents<-(List.map (RawContent.translate (slidew/.2.-.(x0+.x1)/.2.) (slideh-.hoffset*.1.1)) tit)@page.contents;
                 let pp=Array.of_list opts.(st) in
                 let crosslinks=ref [] in (* (page, link, destination) *)
                 let crosslink_opened=ref false in
@@ -938,7 +938,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                                                 [rectangle (param.left_margin,y+.fig.drawing_y0)
                                                     (param.left_margin+.fig.drawing_nominal_width,
                                                      y+.fig.drawing_y1)]) :: page.contents;
-                    page.contents<- (List.map (Raw.translate param.left_margin y)
+                    page.contents<- (List.map (RawContent.translate param.left_margin y)
                                            (fig.drawing_contents fig.drawing_nominal_width))
                     @ page.contents;
 
@@ -959,7 +959,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                         )
                         | GlyphBox a->(
                           page.contents<-
-                            (Raw.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
+                            (RawContent.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
                           :: page.contents;
                           a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
                         )
@@ -975,7 +975,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                             ) cont
                           in
                           page.contents<-
-                            (List.map (Raw.translate x y) cont_states) @ page.contents;
+                            (List.map (RawContent.translate x y) cont_states) @ page.contents;
 		          if env.show_boxes then
                             page.contents<- Path ({default_path_param with close=true;lineWidth=0.1 },
 						      [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)])
@@ -984,7 +984,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                         )
                         | Marker (BeginLink l)->(
 			  let k = match l with
-			      Box.Extern l -> Raw.Extern l;
+			      Box.Extern l -> RawContent.Extern l;
 			    | Box.Intern l ->(
 			      try
 				let line=MarkerMap.find (Label l) env_final.user_positions in
@@ -993,12 +993,12 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                                       0.
                                   | _->line.line_y1
                                 in
-				Raw.Intern(l,Box.layout_page line,0.,y1)
+				RawContent.Intern(l,Box.layout_page line,0.,y1)
 			      with Not_found->
 				Printf.eprintf "Label not_found %s\n%!" l;
-				Raw.Intern(l,-1,0.,0.)
+				RawContent.Intern(l,-1,0.,0.)
                             )
-			    | Box.Button(drag,n,d) -> Raw.Button(drag,n,d)
+			    | Box.Button(drag,n,d) -> RawContent.Button(drag,n,d)
 			  in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                      link_order=0;link_closed=false;

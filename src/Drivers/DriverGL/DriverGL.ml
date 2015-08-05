@@ -19,8 +19,8 @@
 *)
 open Typography
 open FTypes
-open Raw (* From lablgl *)
-open Rawlib.Raw
+open Raw
+open RawContent
 open Color
 open Driver
 open Util

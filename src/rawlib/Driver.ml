@@ -1,4 +1,4 @@
-open Raw
+open RawContent
 
 type page =
   { mutable size     : float * float (* Page size, couple (width, height).*)

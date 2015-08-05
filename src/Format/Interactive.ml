@@ -1,7 +1,7 @@
 open Typography
 open Document
 open Db
-open Raw
+open RawContent
 open Color
 open Box
 open Util

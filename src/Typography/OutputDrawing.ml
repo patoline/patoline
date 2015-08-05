@@ -24,7 +24,7 @@ open FTypes
 open Break
 open Util
 open UsualMake
-open Raw
+open RawContent
 
 type page={mutable pageContents:raw list}
 
@@ -131,7 +131,7 @@ let output ?state paragraphs figures env (opt_pages:frame)=
         y1:=max !y1 y;
         y0:=min !y0 (fig.drawing_y1+.fig.drawing_y0);
 	if env.show_boxes then
-          page.pageContents<- Path ({Raw.default_path_param with close=true },
+          page.pageContents<- Path ({RawContent.default_path_param with close=true },
                                     [rectangle (param.left_margin,y+.fig.drawing_y0)
                                         (param.left_margin+.fig.drawing_nominal_width,
                                          y+.fig.drawing_y1)]) :: page.pageContents;
@@ -197,14 +197,14 @@ let output ?state paragraphs figures env (opt_pages:frame)=
                 && classify_float g.drawing_y1<>FP_infinite
                 && classify_float g.drawing_y0<>FP_infinite
               then
-                page.pageContents<- Path ({Raw.default_path_param with close = true }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
+                page.pageContents<- Path ({RawContent.default_path_param with close = true }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
               w
             )
             | Marker (BeginLink l)->(
 	      let k = match l with
-		  Box.Extern l -> Raw.Extern l
-		| Box.Intern l -> Raw.Intern(l,Box.layout_page line,0.,0.);
-		| Box.Button(drag,n,d) -> Raw.Button(drag,n,d)
+		  Box.Extern l -> RawContent.Extern l
+		| Box.Intern l -> RawContent.Intern(l,Box.layout_page line,0.,0.);
+		| Box.Button(drag,n,d) -> RawContent.Button(drag,n,d)
 	      in
               let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                          link_order=0;
@@ -276,7 +276,7 @@ let output ?state paragraphs figures env (opt_pages:frame)=
       ) !footnote_y !footnotes
     );
     if !footnotes<>[] then (
-      page.pageContents<- (Path ({Raw.default_path_param with lineWidth=0.01 }, [ [| [| env.normalLeftMargin;
+      page.pageContents<- (Path ({RawContent.default_path_param with lineWidth=0.01 }, [ [| [| env.normalLeftMargin;
                                                                                       env.normalLeftMargin+.env.normalMeasure*.(2.-.phi) |],
                                                                                  [| !footnote_y-.env.footnote_y;
                                                                                     !footnote_y-.env.footnote_y |] |] ]))::page.pageContents

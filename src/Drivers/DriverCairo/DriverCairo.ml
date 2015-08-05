@@ -17,7 +17,7 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Raw
+open RawContent
 open Driver
 open Util
 open Color 
@@ -140,7 +140,7 @@ let output'=output_to_prime output
 let makeImage filename cont env=
   let w=cont.drawing_nominal_width in
   let h=cont.drawing_y1-.cont.drawing_y0 in
-  output [|{size=(w,h);contents=List.map (Raw.translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] filename;
+  output [|{size=(w,h);contents=List.map (RawContent.translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] filename;
   let f=try Filename.chop_extension filename with _->filename in
 
   let i={image_file=(Printf.sprintf "%s0.png" f);
@@ -153,7 +153,7 @@ let makeImage filename cont env=
          image_order=0;
         }
   in
-  drawing [Raw.Image i]
+  drawing [RawContent.Image i]
 *)
 
 let _ = 

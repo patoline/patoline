@@ -20,7 +20,7 @@
 
 open Typography
 open Typography.Document
-open Raw
+open RawContent
 open UsualMake
 open Box
 open Fonts

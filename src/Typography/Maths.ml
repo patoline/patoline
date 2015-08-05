@@ -23,7 +23,7 @@ open Box
 open FTypes
 open Document
 open Document.Mathematical
-open Raw
+open RawContent
 
 let debug_kerning = ref false
 
@@ -69,7 +69,7 @@ and 'a binary_type =
   | Normal of bool * ('a,nucleus) noad * bool (* the boolean remove spacing at left or right when true *)
 
 and 'a binary= { bin_priority:int; bin_drawing:'a binary_type; bin_left:'a math list; bin_right:'a math list }
-and 'a fraction= { numerator:'a math list; denominator:'a math list; line:Document.environment->style->Raw.path_param }
+and 'a fraction= { numerator:'a math list; denominator:'a math list; line:Document.environment->style->RawContent.path_param }
 and 'a operator= { op_noad:('a,nucleuses) noad ; op_limits:bool; op_left_contents:'a math list; op_right_contents:'a math list }
 and 'a math=
     Ordinary of ('a,nucleus) noad 
@@ -89,7 +89,7 @@ let style x = Env (fun env -> { env with mathStyle = x })
 let fraction a b=Fraction {
   numerator=a;
   denominator=b;
-  line=(fun env style->{Raw.default_path_param with strokingColor=Some env.fontColor; lineWidth = (env_style env.mathsEnvironment style).default_rule_thickness})
+  line=(fun env style->{RawContent.default_path_param with strokingColor=Some env.fontColor; lineWidth = (env_style env.mathsEnvironment style).default_rule_thickness})
 }
 let bin_invisible prio left right=
   Binary { bin_priority=prio; bin_drawing=Invisible; bin_left=left; bin_right=right }
@@ -347,7 +347,7 @@ let rec draw draw_env env_stack mlist =
                 let c=draw_boxes env (draw (dincr draw_env) (subStyle style sub_env) n.subscript_right) in
                 let d=draw_boxes env (draw (dincr draw_env) (subStyle style sub_env) n.subscript_left) in
                 let bezier=Array.map bezier_of_boxes [| a;b;c;d |] in
-                let bb=Array.map (fun l->bounding_box [Path (Raw.default_path_param, [Array.of_list l])]) bezier in
+                let bb=Array.map (fun l->bounding_box [Path (RawContent.default_path_param, [Array.of_list l])]) bezier in
 
                 let y_place sup sub sup' same_script =
                   let xa0,ya0,xa1,ya1=bb.(sub) in
@@ -407,7 +407,7 @@ let rec draw draw_env env_stack mlist =
 
                 let xoff=Array.mapi (fun i l->
                   if mathsEnv.kerning then
-		    let ll = List.map (Raw.translate 0.0 yoff.(i)) l in
+		    let ll = List.map (RawContent.translate 0.0 yoff.(i)) l in
 		    let x0', _, x1', _ = bb.(i) in
 		    let m = max ((x0 -. x1) *. 4. /. 9.) (x0' -. x1') in
                     if i mod 2 = 0 then 
@@ -420,13 +420,13 @@ let rec draw draw_env env_stack mlist =
                 in
                 let dr=box_nucleus
                   @ (if n.superscript_right=[] then [] else
-                      List.map (Raw.translate (xoff.(0)) yoff.(0)) a)
+                      List.map (RawContent.translate (xoff.(0)) yoff.(0)) a)
                   @ (if n.superscript_left=[] then [] else
-		      List.map (Raw.translate (xoff.(1)) yoff.(1)) b)
+		      List.map (RawContent.translate (xoff.(1)) yoff.(1)) b)
                   @ (if n.subscript_right=[] then [] else
-		      List.map (Raw.translate (xoff.(2)) yoff.(2)) c)
+		      List.map (RawContent.translate (xoff.(2)) yoff.(2)) c)
                   @ (if n.subscript_left=[] then [] else
-		      List.map (Raw.translate (xoff.(3)) yoff.(3)) d)
+		      List.map (RawContent.translate (xoff.(3)) yoff.(3)) d)
                 in
                 let (a0,a1,a2,a3) = bounding_box dr in
                   [ Drawing ({ drawing_min_width=a2-.a0;
@@ -439,7 +439,7 @@ let rec draw draw_env env_stack mlist =
                                drawing_break_badness=0.;
                                drawing_states=[];
                                drawing_badness=(fun _->0.);
-                               drawing_contents=(fun _->List.map (Raw.translate (-.a0) 0.) dr) }) ]
+                               drawing_contents=(fun _->List.map (RawContent.translate (-.a0) 0.) dr) }) ]
               ) else
                 nucleus
         )@(draw draw_env env_stack s)
@@ -622,8 +622,8 @@ let rec draw draw_env env_stack mlist =
                                            (if ln.lineWidth = 0. then [] else
                                               [Path ({ln with lineWidth=ln.lineWidth*.mathsEnv.mathsSize*.env.size},
                                                      [ [|line (0.,hx) (w,hx)|] ]) ])@
-                                             (List.map (Raw.translate dxa (hx +. -.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.))) ba)@
-                                             (List.map (Raw.translate dxb (hx +. -.y1b-.mathsEnv.mathsSize*.env.size*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.))) bb)
+                                             (List.map (RawContent.translate dxa (hx +. -.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.))) ba)@
+                                             (List.map (RawContent.translate dxb (hx +. -.y1b-.mathsEnv.mathsSize*.env.size*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.))) bb)
                                         ) }) :: (draw draw_env env_stack s)
         )
       | Operator op::s ->(
@@ -751,9 +751,9 @@ let rec draw draw_env env_stack mlist =
                     drawing_badness=(fun _->0.);
                     drawing_contents=
                       (fun _->
-                         List.map (Raw.translate (-.xoff) 0.) drawn_op @
-                           (List.map (Raw.translate (xsup-.xoff-.(x1a+.x0a)/.2.) (y1-.y0a+.mathsEnv.limit_superscript_distance*.mathsEnv.mathsSize*.env.size)) ba)@
-                           (List.map (Raw.translate (xsub-.xoff-.(x1b+.x0b)/.2.) (y0-.y1b-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize*.env.size)) bb)
+                         List.map (RawContent.translate (-.xoff) 0.) drawn_op @
+                           (List.map (RawContent.translate (xsup-.xoff-.(x1a+.x0a)/.2.) (y1-.y0a+.mathsEnv.limit_superscript_distance*.mathsEnv.mathsSize*.env.size)) ba)@
+                           (List.map (RawContent.translate (xsub-.xoff-.(x1b+.x0b)/.2.) (y0-.y1b-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize*.env.size)) bb)
                       ) }]
 
             ) else draw (dincr draw_env) env_stack [Ordinary op_noad]
@@ -939,7 +939,7 @@ let open_close left right env_ style box=
 	  let alpha = (y1' -. y0') /. (dy1 -. dy0) in
 	  let delta = y1' -. alpha *. dy1 in
 	  (List.map (fun x -> Box.translate 0. delta (Box.resize alpha x)) d, 
-	   List.map (fun x -> Raw.translate 0. delta (Raw.resize alpha x)) d', 
+	   List.map (fun x -> RawContent.translate 0. delta (RawContent.resize alpha x)) d', 
 	   (alpha *. dx0, alpha *. dy0, alpha *. dx1, alpha *. dy1))
 
 	else select_size l
@@ -1101,7 +1101,7 @@ let make_sqrt env_ style box=
       let path0=Array.sub out 0 !i0
       and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
       let sp=adjust_space ~absolute:false env (env.sqrt_dist*.s) (-.2.*.env.sqrt_dist*.s)
-        [Raw.translate 0. ty (Path (default_path_param,[path0]))]
+        [RawContent.translate 0. ty (Path (default_path_param,[path0]))]
         under
       in
       let xmax=(bx1-.bx0) +. sp +. env.sqrt_dist*.s in
@@ -1113,7 +1113,7 @@ let make_sqrt env_ style box=
       in
       let path=Array.concat [path0; path2; path1] in
       let p=
-        Raw.translate 0. ty
+        RawContent.translate 0. ty
           (Path ({default_path_param with strokingColor=None;fillColor=Some env_.fontColor},
                  [path]
                 ))
@@ -1130,7 +1130,7 @@ let make_sqrt env_ style box=
          drawing_break_badness=0.;
          drawing_badness=(fun _->0.);
          drawing_states=[];
-         drawing_contents=(fun _->p::List.map (Raw.translate (dx0+.sp-.bx0) 0.) under);
+         drawing_contents=(fun _->p::List.map (RawContent.translate (dx0+.sp-.bx0) 0.) under);
       }]
     ) else (
       (* Il faut rallonger *)
@@ -1144,7 +1144,7 @@ let make_sqrt env_ style box=
       let path0=Array.sub out 0 !i0
       and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
       let sp=adjust_space ~absolute:false env (env.sqrt_dist*.s) (-.2.*.env.sqrt_dist*.s)
-        [Raw.translate 0. ty (Path (default_path_param,[path0]))]
+        [RawContent.translate 0. ty (Path (default_path_param,[path0]))]
         under
       in
       let xmax=(bx1-.bx0) +.sp +. env.sqrt_dist*.s in
@@ -1158,8 +1158,8 @@ let make_sqrt env_ style box=
       in
       let path=Array.concat [path0; path2; path1] in
       let p=
-        Raw.translate 0. ty
-          (Path ({Raw.default_path_param with strokingColor=None;fillColor=Some env_.fontColor},
+        RawContent.translate 0. ty
+          (Path ({RawContent.default_path_param with strokingColor=None;fillColor=Some env_.fontColor},
                  [path]
                 ))
       in
@@ -1175,7 +1175,7 @@ let make_sqrt env_ style box=
         drawing_break_badness=0.;
         drawing_states=[];
         drawing_badness=(fun _->0.);
-        drawing_contents=(fun _->p::(List.map (Raw.translate (dx0+.sp-.bx0) 0.) under))
+        drawing_contents=(fun _->p::(List.map (RawContent.translate (dx0+.sp-.bx0) 0.) under))
       }]
     )
   in

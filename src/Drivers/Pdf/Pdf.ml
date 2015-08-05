@@ -22,7 +22,7 @@ open Printf
 open Util
 open UsualMake
 open FTypes
-open Raw
+open RawContent
 open Color
 open Driver
 
@@ -164,7 +164,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
           ) path
         ))
     ) paths;
-    match Raw.(params.fillColor, params.strokingColor) with
+    match RawContent.(params.fillColor, params.strokingColor) with
         None, None-> Rbuffer.add_string pageBuf "n "
       | None, Some col -> (
         if params.close then Rbuffer.add_string pageBuf "s " else
@@ -440,14 +440,14 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       | Path (params,[])->()
       | Path (params,paths) ->(
         close_text ();
-        set_line_join Raw.(params.lineJoin);
-        set_line_cap Raw.(params.lineCap);
-        set_line_width (pt_of_mm Raw.(params.lineWidth));
-        set_dash_pattern Raw.(params.dashPattern);
-        (match Raw.(params.strokingColor) with
+        set_line_join RawContent.(params.lineJoin);
+        set_line_cap RawContent.(params.lineCap);
+        set_line_width (pt_of_mm RawContent.(params.lineWidth));
+        set_dash_pattern RawContent.(params.dashPattern);
+        (match RawContent.(params.strokingColor) with
             None->()
           | Some col -> change_stroking_color col);
-        (match Raw.(params.fillColor) with
+        (match RawContent.(params.fillColor) with
             None->()
           | Some col -> change_non_stroking_color col);
         writePath pageBuf pt_of_mm paths params

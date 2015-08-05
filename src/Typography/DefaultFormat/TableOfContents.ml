@@ -35,9 +35,9 @@ let centered parameters str tree _=
           let x=Fonts.loadGlyph env.font ({empty_glyph with glyph_index=Fonts.glyph_of_char env.font 'x'}) in
             (Fonts.glyph_y1 x)/.1000.
         in
-        let orn=Raw.translate 0. (env.size*.x_height/.2.-.r) (Raw.Path
-        ({Raw.default_path_param with Raw.fillColor=Some Color.black;Raw.strokingColor=None }, [Raw.circle r])) in
-        let (orn_x0,_,orn_x1,_)=Raw.bounding_box [orn] in
+        let orn=RawContent.translate 0. (env.size*.x_height/.2.-.r) (RawContent.Path
+        ({RawContent.default_path_param with RawContent.fillColor=Some Color.black;RawContent.strokingColor=None }, [RawContent.circle r])) in
+        let (orn_x0,_,orn_x1,_)=RawContent.bounding_box [orn] in
         let max_name=ref 0. in
         let max_w=ref 0. in
         let y=orn_x1-.orn_x0 in
@@ -83,13 +83,13 @@ let centered parameters str tree _=
                     let w_name=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
                     let w_page=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. pagenum in
                     let cont=
-                      (List.map (Raw.translate (-.w_name-.spacing) 0.) (draw_boxes env name))@
+                      (List.map (RawContent.translate (-.w_name-.spacing) 0.) (draw_boxes env name))@
                         orn::
-                        (List.map (Raw.translate (y+.spacing) 0.) (draw_boxes env pagenum))
+                        (List.map (RawContent.translate (y+.spacing) 0.) (draw_boxes env pagenum))
                     in
                     max_w:=max !max_w (w_name+.w_page+.2.*.spacing);
                     max_name:=max !max_name (w_name+.spacing);
-                    let (a,b,c,d)=Raw.bounding_box cont in
+                    let (a,b,c,d)=RawContent.bounding_box cont in
                     Drawing {
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;
@@ -117,7 +117,7 @@ let centered parameters str tree _=
         List.map (function
                       Drawing d->
                         Drawing {d with drawing_contents=
-                            (fun x->List.map (Raw.translate x0 0.)
+                            (fun x->List.map (RawContent.translate x0 0.)
                                (d.drawing_contents x))
                                  }
                     | x->x) table
@@ -169,13 +169,13 @@ let these parameters str tree max_level=
                   let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. num in
                   let w'=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
                   let cont=
-                    (if numbered then List.map (Raw.translate (-.w-.spacing) 0.)
+                    (if numbered then List.map (RawContent.translate (-.w-.spacing) 0.)
                        (draw_boxes env num) else [])@
-                      (List.map (Raw.translate 0. 0.) (draw_boxes env name))@
-                      List.map (Raw.translate (w'+.spacing) 0.)
+                      (List.map (RawContent.translate 0. 0.) (draw_boxes env name))@
+                      List.map (RawContent.translate (w'+.spacing) 0.)
                       (draw_boxes env (boxify_scoped (envItalic true env') [tT (string_of_int page)]))
                   in
-                  let (a,b,c,d)=Raw.bounding_box cont in
+                  let (a,b,c,d)=RawContent.bounding_box cont in
                   Marker (BeginLink (Intern labl))::
                     Drawing {
                       drawing_min_width=env.normalMeasure;
@@ -190,7 +190,7 @@ let these parameters str tree max_level=
                       drawing_states=[];
                       drawing_contents=
                         (fun _->
-                          List.map (Raw.translate
+                          List.map (RawContent.translate
                                       (margin+.spacing*.3.*.(float_of_int (level-1)))
                                        0.) cont)
                     }::Marker EndLink::(glue 0. 0. 0.)::chi
@@ -263,12 +263,12 @@ let slides ?(hidden_color=Color.rgb 0.8 0.8 0.8) parameters str tree max_level=
                   let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. num in
                   let w0=2.*.env.size in
                   let cont=
-                    (if numbered then List.map (Raw.translate (w0-.w-.spacing) 0.)
+                    (if numbered then List.map (RawContent.translate (w0-.w-.spacing) 0.)
                         (draw_boxes env_num num)
                      else [])@
-                      (List.map (Raw.translate w0 0.) (draw_boxes env' name))
+                      (List.map (RawContent.translate w0 0.) (draw_boxes env' name))
                   in
-                  let (a,b,c,d)=Raw.bounding_box cont in
+                  let (a,b,c,d)=RawContent.bounding_box cont in
                   Marker (BeginLink (Intern labl))::
                     Drawing {
                       drawing_min_width=env.normalMeasure;
@@ -283,7 +283,7 @@ let slides ?(hidden_color=Color.rgb 0.8 0.8 0.8) parameters str tree max_level=
                       drawing_states=[];
                       drawing_contents=
                         (fun _->
-                           List.map (Raw.translate
+                           List.map (RawContent.translate
                                        (spacing*.3.*.(float_of_int (level-1)))
                                        0.) cont)
                     }::Marker EndLink::(glue 0. 0. 0.)::chi

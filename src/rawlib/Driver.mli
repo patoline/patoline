@@ -1,7 +1,7 @@
 (* Type of a single page. *)
 type page = {
   mutable size : float * float;
-  mutable contents : Raw.raw list;
+  mutable contents : RawContent.raw list;
 }
 
 (* Creates an empty page of the given size. *)
@@ -18,7 +18,7 @@ also position of sections / chapters. *)
 type structure = {
   mutable name : string;
   mutable metadata : (meta_field * string) list;
-  mutable raw_name : Raw.raw list;
+  mutable raw_name : RawContent.raw list;
   mutable tags : (string * string) list;
   mutable page : int;
   mutable struct_x : float;

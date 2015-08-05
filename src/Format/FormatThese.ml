@@ -143,7 +143,7 @@ let postprocess_tree tree=
               let num=
                 if List.mem_assoc "numbered" n.node_tags then
                   let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-                  List.map (Raw.in_order 1)
+                  List.map (RawContent.in_order 1)
                     (draw {env with size=env.size*.(sz-.h);fontColor=Color.gray }
                        [tT (String.concat "." (List.map (fun x->string_of_int (x+1))
                                                  (List.rev (drop 1 b))))])
@@ -151,7 +151,7 @@ let postprocess_tree tree=
                   []
               in
               let x0,x1=if num=[] then 0.,0. else
-                  let x0,_,x1,_=Raw.bounding_box num in x0,x1
+                  let x0,_,x1,_=RawContent.bounding_box num in x0,x1
               in
               let w=if num=[] then 0. else env.size in
 
@@ -168,16 +168,16 @@ let postprocess_tree tree=
                   with
                       Not_found->empty_drawing_box
                 in
-                List.map (Raw.in_order 1)
+                List.map (RawContent.in_order 1)
                   (dr.drawing_contents dr.drawing_nominal_width)
               in
               let dr=drawing (
-                (List.map (Raw.translate (-.w-.x1) h) num)@
+                (List.map (RawContent.translate (-.w-.x1) h) num)@
                   text
               )
               in
               let dr={dr with drawing_contents=(fun w_->
-                List.map (Raw.translate ((x0-.x1)/.2.) 0.) (dr.drawing_contents w_)
+                List.map (RawContent.translate ((x0-.x1)/.2.) 0.) (dr.drawing_contents w_)
               )}
               in
               bB (fun _->
