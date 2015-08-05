@@ -63,22 +63,23 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
             done;
             if param.close then Cairo.close_path ctx;
           ) path;
-          (match param.strokingColor,param.fillColor with
-              Some (RGB x),Some (RGB y)->(
-                Cairo.set_source_rgb ctx ~red:y.red ~green:y.green ~blue:y.blue;
+          (match param.strokingColor, param.fillColor with
+            | (Some cx, Some cy) ->
+                let (rx,gx,bx) = to_rgb cx
+                let (ry,gy,by) = to_rgb cy
+                Cairo.set_source_rgb ctx ~red:ry ~green:gy ~blue:by;
                 Cairo.fill_preserve ctx ;
-                Cairo.set_source_rgb ctx ~red:x.red ~green:x.green ~blue:x.blue;
-                Cairo.stroke ctx ;
-              )
-            | Some (RGB x),None->(
-              Cairo.set_source_rgb ctx ~red:x.red ~green:x.green ~blue:x.blue;
-              Cairo.stroke ctx ;
-            )
-            | None,Some (RGB y)->(
-              Cairo.set_source_rgb ctx ~red:y.red ~green:y.green ~blue:y.blue;
-              Cairo.fill ctx ;
-            )
-            | _->()
+                Cairo.set_source_rgb ctx ~red:rx ~green:gx ~blue:bx;
+                Cairo.stroke ctx 
+            | (Some cx, None   ) ->
+                let (rx,gx,bx) = to_rgb cx
+                Cairo.set_source_rgb ctx ~red:rx ~green:gx ~blue:bx;
+                Cairo.stroke ctx 
+            | (None   , Some cy) ->
+                let (ry,gy,by) = to_rgb cy
+                Cairo.set_source_rgb ctx ~red:ry ~green:gy ~blue:by;
+                Cairo.fill ctx
+            | (None   , None   )_-> ()
           );
           draw_page s
         )
@@ -134,12 +135,10 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
 let output'=output_to_prime output
 
-open Typography.Box
-open Typography.Document
 let makeImage filename cont env=
   let w=cont.drawing_nominal_width in
   let h=cont.drawing_y1-.cont.drawing_y0 in
-  output [|{pageFormat=(w,h);pageContents=List.map (Typography.OutputCommon.translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] filename;
+  output [|{size=(w,h);contents=List.map (Raw.translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] filename;
   let f=try Filename.chop_extension filename with _->filename in
 
   let i={image_file=(Printf.sprintf "%s0.png" f);
@@ -152,7 +151,7 @@ let makeImage filename cont env=
          image_order=0;
         }
   in
-  drawing [Typography.OutputCommon.Image i]
+  drawing [Raw.Image i]
 
 let _ = 
-  Hashtbl.add drivers "DriverCairo" (module struct let output = output let output' = output' end:Driver)
+  Hashtbl.add DynDriver.drivers "DriverCairo" (module struct let output = output let output' = output' end:OutputDriver)
