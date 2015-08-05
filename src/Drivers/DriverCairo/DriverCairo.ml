@@ -17,8 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Typography.OutputCommon
-open Typography.OutputPaper
+open Raw
+open Driver
 open Util
 
 let driver_options = []
@@ -26,14 +26,14 @@ let filter_options argv = argv
 
 let pixels_per_mm=ref 10.
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
+				  page= -1;struct_x=0.;struct_y=0.;children=[||]})
     pages fileName=
 
 
   let f=try Filename.chop_extension fileName with _->fileName in
   Array.iteri (fun i x->
-    let width,height=x.pageFormat in
+    let width,height=x.size in
     let widthf= (width*. !pixels_per_mm) and heightf= (height*. !pixels_per_mm) in
     let width=int_of_float widthf and height=int_of_float heightf in
     let surface = Cairo.image_surface_create Cairo.FORMAT_ARGB32 ~width:(width)

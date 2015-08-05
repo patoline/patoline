@@ -18,10 +18,9 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Typography
 open Db
-open OutputCommon
-open OutputPaper
+open Raw
+open Driver
 open Util
 open UsualMake
 open HtmlFonts
@@ -275,8 +274,8 @@ type change =
 | Slide of int * int
 | Dynamics of int * int * string list(*Typography.OutputCommon.dynamic list*)
 
-let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
+				  page= -1;struct_x=0.;struct_y=0.;children=[||]})
     pages fileName=
 
   let dynCache = Array.map (fun t -> Array.map (fun _ -> Hashtbl.create 13) t) pages in
@@ -328,7 +327,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let mouse_script=
-    let w,h = pages.(0).(0).pageFormat in (* FIXME: assume same format for all pages *)
+    let w,h = pages.(0).(0).size in (* FIXME: assume same format for all pages *)
     Printf.sprintf
 "
 function send_click(name,dest,ev) {
@@ -1380,4 +1379,4 @@ in
 let output = output_from_prime output'
 
 let _ =
-  Hashtbl.add drivers "Patonet" (module struct let output = output let output' = output' end:Driver)
+  Hashtbl.add DynDriver.drivers "Patonet" (module struct let output = output let output' = output' end:OutputDriver)
