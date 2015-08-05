@@ -18,7 +18,7 @@ endif
 endif
 
 # Building
-RAWLIB_MODS:= Config0 Color Bezier Raw Driver DynDriver
+RAWLIB_MODS:= Config0 Color Bezier Raw Driver DynDriver Rawlib
 
 RAWLIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(RAWLIB_MODS)))
 
