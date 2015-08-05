@@ -136,6 +136,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
 let output'=output_to_prime output
 
+(* Useless?
 let makeImage filename cont env=
   let w=cont.drawing_nominal_width in
   let h=cont.drawing_y1-.cont.drawing_y0 in
@@ -153,6 +154,7 @@ let makeImage filename cont env=
         }
   in
   drawing [Raw.Image i]
+*)
 
 let _ = 
   Hashtbl.add DynDriver.drivers "DriverCairo" (module struct let output = output let output' = output' end:OutputDriver)
