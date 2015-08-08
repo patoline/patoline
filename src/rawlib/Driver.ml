@@ -6,6 +6,9 @@ type page =
 
 let empty_page size = { size ; contents = [] }
 
+let make_mage : float * float -> raw list -> page = fun size contents ->
+  { size; contents }
+
 type meta_field =
   | Contributor | Coverage | Creator | Date | Description | Format
   | Identifier | Language | Publisher | Relation | Rights | Source
