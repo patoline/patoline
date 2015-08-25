@@ -138,12 +138,40 @@ type options={
   noamble:bool
 }
 
-module StringSet = Set.Make(struct type t = string let compare = compare end)
+module StringSet = Set.Make(Str_)
 let compact l =
   let s = List.fold_right StringSet.add l StringSet.empty in
   StringSet.elements s
 
+module StrGraph = Graph.Make(Str_)
 
+(* A function that creates a [StrGraph.t] out of a [string list StrMap.t] *)
+let strGraph_of_strMap m =
+  let open StrGraph in
+  (* We create a mutable map [nodes] of `type' string ~> node which we'll gradually update *)
+  (* the idea being to maintain a bijection between strings and nodes *)
+  let nodes = ref StrMap.empty in
+  (* We also create a list of nodes which should also be kept up to date. This is useful because the list of keys of [nodes]
+   may not contain all involved nodes, as nodes may have no dependencies. *)
+  let nodelist : graph ref = ref [] in
+  (* The next function attemps to associate a node to some argument string [s] via [nodes], and, 
+   if it fails, creates a new node with underlying string [s], which it readily adds to [nodes] *)
+  let nodeOfString s =
+    try StrMap.find s !nodes
+    with Not_found -> let res = {  id = s ; sons = [] ; color = Virgin } in
+		      let _ = nodes := StrMap.add s res !nodes in
+		      let _ = nodelist := res :: !nodelist in
+		      res
+  in
+  (* We brutally add all the dependencies mentioned by the given [StrMap.t], [m].  *)
+  (* Because [m] only adds dependencies to a node once, we could probably get rid of the [@] below. *)
+  let _ = StrMap.iter (fun s sons ->
+	       let node = nodeOfString s in
+	       let nsons = List.map nodeOfString sons in
+	       node.sons <- node.sons @ nsons)
+		      m
+  in !nodelist
+	       
 let last_options_used file=
   let fread=open_in file in
   let _formats=ref "" in
@@ -716,7 +744,17 @@ and patoline_rule objects (builddir:string) (hs:string list)=
 
             let mut,m=objects in
             Mutex.lock mut;
-            let objs=breadth_first m [h] [] in
+            (* let objs=breadth_first m [h] [] in *)
+
+	    let objs =
+	      let graph = strGraph_of_strMap !m in
+	      begin match StrGraph.total_order graph with
+		      (* On enleve la tete de liste, qui hopefully n'est autre que le .tmx *)
+		      h :: deps -> List.rev deps
+		    | _ -> []
+	      end
+	    in
+
             if compilation_needed (main_obj::objs) [h] then (
               let dirs_=str_dirs (!dirs@opts.directories) in
               let cmd="ocamlfind" in

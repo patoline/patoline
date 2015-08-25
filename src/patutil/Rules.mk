@@ -18,7 +18,7 @@ endif
 endif
 
 # Building
-UTIL_MODS:= FilenameExtra UsualMake Util
+UTIL_MODS:= FilenameExtra UsualMake Util Graph
 
 UTIL_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UTIL_MODS)))
 
