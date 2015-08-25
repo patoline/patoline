@@ -89,6 +89,13 @@ let defaultEnv = { defaultEnv with hyphenate=DefaultFormat.hyphenate_dict "hyph-
 			  let counterLevel=0
 			  let display num=alternative Bold [tT ("Remarque "^num^"."); (tT " ")]
 			end)
+  module Env_condition=Default.Make_theorem
+			(struct
+			  let refType="condition"
+			  let counter="condition"
+			  let counterLevel=0
+			  let display num=alternative Bold [tT ("Condition "^num^"."); (tT " ")]
+			end)
   module Env_notation=Default.Make_theorem
 			(struct
 			  let refType="notation"
