@@ -1897,6 +1897,10 @@ Doing a rectangle.\n" ;
 	    0.0
 	  end
 
+      let evaluate_z_global info t = match info.z_curve with
+	  [] -> 0.0
+	| l -> evaluate_z info (Curve.local_time l t)
+
       type t = info
 
 
