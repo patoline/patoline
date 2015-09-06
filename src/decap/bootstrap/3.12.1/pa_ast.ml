@@ -2,14 +2,26 @@ open Asttypes
 open Parsetree
 open Longident
 open Pa_ocaml_prelude
-let exp_int _loc n = loc_expr _loc (Pexp_constant (Const_int n))
-let exp_string _loc n = loc_expr _loc (Pexp_constant (const_string n))
+let exp_int _loc i = loc_expr _loc (Pexp_constant (Const_int i))
+let exp_char _loc c = loc_expr _loc (Pexp_constant (Const_char c))
+let exp_string _loc s = loc_expr _loc (Pexp_constant (const_string s))
+let exp_float _loc f = loc_expr _loc (Pexp_constant (Const_float f))
+let exp_int32 _loc i = loc_expr _loc (Pexp_constant (Const_int32 i))
+let exp_int64 _loc i = loc_expr _loc (Pexp_constant (Const_int64 i))
+let exp_nativeint _loc i = loc_expr _loc (Pexp_constant (Const_nativeint i))
+let exp_const _loc c es =
+  let c = id_loc (Lident c) _loc in loc_expr _loc (pexp_construct (c, None))
+let exp_record _loc fs =
+  let f (l,e) = ((id_loc (Lident l) _loc), e) in
+  let fs = List.map f fs in loc_expr _loc (Pexp_record (fs, None))
 let exp_None _loc =
   let cnone = id_loc (Lident "None") _loc in
   loc_expr _loc (pexp_construct (cnone, None))
 let exp_Some _loc a =
   let csome = id_loc (Lident "Some") _loc in
   loc_expr _loc (pexp_construct (csome, (Some a)))
+let exp_option _loc =
+  function | None  -> exp_None _loc | Some e -> exp_Some _loc e
 let exp_unit _loc =
   let cunit = id_loc (Lident "()") _loc in
   loc_expr _loc (pexp_construct (cunit, None))
@@ -23,6 +35,7 @@ let exp_true _loc =
 let exp_false _loc =
   let cfalse = id_loc (Lident "false") _loc in
   loc_expr _loc (pexp_construct (cfalse, None))
+let exp_bool _loc b = if b then exp_true _loc else exp_false _loc
 let exp_Cons _loc a l =
   loc_expr _loc
     (pexp_construct

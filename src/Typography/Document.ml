@@ -53,7 +53,10 @@ let make_ligature l gl x=
     make_ligature x
 
 (* Italic is second *)
-type fontFamily = (fontAlternative * ((font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t * (font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)) list
+type fontFamily =
+  fontAlternative *
+    ((font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t *
+     (font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)
 
 
 module TS=Break.Make
@@ -146,8 +149,8 @@ end
     control many different things about the fonts, counters, or
     labels. *)
 type environment={
-  fontFamily:fontFamily;
-  fontMonoFamily:fontFamily;
+  fontFamily:fontFamily list;
+  fontMonoFamily:fontFamily list;
   fontMonoRatio:float; (* size adjustment of the two previous family *)
   fontItalic:bool;
   fontAlternative:fontAlternative;

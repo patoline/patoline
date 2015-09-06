@@ -24,29 +24,29 @@ type item =
 type ast = item list
 
 (* Parser *)
-let parser lid = | RE("[a-z][_a-z]*")
-let parser uid = | RE("[A-Z][_a-zA-Z0-9]*")
+let parser lid = | ''[a-z][_a-z]*''
+let parser uid = | ''[A-Z][_a-zA-Z0-9]*''
 let parser arg = | '\'' - RE("[a-z]+")
 
 let parser base_type p_auth =
+  | "bool"                                        -> Bool
+  | "int32"                                       -> Int32
+  | "int64"                                       -> Int64
+  | "int"                                         -> Int
+  | "char"                                        -> Char
+  | "string"                                      -> String
+  | "nativeint"                                   -> Nativeint
+  | "Longident.t"                                 -> Longident_t
+  | "Location.t"                                  -> Location_t
+  | "Location.loc"                                -> Location_loc
   | t:(base_type false) "option"                  -> Option t
   | t:(base_type false) "list"                    -> List t
   | t:(base_type false) "loc"                     -> Loc t
   | t:(base_type false) "class_infos"             -> Class_infos t
   | t:(base_type false) "include_infos"           -> Include_infos t
   | t:(base_type false) ts:{'*' (base_type false)}++ when p_auth -> Prod (t :: ts)
-  | "bool"                                        -> Bool
-  | "int"                                         -> Int
-  | "char"                                        -> Char
-  | "string"                                      -> String
-  | "int32"                                       -> Int32
-  | "int64"                                       -> Int64
-  | "nativeint"                                   -> Nativeint
-  | "Location.t"                                  -> Location_t
-  | "Location.loc"                                -> Location_loc
   | a:arg                                         -> Var a
   | n:lid                                         -> Name n
-  | "Longident.t"                                 -> Longident_t
   | '(' (base_type true) ')'
 
 

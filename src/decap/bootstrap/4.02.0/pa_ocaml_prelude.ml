@@ -134,6 +134,7 @@ module Initial =
       Decap.alternatives'
         [Decap.apply (fun _  -> ()) comment;
         Decap.apply (fun _  -> ()) string_literal;
+        Decap.apply (fun _  -> ()) char_literal;
         Decap.apply (fun _  -> ()) any_not_closing]
     let _ =
       set_grammar comment
@@ -454,10 +455,13 @@ module Initial =
            { pc_lhs = pat; pc_rhs = expr; pc_guard = guard }) cases
     let pexp_function cases = Pexp_function cases
     let pexp_fun (label,opt,pat,expr) = Pexp_fun (label, opt, pat, expr)
+    type record_field = (Longident.t Asttypes.loc* Parsetree.expression)
     let constr_decl_list: constructor_declaration list grammar =
       declare_grammar "constr_decl_list"
     let field_decl_list: label_declaration list grammar =
       declare_grammar "field_decl_list"
+    let record_list: record_field list grammar =
+      declare_grammar "record_list"
     let ((match_cases : expression_prio -> case list grammar),set_match_cases)
       = grammar_family "match_cases"
     let module_expr: module_expr grammar = declare_grammar "module_expr"
@@ -474,6 +478,7 @@ module Initial =
       | Signature of Parsetree.signature_item list
       | Constr_decl of constructor_declaration list
       | Field_decl of label_declaration list
+      | Record of record_field list
       | Let_binding of value_binding list
       | Module_expr of module_expr
       | Module_type of module_type
@@ -581,6 +586,19 @@ module Initial =
       match Stack.top quote_stack with
       | First env -> assert false
       | Second env -> env := ((pos, (Field_decl e)) :: (!env))
+    let push_pop_record pos e =
+      try
+        match Stack.top quote_stack with
+        | First env -> (env := ((pos, "push_record", e) :: (!env)); [])
+        | Second env ->
+            (match List.assoc pos (!env) with
+             | Record e -> e
+             | _ -> assert false)
+      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+    let push_record pos e =
+      match Stack.top quote_stack with
+      | First env -> assert false
+      | Second env -> env := ((pos, (Record e)) :: (!env))
     let push_pop_cases pos e =
       try
         match Stack.top quote_stack with
@@ -831,6 +849,7 @@ module Initial =
          | "structure" -> ignore (parse_string' structure e)
          | "signature" -> ignore (parse_string' signature e)
          | "constructors" -> ignore (parse_string' constr_decl_list e)
+         | "record" -> ignore (parse_string' record_list e)
          | "fields" -> ignore (parse_string' field_decl_list e)
          | "cases" -> ignore (parse_string' (match_cases Top) e)
          | "let_binding" -> ignore (parse_string' let_binding e)
@@ -944,6 +963,7 @@ module Initial =
     let quote_signature_2 loc e = parse_string' signature e
     let quote_constructors_2 loc e = parse_string' constr_decl_list e
     let quote_fields_2 loc e = parse_string' field_decl_list e
+    let quote_record_2 loc e = parse_string' record_list e
     let quote_let_binding_2 loc e = parse_string' let_binding e
     let quote_module_expr_2 loc e =
       mexpr_loc loc (parse_string' module_expr e).pmod_desc

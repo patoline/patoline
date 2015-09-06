@@ -605,13 +605,16 @@ let print_math_deco _loc elt ind =
   in
   if ind = no_ind then (
     <:expr< Maths.noad $print_math_symbol _loc elt$ >>
-  ) else failwith "pas encore"
-    (*   begin *)
-    (*   Printf.bprintf buf "{ (Maths.noad (%a)) with " print_math_symbol elt; *)
-    (*   if ind.up_right <> None then ( *)
-    (* 	if ind.up_right_same_script then Printf.bprintf buf "Maths.super_right_same_script = true; ";  *)
-    (* 	gn "Maths.superscript_right" ind.up_right *)
-    (*   ); *)
+  ) else
+    begin
+      let r = ref [] in
+      (match ind.up_right with
+	Some i ->
+     	  if ind.up_right_same_script then
+	    r:= <:record<Maths.super_right_same_script = true>> @ !r;
+	  r:= <:record<Maths.superscript_right = $i$ >> @ !r
+      | _ -> ());
+
     (*   if ind.up_left <> None then ( *)
     (* 	if ind.up_left_same_script then Printf.bprintf buf "Maths.super_left_same_script = true; ";  *)
     (* 	gn "Maths.superscript_left" ind.up_left *)
@@ -619,17 +622,44 @@ let print_math_deco _loc elt ind =
     (*   if ind.down_right <> None then gn "Maths.subscript_right" ind.down_right; *)
     (*   if ind.down_left <> None then gn "Maths.subscript_left" ind.down_left; *)
     (*   Printf.bprintf buf "}" *)
-    (* end *)
+     <:expr< { (Maths.noad $print_math_symbol _loc elt$) with $(!r)$ } >>
+    end
 
-let math_aux : (unit indices -> Parsetree.expression) Decap.grammar =
-  parser
-    | | var:''[a-zA-Z]'' -> (fun indices ->
-      <:expr<[Maths.Ordinary $print_math_deco _loc_var (SimpleSym var) indices$] >>)
+type math_prio = Macro | AtomM | Accent | Ind | Fun | Prod | Sum | Operator | Rel | Neg | Conj | Impl | Punc
+
+let pred : math_prio -> math_prio = function
+  | Macro -> assert false
+  | p -> Obj.magic (Obj.magic p - 1)
+
+let parser math_aux prio : (Parsetree.expression indices -> Parsetree.expression) Decap.grammar =
+    | | var:''[a-zA-Z]'' when prio = AtomM ->
+      (fun indices ->
+	<:expr<[Maths.Ordinary $print_math_deco _loc_var (SimpleSym var) indices$] >>)
+    | | num:''[0-9]+\([.][0-9]+\)?'' when prio = AtomM ->
+      (fun indices ->
+	<:expr<[Maths.Ordinary $print_math_deco _loc_num (SimpleSym num) indices$] >>)
+
+    | | m:(math_aux (pred Ind)) - rd:right_deco when prio = Ind ->
+      (fun indices -> m (rd indices))
+
+    | | m:(math_aux (pred prio)) when prio > Macro -> (fun indices -> m indices)
+
+
   (* | | 'x' -> <:expr@_loc<Maths.noad (Maths.glyphs "x")>> *)
   (* TODO *)
 
+and right_deco =
+    | "_" - m:(math_aux Ind) ->
+      (fun indices ->
+	if indices.down_right <> None then give_up "double indices";
+	{ indices with down_right = Some (m no_ind) })
+    | "^" - m:(math_aux Ind) ->
+      (fun indices ->
+	if indices.up_right <> None then give_up "double indices";
+	{ indices with up_right = Some (m no_ind) })
+
 let math_toplevel = parser
-  m:math_aux -> m no_ind
+  m:(math_aux Punc) -> m no_ind
 
 
 

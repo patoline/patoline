@@ -778,78 +778,100 @@ module Ext(In:Extension) =
                                      pop_frame ();
                                      (_loc, occur_loc, def, l, condition,
                                        action)) glr_action))))
-    let glr_rules_aux =
-      Decap.fsequence_position
+    let apply_def_cond _loc arg =
+      let (def,cond,e) = build_rule arg in
+      match cond with
+      | None  -> def e
+      | Some c ->
+          def
+            (loc_expr _loc
+               (Pexp_ifthenelse
+                  (c, e,
+                    (Some
+                       (exp_apply _loc (exp_glr_fun _loc "fail")
+                          [exp_string _loc ""])))))
+    let eq_expression_opt e1 e2 =
+      match (e1, e2) with
+      | (Some e1,Some e2) -> Compare.eq_expression e1 e2
+      | (None ,None ) -> true
+      | _ -> false
+    let eq_pattern_opt e1 e2 =
+      match (e1, e2) with
+      | (Some e1,Some e2) -> Compare.eq_pattern e1 e2
+      | (None ,None ) -> true
+      | _ -> false
+    let eq_option opt opt' =
+      match (opt, opt') with
+      | (`Once,`Once) -> true
+      | (`Option (g,d),`Option (g',d')) ->
+          (g = g') && (eq_expression_opt d d')
+      | (`Fixpoint (g,d),`Fixpoint (g',d')) ->
+          (g = g') && (eq_expression_opt d d')
+      | (`Fixpoint1 (g,d),`Fixpoint1 (g',d')) ->
+          (g = g') && (eq_expression_opt d d')
+      | _ -> false
+    let factorisable elt1 elt2 =
+      match (elt1, elt2) with
+      | ((_loc,occur_loc,def,(`Normal (id,cst,e,opt,occur_loc_id))::_,condition,action),
+         (_loc',occur_loc',def',(`Normal (id',cst',e',opt',occur_loc_id'))::_,condition',action'))
+          ->
+          ((fst id) = (fst id')) &&
+            ((cst = cst') &&
+               ((Compare.eq_expression e e') &&
+                  ((eq_pattern_opt (snd id) (snd id')) &&
+                     ((eq_option opt opt') &&
+                        (Compare.eq_expression (def (exp_ident _loc "@"))
+                           (def' (exp_ident _loc "@")))))))
+      | _ -> false
+    let build_alternatives _loc comb ls =
+      match ls with
+      | [] -> exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]
+      | r::[] -> apply_def_cond _loc r
+      | _::_ ->
+          ((match ls with
+            | elt1::elt2::_ ->
+                if factorisable elt1 elt2
+                then Printf.eprintf "can left factorise\n%!"
+            | _ -> ());
+           (let l =
+              List.fold_right
+                (fun r  ->
+                   fun y  ->
+                     let (def,cond,e) = build_rule r in
+                     match cond with
+                     | None  -> def (exp_Cons _loc e y)
+                     | Some c ->
+                         def
+                           (loc_expr _loc
+                              (Pexp_let
+                                 (Nonrecursive,
+                                   [value_binding _loc (pat_ident _loc "y") y],
+                                   (loc_expr _loc
+                                      (Pexp_ifthenelse
+                                         (c,
+                                           (exp_Cons _loc e
+                                              (exp_ident _loc "y")),
+                                           (Some (exp_ident _loc "y")))))))))
+                ls (exp_Nil _loc) in
+            exp_apply _loc (exp_glr_fun _loc comb) [l]))
+    let alt =
+      Decap.sequence (Decap.char '|' '|')
         (Decap.option None
-           (Decap.apply (fun x  -> Some x)
-              (Decap.sequence (Decap.char '|' '|') (Decap.char '|' '|')
-                 (fun _  -> fun _  -> ()))))
-        (Decap.sequence glr_rule
-           (Decap.apply List.rev
-              (Decap.fixpoint' []
-                 (Decap.apply (fun x  -> fun l  -> x :: l)
-                    (Decap.fsequence (Decap.char '|' '|')
-                       (Decap.sequence (Decap.char '|' '|') glr_rule
-                          (fun _  -> fun r  -> fun _  -> r))))))
-           (fun r  ->
-              fun rs  ->
-                fun _default_0  ->
-                  fun __loc__start__buf  ->
-                    fun __loc__start__pos  ->
-                      fun __loc__end__buf  ->
-                        fun __loc__end__pos  ->
-                          let _loc =
-                            locate __loc__start__buf __loc__start__pos
-                              __loc__end__buf __loc__end__pos in
-                          let r = build_rule r
-                          and rs = List.map build_rule rs in
-                          match rs with
-                          | [] -> r
-                          | l ->
-                              let l =
-                                List.fold_right
-                                  (fun (def,cond,x)  ->
-                                     fun y  ->
-                                       match cond with
-                                       | None  -> def (exp_Cons _loc x y)
-                                       | Some c ->
-                                           def
-                                             (loc_expr _loc
-                                                (Pexp_let
-                                                   (Nonrecursive,
-                                                     [value_binding _loc
-                                                        (pat_ident _loc "y")
-                                                        y],
-                                                     (loc_expr _loc
-                                                        (Pexp_ifthenelse
-                                                           (c,
-                                                             (exp_Cons _loc x
-                                                                (exp_ident
-                                                                   _loc "y")),
-                                                             (Some
-                                                                (exp_ident
-                                                                   _loc "y")))))))))
-                                  (r :: l) (exp_Nil _loc) in
-                              (((fun x  -> x)), None,
-                                (exp_apply _loc
-                                   (exp_glr_fun _loc "alternatives'") 
-                                   [l]))))
+           (Decap.apply (fun x  -> Some x) (Decap.char '|' '|')))
+        (fun _  -> fun x  -> x = None)
     let _ =
       Decap.set_grammar glr_rules
         (Decap.fsequence_position
-           (Decap.option false
-              (Decap.alternatives
-                 [Decap.apply (fun _  -> false) (Decap.char '|' '|');
-                 Decap.apply (fun _  -> true) (Decap.char '~' '~')]))
-           (Decap.sequence glr_rules_aux
+           (Decap.option None (Decap.apply (fun x  -> Some x) alt))
+           (Decap.sequence glr_rule
               (Decap.apply List.rev
                  (Decap.fixpoint' []
                     (Decap.apply (fun x  -> fun l  -> x :: l)
-                       (Decap.sequence (Decap.char '|' '|') glr_rules_aux
-                          (fun _  -> fun r  -> r)))))
+                       (Decap.sequence alt glr_rule
+                          (fun a  -> fun r  -> (a, r))))))
               (fun r  ->
                  fun rs  ->
-                   fun g  ->
+                   fun a  ->
                      fun __loc__start__buf  ->
                        fun __loc__start__pos  ->
                          fun __loc__end__buf  ->
@@ -857,53 +879,20 @@ module Ext(In:Extension) =
                              let _loc =
                                locate __loc__start__buf __loc__start__pos
                                  __loc__end__buf __loc__end__pos in
-                             match (r, rs) with
-                             | ((def,cond,e),[]) ->
-                                 (match cond with
-                                  | None  -> def e
-                                  | Some c ->
-                                      def
-                                        (loc_expr _loc
-                                           (Pexp_ifthenelse
-                                              (c, e,
-                                                (Some
-                                                   (exp_apply _loc
-                                                      (exp_glr_fun _loc
-                                                         "fail")
-                                                      [exp_string _loc ""]))))))
-                             | (r,l) ->
-                                 let l =
-                                   List.fold_right
-                                     (fun (def,cond,x)  ->
-                                        fun y  ->
-                                          match cond with
-                                          | None  -> def (exp_Cons _loc x y)
-                                          | Some c ->
-                                              def
-                                                (loc_expr _loc
-                                                   (Pexp_let
-                                                      (Nonrecursive,
-                                                        [value_binding _loc
-                                                           (pat_ident _loc
-                                                              "y") y],
-                                                        (loc_expr _loc
-                                                           (Pexp_ifthenelse
-                                                              (c,
-                                                                (exp_Cons
-                                                                   _loc x
-                                                                   (exp_ident
-                                                                    _loc "y")),
-                                                                (Some
-                                                                   (exp_ident
-                                                                    _loc "y")))))))))
-                                     (r :: l) (exp_Nil _loc) in
-                                 let f =
-                                   if g
-                                   then "alternatives"
-                                   else
-                                     (try
-                                        ignore (Sys.getenv "GREEDY");
-                                        "alternatives'"
-                                      with | Not_found  -> "alternatives") in
-                                 exp_apply _loc (exp_glr_fun _loc f) [l])))
+                             let rec fn a ls =
+                               match (a, ls) with
+                               | (None ,(a,_)::ls) -> fn (Some a) ls
+                               | (Some a',(a,_)::ls) when a <> a' ->
+                                   raise
+                                     (Decap.Give_up
+                                        "Inhomogenous alternatives")
+                               | (_,_::ls) -> fn a ls
+                               | (_,[]) -> a in
+                             let a = fn a rs in
+                             let ls = r :: (List.map snd rs) in
+                             let f =
+                               if a = (Some false)
+                               then "alternatives'"
+                               else "alternatives" in
+                             build_alternatives _loc f ls)))
   end

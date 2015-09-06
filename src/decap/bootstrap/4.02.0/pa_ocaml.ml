@@ -395,7 +395,29 @@ module Make(Initial:Extension) =
     let tag_name =
       Decap.sequence (Decap.string "`" "`") ident (fun _  -> fun c  -> c)
     let typeconstr_name = lowercase_ident
-    let field_name = lowercase_ident
+    let field_name =
+      Decap.alternatives
+        [lowercase_ident;
+        Decap.fsequence
+          (Decap.apply_position
+             (fun x  ->
+                fun str  ->
+                  fun pos  ->
+                    fun str'  -> fun pos'  -> ((locate str pos str' pos'), x))
+             (Decap.ignore_next_blank (Decap.char '$' '$')))
+          (Decap.fsequence (Decap.string "lid" "lid")
+             (Decap.fsequence (Decap.char ':' ':')
+                (Decap.sequence
+                   (Decap.ignore_next_blank (expression_lvl App))
+                   (Decap.char '$' '$')
+                   (fun e  ->
+                      fun _  ->
+                        fun _  ->
+                          fun _  ->
+                            fun dol  ->
+                              let (_loc_dol,dol) = dol in
+                              push_pop_string
+                                (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let module_name = capitalized_ident
     let modtype_name = ident
     let class_name = lowercase_ident
@@ -3529,19 +3551,43 @@ module Make(Initial:Extension) =
                   fun pos  ->
                     fun str'  -> fun pos'  -> ((locate str pos str' pos'), x))
              lowercase_ident)]
-    let record_list =
-      Decap.alternatives
-        [Decap.fsequence record_item
-           (Decap.sequence
-              (Decap.apply List.rev
-                 (Decap.fixpoint []
-                    (Decap.apply (fun x  -> fun l  -> x :: l)
-                       (Decap.sequence (Decap.string ";" ";") record_item
-                          (fun _  -> fun it  -> it)))))
-              (Decap.option None
-                 (Decap.apply (fun x  -> Some x) (Decap.string ";" ";")))
-              (fun l  -> fun _default_0  -> fun it  -> it :: l));
-        Decap.apply (fun _  -> []) (Decap.empty ())]
+    let _ =
+      set_grammar record_list
+        (Decap.alternatives
+           [Decap.fsequence record_item
+              (Decap.sequence
+                 (Decap.apply List.rev
+                    (Decap.fixpoint []
+                       (Decap.apply (fun x  -> fun l  -> x :: l)
+                          (Decap.sequence (Decap.string ";" ";") record_item
+                             (fun _  -> fun it  -> it)))))
+                 (Decap.option None
+                    (Decap.apply (fun x  -> Some x) (Decap.string ";" ";")))
+                 (fun l  -> fun _default_0  -> fun it  -> it :: l));
+           Decap.fsequence
+             (Decap.apply_position
+                (fun x  ->
+                   fun str  ->
+                     fun pos  ->
+                       fun str'  ->
+                         fun pos'  -> ((locate str pos str' pos'), x))
+                (Decap.ignore_next_blank (Decap.char '$' '$')))
+             (Decap.fsequence (Decap.ignore_next_blank (expression_lvl App))
+                (Decap.fsequence (Decap.char '$' '$')
+                   (Decap.sequence
+                      (Decap.option None
+                         (Decap.apply (fun x  -> Some x)
+                            (Decap.string ";" ";"))) record_list
+                      (fun _default_0  ->
+                         fun ls  ->
+                           fun _  ->
+                             fun e  ->
+                               fun dol  ->
+                                 let (_loc_dol,dol) = dol in
+                                 (push_pop_record
+                                    (start_pos _loc_dol).Lexing.pos_cnum e)
+                                   @ ls))));
+           Decap.apply (fun _  -> []) (Decap.empty ())])
     let obj_item =
       Decap.fsequence
         (Decap.apply_position
@@ -5006,6 +5052,8 @@ module Make(Initial:Extension) =
                                                "constructors");
                                           Decap.apply (fun _  -> "fields")
                                             (Decap.string "fields" "fields");
+                                          Decap.apply (fun _  -> "record")
+                                            (Decap.string "record" "record");
                                           Decap.apply
                                             (fun _  -> "let_binding")
                                             (Decap.string "bindings"
