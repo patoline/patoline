@@ -5,7 +5,7 @@
 \Caml(
 open Diagrams
 open Proj3d
-open Typography.Db
+open Db
 open DefaultFormat
 
 let caml x = x
@@ -20,23 +20,29 @@ let db_info = Mysql Mysql.(
 (* let db = init_db "demo" db_info *)
 
 let db = init_db "demo" Memory
-module MyDb = struct 
+module MyDb = struct
   let db = db
   let base_dir = "/tmp"
 end
 
 module Interactive =
   Interactive.Make(D)(Patoline_Format)(MyDb)
-open Interactive  
+open Interactive
 )
 
 
 \begin{slide}
 \begin{center}
 \size(5.0){Interactive Patoline}
+\Caml(
+let img file =
+  [bB (fun env->
+     let d = Document.image ~offset:(-7.0) ~height:40.0 file env in
+     [Drawing d])]
+)
 
 
-\caml([bB (fun env-> [Drawing (Document.image "titleduck.png" env)])])
+\img("titleduck.png")
 \end{center}
 \end{slide}
 
@@ -50,16 +56,16 @@ open Interactive
 \Caml(let count = db.create_data ~global:true "count" 0)
 \item \button("test")(["cible"]){Un bouton} qui a été cliqué
 \dynamic("cible")(function ev ->
-  	  (match ev with 
-	     Click "test"-> let c = count.read () + 1 in count.write c; Public 
+  	  (match ev with
+	     Click "test"-> let c = count.read () + 1 in count.write c; Public
            | _ -> Unchanged)){0123456789 fois}(
 	   fun () -> <<\caml(let c = count.read () in [tT (string_of_int c)]) fois !>>)
 
 \Caml(let count2 = db.create_data ~global:false "count2" 0)
 \item \button("test")(["cible2"]){Un autre bouton} qui a été cliqué
 \dynamic("cible2")(function ev ->
-  	  (match ev with 
-	     Click "test"-> let c = count2.read () + 1 in count2.write c; Public 
+  	  (match ev with
+	     Click "test"-> let c = count2.read () + 1 in count2.write c; Public
            | _ -> Unchanged)){0123456789 fois}(
 	   fun () -> <<\caml(let c = count2.read () in [tT (string_of_int c)]) fois !>>)
 
@@ -89,7 +95,7 @@ let cPos = db.create_data ~global:false "Cpos" (10.0,-10.0)
  let ab = Node.(coord Point.(middle apos bpos))
  let bc = Node.(coord Point.(middle bpos cpos))
  let ca = Node.(coord Point.(middle cpos apos))
- let a = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec av) env <<A>>; at apos; drag ("a",["figure"])] []) 
+ let a = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec av) env <<A>>; at apos; drag ("a",["figure"])] [])
  let b = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec bv) env <<B>>; at bpos; drag ("b",["figure"])] [])
  let c = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec cv) env <<C>>; at cpos; drag ("c",["figure"])] [])
  let _ = edge Edge.([draw]) a b
@@ -116,7 +122,7 @@ let sonde = db.create_data ~global:false "sondage" No_answer
 
 let box name s =
  dynamic name
- (function ev -> Private) 
+ (function ev -> Private)
  (<<$X$ $O$>>)
  (fun () -> if sonde.read () = s then (<<$X$>>) else (<<$O$>>))
 )
@@ -154,8 +160,8 @@ let questions = Array.init 5 (fun i -> db.create_data ("box"^string_of_int i) fa
 \end{slide}
 
 \Caml(
-type value = No_opinion | Not_clicked | Null | Fun_but | Fun_yes 
-let values = [|Not_clicked ; Null; Fun_but; Fun_yes; No_opinion|] 
+type value = No_opinion | Not_clicked | Null | Fun_but | Fun_yes
+let values = [|Not_clicked ; Null; Fun_but; Fun_yes; No_opinion|]
 let data = db.create_data "Sondage" Not_clicked
 let radios = radioButtons ~destinations:["histo"] data values
 )
@@ -195,9 +201,9 @@ let res = List.map (fun value -> (color value, try List.assoc value results with
 let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
 <<\diagram(
   let m,ms = array  [`South ; `South; `South ; `South ] (List.map (List.map mathsText) [
-    List.map (fun (color, value as c) ->  
+    List.map (fun (color, value as c) ->
       <<\diagram(
-        let _ = scoreBar ~vertical:true (module EnvDiagram : EnvDiagram) (30.0 *. float value /. float m) 7.0 [c])>>) 
+        let _ = scoreBar ~vertical:true (module EnvDiagram : EnvDiagram) (30.0 *. float value /. float m) 7.0 [c])>>)
       res;
     [<<Null>>; <<Fun Mais>>; <<Fun>>; <<N.S.P.>>]
 ]))>>)
@@ -211,7 +217,7 @@ let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
 Un petit programme éditable (the program is compiled but not executed for security)~:
 }
 \caml(
-  editableText ~nb_lines:5 ~lang:lang_OCaml ~extra:(test_ocaml ~run:false) ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML" 
+  editableText ~nb_lines:5 ~lang:lang_OCaml ~extra:(test_ocaml ~run:false) ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML"
 )
 \end{block}
 \end{slide}
@@ -233,14 +239,14 @@ Un petit programme éditable (the program is compiled but not executed for secur
    let projection = proj t in
 <<\diagram(
 (*   let _ = cube projection*)
- let a = Node.(node [anchor `Base;at3d projection (0.,0.,0.)] <<a>>) 
+ let a = Node.(node [anchor `Base;at3d projection (0.,0.,0.)] <<a>>)
  let b = Node.(node [anchor `Base;at3d projection (20.,0.,0.)] <<b>>)
  let c = Node.(node [anchor `Base;at3d projection (20.,20.,0.)] <<c>>)
  let d = Node.(node [anchor `Base;at3d projection (0.,20.,0.)] <<d>>)
- let a' = Node.(node [anchor `Base;at3d projection (0.,0.,20.)] <<a'>>) 
- let b' = Node.(node [anchor `Base;at3d projection (20.,0.,20.)] <<b'>>) 
- let c' = Node.(node [anchor `Base;at3d projection (20.,20.,20.)] <<c'>>) 
- let d' = Node.(node [anchor `Base;at3d projection (0.,20.,20.)] <<d'>>) 
+ let a' = Node.(node [anchor `Base;at3d projection (0.,0.,20.)] <<a'>>)
+ let b' = Node.(node [anchor `Base;at3d projection (20.,0.,20.)] <<b'>>)
+ let c' = Node.(node [anchor `Base;at3d projection (20.,20.,20.)] <<c'>>)
+ let d' = Node.(node [anchor `Base;at3d projection (0.,20.,20.)] <<d'>>)
 
 
   let _ = edge_3d Edge.([arrow env;draw]) a b
@@ -267,4 +273,3 @@ Un petit programme éditable (the program is compiled but not executed for secur
 \size(7.0){Thanks for your attention}
 \end{center}
 \end{slide}
-

@@ -752,6 +752,17 @@ module Transfo (X : Set.OrderedType) = struct
     | `Angle a -> `Angle (a -. pi)
     | `Center -> `Center
     | `Base -> `Base
+    | `BaseWest -> `BaseEast
+    | `BaseEast -> `BaseWest
+    | `NorthEast -> `SouthWest
+    | `SouthEast -> `NorthWest
+    | `NorthWest -> `SouthEast
+    | `SouthWest -> `NorthEast
+    | `Main -> `Main
+    | `LineWest -> `LineEast
+    | `LineEast -> `LineWest
+    | `Pdf -> `Pdf
+    | `Vec v -> `Vec (Vector.minus v)
     | _ -> invalid_arg "opposite"
 
   module Gentity = struct

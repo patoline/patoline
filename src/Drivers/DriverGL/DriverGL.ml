@@ -659,7 +659,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	             let lw = param.lineWidth /. 2.0 in
                let graisse_x' = lw -. (pixel_width *. (flou_x -. graisse)) in
                let graisse_y' = lw -. (pixel_width *. (flou_y -. graisse)) in
-               let graisse_x = 
+               let graisse_x =
                  lw +. (pixel_width *. (3.0 *. flou_x +. graisse))
                in
                let graisse_y =
@@ -1221,7 +1221,6 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	  motion_ref := Some (x0,y0,x, y,buttons,links);
 	  let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
 	  List.iter (function (name,ds) ->
-            Printf.eprintf "Drag: %S\n%!" name;
 	    send_events ds (Drag(name,(x,y)))) buttons;
 	));
   in
@@ -1231,7 +1230,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let show_links () =
     let l = !next_links in
     let win = get_win () in
-    if l <> win.previous_links then (
+    if l != win.previous_links then (
       win.previous_links <- l;
       (match win.saved_rectangle with
 	None -> ()
@@ -1565,8 +1564,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     | Some f ->
       f get_pixes
   in
-
-  main()
+  main ()
 
 let output = output_from_prime output'
 
