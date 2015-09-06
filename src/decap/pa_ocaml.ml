@@ -364,7 +364,7 @@ let tag_name        =
   parser STR("`") c:ident -> c
 
 let typeconstr_name = lowercase_ident
-let field_name      = parser lowercase_ident 
+let field_name      = parser lowercase_ident
 		    | dol:CHR('$') - STR("lid") CHR(':') e:(expression_lvl App) - CHR('$') ->
 			  push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e
 let module_name     = capitalized_ident
@@ -372,7 +372,7 @@ let modtype_name    = ident
 let class_name      = lowercase_ident
 let inst_var_name   = lowercase_ident
 let method_name     = lowercase_ident
-			
+
 let module_path_gen, set_module_path_gen  = grammar_family "module_path_gen"
 let module_path_suit, set_module_path_suit  = grammar_family "module_path_suit"
 
@@ -659,9 +659,9 @@ let typexpr_base : core_type grammar =
       loc_typ _loc pt
   | STR("(") te:typexpr STR(")") ->
       te
-  | ln:opt_label STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
+  | ln:opt_label STR(":") te:(typexpr_lvl (next_type_prio Arr)) arrow_re te':typexpr ->
       loc_typ _loc (Ptyp_arrow ("?" ^ ln, mkoption _loc_te te, te'))
-  | ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
+  | ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) arrow_re te':typexpr ->
       loc_typ _loc (Ptyp_arrow (ln, te, te'))
   | tc:typeconstr ->
       loc_typ _loc (Ptyp_constr (id_loc tc _loc_tc, []))
@@ -718,7 +718,7 @@ let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> Loca
   let ln f _loc e _loc_f = loc_typ (merge2 _loc_f _loc) e in
   parser
   | e:(extra_type_suits_grammar lvl' lvl) -> e
-  | STR("->") te':(typexpr_lvl Arr) when lvl' > Arr && lvl <= Arr ->
+  | arrow_re te':(typexpr_lvl Arr) when lvl' > Arr && lvl <= Arr ->
       (Arr, fun te -> ln te _loc (Ptyp_arrow ("", te, te')))
   | tes:{STR("*") te:(typexpr_lvl (next_type_prio ProdType))}+  when lvl' > ProdType && lvl <= ProdType->
       (ProdType, fun te -> ln te _loc (Ptyp_tuple (te::tes)))
@@ -801,7 +801,7 @@ let constr_decl =
 			      in (tes, None)
 #ifversion >= 4.00
 			    | CHR(':') ats:{te:(typexpr_lvl (next_type_prio ProdType)) tes:{CHR('*') te:(typexpr_lvl (next_type_prio ProdType))}*
-							     STR("->") -> (te::tes)}?[[]] te:typexpr -> (ats, Some te)
+							     arrow_re -> (te::tes)}?[[]] te:typexpr -> (ats, Some te)
 #endif
                             }
 	    -> (let c = id_loc cn _loc_cn in
@@ -1417,8 +1417,8 @@ let _ = set_grammar let_binding (
 
 let _ = set_match_cases (fun lvl ->
   parser
-  | CHR('|')? pat:pattern w:{_:when_kw expression }? STR"->" e:(expression_lvl lvl)
-      l:{CHR'|' pat:pattern  w:{_:when_kw expression }? STR"->" e:(expression_lvl lvl) -> (pat,e,w)}**
+  | CHR('|')? pat:pattern w:{_:when_kw expression }? arrow_re e:(expression_lvl lvl)
+      l:{CHR'|' pat:pattern  w:{_:when_kw expression }? arrow_re e:(expression_lvl lvl) -> (pat,e,w)}**
         ls:(match_cases lvl) -> map_cases ((pat,e,w)::l) @ ls
   | CHR('|')? dol:CHR('$') - STR("cases") CHR(':') e:(expression_lvl App) - CHR('$') ls:(match_cases lvl) -> push_pop_cases (start_pos _loc_dol).Lexing.pos_cnum e @ ls
   | EMPTY -> []
@@ -1442,6 +1442,8 @@ let record_item =
 let _ = set_grammar record_list (
   parser
   | it:record_item l:{ STR(";") it:record_item }* STR(";")? -> (it::l)
+  | dol:CHR('$') - e:(expression_lvl App) - CHR('$') STR(";")? ls:record_list ->
+      push_pop_record (start_pos _loc_dol).Lexing.pos_cnum e @ ls
   | EMPTY -> [])
 
 (****************************************************************************
@@ -1466,7 +1468,7 @@ let class_expr_base =
       loc_pcl _loc ce.pcl_desc
   | STR("(") ce:class_expr STR(":") ct:class_type STR(")") ->
       loc_pcl _loc (Pcl_constraint (ce, ct))
-  | fun_kw ps:(parameter false)+ STR("->") ce:class_expr ->
+  | fun_kw ps:(parameter false)+ arrow_re ce:class_expr ->
       apply_params_cls _loc ps ce
   | let_kw r:rec_flag lbs:let_binding in_kw ce:class_expr ->
       loc_pcl _loc (Pcl_let (r, lbs, ce))
@@ -1696,7 +1698,7 @@ let expression_base = memoize1 (fun lvl ->
 #endif
              } -> r _loc
   | function_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (pexp_function l))
-  | fun_kw l:{lbl:(parameter true) -> lbl,_loc_lbl}* STR"->" e:(expression_lvl (let_prio lvl)) when (lvl < App) ->
+  | fun_kw l:{lbl:(parameter true) -> lbl,_loc_lbl}* arrow_re e:(expression_lvl (let_prio lvl)) when (lvl < App) ->
      (Let, loc_expr _loc (apply_params l e).pexp_desc)
   | match_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_match(e, l)))
   | try_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_try(e, l)))
@@ -1904,7 +1906,7 @@ let module_expr_base =
 #else
   | functor_kw STR("(") mn:module_name STR(":") mt:module_type STR(")")
 #endif
-    STR("->") me:module_expr -> mexpr_loc _loc (Pmod_functor(id_loc mn _loc_mn, mt, me))
+    arrow_re me:module_expr -> mexpr_loc _loc (Pmod_functor(id_loc mn _loc_mn, mt, me))
   | STR("(") me:module_expr mt:{STR(":") mt:module_type}? STR(")") ->
       (match mt with
        | None    -> me
@@ -1941,7 +1943,7 @@ let module_type_base =
 #else
   | functor_kw STR("(") mn:module_name STR(":") mt:module_type STR(")")
 #endif
-     STR("->") me:module_type -> mtyp_loc _loc (Pmty_functor(id_loc mn _loc_mn, mt, me))
+     arrow_re me:module_type -> mtyp_loc _loc (Pmty_functor(id_loc mn _loc_mn, mt, me))
   | STR("(") mt:module_type STR(")") -> mt
   | module_kw type_kw of_kw me:module_expr -> mtyp_loc _loc (Pmty_typeof me)
   | dol:CHR('$') - e:(expression_lvl App) - CHR('$') -> push_pop_module_type (start_pos _loc_dol).Lexing.pos_cnum e

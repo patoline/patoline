@@ -1,11 +1,11 @@
 
 \Caml(
-let _=D.defaultEnv := 
-    let env = !D.defaultEnv in
-    let env = envFamily dejaVuSerif env in
-    let env = envMonoFamily dejaVuSansMono env in
+  let _ = add_env_hook (
+      fun env ->
+	let env = envFamily DefaultFormat.dejaVuSerif env in
+	let env = envMonoFamily DefaultFormat.dejaVuSansMono env in
     (* le fontMonoRatio calculé est un peu gros, on corrige : *)
-    { env with fontMonoRatio = env.fontMonoRatio *. 0.95 }
+	{ env with fontMonoRatio = env.fontMonoRatio *. 0.95 })
 )
 
 

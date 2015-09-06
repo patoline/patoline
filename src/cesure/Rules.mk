@@ -26,7 +26,7 @@ $(d)/hyphen.cmx: $(d)/hyphen.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(CESURE_OCAMLOPT) -package unicodelib -c $<
 
-$(d)/cesure.cma: $(d)/hyphen.cmo $(UNICODE_DIR)/unicodelib.cma
+$(d)/cesure.cma: $(d)/hyphen.cmo $(UNICODE_DIR)/unicodelib.cma $(PA_OCAML_DIR)/decap.cmxa
 	$(ECHO) "[LINK]   $< -> $@"
 	$(Q)$(CESURE_OCAMLC) -package unicodelib -a -o $@ $<
 
@@ -34,7 +34,7 @@ $(d)/cesure.cmxa: $(d)/hyphen.cmx $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[LINK]   $< -> $@"
 	$(Q)$(CESURE_OCAMLOPT) -package unicodelib -a -o $@ $<
 
-$(d)/cesure.cmx: $(d)/cesure.ml
+$(d)/cesure.cmx: $(d)/cesure.ml $(PA_OCAML_DIR)/decap.cmxa
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(CESURE_OCAMLOPT) -pp $(PA_OCAML) -package decap -c $<
 

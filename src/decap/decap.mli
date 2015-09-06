@@ -65,6 +65,9 @@ exception Parse_error of string * int * int * string list * string list
   this exception, in order for DeCaP to provide useful error messages. *)
 exception Give_up of string
 
+(* raise the above exception *)
+val give_up : string -> 'a
+
 (** {2 Blank functions} *)
 
 (** Type of functions that are used to parse "blanks" (i.e. parts of the input

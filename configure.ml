@@ -174,7 +174,7 @@ let local_packages = [
     has_meta = true;
   };
   (* FAKE: no META yet *)
-  { package_name = "Format"; 
+  { package_name = "Format";
     macro_suffix = "FORMAT";
     local_deps = ["Typography";"cesure";"rawlib";"db"];
     extern_deps = [];
@@ -219,7 +219,7 @@ let local_packages = [
 ]
 
 let is_local name = List.exists (fun p -> name = p.package_name) local_packages
-let find_local name = 
+let find_local name =
   let rec fn = function
   [] -> raise Not_found
     | p::l -> if p.package_name = name then p else fn l
@@ -229,7 +229,7 @@ let find_local name =
     assert false
 
 let packages_local names =
-  let add d acc = 
+  let add d acc =
     if List.mem d acc then acc else d::acc
   in
   let rec fn acc name =
@@ -245,7 +245,7 @@ let packages_local names =
   l
 
 let includes_local ?(subdir_only=true) name =
-  let add d acc = 
+  let add d acc =
     if List.mem d acc then acc else d::acc
   in
   let rec fn acc name =
@@ -380,7 +380,7 @@ let ocamlfind_query =
         let liste, additional_check =
           (try
             let p = Hashtbl.find patoline_uses_packages pack in
-            (p.pack_name :: p.known_aliases, p.additional_check) 
+            (p.pack_name :: p.known_aliases, p.additional_check)
             with Not_found -> [pack], package_no_check
           ) in
         let res =
@@ -434,8 +434,7 @@ and driver =
 
 let patoline_driver_gl =
   { name = "DriverGL";
-    needs =(Package "Typography")::(Package "str")::(Package "zip")::(Package "imagelib")::
-      (Package "lablgl")::(Package "lablgl.glut")::[];
+    needs =[Package "Typography"; Package "str"; Package "db"; Package "zip"; Package "imagelib"; Package "lablgl"; Package "lablgl.glut"];
     suggests = [];
     internals = []; (* [Package "Typography.GL"] *)
   }
@@ -447,7 +446,7 @@ let patoline_driver_image =
   }
 
 let svg_driver =
-    { name = "SVG"; needs = [Package "Typography"]; suggests = []; internals = [] }
+    { name = "SVG"; needs = [Package "Typography"; Package "db"]; suggests = []; internals = [] }
 
 (* List of all Patoline drivers.
  * Add yours to this list in order to build it. *)
@@ -480,7 +479,7 @@ let rec can_build_driver d =
     Printf.eprintf "Warning: driver %s not build because %s are missing\n"
       d.name
       (String.concat ", " (List.filter (fun s -> String.length s > 0) (List.map (function
-      | Package pack  -> 
+      | Package pack  ->
         (try
            let n = Hashtbl.find patoline_uses_packages pack in
            n.pack_name ^ " " ^ n.additional_check_string
@@ -565,7 +564,7 @@ let _=
   );
 
   let has_fontconfig = ocamlfind_has "fontconfig" in
-  if not has_fontconfig then 
+  if not has_fontconfig then
     Printf.eprintf "Warning: fontconfig is missing, patoline will not use it to search for fonts\n";
 
   let emacsdir = Filename.concat !prefix "share/emacs/site-lisp/patoline" in
@@ -679,7 +678,7 @@ let _=
     let f = open_out meta_name in
     Printf.fprintf f "name=\"imagelib\"\n\nversion=\"1.0\"\ndescription=\"A pure OCaml library for reading / writing images\"\n";
     let zip = if ocamlfind_has "zip" then snd (ocamlfind_query "zip") ^ "," else "" in
-    Printf.fprintf f "requires=\"%spatutil,bigarray\"\n" zip; 
+    Printf.fprintf f "requires=\"%spatutil,bigarray\"\n" zip;
     Printf.fprintf f "archive(byte)=\"imagelib.cma\"\n";
     Printf.fprintf f "archive(native)=\"imagelib.cmxa\"\n";
     close_out f

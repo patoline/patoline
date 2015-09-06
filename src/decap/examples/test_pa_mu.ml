@@ -1,7 +1,7 @@
 
 open Classical
 
-let classical (fib:int => int) n = 
+let classical (fib:int => int) n =
   if n <= 1 then
     1
   else
@@ -62,7 +62,7 @@ let classical test2 n < m < f = extract_sum n < m < (infinite_tape (!init f!))
 
 let f1 n = if n mod 7 <> 1 then begin Inl n end else begin Inr n end
 let f2 n = if n mod 7 = 1 then begin Inl n end else begin Inr n end
-								 
+
 let _ = Printf.printf "%a\n" (print_sum print_list print_list) (?test2 15 < 15 < f1 ?)
 let _ = Printf.printf "%a\n" (print_sum print_list print_list) (?test2 150 < 15 < f1 ?)
 let _ = Printf.printf "%a\n" (print_sum print_list print_list) (?test2 15 < 15 < f2 ?)
@@ -86,19 +86,19 @@ let classical (infinite_tape2 : 'a color1 -> 'a stream => ('a stream, 'b stream)
     in (!Inr r2!)
 
 type 'a colors = 'a list -> 'a stream => ('a stream, 'a stream) sum
-							     
+
 let classical ramsey : (int -> 'a colors -> 'a stream => ('a stream, 'a stream) sum) k < color < s =
   if k = 1 then
     let (color1:'a color1) (n,s) = color [n] < s in
     infinite_tape2 color1 < s
   else
-    let (color1:'a color1) (n,s) =  
+    let (color1:'a color1) (n,s) =
       let (color2:'a colors) l < s = color (n::l) < s in
       ramsey (k-1) < color2 < s
     in
     infinite_tape2 color1 < s
 
-let rec hash l = 
+let rec hash l =
   match l with
   | [] -> 0
   | n::l -> (3571 * n + 1987 * hash l) mod 16384
@@ -116,7 +116,7 @@ let _ =
 
 let _ =
   Printf.printf "%a\n" (print_sum print_list print_list) (?test3 7 < 7 < 4?)
-(*
+
 let dot_prod (a,b) (a',b') = a*a' + b*b'
 let vec (a,b) (c,d) = (c - a, d - b)
 let vec_prod (a,b) (a',b') = b'*a - b*a'
@@ -132,12 +132,12 @@ let in_triangle x y z u =
     same_side z x y u
 
 let convex x y z t =
-    not (in_triangle x y z t) && 
-    not (in_triangle y z t x) && 
-    not (in_triangle z t x y) && 
+    not (in_triangle x y z t) &&
+    not (in_triangle y z t x) &&
+    not (in_triangle z t x y) &&
     not (in_triangle t x y z)
 
-type point = int * int	
+type point = int * int
 
 let classical (color_convex: point list -> point stream => (point stream, point stream) sum) [x;y;z;t] < s =
   if convex x y z t then (!Inl s!) else (!Inr s!)
@@ -160,7 +160,7 @@ let classical (random_aux: int -> point list -> point stream) size < prev < () =
     (p, t)
 
 let classical (random: point stream) () = random_aux 0 < [] < ()
-					
+
 let rec print_point_list ch l =
   match l with
     [] -> print_newline ()
@@ -175,11 +175,10 @@ let rec show_erdos verbose n p =
   else (
     (match (?extract_sum n < 5 < (ramsey 4 < color_convex < random) ?)
      with
-       Inl(l) -> 
+       Inl(l) ->
        Printf.printf "Convexe à %d sommets parmis %d points aléatoires\n" n !maximum;
        print_point_list stdout l
      | Inr _ -> assert false);
     show_erdos verbose (n+1) p)
 
 let _ = show_erdos false 5 14
- *)

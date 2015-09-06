@@ -404,7 +404,7 @@ struct
   let glr_action =
     parser
     | STR("->>") r:glr_rule -> let (a,b,c) = build_rule r in DepSeq (a,b,c)
-    | STR("->") action:expression -> Normal action
+    | arrow_re action:expression -> Normal action
     | EMPTY -> Default
 
   let _ = Decap.set_grammar glr_rule (
@@ -493,7 +493,7 @@ struct
       in
       let a = fn a rs in
       let ls = r::List.map snd rs in
-      let f = if a = Some true then "alternatives'" else "alternatives" in
+      let f = if a = Some false then "alternatives'" else "alternatives" in
       build_alternatives _loc f ls)
 
 

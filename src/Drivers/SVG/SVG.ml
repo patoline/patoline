@@ -17,6 +17,7 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+open Typography
 open FTypes
 open Box
 open Util
@@ -61,7 +62,7 @@ let standalone w h style title svg=
 
 let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") prefix fontCache=
   let def_buf=Rbuffer.create 256 in
-  Rbuffer.add_string def_buf 
+  Rbuffer.add_string def_buf
 "
 a:hover{opacity: 0.75;cursor:crosshair;}
 g.button:hover{opacity: 0.75;cursor:crosshair;}
@@ -328,14 +329,14 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	    Clickable -> "button"
 	  | Dragable -> "dragable"
 	  | Editable (s,init) -> "editable' contents='" ^
-	    Str.(global_replace (regexp "\r?\n") "&#13;&#10;" 
+	    Str.(global_replace (regexp "\r?\n") "&#13;&#10;"
 		   (global_replace (regexp_string ">") "&gt;"
 		      (global_replace (regexp_string "<") "&lt;"
 			 (global_replace (regexp_string "\'") "&apos;"
 			    (global_replace (regexp_string "\"") "&quot;"
 			       (global_replace (regexp_string "&") "&amp;" s)))))) ^
 	    "' initial='" ^
-	    Str.(global_replace (regexp "\r?\n") "&#13;&#10;" 
+	    Str.(global_replace (regexp "\r?\n") "&#13;&#10;"
 		   (global_replace (regexp_string ">") "&gt;"
 		      (global_replace (regexp_string "<") "&lt;"
 			 (global_replace (regexp_string "\'") "&apos;"
@@ -359,7 +360,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
         opened_text:=false
       );
       (match l.link_kind with
-      | Button(_,name,ds) -> 
+      | Button(_,name,ds) ->
 	Rbuffer.add_string svg_buf "</g>"
       | _ ->
 	Rbuffer.add_string svg_buf "</a>")
@@ -437,8 +438,8 @@ let draw ?fontCache ?dynCache prefix w h contents=
       );
       let prefix = !animate_count in
       incr animate_count;
-      Rbuffer.add_string svg_buf (Printf.sprintf "<g class=\"animation\" nbframes=\"%d\" step=\"%d\" mirror=\"%d\" id=\"%d\">" 
-				    (Array.length a.anim_contents) (truncate (a.anim_step *. 1000.)) 
+      Rbuffer.add_string svg_buf (Printf.sprintf "<g class=\"animation\" nbframes=\"%d\" step=\"%d\" mirror=\"%d\" id=\"%d\">"
+				    (Array.length a.anim_contents) (truncate (a.anim_step *. 1000.))
 				    (if a.anim_mirror then 1 else 0) prefix );
 
       Array.iteri (fun i c ->
@@ -447,7 +448,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	    prefix i
 	    (if i = a.anim_default then "inherit" else "hidden"));
         opened_tspan:=false;
-        opened_text:=false;	
+        opened_text:=false;
 	List.iter output_contents_aux (a.anim_contents.(i));
 	if !opened_tspan then (
           Rbuffer.add_string svg_buf "</tspan>\n";
@@ -487,7 +488,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
     Rbuffer.add_string svg_buf "</text>\n";
   );
   !imgs
-  in 
+  in
   let imgs = output_contents ~svg_buf contents in
   svg_buf,imgs
 
@@ -517,10 +518,10 @@ let buffered_output' ?dynCache ?(structure:structure=empty_structure) pages pref
 <?xml-stylesheet href=\"style.css\" type=\"text/css\"?>
 <svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));
-      
+
       let sorted_pages = sort_raw page.contents in
       let dynCache = match dynCache with
-	  None -> None 
+	  None -> None
 	| Some c -> Some c.(slide).(state)
       in
       let svg,imgs0=draw ~fontCache:cache ?dynCache prefix w h sorted_pages in
@@ -531,7 +532,7 @@ let buffered_output' ?dynCache ?(structure:structure=empty_structure) pages pref
     ) pi
   ) pages
   in
-  if !font_filter <> "" then filter_fonts !font_filter cache;  
+  if !font_filter <> "" then filter_fonts !font_filter cache;
   svg_files,cache,!imgs
 
 let default_script = ""
@@ -960,7 +961,7 @@ let images ?cache ?(css="style.css") prefix env conts=
       Some a->images_of_boxes ~cache:a ~css:css prefix env conts_box
     | None->images_of_boxes ~css:css prefix env conts_box
 
-let _ = 
+let _ =
   Hashtbl.add DynDriver.drivers "SVG" (
     module struct
       let output  = output

@@ -53,6 +53,8 @@ exception Parse_error of string * int * int * string list * string list
 exception Give_up of string
 exception Error
 
+let give_up s = raise (Give_up s)
+
 type string_tree =
     Empty | Message of string | Expected of string | Node of string_tree * string_tree
 
@@ -1119,7 +1121,18 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
   = fun l1 f2 ->
     let empty () =
       match l1.accept_empty with
-	May_empty x -> (try (f2 (x (empty_buffer "dep prefix" 0 0) 0)).accept_empty with _ -> Non_empty)
+	May_empty x -> (
+	  try
+	    match (f2 (x (empty_buffer "dep prefix" 0 0) 0)).accept_empty with
+	    | Non_empty -> Non_empty
+	    | Unknown -> Unknown
+	    | May_empty _ ->
+	      May_empty (fun str pos ->
+		match (f2 (x str pos)).accept_empty with
+		| Non_empty -> failwith "Non uniform dependent sequence (accepting empty depend upon position)"
+		| Unknown -> assert false
+		| May_empty f -> f str pos)
+	  with _ -> Non_empty)
       | Non_empty -> Non_empty
       | Unknown -> Unknown
     in
