@@ -96,9 +96,13 @@ let integer =
   parser
   | c:''[+-]?[0-9]+'' -> int_of_string c
 
+let integer64 =
+  parser
+  | c:''[+-]?[0-9]+'' -> Int64.of_string c
+
 let fraction =
   parser
-  | n:integer d:{'/' d:integer}??[1]
+  | n:integer64 d:{'/' d:integer}??[1]
  
 let category =
   parser

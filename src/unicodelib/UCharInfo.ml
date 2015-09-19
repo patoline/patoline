@@ -87,7 +87,7 @@ type char_description =
   ; decomposition         : decomposition_atom list
   ; decimal_digit_value   : int option
   ; digit_value           : int option
-  ; numeric_value         : (int * int) option
+  ; numeric_value         : (int64 * int) option
   ; mirrored              : bool
   ; oldName               : string
   ; comments              : string

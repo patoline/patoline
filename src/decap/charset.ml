@@ -49,8 +49,8 @@ type charset = int array
 
 let used, mask, shift, size =
   match Sys.word_size with
-  | 32 -> 0x7fffffff, 15, 4, 256 / 16
-  | 64 -> 0x7fffffffffffffff, 31, 5, 256 / 32
+  | 32 -> -1, 15, 4, 256 / 16
+  | 64 -> -1, 31, 5, 256 / 32
   | _  -> assert false (* Cannot happen... *)
 
 let empty_charset = Array.make size 0
