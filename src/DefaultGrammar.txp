@@ -106,7 +106,8 @@
 \Add_relation{∼ \sim}{∼}
 \Add_relation{≜ \eqtriangle}(MathFonts.asana "≜" 806)
 \Add_relation{≝ \eqbydef}(MathFonts.asana "≝" 807)
-
+\Add_relation{\frown}(MathFonts.asana "frown" 986)
+\Add_relation{\smile}(MathFonts.asana "smile" 987)
 
 \Add_relation{\pitchfork ⋔}(MathFonts.asana "pitchfork" 1609)
 
@@ -170,6 +171,7 @@
 \Add_product_like{\ast ∗}{∗}
 \Add_product_like{\seq}{;}
 \Add_product_like{\para |}{|}
+\Add_product_like{\parallel ∥}(MathFonts.asana "∥" 385)
 \Add_product_like{\star ★ ⋆}(MathFonts.asana "⋆" 912)
 
 
