@@ -5,15 +5,33 @@
 
 (add-to-list 'auto-mode-alist '("\\.txp\\'" . patoline-mode))
 
+(defface font-patoline-math-face
+  (let ((font (cond ((assq :inherit custom-face-attributes)
+		     '(:inherit underline))
+		    (t '(:underline t)))))
+    `((((class grayscale) (background light))
+       (:family "Asana Math" :foreground "DimGray" ,@font))
+      (((class grayscale) (background dark))
+       (:family "Asana Math" :foreground "LightGray" ,@font))
+      (((class color) (background light))
+       (:family "Asana Math" :foreground "medium blue"))
+      (((class color) (background dark))
+       (:family "Asana Math" :foreground "burlywood"))
+      (t (:family "Asana Math" ,@font))))
+  "Face used to highlight math in Patoline.")
+
+(defconst font-patoline-math-face 'font-patoline-math-face)
 
 (defconst patoline-font-lock-keywords
-  (list (cons "\\\\[a-zA-Z][a-zA-Z0-9]*\\>" 'font-lock-keyword-face)
-        (cons "^[ \t]*===?=?=?=?=?=?\\([^=]+=\\)*[^=]+===*" 'font-lock-doc-face)
-        (cons "^[ \t]*---?-?-?-?-?-?\\(-[^-]+\\)*[^-]+---*" 'font-lock-doc-face)
-        (cons "^[ \t]*===========*" 'font-lock-doc-face)
-        (cons "^[ \t]*-----------*" 'font-lock-doc-face)
-        (cons "^[ \t]*[=-]>[^\n]*\n[\r \t]*\n" 'font-lock-doc-face)
-        (cons "^[ \t]*[=-]<\\([ \t]*[=-]<\\)*" 'font-lock-doc-face)
+  (list 
+   (cons "[$][$]?[^$]+[$][$]?" 'font-patoline-math-face)
+   (cons "\\\\[a-zA-Z][a-zA-Z0-9]*\\>" 'font-lock-keyword-face)
+   (cons "^[ \t]*===?=?=?=?=?=?\\([^=]+=\\)*[^=]+===*" 'font-lock-doc-face)
+   (cons "^[ \t]*---?-?-?-?-?-?\\(-[^-]+\\)*[^-]+---*" 'font-lock-doc-face)
+   (cons "^[ \t]*===========*" 'font-lock-doc-face)
+   (cons "^[ \t]*-----------*" 'font-lock-doc-face)
+   (cons "^[ \t]*[=-]>[^\n]*\n[\r \t]*\n" 'font-lock-doc-face)
+   (cons "^[ \t]*[=-]<\\([ \t]*[=-]<\\)*" 'font-lock-doc-face)
   )
   "Minimal highlighting expressions for Patoline mode.")
 
@@ -296,7 +314,7 @@
 
   )
 
-(defvar mmm-tuareg-mode-submode-hook
+(defvar mmm-tuareg-patoline-mode-submode-hook
   (list (lambda () (set-input-method "ucs"))
 	(lambda () (overlay-put mmm-current-overlay 'entry-hook
 				(list (lambda () (set-input-method "ucs")))))))
