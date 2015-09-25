@@ -2376,6 +2376,21 @@ Doing a rectangle.\n" ;
 	      { info with decorations = info.decorations @ [Node node] }) })
 
 
+      let label_anchor a env ?pos:(pos=(`Temporal 0.5 : anchor))
+	  ?shape:(shape=Node.rectangle env)
+	  ?style:(style=[])
+	  contents =
+	label env ~pos:pos ~style:((Node.anchor a) :: shape :: style)  ([Scoped ((fun env -> { env with mathStyle = Mathematical.Script }), contents)])
+
+      let above = label_anchor `South
+      let below = label_anchor `North
+      let left = label_anchor `East
+      let right = label_anchor `West
+      let aboveL = label_anchor `SouthEast
+      let aboveR = label_anchor `SouthWest
+      let belowL = label_anchor `NorthEast
+      let belowR = label_anchor `NorthWest
+      let labelOn env ?style:(style=Node.([fill Color.white;innerSep 0.;rectangle env])) = label_anchor ~style:style `Center
 
       let raw_edge style s e underlying_curve =
 	let edge_info = transform (make_anchors :: style) s e underlying_curve in
