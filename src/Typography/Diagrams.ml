@@ -117,8 +117,7 @@ module Vector = struct
   let turn_left (x,y) = (-. y,x)
   let turn_right (x,y) = (y, -. x)
   let unit angle = rotate angle (1.,0.)
-  let angle v =
-    let x,y = normalise v in
+  let angle (x,y) =
     to_deg (atan2 y x)
 
   let sector v v' =
