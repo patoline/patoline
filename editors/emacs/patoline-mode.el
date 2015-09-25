@@ -217,6 +217,11 @@
       (while (< (position-bytes (point)) dest)
 	(forward-char)))))
 
+(defun patoline-fontify-and-mmm-parse-buffer ()
+  "Font lock fontify and MMM parse buffer"
+  (interactive)
+  (progn (font-lock-fontify-buffer) (mmm-parse-buffer)))
+
 (defvar patoline-mode-map
   (let ((patoline-mode-map (make-sparse-keymap)))
     (define-key patoline-mode-map "\C-c\C-c" 'patoline-compile)
@@ -226,6 +231,7 @@
     (define-key patoline-mode-map "\C-c\C-p" 'patoline-view)
     (define-key patoline-mode-map "\C-c\C-s" 'patoline-forward-search)
     (define-key patoline-mode-map "\C-c\C-l" 'display-program-buffer)
+    (define-key patoline-mode-map "\C-c\C-f" 'patoline-fontify-and-mmm-parse-buffer)
     patoline-mode-map)
   "Keymap for PATOLINE major mode")
 
