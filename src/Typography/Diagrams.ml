@@ -29,7 +29,7 @@ let one_third = 1. /. 3.
 let half_pi = pi /. 2.
 let to_deg angle = angle *. 180. /. pi
 let to_rad angle = angle *. pi /. 180.
-let default_line_width = ref 0.2
+let default_line_width = ref 0.1
 let ex env =
   let l = Maths.draw [ env ] ([Maths.Ordinary (Maths.noad ((Maths.glyphs "x"))) ]) in
   let x = List.find
@@ -100,6 +100,7 @@ module Vector = struct
   let of_points p q = ((Point.proj q -. Point.proj p),
 		       (Point.proj' q -. Point.proj' p))
   let scal_mul r (x,y) = (x *. r, y *. r)
+  let ( * ) = scal_mul
   let (+) (x,y) (x',y') = (x +. x', y +. y')
   let (-) (x,y) (x',y') = (x -. x', y -. y')
   let (<>) (x,y) (x',y') = x *. x' +. y *. y'
@@ -833,7 +834,7 @@ module Transfo (X : Set.OrderedType) = struct
 
     type t = info
 
-    let default_params = { RawContent.default_path_param with close = false ; strokingColor=None ;
+    let default_params = { RawContent.default_path_param with close = true ; strokingColor=None ;
       lineWidth = !default_line_width }
 
     let default = { at = (0.,0.) ;
@@ -1078,6 +1079,17 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  `Center
 	else main)
 
+    let ray_intersect main outer_curve angle =
+	      let (x,y) = main in
+	      let angle = to_rad angle in
+	      let direction = (cos angle, sin angle) in
+	      let (vx,vy) as direction' = Vector.normalise ~norm:300. direction in
+	      let rayon = Curve.of_point_lists [[main;Vector.(+) main direction']] in
+	      let inter =
+		app_default Curve.latest_intersection rayon outer_curve (0,0.)
+	      in
+	      Curve.eval_local rayon inter
+	   
     let (rectangle : Document.environment -> Transfo.Style.t),
       shape_pet =
       Pet.register "node shape"
@@ -1132,15 +1144,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    | `NorthEast -> p3
 	    | `NorthWest -> p4
 	    | `Angle angle ->		(* angle en degres *)
-	      let (x,y) as main = anchors main in
-	      let angle = to_rad angle in
-	      let direction = (cos angle, sin angle) in
-	      let (vx,vy) as direction' = Vector.normalise ~norm:300. direction in
-	      let rayon = Curve.of_point_lists [[main;Vector.(+) main direction']] in
-	      let inter =
-		app_default Curve.latest_intersection rayon outer_curve (0,0.)
-	      in
-	      Curve.eval_local rayon inter
+ 	       let main = anchors main in
+	       ray_intersect main outer_curve angle
 	    | `Pdf -> info.pdfAnchor
 	    | _ -> Printf.fprintf stderr "Anchor undefined for a rectangle. Returning the center instead.\n" ;
 	      Point.middle p1 p3
@@ -1384,25 +1389,17 @@ Doing a rectangle.\n" ;
 	    let ((droit_final, gauche_final,apex_final),outer_curve) = make_triangle p3 p4 p1 p2 in
 	    let (_,mid_curve) = make_triangle p3' p4' p1' p2' in
 
-	    let inter point angle =
-	      let angle = to_rad angle in
-	      let direction = (cos angle, sin angle) in
-	      let (vx,vy) as direction' = Vector.normalise ~norm:300. direction in
-	      let rayon = Curve.of_point_lists [[point;Vector.(+) point direction']] in
-	      let inter =
-		app_default Curve.latest_intersection rayon outer_curve (0,0.)
-	      in
-	      Curve.eval_local rayon inter
-	    in
+	    let inter point angle = ray_intersect point outer_curve angle in
 
 	    let base = info'.anchor `Base in
 	    let line = fst base, (snd base -. ex env) in
 	    let center = info'.anchor `Center in
 	    let south = inter center (-90.) in
 	    let north = inter center 90. in
+	    let main = getMainAnchor info in
 
 	    let rec anchors = function
-	      | `Main -> anchors (getMainAnchor info)
+	      | `Main -> anchors main
 	      | `BaseEast -> inter base 0.
 	      | `BaseWest -> inter base 180.
 	      | `Line -> line
@@ -1419,6 +1416,7 @@ Doing a rectangle.\n" ;
 	      | `A -> apex_final
 	      | `B -> droit_final
 	      | `C -> gauche_final
+	      | `Angle angle -> let main = anchors main in ray_intersect main outer_curve angle
 	      | x -> info'.anchor x
 	    in
 	    { info' with
