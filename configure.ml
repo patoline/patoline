@@ -161,7 +161,7 @@ let local_packages = [
   };
   { package_name = "Typography";
     macro_suffix = "TYPOGRAPHY";
-    local_deps = ["patutil";"patfonts";"imagelib";"unicodelib";"cesure";"rawlib"];
+    local_deps = ["patutil";"patfonts";"imagelib";"unicodelib";"cesure";"rawlib";"db"];
     extern_deps = ["zip";"fontconfig"];
     subdirs = ["DefaultFormat"];
     has_meta = true;
@@ -697,11 +697,13 @@ let _=
   let meta=open_out "src/Typography/META" in
     Printf.fprintf meta
       "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"patutil,patfonts,%s\"\n"
+      (* FIXME: the line below should be generated from Typography deps !!!*)
       (String.concat "," (gen_pack_line [Package "str"; Package "unicodelib"; Package "rawlib"; Package "mysql";
                                          Package "zip";
                                          Package "imagelib";Package "dynlink";
                                          Package "fontconfig"; Package
-                                         "cesure"]));
+                                         "cesure"; Package
+                                         "db"]));
     Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, ParseMainArgs.cmx\"\n";
     Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cmx, ParseMainArgs.cmo\"\n";
 
