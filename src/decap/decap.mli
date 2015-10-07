@@ -370,7 +370,8 @@ val grammar_family : ?param_to_string:('a -> string) -> string
 val print_exception : exn -> unit
 
 (** [handle_exception f x] applies the function [f] to [x] while handling
-  DeCaP exceptions. In particular it notifies parse errors. *)
+  DeCaP exceptions. In particular it notifies parse errors. The exception
+  [Failure "No parse."] is raised when applicable. *)
 val handle_exception : ('a -> 'b) -> 'a -> 'b
 
 (** [accept_empty g] returns [true] if the grammar [g] accepts the empty input

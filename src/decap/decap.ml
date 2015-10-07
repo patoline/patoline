@@ -1624,14 +1624,12 @@ let print_exception = function
      let msg = if msg = [] then "" else (String.concat "," msg)
      in
      let sep = if msg <> "" && expected <> "" then ", " else "" in
-     Printf.eprintf "%s: parse error after %d:%d, %s%s%s\n%!" fname l n msg sep expected
+     let fname = if fname = "" then "" else (fname ^ ": ") in
+     Printf.eprintf "%sparse error after %d:%d, %s%s%s\n%!" fname l n msg sep expected
   | _ -> assert false
 
 let handle_exception f a =
-  try
-    f a
-  with
-    Parse_error _ as e -> print_exception e; exit 1
+  try f a with Parse_error _ as e -> print_exception e; failwith "No parse."
 
 let blank_grammar grammar blank str pos =
   let str, pos, _ =
