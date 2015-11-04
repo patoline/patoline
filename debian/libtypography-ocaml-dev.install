@@ -13,7 +13,6 @@ src/Drivers/None/None.META usr/lib/ocaml/Typography/META.d
 usr/lib/ocaml/Typography/ParseMainArgs.*
 usr/lib/ocaml/Typography/Pdf.*
 src/Drivers/Pdf/Pdf.META usr/lib/ocaml/Typography/META.d
-usr/lib/ocaml/Typography/pdf_parser.*
 usr/lib/ocaml/Typography/Typography.*
 usr/share/patoline/hyphen/*
 usr/lib/ocaml/bibi/*
@@ -22,3 +21,5 @@ usr/lib/ocaml/patoplot/*
 usr/lib/ocaml/patfonts/*
 usr/lib/ocaml/patutil/*
 usr/lib/ocaml/cesure/*
+usr/lib/ocaml/rawlib/*
+usr/lib/ocaml/db/*

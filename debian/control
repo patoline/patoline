@@ -3,14 +3,14 @@ Section: ocaml
 Priority: extra
 Maintainer: Florian Hatat <florian.hatat@univ-savoie.fr>
 Uploaders: Tom Hirschowitz <tom.hirschowitz@univ-savoie.fr>
-Build-Depends: debhelper (>= 7.0.50~), dh-ocaml, ocaml-base-nox, ocaml-findlib, dypgen (>= 0.20120619), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev, liblablgtk2-gl-ocaml-dev, liblablgl-ocaml-dev, libcairo-ocaml-dev, libsqlite3-ocaml-dev, libocamlnet-ocaml-dev, libcryptokit-ocaml-dev
+Build-Depends: debhelper (>= 7.0.50~), dh-ocaml, ocaml-base-nox, libfindlib-ocaml-dev, dypgen (>= 0.20120619), libzip-ocaml-dev, libcamlimages-ocaml-dev, liblablgtk2-gl-ocaml-dev, liblablgl-ocaml-dev, libcairo-ocaml-dev, libsqlite3-ocaml-dev, libocamlnet-ocaml-dev, libcryptokit-ocaml-dev
 Standards-Version: 3.9.5
 Homepage: http://www.patoline.org/
 Vcs-Darcs: http://patoline.org/darcs/patoline
 
 Package: patoline
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120619), libcamomile-ocaml-dev, ocaml-findlib, patoline-fonts, libtypography-ocaml-dev, libzip-ocaml, libcamlimages-ocaml
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120619), ocaml-findlib, patoline-fonts, libtypography-ocaml-dev, libzip-ocaml, libcamlimages-ocaml
 Description: Digital typography system written in OCaml
  Patoline is a digital typography system, similar to TeX or Microsoft Word, but
  using an up-to-date language and algorithm, and leveraging the power of
@@ -97,7 +97,7 @@ Description: Alegreya font family
 
 Package: libtypography-ocaml-dev
 Architecture: any
-Depends:  ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120619), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
+Depends:  ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120619), ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
 Description: Library of typographic primitives for OCaml
 
 Package: vim-syntax-patoline
@@ -186,9 +186,14 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}
 Provides: libimagelib-ocaml
 Description: Simple yet powerful bitmap image library for OCaml
 
-Package: libglr-ocaml-dev
+Package: libdecap-ocaml-dev
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}
-Provides: libglr-ocaml
-Description: GLR parser for OCaml
+Provides: libdecap-ocaml
+Description: Delimited Continuation Parser (DeCaP)
+  DeCaP is a new parser combinator library written in OCaml. Although DeCaP
+  can be used to write parsers directly, it is intended to be used in conjunction
+  with pa_ocaml, which is a full-featured parser for the OCaml language, written
+  using DeCaP. These two tools together provide an easy and integrated way to
+  write parsers and syntax extensions for the OCaml language. 
 
