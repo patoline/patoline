@@ -1,0 +1,62 @@
+
+
+\Caml(
+open Diagrams
+
+let newpage () = newPar D.structure ~environment:id Complete.normal
+  (fun a b c d e f g line ->
+  { (Patoline_Format.parameters a b c d e f g line) with
+	min_page_before = 1
+      }) [] 
+
+let epigraph_width = 0.6
+
+    module Env_epigraph = struct
+
+      let do_begin_env ()=
+D.structure:=newChildAfter (!D.structure)
+(Node { empty with node_env=(fun env->{env with par_indent=[];
+						normalMeasure=epigraph_width *. env.normalMeasure;
+                  normalLeftMargin=env.normalLeftMargin+. (1. -. epigraph_width) *. env.normalMeasure})});
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+
+      let do_end_env ()=
+        let res0, path0=(follow (top !D.structure) (List.rev (List.hd !env_stack))) in
+          D.structure:=up (res0, path0);
+          env_stack:=List.tl !env_stack
+
+end
+
+let whiteline () = <<\diagram( let m,ms = matrix Matrix.([centers 0. (env.normalMeasure);
+    	  mainNode Node.([innerSep 0.;outerSep 0.;rectangle env])])
+    	  [[ ([Node.innerSep 0.001],[]) ; ([Node.innerSep 0.001],[]) ]])>>
+
+let blackline () = <<\diagram( let m,ms = matrix Matrix.([centers 0. (env.normalMeasure);
+    	  mainNode Node.([innerSep 0.;outerSep 0.;rectangle env;draw;at (0.,0.5 *. env.normalLead)])])
+    	  [[ ([Node.innerSep 0.001],[]) ; ([Node.innerSep 0.001],[]) ]])>>
+
+)
+
+==================
+      Epigraphs in Patoline
+------------------
+	Tom
+==================
+		
+
+\begin{epigraph}
+	\italic{Ce n'est pas le chemin qui est difficile, c'est le difficile qui est chemin.}
+	\blackline
+
+\begin{raggedRight} Søren Kierkegaard, Simone Veil, la grand-mère de
+Naïma, peut-être même Lao-Tseu. Si tout le monde est d'accord c'est
+que ça doit être vrai.  \end{raggedRight} \end{epigraph}
+
+\whiteline		
+
+\whiteline		
+
+
+== First part ==
+
+Some contents.   

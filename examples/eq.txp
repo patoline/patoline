@@ -1,0 +1,7 @@
+(* #FORMAT FormatArticle *)
+
+Dans l'exemple des multicatégories, les arités nécessaires
+s'obtiennent toutes à partir du multigraphe vide en « recollant des
+représentables le long de leur bord ». Autrement dit, tout arbre $A$ est codomaine
+d'une composée de la forme
+\equation{${∅ = A₀} → A₁ … A_{n-1} → {Aₙ = A}$}

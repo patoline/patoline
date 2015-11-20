@@ -843,7 +843,7 @@ module Transfo (X : Set.OrderedType) = struct
 		    mainAnchor = `Center ;
 		    center = (0.,0.) ;
 		    pdfAnchor = (0.,0.) ;
-		    innerSep = 1.; outerSep = 0. ;
+		    innerSep = 0.5; outerSep = 0. ;
 		    innerCurve = [] ;
 		    midCurve = [] ;
 		    outerCurve = [] ;
@@ -1135,8 +1135,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    | `Line -> (fst base, (snd base -. ex))
 	    | `LineEast -> (fst (Point.middle p2 p3), snd base -. ex)
 	    | `LineWest -> (fst (Point.middle p1 p4), snd base -. ex)
-	    | `East -> Point.middle p2 p3
-	    | `West -> Point.middle p1 p4
+	    | `East -> (fst (Point.middle p2 p3), snd info.center)
+	    | `West -> (fst (Point.middle p1 p4), snd info.center)
 	    | `North -> Point.middle p3 p4
 	    | `South -> south
 	    | `SouthWest -> p1
@@ -2701,35 +2701,36 @@ Doing a rectangle.\n" ;
       open Node
       open Edge
 
+      let defaultLabelStyle = [innerSep 0.1;outerSep 0.]     
       let label_anchor a ?pos:(pos=(`Temporal 0.5 : anchor))
 	  ?shape:(shape=Node.rectangle env)
-	  ?style:(style=[])
+	  ?style:(style=defaultLabelStyle)
 	  contents =
 	label env ~pos:pos ~style:((Node.anchor a) :: shape :: style)  ([Scoped ((fun env -> { env with mathStyle = Mathematical.Script }), contents)])
 
       let labela ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
-	  ?style:(style=[]) cont =
+	  ?style:(style=defaultLabelStyle) cont =
 	label_anchor `South ~pos:pos ~shape:shape ~style:style cont
       let labelb ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
-	  ?style:(style=[]) cont =
+	  ?style:(style=defaultLabelStyle) cont =
 	label_anchor `North ~pos:pos ~shape:shape ~style:style cont
       let labell ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
-	  ?style:(style=[]) cont =
+	  ?style:(style=defaultLabelStyle) cont =
 	label_anchor `East ~pos:pos ~shape:shape ~style:style cont
       let labelr ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
-	  ?style:(style=[]) cont =
+	  ?style:(style=defaultLabelStyle) cont =
 	label_anchor `West ~pos:pos ~shape:shape ~style:style cont
       let labelal ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
-	  ?style:(style=[]) cont =
+	  ?style:(style=defaultLabelStyle) cont =
 	label_anchor `SouthEast ~pos:pos ~shape:shape ~style:style cont
       let labelar ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
-	  ?style:(style=[]) cont =
+	  ?style:(style=defaultLabelStyle) cont =
 	label_anchor `SouthWest ~pos:pos ~shape:shape ~style:style cont
       let labelbl ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
-	  ?style:(style=[]) cont =
+	  ?style:(style=defaultLabelStyle) cont =
 	label_anchor `NorthEast ~pos:pos ~shape:shape ~style:style cont
       let labelbr ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
-	  ?style:(style=[]) cont =
+	  ?style:(style=defaultLabelStyle) cont =
 	label_anchor `NorthWest ~pos:pos ~shape:shape ~style:style cont
 
 

@@ -173,7 +173,7 @@
 \Add_product_like{\para |}{|}
 \Add_product_like{\parallel ∥}(MathFonts.asana "∥" 385)
 \Add_product_like{\star ★ ⋆}(MathFonts.asana "⋆" 912)
-
+\Add_product_like{\sslash //}(MathFonts.asana "//" 1643)
 
 =<
 
