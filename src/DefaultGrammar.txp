@@ -164,6 +164,7 @@
 \Add_product_like{/}{/}
 \Add_product_like{\divide ÷}{÷}
 \Add_product_like{\otimes ⊗}{⊗}
+\Add_product_like{\boxtimes ⊠}(MathFonts.asana "⊠" 874)
 \Add_product_like{\odot ⊙}{⊙}
 \Add_product_like{\bullet ∙}{∙}
 \Add_product_like{\circ ∘}{∘}
