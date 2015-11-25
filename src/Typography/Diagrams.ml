@@ -736,6 +736,8 @@ module Transfo (X : Set.OrderedType) = struct
 	       | `Temporal of float	(* Between 0. and 1. (for paths) *)
 	       | `Start
 	       | `End
+	       | `SouthBase
+	       | `SouthLine
 
 	       | `Vertex of int
 	       | `Apex
@@ -1119,6 +1121,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  let south = Point.middle p1 p2 in
 	  let ex = ex env in
 	  let base = Vector.(+) south (0.,inner_sep +. outer_sep +. ex +. text_depth) in
+	  let southBase = Vector.(+) south (0.,inner_sep +. outer_sep +. ex) in
+	  let southLine = Vector.(+) south (0.,inner_sep +. outer_sep) in
 	  (* let _ =  *)
 	  (*   if main = `Base  *)
 	  (*   then (Printf.fprintf stderr " (main anchor: `Base)\n" ; flush stderr) *)
@@ -1130,9 +1134,11 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    | `Center -> info.center
 	    | `Main -> anchors main
 	    | `Base -> base
+	    | `SouthBase -> southBase
 	    | `BaseEast -> (fst (Point.middle p2 p3),snd base)
 	    | `BaseWest -> (fst (Point.middle p1 p4),snd base)
 	    | `Line -> (fst base, (snd base -. ex))
+	    | `SouthLine -> southLine
 	    | `LineEast -> (fst (Point.middle p2 p3), snd base -. ex)
 	    | `LineWest -> (fst (Point.middle p1 p4), snd base -. ex)
 	    | `East -> (fst (Point.middle p2 p3), snd info.center)
@@ -1663,11 +1669,35 @@ Doing a rectangle.\n" ;
       (* 	  in *)
       (* 	  { info with mainNode = node_info })}) *)
 
+      let mk_matrix_anchor f info =
+	let v = f info in
+	let c = info.mainNode.Node.center in
+	Vector.of_points c v 
+
+	let matrixLine info =
+	    let ms = info.nodes in
+	    let height = Array.length ms in
+	    let width = Array.length ms.(0) in
+	    Point.middle (ms.(height - 1).(0).Node.anchor `LineWest)
+	    (ms.(height - 1).(0).Node.anchor `LineEast)	    
+
+	let matrixBase info =
+	    let ms = info.nodes in
+	    let height = Array.length ms in
+	    let width = Array.length ms.(0) in
+	    Point.middle (ms.(height - 1).(0).Node.anchor `BaseWest)
+	    (ms.(height - 1).(0).Node.anchor `BaseEast)	    
+
       let mainNode,main_node_pet =
       Pet.register "matrix main node" ~depends:[make_placement_pet]
-	(fun pet node_transfos ->
+	(fun pet ?matrix_anchor node_transfos ->
 	  { pet = pet ; transfo = (fun transfos info ->
 	    let pdf_start = 0.,0. in
+	    let node_transfos = begin match matrix_anchor with
+  	      None -> node_transfos
+	    | Some (f: info -> Point.t) ->  node_transfos @ [Node.anchor (`Vec (mk_matrix_anchor f info))]
+	    	end
+	    in
 	    let node_info = Node.Transfo.transform node_transfos info.mainNode in
 	    let pdf_end = node_info.Node.anchor `Pdf in
 	    let v = Vector.of_points pdf_start pdf_end in
@@ -2843,6 +2873,7 @@ Doing a rectangle.\n" ;
 
 	let array anchors ?vertical_padding:(vpad=fun _ -> 1.) ?horizontal_padding:(hpad=fun _ -> 1.)
 	    ?all_node_styles:(all_node_styles=[])
+	    ?matrix_anchor
 	    ?main_node_style:(mstyle=Node.([at (0.,0.);anchor `SouthWest]))
 	    (* Mettre la valeur par defaut en ex *)
 	    lines =
@@ -2863,7 +2894,7 @@ Doing a rectangle.\n" ;
 						lines))
 	  in
 	  math_matrix (Matrix.placement (between_borders vpad hpad anchors style) ::
-		       Matrix.mainNode mstyle ::
+		       Matrix.mainNode ?matrix_anchor mstyle ::
 		       all_node_styles)
 	    lines_contents
 
