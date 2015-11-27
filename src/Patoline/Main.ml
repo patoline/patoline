@@ -197,12 +197,18 @@ let last_options_used file=
   !_formats, !_driver
 
 
+(* FIXME we sould not have to list formats here... *)
+let default_formats =
+  [ "FormatArticle" ; "FormatLetter" ; "FormatLivre" ; "FormatMemoire"
+  ; "FormatSlides" ; "FormatThese" ; "FormatWeb" ; "Interactive"
+  ; "LMFormat.ml" ]
 
 let add_format opts =
   let packages=
     List.fold_left (fun pac format->
       if not (List.mem ("Typography." ^ format) opts.packages) &&
         format<>"DefaultFormat" &&
+        List.mem format default_formats &&
         (try
            let _=findPath (format ^ ".ml") (".":: !Config2.local_path) in
            false

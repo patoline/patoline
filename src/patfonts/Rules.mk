@@ -34,7 +34,7 @@ LIBFONTS_CMO:=$(LIBFONTS_ML:.ml=.cmo)
 LIBFONTS_CMX:=$(LIBFONTS_ML:.ml=.cmx)
 
 LIBFONTS_MLI:=$(wildcard $(d)/*.mli) $(wildcard $(d)/CFF/*.mli) $(wildcard $(d)/Opentype/*.mli)
-LIBFONTS_CMI:=$(LIBFONTS_MLI:.mli=.cmi) $(d)/FBezier.cmi $(d)/FTypes.cmi $(d)/IsoAdobe.cmi $(d)/UnicodeRanges.cmi
+LIBFONTS_CMI:=$(LIBFONTS_MLI:.mli=.cmi) $(d)/FBezier.cmi $(d)/FTypes.cmi $(d)/IsoAdobe.cmi $(d)/UnicodeRanges.cmi $(d)/Opentype/Opentype.cmi $(d)/CFF/CFF.cmi
 
 # We cannot run ocamlc and ocamlopt simultaneously on the same input,
 # since they both overwrite the .cmi file, which can get corrupted.

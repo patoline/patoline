@@ -1625,7 +1625,7 @@ let print_exception = function
      in
      let sep = if msg <> "" && expected <> "" then ", " else "" in
      let fname = if fname = "" then "" else (fname ^ ": ") in
-     Printf.eprintf "%sparse error after %d:%d, %s%s%s\n%!" fname l n msg sep expected
+     Printf.eprintf "%sParse error after %d:%d, %s%s%s\n%!" fname l n msg sep expected
   | _ -> assert false
 
 let handle_exception f a =
