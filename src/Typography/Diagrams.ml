@@ -1679,14 +1679,14 @@ Doing a rectangle.\n" ;
 	    let height = Array.length ms in
 	    let width = Array.length ms.(0) in
 	    Point.middle (ms.(height - 1).(0).Node.anchor `LineWest)
-	    (ms.(height - 1).(0).Node.anchor `LineEast)	    
+	    (ms.(height - 1).(width - 1).Node.anchor `LineEast)	    
 
 	let matrixBase info =
 	    let ms = info.nodes in
 	    let height = Array.length ms in
 	    let width = Array.length ms.(0) in
 	    Point.middle (ms.(height - 1).(0).Node.anchor `BaseWest)
-	    (ms.(height - 1).(0).Node.anchor `BaseEast)	    
+	    (ms.(height - 1).(width - 1).Node.anchor `BaseEast)	    
 
       let mainNode,main_node_pet =
       Pet.register "matrix main node" ~depends:[make_placement_pet]
