@@ -228,13 +228,93 @@ module type CitationStyle=sig
 		     ?editeurs:string ->
 		     ?inclusion:string ->
 		     ?follow_crossrefs:bool
-		   -> string option array -> content list
+		   -> Sqlite3.row -> content list
   val citation_format:int->string option array->content list
   val compare:(int*string option array)->(int*string option array)->int
 end
 module type BiblioStyle=sig
   val biblio_format:int->string option array->Document.tree
 end
+
+(* module Biblio (C:CitationStyle) (B:BiblioStyle)=struct *)
+(*   let citeFile bibfile x= *)
+(*     try *)
+(*       let num (b:string option array)= *)
+(*         match b.(field_num "id") with *)
+(*             Some bid->( *)
+(*           try *)
+(* 	        fst (IntMap.find (int_of_string bid) !bib) *)
+(*               with *)
+(* 	        Not_found-> *)
+(*                     let key=(IntMap.cardinal !bib)+1 in *)
+(*                     bib:=IntMap.add (int_of_string bid) (key, b) !bib; *)
+(*                     revbib:=IntMap.add key b !revbib; *)
+(*                     key *)
+(*             ) *)
+(*           | None->assert false *)
+(*       in *)
+(*       let rec fn l = *)
+(*         match  l with *)
+(* 	    []-> raise (No_bib (no_results x)); *)
+(*           | (row)::l-> *)
+(*             let a=match row.(field_num "id") with None->assert false | Some a->int_of_string a in *)
+(* 	    citeCounter:=IntMap.add a () !citeCounter; *)
+(*             let _=num row in *)
+(* 	    let item = *)
+(*               bB (fun _->[Marker (BeginLink (Intern (sprintf "_bibi_%d" (num row))))]) *)
+(*               ::(C.citation_format (num row) row) *)
+(*               @[bB (fun _->[Marker EndLink])] *)
+(* 	    in *)
+(* 	    if l = [] then item@[tT"]"] else *)
+(* 	      item@tT ", "::fn l *)
+(*       in *)
+(*       let l = bibitem bibfile x in *)
+(*       tT"["::fn l *)
+(*     with *)
+(*         No_bib s->(Printf.eprintf "%s\n%!" s; [tT "[???]"]) *)
+(*       | _->[] *)
+
+
+let bibref name=
+  let refType = "bibliography" in
+  [ C (fun env->
+    try
+      env_accessed:=true;
+      let counters,refType_=
+        let a,t,_=StrMap.find name (names env)
+	in a,t 
+      in
+      let _,num=StrMap.find refType counters in
+      [bB (fun _->[Marker (BeginLink (Intern name))]);
+       tT (String.concat "." (List.map (fun x->string_of_int (x+1))
+                                (List.rev num)));
+       bB (fun _->[Marker EndLink])]
+    with
+      Not_found ->
+	Printf.eprintf "Unknown label %S of labelType %S\n%!" name refType;
+	[ tT "???"]
+  )]
+
+let bibnum name env =
+  let refType = "bibliography" in
+  try
+    env_accessed:=true;
+    let counters,refType_=
+      let a,t,_=StrMap.find name (names env)
+      in a,t 
+    in
+    let _,num=StrMap.find refType counters in
+    match num with
+      [] -> 
+      begin
+	Printf.eprintf "Unknown label %S of labelType %S\n%!" name refType;
+	-1
+      end
+    | n :: _ -> 1+n
+  with
+    Not_found ->
+    Printf.eprintf "Unknown label %S of labelType %S\n%!" name refType;
+    -1
 
 module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
   let citeFile bibfile x=
@@ -259,12 +339,14 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
           | (row)::l->
             let a=match row.(field_num "id") with None->assert false | Some a->int_of_string a in
 	    citeCounter:=IntMap.add a () !citeCounter;
-            let _=num row in
-	    let item =
-              bB (fun _->[Marker (BeginLink (Intern (sprintf "_bibi_%d" (num row))))])
-              ::(C.citation_format (num row) row)
-              @[bB (fun _->[Marker EndLink])]
-	    in
+            let i=num row in
+	    let name = sprintf "_bibi_%d" i in
+	    let item = bibref name in
+	    (* let item = *)
+            (*   bB (fun _->[Marker (BeginLink (Intern (sprintf "_bibi_%d" (num row))))]) *)
+            (*   ::(C.citation_format (num row) row) *)
+            (*   @[bB (fun _->[Marker EndLink])] *)
+	    (* in *)
 	    if l = [] then item@[tT"]"] else
 	      item@tT ", "::fn l
       in
@@ -273,6 +355,7 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
     with
         No_bib s->(Printf.eprintf "%s\n%!" s; [tT "[???]"])
       | _->[]
+
 
   let authorCite x y=
     sprintf "%s id IN (SELECT article FROM authors_publications WHERE author IN (SELECT id FROM authors WHERE %s))"
@@ -408,11 +491,45 @@ let rec default_biblio_format ?separator:(separator=". ")
         )
     )
 
+
+let biblio_format_of citation_format item_format params comp i row=
+    Paragraph {
+      par_contents=
+        [C (fun env->
+            try
+	      let name = sprintf "_bibi_%d" i in
+              Env (fun env ->Document.incr_counter "bibliography" env)
+	       ::
+		 tT"["
+	       ::
+		 ((citation_format (bibnum name env) row)
+		  @
+		    [ tT"] " ]
+                  @
+		    [ bB (fun env->let s=env.size/.3. in
+				   [glue s s s;
+				    Marker AlignmentMark]) ]
+		  @
+		    label ~labelType:"bibliography" name
+		  @ item_format row)
+            with
+              _->[]
+           )];
+      par_env=(fun env->{env with par_indent=[]});
+      par_post_env=(fun env1 env2 -> { env1 with names=names env2;
+						 counters=env2.counters;
+						 user_positions=user_positions env2 });
+      par_parameters=params;
+      par_badness=badness;
+      par_completeLine=comp;
+      par_states=[];
+      par_paragraph=(-1) }
+
 module MarginBiblio (C:CitationStyle)=struct
 
   open Box
   let w_mar=2.
-  let biblio_format i row=
+  let biblio_format = 
     let params env a1 a2 a3 a4 a5 a6 line=
       let p=Document.parameters env a1 a2 a3 a4 a5 a6 line in
       if line.lineStart=0 then (
@@ -449,28 +566,7 @@ module MarginBiblio (C:CitationStyle)=struct
           a1 a2 a3 a4 line a6
       )
     in
-    Paragraph {
-      par_contents=
-        [C (fun env->
-          try
-            (tT"["::C.citation_format i row@
-               [tT"] ";
-                bB (fun env->let s=env.size/.3. in
-                             [glue s s s;Marker (Label (sprintf "_bibi_%d" i));
-                              Marker AlignmentMark])]
-             @ C.item_format row)
-          with
-              _->[]
-        )];
-      par_env=(fun env->{env with par_indent=[]});
-      par_post_env=(fun env1 env2 -> { env1 with names=names env2;
-        counters=env2.counters;
-        user_positions=user_positions env2 });
-      par_parameters=params;
-      par_badness=badness;
-      par_completeLine=comp;
-      par_states=[];
-      par_paragraph=(-1) }
+    biblio_format_of C.citation_format C.item_format params comp
 
 end
 
@@ -498,29 +594,7 @@ module DefaultBiblio (C:CitationStyle)=struct
     )
 
 
-  let biblio_format i row=
-    Paragraph {
-      par_contents=
-        [C (fun env->
-          try
-            (tT"["::C.citation_format i row@
-               [tT"] ";bB (fun env->
-                 let s=env.size/.3. in
-                 [glue s s s;Marker (Label (sprintf "_bibi_%d" i));
-                  Marker AlignmentMark])]
-             @ C.item_format row)
-          with
-              _->[]
-        )];
-      par_env=(fun env->{env with par_indent=[]});
-      par_post_env=(fun env1 env2 -> { env1 with names=names env2;
-        counters=env2.counters;
-        user_positions=user_positions env2 });
-      par_parameters=params;
-      par_badness=badness;
-      par_completeLine=comp;
-      par_states=[];
-      par_paragraph=(-1) }
+  let biblio_format = biblio_format_of C.citation_format C.item_format params comp
 
 end
 
