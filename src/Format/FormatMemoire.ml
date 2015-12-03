@@ -30,8 +30,21 @@ open Printf
 	  
 module Format=functor (D:DocumentStructure)->struct
 
+let defaultPageMaster = PageLayout.(
+    let w = default.paperWidth in
+    let h = default.paperHeight in
+{ default with
+    marginTop = h /. 8.;
+    marginBottom = h /. 8.;
+    marginLeft = w /. 8.;
+    marginRight = w /. 8.;
+  })
+
 include FormatThese.Format(D)
-let defaultEnv = { defaultEnv with hyphenate=DefaultFormat.hyphenate_dict "hyph-fr.hdict"}
+let defaultEnv = { defaultEnv with hyphenate=DefaultFormat.hyphenate_dict "hyph-fr.hdict" ;
+				   new_page=PageLayout.new_page defaultPageMaster ;
+				   normalMeasure=(fst a4) -. defaultPageMaster.marginLeft -. defaultPageMaster.marginLeft
+		 }
 			  
   module Env_defi=Default.Make_theorem
 			  (struct
