@@ -174,6 +174,8 @@ type entry_point =
 (* declare expression soon for antiquotation *)
 module Initial = struct
 
+let before_parse_hook () = ()
+
 (* Declaration of grammars for literals *)
 let char_literal : char grammar = declare_grammar "char_literal"
 let string_literal : string grammar = declare_grammar "string_literal"

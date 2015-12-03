@@ -55,12 +55,13 @@ module type Final = sig
 
   exception Top_Exit
   val top_phrase : Parsetree.toplevel_phrase Decap.grammar
-
 end
 
 module Start = functor (Main : Final) -> struct
   let anon_fun s = file := Some s
   let _ = Arg.parse !spec anon_fun (Printf.sprintf "usage: %s [options] file" Sys.argv.(0))
+
+  Main.before_parse_hook ();
 
   let entry =
     match !entry, !file with
