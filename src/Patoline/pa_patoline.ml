@@ -335,7 +335,7 @@ type math_prio =
 type symbol =
   | Invisible
   | SimpleSym of string
-  | MultiSym of string
+  | MultiSym of Parsetree.expression
   | CamlSym of Parsetree.expression
   | ComplexSym of string
 
@@ -460,12 +460,26 @@ type operator =
     operator_kind : operator_kind;
   }
 
+type delimiter_kind =
+  | Opening
+  | Middle (*unused yet*)
+  | Closing
+
+type delimiter =
+  { delimiter_utf8_names : string list;
+    delimiter_macro_names : string list; (* with backslash *)
+    delimiter_values : Parsetree.expression;
+    delimiter_kind : delimiter_kind;
+  }
+
 type grammar_state =
   { mutable verbose          : bool
   ; mutable infix_symbols    : infix StrMap.t (* key are macro_names or utf8_names mixed *)
   ; mutable infix_grammar    : string grammar
   ; mutable atom_symbols     : atom_symbol StrMap.t
   ; mutable atom_grammar     : string grammar
+  ; mutable delimiter_symbols: delimiter StrMap.t
+  ; mutable delimiter_grammar: string grammar
   ; mutable other_symbols    : StrSet.t
   ; mutable word_macros      : (string * config list) list
   ; mutable math_macros      : (string * config list) list
@@ -478,6 +492,8 @@ let state =
   ; infix_grammar    = fail "no infix yet"
   ; atom_symbols     = StrMap.empty
   ; atom_grammar     = fail "no symbol yet"
+  ; delimiter_symbols= StrMap.empty
+  ; delimiter_grammar= fail "no symbol yet"
   ; other_symbols    = StrSet.empty
   ; word_macros      = []
   ; math_macros      = []
@@ -492,7 +508,8 @@ let build_grammar () =
 					    (StrMap.bindings m))))
   in
   state.infix_grammar <- map_to_grammar state.infix_symbols;
-  state.atom_grammar <-map_to_grammar state.atom_symbols
+  state.atom_grammar <-map_to_grammar state.atom_symbols;
+  state.delimiter_grammar <-map_to_grammar state.delimiter_symbols
 
 let before_parse_hook () =
   In.before_parse_hook ();
@@ -503,6 +520,7 @@ let before_parse_hook () =
     Printf.eprintf "Reading default grammar %s\n%!" gram;
     state.infix_symbols <- input_value ch;
     state.atom_symbols <- input_value ch;
+    state.delimiter_symbols <- input_value ch;
     build_grammar ();
     Printf.eprintf "Read default grammar\n%!";
     close_in ch;
@@ -556,9 +574,8 @@ let print_math_symbol _loc sym=
     match sym with
       SimpleSym s-> <:expr<Maths.glyphs $string:s$>>, false
     | CamlSym s-> s, false
+    | MultiSym s -> s, true
     | _ -> failwith "a faire ds Pa_patoline.print_math_symbol.\n"
-      (* | MultiSym s -> <:expr<$lid:s$>>, true *)
-      (* | ComplexSym s -> Printf.bprintf buf "(%s)" s; raise Exit *)
   in
   if b then
     try
@@ -687,6 +704,47 @@ let math_atom_symbol =
     with Not_found -> give_up "Not an atom symbol")
     Charset.full_charset None "Not an atom symbol"
 
+let new_delimiter _loc delimiter_kind sym_names delimiter_values =
+  let delimiter_macro_names, delimiter_utf8_names = symbol sym_names in
+  let sym = { delimiter_kind; delimiter_macro_names; delimiter_utf8_names; delimiter_values } in
+  state.delimiter_symbols <-
+    List.fold_left (fun map name -> StrMap.add name sym map)
+    state.delimiter_symbols sym_names;
+  build_grammar ();
+  (* Displaying no the document. *)
+  if state.verbose then
+    let syms =
+      <:expr<[Maths.Ordinary (Maths.noad
+        (fun x y -> List.flatten (Maths.multi_glyphs $delimiter_values$ x y)))]>>
+    in
+    let names = [syms] in (* TODO *)
+    symbol_paragraph _loc syms (math_list _loc names)
+  else []
+
+let math_left_delimiter =
+  black_box (fun buf pos ->
+    let name,buf,pos =
+      internal_parse_buffer state.delimiter_grammar blank buf pos
+    in
+    try
+      let sym = StrMap.find name state.delimiter_symbols in
+      if sym.delimiter_kind <> Opening then give_up "not a left delimiter";
+      sym,buf,pos
+    with Not_found -> give_up "Not a delimiter")
+    Charset.full_charset None "Not a delimiter"
+
+let math_right_delimiter =
+  black_box (fun buf pos ->
+    let name,buf,pos =
+      internal_parse_buffer state.delimiter_grammar blank buf pos
+    in
+    try
+      let sym = StrMap.find name state.delimiter_symbols in
+      if sym.delimiter_kind <> Closing then give_up "not a right delimiter";
+      sym,buf,pos
+    with Not_found -> give_up "Not a delimiter")
+    Charset.full_charset None "Not a delimiter"
+
 let new_multi_symbol _loc kind is_infix syms value =
   (* An parser for the new symbol as an atom. *)
   let parse_sym = symbol syms in
@@ -763,9 +821,9 @@ let parser symbol_def =
   | "\\Add_limits_operator" ss:symbols e:symbol_values ->
      [] (*new_multi_symbol _loc Limit_operator false  ss e*)
   | "\\Add_left"            ss:symbols e:symbol_values ->
-     [] (* new_multi_symbol _loc Left           false  ss e*)
+     new_delimiter _loc Opening ss e
   | "\\Add_right"           ss:symbols e:symbol_values ->
-     [] (*new_multi_symbol _loc Right          false  ss e*)
+     new_delimiter _loc Closing ss e
   (* Special case, combining symbol *)
   | "\\Add_combining" "{" c:uchar "}" "{" "\\" - m:lid "}" ->
       new_combining_symbol _loc c m
@@ -788,6 +846,13 @@ let no_blank_list g = change_layout ( parser g* ) no_blank
 let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * math_prio) Decap.grammar =
   | '{' (m,_):math_aux '}' -> (m,AtomM)
 
+  | l:math_left_delimiter (m,_):math_aux r:math_right_delimiter ->
+     (fun indices ->
+       let l = print_math_symbol _loc_l (MultiSym l.delimiter_values) in
+       let r = print_math_symbol _loc_r (MultiSym r.delimiter_values) in
+       print_math_deco _loc <:expr<[Maths.Decoration (Maths.open_close $l$ $r$, $m no_ind$)]>> indices
+     ),AtomM
+
   | var:''[a-zA-Z]'' ->
      (fun indices ->
        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_var (SimpleSym var) indices$] >>), AtomM
@@ -807,6 +872,24 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
        let e = List.fold_left apply <:expr<$lid:id$>> args in
        print_math_deco _loc_id e indices
      ), AtomM
+
+  | (m,mp):math_aux s:Subsup.subscript ->
+     if mp > Ind then give_up "No indice/exponent allowed here";
+    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+    let rd indices =
+      if indices.down_right <> None then give_up "double indices";
+      { indices with down_right = Some s }
+    in
+    (fun indices -> m (rd indices)), Ind
+
+  | (m,mp):math_aux s:Subsup.superscript ->
+     if mp > Ind then give_up "No indice/exponent allowed here";
+    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+    let rd indices =
+      if indices.up_right <> None then give_up "double indices";
+      { indices with up_right = Some s }
+    in
+    (fun indices -> m (rd indices)), Ind
 
   | (m,mp):math_aux - (s,h):indices - (r,rp):math_aux ->
      if (mp >= Ind && s = Left) then give_up "can not be used as indice";
@@ -1263,6 +1346,7 @@ let _ =
      Printf.eprintf "Writing default grammar\n%!";
      output_value ch PaExt.state.infix_symbols;
      output_value ch PaExt.state.atom_symbols;
+     output_value ch PaExt.state.delimiter_symbols;
      Printf.eprintf "Written default grammar\n%!";
      close_out ch
   | _ -> Printf.eprintf "Not writing default grammar, no filename\n%!";
