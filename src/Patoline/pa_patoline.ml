@@ -697,14 +697,21 @@ let print_math_deco _loc elt ind =
 	    r:= <:record<Maths.super_right_same_script = true>> @ !r;
 	  r:= <:record<Maths.superscript_right = $i$ >> @ !r
       | _ -> ());
+      (match ind.down_right with
+	Some i ->
+	  r:= <:record<Maths.subscript_right = $i$ >> @ !r
+      | _ -> ());
+      (match ind.up_left with
+	Some i ->
+     	  if ind.up_left_same_script then
+	    r:= <:record<Maths.super_left_same_script = true>> @ !r;
+	  r:= <:record<Maths.superscript_left = $i$ >> @ !r
+      | _ -> ());
+      (match ind.down_left with
+	Some i ->
+	  r:= <:record<Maths.subscript_left = $i$ >> @ !r
+      | _ -> ());
 
-    (*   if ind.up_left <> None then ( *)
-    (* 	if ind.up_left_same_script then Printf.bprintf buf "Maths.super_left_same_script = true; ";  *)
-    (* 	gn "Maths.superscript_left" ind.up_left *)
-    (*   ); *)
-    (*   if ind.down_right <> None then gn "Maths.subscript_right" ind.down_right; *)
-    (*   if ind.down_left <> None then gn "Maths.subscript_left" ind.down_left; *)
-    (*   Printf.bprintf buf "}" *)
      <:expr< { (Maths.noad $print_math_symbol _loc elt$) with $(!r)$ } >>
     end
 
@@ -712,7 +719,18 @@ let pred : math_prio -> math_prio = function
   | Macro -> Macro
   | p -> Obj.magic (Obj.magic p - 1)
 
+type indice_height = Up | Down
+type indice_side = Left | Right
+
+let parser indices =
+		   | "_" -> Right,Down
+		   | "__"-> Left,Down
+		   | "^" -> Right,Up
+		   | "^^"-> Left,Up
+
 let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * math_prio) Decap.grammar =
+  | '{' (m,_):math_aux '}' -> (m,AtomM)
+
   | var:''[a-zA-Z]'' ->
       (fun indices ->
 	<:expr<[Maths.Ordinary $print_math_deco _loc_var (SimpleSym var) indices$] >>), AtomM
@@ -720,9 +738,26 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
       (fun indices ->
 	<:expr<[Maths.Ordinary $print_math_deco _loc_num (SimpleSym num) indices$] >>), AtomM
 
-  | (m,mp):math_aux - rd:right_deco ->
-     if mp >= Ind then give_up "No indice/exponent allowed here";
-     (fun indices -> m (rd indices)), Ind
+  | (m,mp):math_aux - (s,h):indices - (r,rp):math_aux ->
+     if (mp >= Ind && s = Left) then give_up "can not be used as indice";
+     if (rp >= Ind && s = Right) then give_up "can not be used as indice";
+     if (mp > Ind && s = Right) then give_up "No indice/exponent allowed here";
+     if (rp > Ind && s = Left) then give_up "No indice/exponent allowed here";
+     let rd indices = function
+       | Left,Down ->
+	  if indices.down_left <> None then give_up "double indices";
+	 { indices with down_left = Some (m no_ind) }
+       | Right,Down ->
+	  if indices.down_right <> None then give_up "double indices";
+	 { indices with down_right = Some (r no_ind) }
+       | Left,Up ->
+	  if indices.up_left <> None then give_up "double indices";
+	 { indices with up_left = Some (m no_ind) }
+       | Right,Up ->
+	  if indices.up_right <> None then give_up "double indices";
+	 { indices with up_right = Some (r no_ind) }
+     in
+     (fun indices -> (if s = Left then r else m) (rd indices (s,h))), Ind
 
   | (l,lp):math_aux s:math_infix_symbol (r,rp):math_aux ->
      if lp > s.infix_prio || rp >= s.infix_prio then give_up "bad infix priority";
@@ -740,19 +775,6 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
                                 bin_left= $l$;
                                 bin_right= $r$ } ] >>), s.infix_prio
 
-  (* TODO *)
-
-and right_deco =
-    | "_" - (m,mp):math_aux ->
-      if mp >= Ind then give_up "No indice/exponent allowed here";
-      (fun indices ->
-	if indices.down_right <> None then give_up "double indices";
-	{ indices with down_right = Some (m no_ind) })
-    | "^" - (m,mp):math_aux ->
-      if mp >= Ind then give_up "No indice/exponent allowed here";
-      (fun indices ->
-	if indices.up_right <> None then give_up "double indices";
-	{ indices with up_right = Some (m no_ind) })
 
 let math_toplevel = parser
   (m,_):math_aux -> m no_ind
@@ -1067,6 +1089,7 @@ let wrap basename _loc ast =
     open Typography.Box
     open Typography.Config
     open Typography.Document
+    open Typography.Maths
     open RawContent
     open Color
     open Driver
