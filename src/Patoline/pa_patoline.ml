@@ -512,8 +512,7 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
 let math_infix_symbol =
   black_box (fun buf pos ->
     let name,buf,pos =
-      try partial_parse_buffer state.infix_grammar blank buf pos
-      with Parse_error _ -> give_up "Not an infix symbol"
+      internal_parse_buffer state.infix_grammar blank buf pos
     in
     try
       let sym = StrMap.find name state.infix_symbols in
