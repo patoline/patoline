@@ -31,17 +31,19 @@ $(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 
 all: $(PA_PATOLINE)
 
+PATOLINE_DIR := $(d)
+
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) \
 		-package patutil,imagelib,dynlink,str,decap \
-		-I $(PA_OCAML_DIR) $(COMPILER_INC) -o $@ \
+		-I $(PA_OCAML_DIR) -I $(PATOLINE_DIR) $(COMPILER_INC) -o $@ \
 		bigarray.cmxa unicodelib.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa str.cmxa \
-		$(COMPILER_LIBO) decap.cmxa decap_ocaml.cmxa $<
+		$(COMPILER_LIBO) decap.cmxa decap_ocaml.cmxa Config2.cmx $<
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_OCAML) -c -package patutil,decap $(COMPILER_INC) -o $@ $< 
+	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_OCAML) -I $(PATOLINE_DIR) -c -package patutil,decap $(COMPILER_INC) -o $@ $<
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
@@ -50,8 +52,6 @@ $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 #$(d)/patolineGL: $(UTIL_DIR)/util.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
 #	$(ECHO) "[OPT]    $(lastword $^) -> $@"
 #	$(Q)$(OCAMLOPT) -o $@ $(PACK) -package $(PACK_DRIVER_DriverGL) -I $(DRIVERS_DIR)/DriverGL -I $(DRIVERS_DIR) -I $(UTIL_DIR) $^
-
-PATOLINE_DIR := $(d)
 
 $(d)/Main.cmx: $(d)/Main.ml
 	$(ECHO) "[OPT]    $<"

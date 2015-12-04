@@ -10,16 +10,6 @@ open Pa_ocaml_prelude
  *   - a new entry point for plain Patoline files.
  *)
 
-#define LOCATE locate
-
-(*
- * Everything is wrapped into the functor, this is standard procedur to write
- * syntax extensions using DeCaP. The argument of the functor is included
- * straight away, so that extensions can be composed.
- *)
-module Ext = functor(In:Extension) -> struct
-include In
-
 (* State information + Comand line arguments extension **********************)
 
 let patoline_format   = ref "DefaultFormat"
@@ -36,6 +26,8 @@ let add_patoline_package p =
   let ps = Util.split ',' p in
   patoline_packages := !patoline_packages @ ps
 
+let no_default_grammar = ref false
+
 let spec =
   [ ("--driver",  Arg.String set_patoline_driver,
      "The driver against which to compile.")
@@ -43,9 +35,20 @@ let spec =
      "The document format to use.")
   ; ("--package", Arg.String add_patoline_package,
      "Package to link.")
+  ; ("--no-default-grammar", Arg.Set no_default_grammar, "do not load DefaultGrammar")
   ]
 
 let _ = extend_cl_args spec
+
+#define LOCATE locate
+
+(*
+ * Everything is wrapped into the functor, this is standard procedur to write
+ * syntax extensions using DeCaP. The argument of the functor is included
+ * straight away, so that extensions can be composed.
+ *)
+module Ext = functor(In:Extension) -> struct
+include In
 
 (* Blank functions for Patoline *********************************************)
 
@@ -333,11 +336,30 @@ let freshUid () =
  * Symbol definitions.                                                      *
  ****************************************************************************)
 
-type sym_kind = Relation | Addition_like | Product_like | Connector
-  | Negation | Arrow | Punctuation | Prefix | Quantifier | Postfix
-  | Accent | Symbol
+type math_prio =
+  | Macro | AtomM | Accent | Ind | Fun | Prod
+  | Sum | Operator | Rel | Neg | Conj | Impl | Punc
 
-type msym_kind = Operator | Limit_operator | Left | Right
+(*
+type infix_kind =
+  | Relation
+  | Addition_like
+  | Product_like
+  | Connector
+  | Arrow
+  | Punctuation
+
+type prefix_kind =
+  | Negation
+  | Prefix
+  | Quantifier
+  | Operator
+  | Limit_operator
+
+type postfix_kind =
+  | Postfix
+  | Accent
+*)
 
 let parser symbol =
   | s:"\\}"             -> s
@@ -383,8 +405,9 @@ let uchar =
       let s = String.make 4 c0 in s.[1] <- c1; s.[2] <- c2; s.[3] <- c3; s
 
 let symbol ss =
-  let ss = List.sort (fun x y -> - (String.compare x y)) ss in
-  alternatives (List.map (fun s -> string s ()) ss)
+  List.partition (fun s ->
+    assert (String.length s > 0);
+    s.[0] = '\\') ss
 
 type config = EatR | EatL | Name of string list * string | Arity of int
   | GivePos | Arg of int * string | ArgNoPar of int | IsIdentity
@@ -400,9 +423,20 @@ let parser config =
   | "is_identity"                         -> IsIdentity
 let parser configs = "{" cs:config* "}" -> cs
 
+type infix =
+  { infix_prio : math_prio;
+    infix_utf8_names : string list;
+    infix_macro_names : string list; (* with backslash *)
+    infix_value : Parsetree.expression;
+    infix_space : int;
+    infix_no_left_space : bool;
+    infix_no_right_space : bool;
+  }
+
 type grammar_state =
   { mutable verbose          : bool
-  ; mutable infix_symbols    : StrSet.t
+  ; mutable infix_symbols    : infix StrMap.t (* key are macro_names or utf8_names mixed *)
+  ; mutable infix_grammar    : string grammar
   ; mutable other_symbols    : StrSet.t
   ; mutable word_macros      : (string * config list) list
   ; mutable math_macros      : (string * config list) list
@@ -411,12 +445,30 @@ type grammar_state =
 
 let state =
   { verbose          = false
-  ; infix_symbols    = StrSet.empty
+  ; infix_symbols    = StrMap.empty
+  ; infix_grammar    = fail "no infix yet"
   ; other_symbols    = StrSet.empty
   ; word_macros      = []
   ; math_macros      = []
   ; paragraph_macros = []
   ; environment      = [] }
+
+let before_parse_hook () =
+  In.before_parse_hook ();
+  if not !no_default_grammar then begin
+    let path = "." :: !Config2.grammarspath in
+    let gram = findPath "DefaultGrammar.tgy" path in
+    let ch = open_in_bin gram in
+    Printf.eprintf "Reading default grammar %s\n%!" gram;
+    state.infix_symbols <- input_value ch;
+    Printf.eprintf "Read default grammar\n%!";
+    state.infix_grammar <-
+      Decap.alternatives (List.map (fun s -> Decap.string (fst s) (fst s))
+			    (StrMap.bindings state.infix_symbols));
+    Printf.eprintf "Rebuild grammars\n%!";
+    close_in ch;
+  end
+
 
 let symbol_paragraph _loc syms names =
   <:structure<
@@ -437,6 +489,47 @@ let math_list _loc l =
       $x$ $y$]>>
   in
   List.fold_left merge (List.hd l) (List.tl l)
+
+let new_infix_symbol _loc infix_prio sym_names infix_value =
+  (* An parser for the new symbol as an atom. *)
+  let infix_macro_names, infix_utf8_names = symbol sym_names in
+  let infix_no_left_space = false in
+  let infix_no_right_space = (infix_prio = Punc) in
+  let infix_space = match infix_prio with
+    | Sum -> 2
+    | Prod -> 3
+    | Rel | Punc -> 1
+    | Conj | Impl -> 0
+    | _ -> assert false
+  in
+  let sym = { infix_prio; infix_macro_names; infix_utf8_names; infix_value;
+	      infix_space; infix_no_left_space; infix_no_right_space } in
+  state.infix_symbols <-
+    List.fold_left (fun map name -> StrMap.add name sym map)
+    state.infix_symbols sym_names;
+  state.infix_grammar <-
+    alternatives (state.infix_grammar::List.map (fun s -> Decap.string s s) sym_names);
+  (* Displaying no the document. *)
+  if state.verbose then
+    let sym = <:expr<[Maths.Ordinary (Maths.noad $infix_value$)]>> in
+    let f s = sym in (* TODO *)
+    let names = List.map f sym_names in
+    symbol_paragraph _loc sym (math_list _loc names)
+  else []
+
+let math_infix_symbol prio =
+  black_box (fun buf pos ->
+    Printf.eprintf "Calling partial parse buffer\n%!";
+    let buf,pos,name =
+      try partial_parse_buffer state.infix_grammar blank buf pos
+      with Parse_error _ -> give_up "Not an infix symbol"
+    in
+    Printf.eprintf "Partial parse buffer OK %d\n%!" pos;
+    try
+      let sym = StrMap.find name state.infix_symbols in
+      if sym.infix_prio <= prio then sym,buf,pos else give_up "infix symbol with too high priority"
+    with Not_found -> give_up "Not an infix symbol")
+    Charset.full_charset None "Not an infix symbol"
 
 let new_symbol _loc kind is_infix syms value =
   (* An parser for the new symbol as an atom. *)
@@ -500,38 +593,38 @@ let parser symbol_def =
   | "\\Save_Grammar"    -> save_grammar (); []
   (* Addition of single symbols *)
   | "\\Add_relation"      ss:symbols e:symbol_value ->
-      new_symbol _loc Relation      false ss e
+      new_infix_symbol _loc Rel      ss e
   | "\\Add_addition_like" ss:symbols e:symbol_value ->
-      new_symbol _loc Addition_like false ss e
+      new_infix_symbol _loc Sum ss e
   | "\\Add_product_like"  ss:symbols e:symbol_value ->
-      new_symbol _loc Product_like  false ss e
+      new_infix_symbol _loc Prod  ss e
   | "\\Add_connector"     ss:symbols e:symbol_value ->
-      new_symbol _loc Connector     false ss e
-  | "\\Add_negation"      ss:symbols e:symbol_value ->
-      new_symbol _loc Negation      false ss e
+      new_infix_symbol _loc Conj     ss e
   | "\\Add_arrow"         ss:symbols e:symbol_value ->
-      new_symbol _loc Arrow         false ss e
+     new_infix_symbol _loc Impl          ss e
   | "\\Add_punctuation"   ss:symbols e:symbol_value ->
-      new_symbol _loc Punctuation   false ss e
+     new_infix_symbol _loc Punc   ss e (* FIXME: check *)
+  | "\\Add_negation"      ss:symbols e:symbol_value ->
+     [] (* new_symbol _loc Negation      false ss e*)
   | "\\Add_quantifier"    ss:symbols e:symbol_value ->
-      new_symbol _loc Quantifier    false ss e
+     [] (* new_symbol _loc Quantifier    false ss e*)
   | "\\Add_prefix"        ss:symbols e:symbol_value ->
-      new_symbol _loc Prefix        true  ss e
+     [] (* new_symbol _loc Prefix        true  ss e*)
   | "\\Add_postfix"       ss:symbols e:symbol_value ->
-      new_symbol _loc Postfix       true  ss e
+     [] (* new_symbol _loc Postfix       true  ss e*)
   | "\\Add_accent"        ss:symbols e:symbol_value ->
-      new_symbol _loc Accent        true  ss e
+     [] (* new_symbol _loc Accent        true  ss e*)
   | "\\Add_symbol"        ss:symbols e:symbol_value ->
-      new_symbol _loc Symbol        true  ss e
+     [] (* new_symbol _loc Symbol        true  ss e*)
   (* Addition of mutliple symbols (different sizes) *)
   | "\\Add_operator"        ss:symbols e:symbol_values ->
       new_multi_symbol _loc Operator       false  ss e
   | "\\Add_limits_operator" ss:symbols e:symbol_values ->
-      new_multi_symbol _loc Limit_operator false  ss e
+     [] (*new_multi_symbol _loc Limit_operator false  ss e*)
   | "\\Add_left"            ss:symbols e:symbol_values ->
-      new_multi_symbol _loc Left           false  ss e
+     [] (* new_multi_symbol _loc Left           false  ss e*)
   | "\\Add_right"           ss:symbols e:symbol_values ->
-      new_multi_symbol _loc Right          false  ss e
+     [] (*new_multi_symbol _loc Right          false  ss e*)
   (* Special case, combining symbol *)
   | "\\Add_combining" "{" c:uchar "}" "{" "\\" - m:lid "}" ->
       new_combining_symbol _loc c m
@@ -625,27 +718,38 @@ let print_math_deco _loc elt ind =
      <:expr< { (Maths.noad $print_math_symbol _loc elt$) with $(!r)$ } >>
     end
 
-type math_prio = Macro | AtomM | Accent | Ind | Fun | Prod | Sum | Operator | Rel | Neg | Conj | Impl | Punc
-
 let pred : math_prio -> math_prio = function
-  | Macro -> assert false
+  | Macro -> Macro
   | p -> Obj.magic (Obj.magic p - 1)
 
 let parser math_aux prio : (Parsetree.expression indices -> Parsetree.expression) Decap.grammar =
-    | | var:''[a-zA-Z]'' when prio = AtomM ->
+  | var:''[a-zA-Z]'' when prio = AtomM ->
       (fun indices ->
 	<:expr<[Maths.Ordinary $print_math_deco _loc_var (SimpleSym var) indices$] >>)
-    | | num:''[0-9]+\([.][0-9]+\)?'' when prio = AtomM ->
+  | num:''[0-9]+\([.][0-9]+\)?'' when prio = AtomM ->
       (fun indices ->
 	<:expr<[Maths.Ordinary $print_math_deco _loc_num (SimpleSym num) indices$] >>)
 
-    | | m:(math_aux (pred Ind)) - rd:right_deco when prio = Ind ->
+  | m:(math_aux (pred Ind)) - rd:right_deco when prio = Ind ->
       (fun indices -> m (rd indices))
 
-    | | m:(math_aux (pred prio)) when prio > Macro -> (fun indices -> m indices)
+  | l:(math_aux prio) s:(math_infix_symbol prio) r:(math_aux (pred prio)) ->
+       (fun indices ->
+	 let nsl = s.infix_no_left_space in
+	 let nsr = s.infix_no_right_space in
+	 let sp = s.infix_space in
+	 let l = l no_ind and r = r no_ind in
+	 let inter = <:expr<
+                         Maths.Normal( $bool:nsl$,
+                           $print_math_deco _loc_s (CamlSym s.infix_value) indices$,
+                           $bool:nsr$) >> in
+	 <:expr<[Maths.Binary { bin_priority= $int:sp$;
+                                bin_drawing = $inter$;
+                                bin_left= $l$;
+                                bin_right= $r$ } ] >>)
 
+  | m:(math_aux (pred prio)) when prio > Macro -> (fun indices -> m indices)
 
-  (* | | 'x' -> <:expr@_loc<Maths.noad (Maths.glyphs "x")>> *)
   (* TODO *)
 
 and right_deco =
@@ -1054,5 +1158,17 @@ end (* of the functor *)
 
 (* Creating and running the extension *)
 module ParserExt = Pa_parser.Ext(Pa_ocaml_prelude.Initial)
-module PatolineDefault = Pa_ocaml.Make(Ext(ParserExt))
+module PaExt = Ext(ParserExt)
+module PatolineDefault = Pa_ocaml.Make(PaExt)
 module M = Pa_main.Start(PatolineDefault)
+
+let _ =
+  match !Pa_ocaml_prelude.file with
+  | None -> Printf.eprintf "Not writing default grammar, no filename\n%!";
+  | Some s ->
+     let name = chop_extension' s ^ ".tgy" in
+     let ch = open_out_bin name in
+     Printf.eprintf "Writing default grammar\n%!";
+     output_value ch PaExt.state.infix_symbols;
+     Printf.eprintf "Written default grammar\n%!";
+     close_out ch

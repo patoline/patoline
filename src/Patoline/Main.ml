@@ -29,6 +29,7 @@ let no_grammar=ref false
 let deps_only=ref false
 let extras = ref []
 let extras_top = ref []
+let extras_pp = ref []
 let cmd_line_format = ref false
 let cmd_line_driver= ref false
 let formats=ref []
@@ -44,7 +45,7 @@ let main_ml=ref false
 let shortDrivers = List.map (fun name ->
   let len = String.length name in
   if len > 6 && String.sub name 0 6 = "Driver" then String.sub name 6 (len - 6) else name) Config2.drivers
-let aliasDriver= 
+let aliasDriver=
   List.filter (fun (c, c') -> c <> c')
   (List.combine shortDrivers Config2.drivers)
 
@@ -113,6 +114,7 @@ let spec =
    ("--",Arg.Rest (fun s -> extras := [s]:: !extras), message (Cli Remaining));
    ("--topopts",Arg.String (fun s -> extras_top := getopts s:: !extras_top), message (Cli TopOpts));
    ("--ccopts",Arg.String (fun s -> extras := getopts s :: !extras), message (Cli CCOpts));
+   ("--ppopts",Arg.String (fun s -> extras_pp := getopts s :: !extras_pp), message (Cli PPOpts));
    ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), message (Cli No_line_directive));
    ("--debug-parser", Arg.Unit (fun () -> Parser.debug_parser:=true), message (Cli Debug_parser));
   ]
@@ -154,7 +156,7 @@ let strGraph_of_strMap m =
   (* We also create a list of nodes which should also be kept up to date. This is useful because the list of keys of [nodes]
    may not contain all involved nodes, as nodes may have no dependencies. *)
   let nodelist : graph ref = ref [] in
-  (* The next function attemps to associate a node to some argument string [s] via [nodes], and, 
+  (* The next function attemps to associate a node to some argument string [s] via [nodes], and,
    if it fails, creates a new node with underlying string [s], which it readily adds to [nodes] *)
   let nodeOfString s =
     try StrMap.find s !nodes
@@ -171,7 +173,7 @@ let strGraph_of_strMap m =
 	       node.sons <- node.sons @ nsons)
 		      m
   in !nodelist
-	       
+
 let last_options_used file=
   let fread=open_in file in
   let _formats=ref "" in
@@ -383,7 +385,8 @@ and make_deps pre source=
 	"ocamlfind ocamldep %s %s %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp -ml-synonym .typ '%s'"
 	(let pack=String.concat "," (List.rev opts.packages) in
 	 if pack<>"" then "-package "^pack else "")
-	(if Filename.check_suffix source ".typ" then "-pp 'pa_patoline --ocamldep'" else "")
+	(if Filename.check_suffix source ".typ" then
+	    Printf.sprintf "-pp 'pa_patoline --ocamldep %s'" (String.concat " " (List.flatten !extras_pp)) else "")
 	(String.concat " " dirs_)
 	(includes_opt source)
 	source
@@ -395,7 +398,7 @@ and make_deps pre source=
       | _ -> Printf.fprintf stdout "%s\n%!" cmd);
       Mutex.unlock Build.mstdout;
       Unix.open_process_in cmd, true
-    end else 
+    end else
       open_in dep_filename, false
   in
   let buf=Buffer.create 1000 in
@@ -596,7 +599,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
 		   "--format " ^ f
 	      in
 	      close_in ch;
- 	      source, ["-pp"; "pa_patoline " ^ format ^ " --driver " ^ opts.driver])
+ 	      source, ["-pp"; "pa_patoline " ^ format ^ " --driver " ^ opts.driver ^ " " ^ (String.concat " " (List.flatten !extras_pp))])
 	    else
               (chg_ext pref (if is_main then "_.tml" else ".ttml"), [])
           in
@@ -645,7 +648,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
             (match !quiet with
 	      0 -> ()
 	    | 1 -> Printf.fprintf stdout "[OPT] %s -> %s\n%!" source h
-	    | _ -> 
+	    | _ ->
 	      Printf.fprintf stdout "%s\n%!"
                 (String.concat " "
                    (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l)));
@@ -844,8 +847,8 @@ let process_each_file l=
 	    let transmitted = [ Sys.sighup; Sys.sigterm ] in
 	    let saved = List.map (fun n -> Sys.signal n (Sys.Signal_handle (fun n ->
 	      Unix.kill pid n))) transmitted in
-	    let rec fn () = 
-	      try 
+	    let rec fn () =
+	      try
 		let _ = Unix.waitpid [] pid in
 		List.iter2 (fun n s -> Sys.set_signal n s) transmitted saved
 	      with

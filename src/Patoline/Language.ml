@@ -69,6 +69,7 @@ and command_line=
   | No_line_directive
   | Recompile
   | CCOpts
+  | PPOpts
   | TopOpts
   | Debug_parser
 
@@ -128,6 +129,7 @@ let message=function
       | Quiet->"Niveau d'affichade des commandes de compilation [0:rien, 1:court (defaut), 2:complet]"
       | Remaining->"Passer les arguments suivants au compilateur caml"
       | CCOpts->"Passer la chaine au compilateur caml"
+      | PPOpts->"Passer la chaine au preprocesseur pa_patoline"
       | TopOpts->"Passer la chaine à l'exécutable généré par Patoline"
       | No_line_directive->"Ne pas générer de #line dans le caml produit"
       | Recompile->"Tout recompiler"
@@ -195,6 +197,7 @@ let message=function
       | Quiet->"Level of verbosity [0:nothing, 1:short (default), 2:full]"
       | Remaining->"Forward the remaining arguments to the caml compiler"
       | CCOpts->"Forward the string to the ocaml compiler"
+      | PPOpts->"Forward the string to the pa_patoline preprocessor"
       | TopOpts->"Forward the string to the generated executable"
       | No_line_directive->"Do not add #line directives in the generated caml code"
       | Recompile->"Recompile everything"

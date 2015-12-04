@@ -214,10 +214,10 @@ let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
 \begin{slide}
 
 \begin{block}{
-Un petit programme éditable (the program is compiled but not executed for security)~:
+Un petit programme éditable, the program is compiled and executed (beware of security issues)~:
 }
 \caml(
-  editableText ~nb_lines:5 ~lang:lang_OCaml ~extra:(test_ocaml ~run:false) ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML"
+  editableText ~nb_lines:7 ~lang:lang_OCaml ~extra:(test_ocaml ~run:true) ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML"
 )
 \end{block}
 \end{slide}
