@@ -512,6 +512,7 @@ let symbol_paragraph _loc syms names =
   <:structure<
     let _ = newPar D.structure
       ~environment:(fun x -> {x with par_indent = []})
+
       Complete.normal Patoline_Format.parameters
       [bB (fun env0 -> Maths.kdraw
         [ { env0 with mathStyle = Mathematical.Display } ] [
@@ -789,16 +790,16 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
      (fun indices ->
        <:expr<[Maths.Ordinary $print_math_deco _loc_num (SimpleSym num) indices$] >>), AtomM
 
+  | sym:math_atom_symbol ->
+      (fun indices ->
+	<:expr<[Maths.Ordinary $print_math_deco _loc_sym sym.symbol_value indices$] >>), AtomM
+
   | '\\' - id:lid - args:(no_blank_list (change_layout math_macro_argument blank1)) ->
      (fun indices ->
        (* TODO special macro properties to be handled. *)
        let apply acc arg = <:expr<$acc$ $arg$>> in
        List.fold_left apply <:expr<$lid:id$>> args
      ), AtomM
-
-  | sym:math_atom_symbol ->
-      (fun indices ->
-	<:expr<[Maths.Ordinary $print_math_deco _loc_sym sym.symbol_value indices$] >>), AtomM
 
   | (m,mp):math_aux - (s,h):indices - (r,rp):math_aux ->
      if (mp >= Ind && s = Left) then give_up "can not be used as indice";

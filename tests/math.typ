@@ -17,5 +17,5 @@ $$ \bot = ⊥ = \bottom $$
 
 $$ ab+a*c $$
 
-$$ 1 \over {n+1} $$
+$$ \sqrt{1 \over {n+1}} + \sqrt{\sqrt{2}}$$
 test
