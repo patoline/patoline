@@ -73,3 +73,77 @@ let skel () =
 let _ = skel ()
 )
 \end{center}
+
+\begin{center}
+\diagram(
+let point p = node Node.([at p; innerSep 0.]) []
+let line = edge Edge.([draw])
+let dline = edge Edge.([draw; dashed [0.2;0.6]])
+let line c1 c2 = line (point c1) (point c2)
+let dline c1 c2 = dline (point c1) (point c2)
+let arrow_line = edge Edge.([draw; arrow env])
+
+let offset = 4.
+let coef = 20.
+let grad = 0.5
+
+let draw_axis (xmin, xmax) (ymin, ymax) grid =
+  let pxl = point (float_of_int xmin *. coef  -. offset, 0.) in
+  let pxr = point (float_of_int xmax *. coef +. offset, 0.) in
+  let pyb = point (0., float_of_int ymin *. coef -. offset) in
+  let pyt = point (0., float_of_int ymax *. coef +. offset) in
+  for i = xmin to xmax do
+    if i <> 0 then begin
+      let x = coef *. float_of_int i in
+      line (x, -.grad) (x, grad);
+      if grid then
+        let ymin = float_of_int ymin *. coef -. offset in
+        let ymax = float_of_int ymax *. coef +. offset in
+        let _ = dline (x, ymin) (x, ymax) in ()
+    end
+  done;
+  for i = ymin to ymax do
+    if i <> 0 then
+      let y = coef *. float_of_int i in
+      line (-.grad, y) (grad, y);
+      if grid then
+        let xmin = float_of_int xmin *. coef -. offset in
+        let xmax = float_of_int xmax *. coef +. offset in
+        let _ = dline (xmin, y) (xmax, y) in ()
+  done;
+  arrow_line pxl pxr; arrow_line pyb pyt
+
+let draw_polygon lp =
+  let lp = lp @ [List.hd lp] in
+  let rec build = function
+    | a :: b :: l -> (a, b) :: build (b :: l)
+    | _           -> []
+  in
+  let ll = build lp in
+  let draw_line ((xa,ya), (xb,yb)) =
+    let a = (coef *. xa, coef *. ya) in
+    let b = (coef *. xb, coef *. yb) in
+    let _ = line a b in ()
+  in
+  List.iter draw_line ll
+
+let poly = [(-1.,1.); (2.,1.8); (3.5,0.5); (2.,3.); (0.2,3.8); (-1.5,3.5)]
+let _ = draw_axis (-2, 4) (0, 4) true
+let _ = draw_polygon poly
+
+let skel () =
+  let open Skeleton in
+  let skel = initialize poly in
+  let skel =
+    List.map (fun v -> (v.origin, translate v.origin v.speed)) skel
+  in
+    
+  let apply_coef (x, y) = (x *. coef, y *. coef) in
+  let f (a,b) =
+    line (apply_coef a) (apply_coef b); ()
+  in
+  List.iter f skel
+
+let _ = skel ()
+)
+\end{center}

@@ -166,3 +166,61 @@ let skeleton : polygon -> edge list =
         end
   in
   skel []
+
+
+
+
+
+
+
+
+
+
+type segment = point * point
+
+type vertex =
+  { origin : point
+  ; speed  : vector
+  ; time   : scalar }
+
+let angle_to_vertex : point * point * point -> vertex = fun (a,b,c) ->
+  let n = bissector a b c in
+  let d = dist_point_line (b,c) (translate b n) in
+  let s = mult ((norm n) /. d) n in
+  { origin = b ; speed = s ; time = 0.0 }
+
+let initialize : polygon -> vertex list = function
+  | p1 :: p2 :: p3 :: ps ->
+      let p = p1 :: p2 :: p3 :: ps @ [p1 ; p2 ; p3] in
+      let rec triples acc = function
+        | a :: b :: c :: ls -> triples ((a,b,c) :: acc) (b :: c :: ls)
+        | _                 -> List.rev acc
+      in
+      List.map angle_to_vertex (triples [] p)
+  | _                    -> []
+
+let skeleton_step : vertex list -> vertex list * segment list = fun ls ->
+  match ls with
+  | v1 :: v2 :: [] -> ([], [(v1.origin, v2.origin)])
+  | v1 :: _ :: _   ->
+      let rec doubles acc = function
+        | a :: b :: ls -> doubles ((a,b) :: acc) (b :: ls)
+        | _            -> List.rev acc
+      in
+      let dbs = doubles [] (ls @ [v1]) in
+      let intersection_time (v1,v2) =
+        let ov1 = mult v1.time v1.origin in
+        let ov2 = mult v2.time v2.origin in
+        let c = intersection ov1 v1.speed v2.origin v2.speed in
+        let d = dist v1.origin c in
+        let t = d /. (norm c) in
+        (t,v1,v2)
+      in
+      let dbs = List.map intersection_time dbs in
+      let rec find_min m = function
+        | []             -> m
+        | (m',_,_) :: ls -> find_min (min m m') ls
+      in
+      let m = find_min max_float (List.tl dbs) in
+      assert false
+  | _              -> assert false
