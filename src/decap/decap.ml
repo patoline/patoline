@@ -892,7 +892,7 @@ let fail : string -> 'a grammar = fun msg ->
     parse = fun grouped str pos next g ->
              parse_error grouped (~~ msg) str pos }
 
-let  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> 'a option -> string -> 'a grammar =
+let black_box : (buffer -> int -> 'a * buffer * int) -> charset -> 'a option -> string -> 'a grammar =
   (fun fn set empty name ->
    { ident = new_ident ();
      next = { accepted_char = set;
@@ -911,6 +911,21 @@ let  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> 'a option ->
 	     if str == str' && pos == pos' then raise Error;
 	     let stack = test_clear grouped in
              g str pos str' pos' str'' pos'' stack a })
+
+let internal_parse_buffer : 'a grammar -> blank -> buffer -> int -> 'a * buffer * int =
+  (fun g bl buf pos ->
+    let err_info =
+      { max_err_pos = -1 ; max_err_buf = buf
+      ; max_err_col = -1; err_msgs = Empty}
+    in
+    let grouped = {blank = bl; err_info; stack = [], EmptyStack} in
+    let cont l c l' c' l'' c'' _ x = (x, l'',c'') in
+    let buf, pos = apply_blank grouped buf pos in
+    try g.parse grouped buf pos all_next cont with Error ->
+      match g.accept_empty with
+      | May_empty a -> (a buf pos,buf,pos)
+      | _           -> raise Error
+  )
 
 let char : char -> 'a -> 'a grammar
   = fun s a ->
@@ -1574,14 +1589,10 @@ let parse_buffer grammar blank str =
     raise (Parse_error (fname str, line_num str, pos, msg, expected))
 
 let partial_parse_buffer grammar blank str pos =
-  let grouped = { blank;
-                  err_info = {max_err_pos = -1;
-                              max_err_buf = str;
-                              max_err_col = -1;
-                              err_msgs = Empty };
-		  stack = [], EmptyStack;
-                }
+  let err_info =
+    {max_err_pos = -1; max_err_buf = str; max_err_col = -1; err_msgs = Empty}
   in
+  let grouped = {blank; err_info; stack = [], EmptyStack} in
   let cont l c l' c' l'' c'' _ x = (x, l'',c'') in
   let str, pos = apply_blank grouped str pos in
   try
@@ -1634,7 +1645,7 @@ let handle_exception f a =
 let blank_grammar grammar blank str pos =
   let _, str, pos =
     try
-      partial_parse_buffer grammar blank str pos
+      internal_parse_buffer grammar blank str pos
     with e ->
       Printf.eprintf "Exception in blank parser\n%!";
       raise e

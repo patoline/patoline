@@ -119,7 +119,8 @@ val parse_file : 'a grammar -> blank -> string -> 'a
 (** [partial_parse_buffer g bl buf pos] parses input from the buffer [buf],
   starting a position [pos], using the grammar [g] and the blank function
   [bl]. A triple is returned containing the new buffer, the position that was
-  reached during parsing, and the result of the parsing. *)
+  reached during parsing, and the result of the parsing. This function should
+  NOT be used in a  [black_box]. *)
 val partial_parse_buffer : 'a grammar -> blank -> buffer -> int
                            ->  'a * buffer * int
 
@@ -127,7 +128,8 @@ val partial_parse_buffer : 'a grammar -> blank -> buffer -> int
   starting a position [pos], using the grammar [g] and the blank function
   [bl]. A triple is returned containing the new buffer, the position that was
   reached during parsing, and the result of the parsing. The optional file
-  name [fn] is provided to obtain better error messages. *)
+  name [fn] is provided to obtain better error messages. This function should
+  NOT be used in a  [black_box]. *)
 val partial_parse_string : ?filename:string -> 'a grammar -> blank -> string
                            -> int -> 'a * buffer * int
 
@@ -166,6 +168,11 @@ val fail : string -> 'a grammar
   exception [Give_up msg], where [msg] is an explicit error message. *)
 val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> 'a option
                  -> string -> 'a grammar
+
+(** [internal_parse_buffer g bl buf pos] can be used to parse using a
+  grammar in the definition of a [black_box]. *)
+val internal_parse_buffer : 'a grammar -> blank -> buffer -> int
+                            -> 'a * buffer * int
 
 (** [char c v] is a grammar that parses the character [c] and returns [v]. *)
 val char : char -> 'a -> 'a grammar
