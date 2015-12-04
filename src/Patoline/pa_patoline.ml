@@ -332,6 +332,13 @@ type math_prio =
   | Macro | AtomM | Accent | Ind | Fun | Prod
   | Sum | Operator | Rel | Neg | Conj | Impl | Punc
 
+type symbol =
+  | Invisible
+  | SimpleSym of string
+  | MultiSym of string
+  | CamlSym of Parsetree.expression
+  | ComplexSym of string
+
 let parser symbol =
   | s:"\\}"             -> s
   | s:"\\{"             -> s
@@ -345,8 +352,8 @@ let symbols =
   ) space_blank
 
 let parser symbol_value =
-  | "{" s:symbol "}"    -> <:expr<Maths.glyphs $string:s$>>
-  | e:wrapped_caml_expr -> e
+  | "{" s:symbol "}"    -> SimpleSym s
+  | e:wrapped_caml_expr -> CamlSym e
 
 let parser symbol_values =
   | e:wrapped_caml_expr -> e
@@ -398,17 +405,27 @@ type infix =
   { infix_prio : math_prio;
     infix_utf8_names : string list;
     infix_macro_names : string list; (* with backslash *)
-    infix_value : Parsetree.expression;
+    infix_value : symbol;
     infix_space : int;
     infix_no_left_space : bool;
     infix_no_right_space : bool;
+  }
+
+let invisible_product =
+  { infix_prio = Prod;
+    infix_utf8_names = [];
+    infix_macro_names = [];
+    infix_value = Invisible;
+    infix_space = 3;
+    infix_no_left_space = false;
+    infix_no_right_space = false;
   }
 
 type prefix =
   { prefix_prio : math_prio;
     prefix_utf8_names : string list;
     prefix_macro_names : string list; (* with backslash *)
-    prefix_value : Parsetree.expression;
+    prefix_value : symbol;
     prefix_space : int;
     prefix_no_space : bool;
   }
@@ -417,7 +434,7 @@ type postfix =
   { postfix_prio : math_prio;
     postfix_utf8_names : string list;
     postfix_macro_names : string list; (* with backslash *)
-    postfix_value : Parsetree.expression;
+    postfix_value : symbol;
     postfix_space : int;
     postfix_no_space : bool;
   }
@@ -425,7 +442,7 @@ type postfix =
 type atom_symbol =
   { symbol_utf8_names : string list;
     symbol_macro_names : string list; (* with backslash *)
-    symbol_value : Parsetree.expression;
+    symbol_value : symbol;
   }
 
 type operator_kind =
@@ -511,6 +528,95 @@ let math_list _loc l =
   in
   List.fold_left merge (List.hd l) (List.tl l)
 
+(****************************************************************************
+ * Maths.                                                                   *
+ ****************************************************************************)
+
+type 'a indices = { up_right : 'a option; up_right_same_script: bool;
+		      down_right : 'a option; up_left_same_script: bool;
+		      up_left : 'a option;
+		      down_left : 'a option }
+
+let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None;
+		 up_right_same_script = false; up_left_same_script = false }
+
+
+let hash_sym = Hashtbl.create 1001
+let count_sym = ref 0
+let hash_msym = Hashtbl.create 1001
+let count_msym = ref 0
+
+let mcache_buf = ref []
+let cache = ref ""
+let cache_buf = ref []
+
+let print_math_symbol _loc sym=
+  let s,b =
+    match sym with
+      SimpleSym s-> <:expr<Maths.glyphs $string:s$>>, false
+    | CamlSym s-> s, false
+    | _ -> failwith "a faire ds Pa_patoline.print_math_symbol.\n"
+      (* | MultiSym s -> <:expr<$lid:s$>>, true *)
+      (* | ComplexSym s -> Printf.bprintf buf "(%s)" s; raise Exit *)
+  in
+  if b then
+    try
+      let nom = "m" ^ (!cache) in
+      let index = Hashtbl.find hash_msym s in
+      <:expr< ! $lid:nom$.($int:index$) >>
+    with Not_found ->
+      Hashtbl.add  hash_msym s !count_msym;
+      mcache_buf := s::!mcache_buf;
+      let res = <:expr< ! $lid:("m" ^ !cache)$.($int:(!count_msym)$) >> in
+      let _ = incr count_msym in
+      res
+  else
+    try
+      let r = Hashtbl.find hash_sym s in
+      <:expr< ! $lid:(!cache)$.($int:r$) >>
+    with Not_found ->
+      Hashtbl.add  hash_sym s !count_sym;
+      cache_buf := s::!cache_buf;
+      let res = <:expr< ! $lid:(!cache)$.($int:(!count_sym)$) >> in
+      let _ = incr count_sym in
+      res
+
+let print_math_deco _loc elt ind =
+  let gn name ind =
+    match ind with
+      None -> assert false
+    | Some m ->
+      <:record< $lid:name$ = $m$ >>
+  in
+  if ind = no_ind then (
+    <:expr< Maths.noad $print_math_symbol _loc elt$ >>
+  ) else
+    begin
+      let r = ref [] in
+      (match ind.up_right with
+	Some i ->
+     	  if ind.up_right_same_script then
+	    r:= <:record<Maths.super_right_same_script = true>> @ !r;
+	  r:= <:record<Maths.superscript_right = $i$ >> @ !r
+      | _ -> ());
+      (match ind.down_right with
+	Some i ->
+	  r:= <:record<Maths.subscript_right = $i$ >> @ !r
+      | _ -> ());
+      (match ind.up_left with
+	Some i ->
+     	  if ind.up_left_same_script then
+	    r:= <:record<Maths.super_left_same_script = true>> @ !r;
+	  r:= <:record<Maths.superscript_left = $i$ >> @ !r
+      | _ -> ());
+      (match ind.down_left with
+	Some i ->
+	  r:= <:record<Maths.subscript_left = $i$ >> @ !r
+      | _ -> ());
+
+     <:expr< { (Maths.noad $print_math_symbol _loc elt$) with $(!r)$ } >>
+    end
+
 let new_infix_symbol _loc infix_prio sym_names infix_value =
   let infix_macro_names, infix_utf8_names = symbol sym_names in
   let infix_no_left_space = false in
@@ -530,22 +636,23 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
   build_grammar ();
   (* Displaying no the document. *)
   if state.verbose then
-    let sym = <:expr<[Maths.Ordinary (Maths.noad $infix_value$)]>> in
+    let sym = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc infix_value$)]>> in
     let f s = sym in (* TODO *)
     let names = List.map f sym_names in
     symbol_paragraph _loc sym (math_list _loc names)
   else []
 
-let math_infix_symbol =
-  black_box (fun buf pos ->
-    let name,buf,pos =
-      internal_parse_buffer state.infix_grammar blank buf pos
-    in
-    try
-      let sym = StrMap.find name state.infix_symbols in
-      sym,buf,pos
-    with Not_found -> give_up "Not an infix symbol")
-    Charset.full_charset None "Not an infix symbol"
+let parser math_infix_symbol =
+    | "*"? -> invisible_product
+    | r:(black_box (fun buf pos ->
+      let name,buf,pos =
+	internal_parse_buffer state.infix_grammar blank buf pos
+      in
+      try
+	let sym = StrMap.find name state.infix_symbols in
+	sym,buf,pos
+      with Not_found -> give_up "Not an infix symbol")
+	Charset.full_charset None "Not an infix symbol") -> r
 
 let new_symbol _loc sym_names symbol_value =
   let symbol_macro_names, symbol_utf8_names = symbol sym_names in
@@ -556,7 +663,7 @@ let new_symbol _loc sym_names symbol_value =
   build_grammar ();
   (* Displaying no the document. *)
   if state.verbose then
-    let sym = <:expr<[Maths.Ordinary (Maths.noad $symbol_value$)]>> in
+    let sym = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
     let f s = sym in (* TODO *)
     let names = List.map f sym_names in
     symbol_paragraph _loc sym (math_list _loc names)
@@ -656,102 +763,6 @@ let parser symbol_def =
   | "\\Add_combining" "{" c:uchar "}" "{" "\\" - m:lid "}" ->
       new_combining_symbol _loc c m
 
-(****************************************************************************
- * Maths.                                                                   *
- ****************************************************************************)
-
-type symbol =
-  | SimpleSym of string
-  | MultiSym of string
-  | CamlSym of Parsetree.expression
-  | ComplexSym of string
-
-
-  type 'a indices = { up_right : 'a option; up_right_same_script: bool;
-		      down_right : 'a option; up_left_same_script: bool;
-		      up_left : 'a option;
-		      down_left : 'a option }
-
-  let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None;
-		 up_right_same_script = false; up_left_same_script = false }
-
-
-let hash_sym = Hashtbl.create 1001
-let count_sym = ref 0
-let hash_msym = Hashtbl.create 1001
-let count_msym = ref 0
-
-let mcache_buf = ref []
-let cache = ref ""
-let cache_buf = ref []
-
-let print_math_symbol _loc sym=
-  let s,b =
-    match sym with
-      SimpleSym s-> <:expr<Maths.glyphs $string:s$>>, false
-    | CamlSym s-> s, false
-    | _ -> failwith "a faire ds Pa_patoline.print_math_symbol.\n"
-      (* | MultiSym s -> <:expr<$lid:s$>>, true *)
-      (* | ComplexSym s -> Printf.bprintf buf "(%s)" s; raise Exit *)
-  in
-  if b then
-    try
-      let nom = "m" ^ (!cache) in
-      let index = Hashtbl.find hash_msym s in
-      <:expr< ! $lid:nom$.($int:index$) >>
-    with Not_found ->
-      Hashtbl.add  hash_msym s !count_msym;
-      mcache_buf := s::!mcache_buf;
-      let res = <:expr< ! $lid:("m" ^ !cache)$.($int:(!count_msym)$) >> in
-      let _ = incr count_msym in
-      res
-  else
-    try
-      let r = Hashtbl.find hash_sym s in
-      <:expr< ! $lid:(!cache)$.($int:r$) >>
-    with Not_found ->
-      Hashtbl.add  hash_sym s !count_sym;
-      cache_buf := s::!cache_buf;
-      let res = <:expr< ! $lid:(!cache)$.($int:(!count_sym)$) >> in
-      let _ = incr count_sym in
-      res
-
-let print_math_deco _loc elt ind =
-  let gn name ind =
-    match ind with
-      None -> assert false
-    | Some m ->
-      <:record< $lid:name$ = $m$ >>
-  in
-  if ind = no_ind then (
-    <:expr< Maths.noad $print_math_symbol _loc elt$ >>
-  ) else
-    begin
-      let r = ref [] in
-      (match ind.up_right with
-	Some i ->
-     	  if ind.up_right_same_script then
-	    r:= <:record<Maths.super_right_same_script = true>> @ !r;
-	  r:= <:record<Maths.superscript_right = $i$ >> @ !r
-      | _ -> ());
-      (match ind.down_right with
-	Some i ->
-	  r:= <:record<Maths.subscript_right = $i$ >> @ !r
-      | _ -> ());
-      (match ind.up_left with
-	Some i ->
-     	  if ind.up_left_same_script then
-	    r:= <:record<Maths.super_left_same_script = true>> @ !r;
-	  r:= <:record<Maths.superscript_left = $i$ >> @ !r
-      | _ -> ());
-      (match ind.down_left with
-	Some i ->
-	  r:= <:record<Maths.subscript_left = $i$ >> @ !r
-      | _ -> ());
-
-     <:expr< { (Maths.noad $print_math_symbol _loc elt$) with $(!r)$ } >>
-    end
-
 let pred : math_prio -> math_prio = function
   | Macro -> Macro
   | p -> Obj.magic (Obj.magic p - 1)
@@ -777,7 +788,7 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 
   | sym:math_atom_symbol ->
       (fun indices ->
-	<:expr<[Maths.Ordinary $print_math_deco _loc_sym (CamlSym sym.symbol_value) indices$] >>), AtomM
+	<:expr<[Maths.Ordinary $print_math_deco _loc_sym sym.symbol_value indices$] >>), AtomM
 
   | (m,mp):math_aux - (s,h):indices - (r,rp):math_aux ->
      if (mp >= Ind && s = Left) then give_up "can not be used as indice";
@@ -807,14 +818,24 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 	 let nsr = s.infix_no_right_space in
 	 let sp = s.infix_space in
 	 let l = l no_ind and r = r no_ind in
-	 let inter = <:expr<
+	 if s.infix_value = SimpleSym "over" then begin
+	   if indices <> no_ind then give_up "indices on fraction";
+	   <:expr< [Maths.fraction $l$ $r$] >>
+	 end else begin
+	   let inter =
+	     if s.infix_value = Invisible then
+	       <:expr< Maths.Invisible >>
+	     else
+	       <:expr<
                          Maths.Normal( $bool:nsl$,
-                           $print_math_deco _loc_s (CamlSym s.infix_value) indices$,
-                           $bool:nsr$) >> in
-	 <:expr<[Maths.Binary { bin_priority= $int:sp$;
+                           $print_math_deco _loc_s s.infix_value indices$,
+                           $bool:nsr$) >>
+	   in
+	   <:expr<[Maths.Binary { bin_priority= $int:sp$;
                                 bin_drawing = $inter$;
                                 bin_left= $l$;
-                                bin_right= $r$ } ] >>), s.infix_prio
+                                bin_right= $r$ } ] >>
+	 end), s.infix_prio
 
 
 let math_toplevel = parser
