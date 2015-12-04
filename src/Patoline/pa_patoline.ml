@@ -671,13 +671,27 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
   state.infix_symbols <-
     List.fold_left (fun map name -> StrMap.add name sym map)
     state.infix_symbols sym_names;
-  build_grammar ();
   (* Displaying no the document. *)
   if state.verbose then
     let sym = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc infix_value$)]>> in
-    let f s = sym in (* TODO *)
-    let names = List.map f sym_names in
-    symbol_paragraph _loc sym (math_list _loc names)
+    let showuname u =
+      sym (* TODO *)
+    in
+    let showmname m =
+      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (SimpleSym m)$)]>>
+    in
+    let unames = List.map showuname infix_utf8_names in
+    let mnames = List.map showmname infix_macro_names in
+    symbol_paragraph _loc sym (math_list _loc (unames @ mnames))
+(*
+    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc infix_value$)]>> in
+    let sym s =
+      let s = <:expr<Maths.glyphs $string:s$>> in
+      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+    in
+    let names = List.map sym infix_macro_names @ List.map (fun _ -> sym_val) infix_utf8_names in
+    symbol_paragraph _loc sym_val (math_list _loc names)
+*)
   else []
 
 let parser math_infix_symbol =
@@ -698,7 +712,6 @@ let new_symbol _loc sym_names symbol_value =
   state.atom_symbols <-
     List.fold_left (fun map name -> StrMap.add name sym map)
     state.atom_symbols sym_names;
-  build_grammar ();
   (* Displaying no the document. *)
   if state.verbose then
     let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
@@ -727,7 +740,6 @@ let new_prefix_symbol _loc sym_names prefix_value =
   state.prefix_symbols <-
     List.fold_left (fun map name -> StrMap.add name sym map)
     state.prefix_symbols sym_names;
-  build_grammar ();
   (* Displaying no the document. *)
   if state.verbose then
     let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc prefix_value$)]>> in
@@ -756,7 +768,6 @@ let new_postfix_symbol _loc sym_names postfix_value =
   state.postfix_symbols <-
     List.fold_left (fun map name -> StrMap.add name sym map)
     state.postfix_symbols sym_names;
-  build_grammar ();
   (* Displaying no the document. *)
   if state.verbose then
     let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc postfix_value$)]>> in
@@ -785,7 +796,6 @@ let new_delimiter _loc delimiter_kind sym_names delimiter_values =
   state.delimiter_symbols <-
     List.fold_left (fun map name -> StrMap.add name sym map)
     state.delimiter_symbols sym_names;
-  build_grammar ();
   (* Displaying no the document. *)
   if state.verbose then
     let syms =
@@ -868,8 +878,7 @@ let parser symbol_def =
   | "\\Configure_environment" "{" id:lid "}" cs:configs ->
       state.environment <- (id, cs) :: state.environment; []
   | "\\Verbose_Changes" -> state.verbose <- true; []
-  | "\\Save_Grammar"    -> []
-  (* Addition of single symbols *)
+  | "\\Save_Grammar"    -> build_grammar (); []
   | "\\Add_relation"      ss:symbols e:symbol_value ->
       new_infix_symbol _loc Rel      ss e
   | "\\Add_addition_like" ss:symbols e:symbol_value ->
