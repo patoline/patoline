@@ -775,10 +775,6 @@ let new_combining_symbol _loc uchr macro =
     symbol_paragraph _loc sym macro
   else []
 
-let save_grammar () =
-  (* TODO do something ? *)
-  ()
-
 let parser symbol_def =
   | "\\Configure_math_macro" "{" "\\"? - id:lid "}" cs:configs ->
       state.math_macros <- (id, cs) :: state.math_macros; []
@@ -789,7 +785,7 @@ let parser symbol_def =
   | "\\Configure_environment" "{" id:lid "}" cs:configs ->
       state.environment <- (id, cs) :: state.environment; []
   | "\\Verbose_Changes" -> state.verbose <- true; []
-  | "\\Save_Grammar"    -> save_grammar (); []
+  | "\\Save_Grammar"    -> []
   (* Addition of single symbols *)
   | "\\Add_relation"      ss:symbols e:symbol_value ->
       new_infix_symbol _loc Rel      ss e
@@ -867,6 +863,9 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 
   | '\\' - id:lid - args:(no_blank_list (change_layout math_macro_argument blank1)) ->
      (fun indices ->
+       let config =
+         try List.assoc id state.math_macros with Not_found -> []
+       in
        (* TODO special macro properties to be handled. *)
        let apply acc arg = <:expr<$acc$ $arg$>> in
        let e = List.fold_left apply <:expr<$lid:id$>> args in
