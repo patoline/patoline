@@ -652,8 +652,10 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
     | Conj | Impl -> 0
     | _ -> assert false
   in
-  let sym = { infix_prio; infix_macro_names; infix_utf8_names; infix_value;
-	      infix_space; infix_no_left_space; infix_no_right_space } in
+  let sym =
+    { infix_prio; infix_macro_names; infix_utf8_names; infix_value
+    ; infix_space; infix_no_left_space; infix_no_right_space }
+  in
   state.infix_symbols <-
     List.fold_left (fun map name -> StrMap.add name sym map)
     state.infix_symbols sym_names;
@@ -661,9 +663,15 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
   (* Displaying no the document. *)
   if state.verbose then
     let sym = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc infix_value$)]>> in
-    let f s = sym in (* TODO *)
-    let names = List.map f sym_names in
-    symbol_paragraph _loc sym (math_list _loc names)
+    let showuname u =
+      sym (* TODO *)
+    in
+    let showmname m =
+      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (SimpleSym m)$)]>>
+    in
+    let unames = List.map showuname infix_utf8_names in
+    let mnames = List.map showmname infix_macro_names in
+    symbol_paragraph _loc sym (math_list _loc (unames @ mnames))
   else []
 
 let parser math_infix_symbol =
