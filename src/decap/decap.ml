@@ -1582,7 +1582,7 @@ let partial_parse_buffer grammar blank str pos =
 		  stack = [], EmptyStack;
                 }
   in
-  let cont l c l' c' l'' c'' _ x = (l'',c'',x) in
+  let cont l c l' c' l'' c'' _ x = (x, l'',c'') in
   let str, pos = apply_blank grouped str pos in
   try
     let res = grammar.parse grouped str pos all_next cont in
@@ -1591,7 +1591,7 @@ let partial_parse_buffer grammar blank str pos =
   with Error ->
     reset_cache ();
     match grammar.accept_empty with
-      May_empty a -> (str,pos,a str pos)
+      May_empty a -> (a str pos,str,pos)
     | _ ->
       let str = grouped.err_info.max_err_buf in
       let pos = grouped.err_info.max_err_col in
@@ -1632,7 +1632,7 @@ let handle_exception f a =
   try f a with Parse_error _ as e -> print_exception e; failwith "No parse."
 
 let blank_grammar grammar blank str pos =
-  let str, pos, _ =
+  let _, str, pos =
     try
       partial_parse_buffer grammar blank str pos
     with e ->

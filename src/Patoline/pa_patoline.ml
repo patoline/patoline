@@ -520,7 +520,7 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
 let math_infix_symbol prio =
   black_box (fun buf pos ->
     Printf.eprintf "Calling partial parse buffer\n%!";
-    let buf,pos,name =
+    let name,buf,pos =
       try partial_parse_buffer state.infix_grammar blank buf pos
       with Parse_error _ -> give_up "Not an infix symbol"
     in

@@ -121,7 +121,7 @@ val parse_file : 'a grammar -> blank -> string -> 'a
   [bl]. A triple is returned containing the new buffer, the position that was
   reached during parsing, and the result of the parsing. *)
 val partial_parse_buffer : 'a grammar -> blank -> buffer -> int
-                           -> buffer * int * 'a
+                           ->  'a * buffer * int
 
 (** [partial_parse_string fn g bl str pos] parses input from the string [str],
   starting a position [pos], using the grammar [g] and the blank function
@@ -129,7 +129,7 @@ val partial_parse_buffer : 'a grammar -> blank -> buffer -> int
   reached during parsing, and the result of the parsing. The optional file
   name [fn] is provided to obtain better error messages. *)
 val partial_parse_string : ?filename:string -> 'a grammar -> blank -> string
-                           -> int -> buffer * int * 'a
+                           -> int -> 'a * buffer * int
 
 (** {2 Atomic parsers} *)
 
@@ -383,4 +383,4 @@ val accept_empty : 'a grammar -> bool
 (** [blank_grammar grammar blank] produces a blank function using the grammar
   [grammar] and the blank function [blank]. It parses the input using the
   [partial_parse_buffer] function and returns the position reached. *)
-val blank_grammar : unit grammar -> blank -> buffer -> int -> (buffer * int)
+val blank_grammar : unit grammar -> blank -> buffer -> int -> buffer * int
