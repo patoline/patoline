@@ -23,7 +23,7 @@
 (defconst font-patoline-math-face 'font-patoline-math-face)
 
 (defconst patoline-font-lock-keywords
-  (list 
+  (list
    (cons "[$][$]?[^$]+[$][$]?" 'font-patoline-math-face)
    (cons "\\\\[a-zA-Z][a-zA-Z0-9]*\\>" 'font-lock-keyword-face)
    (cons "^[ \t]*===?=?=?=?=?=?\\([^=]+=\\)*[^=]+===*" 'font-lock-doc-face)
@@ -44,7 +44,7 @@
 (defvar patoline-view-buffer
   nil)
 
-(defvar patoline-error-regexp 
+(defvar patoline-error-regexp
     '(("^[^\"]+\"\\([^\"]*\\)\", line \\([0-9]+\\), character \\([0-9]+\\):$" 1 2 3 1)
       ("^[^\"]+\"\\([^\"]+\\)\", line \\([0-9]+\\), characters \\([0-9]+\\)-\\([0-9]+\\):$" 1 2 (3 . 4) 1)))
 
@@ -68,7 +68,7 @@
   (if (not (string-match "finished\\.*" m))
       (display-buffer patoline-program-buffer t 'visible)
     (select-patoline-program-buffer)
-    (if patoline-view-process 
+    (if patoline-view-process
 	(signal-process patoline-view-process 1)))
   (message m))
 
@@ -83,7 +83,7 @@
        (dr (if (string= patoline-compile-driver "-c") "" "--driver "))
        (dy (if (and (string= patoline-compile-driver "Bin") patoline-compile-dynlink) "--dynlink " "")))
     (format "patoline %s%s%s %s \"%%s\"" el dy dr patoline-compile-driver)))
-  
+
 (defvar patoline-compile-edit-link
   t
   "If t patoline should produce link for edition")
@@ -123,7 +123,7 @@
 		     ':selected (equal patoline-compile-driver driver)
 		     ':active t))
 	   patoline-drivers-list)))
-		     
+
 (defun patoline-update-option-menu ()
   (easy-menu-change
    '("Patoline") "Options"
@@ -160,7 +160,7 @@
   (interactive)
   (let ((env (read-from-minibuffer "insert environment: " patoline-default-env)))
     (setq patoline-default-env env)
-    (insert "\\begin{" env "}\n") 
+    (insert "\\begin{" env "}\n")
     (save-excursion (insert "\n\\end{" env "}"))))
 
 (defvar patoline-view-format
@@ -173,9 +173,9 @@
 (defun patoline-view ()
   "view the pdf corresponding to the current buffer"
   (interactive)
-  (let ((file-name 
+  (let ((file-name
 	 (concat (file-name-sans-extension (buffer-file-name (current-buffer))) ".pdf"))
-	(buffer-name 
+	(buffer-name
 	 (file-name-sans-extension (buffer-file-name (current-buffer))))
 	(cmd-format (read-from-minibuffer "view: " patoline-view-format)))
     (setq patoline-view-format cmd-format)
@@ -195,19 +195,20 @@
 (defun patoline-glview ()
   "view the binary output corresponding to the current buffer"
   (interactive)
-  (let ((file-name 
-	 (file-name-sans-extension (buffer-file-name (current-buffer)))))
-      (let ((cmd 
-	      (if patoline-compile-dynlink
-		  (split-string-and-unquote (format "\"%s.tmx\" --driver DriverGL --in \"%s.bin\"" file-name file-name))
-		(split-string-and-unquote (format "patoline --driver DriverGL \"%s.bin\"" file-name)))
-		))
-	(save-excursion
-	  (select-patoline-view-buffer file-name)
-	  (cd (file-name-directory file-name))
-	  (setq patoline-view-process
-		(get-buffer-process
-		 (apply 'make-comint (concat "patoline-view-" file-name) (car cmd) nil (cdr cmd))))))))
+  (let ((file-name
+	 (file-name-sans-extension (file-name-nondirectory buffer-file-name)))
+	(dir-name (file-name-directory buffer-file-name)))
+    (let ((cmd
+	   (if patoline-compile-dynlink
+	       (split-string-and-unquote (format "\"%s.tmx\" --driver DriverGL --in \"%s.bin\"" file-name file-name))
+	     (split-string-and-unquote (format "patoline --driver DriverGL \"%s.bin\"" file-name)))
+	   ))
+      (save-excursion
+	(select-patoline-view-buffer file-name)
+	(cd dir-name)
+	(setq patoline-view-process
+	      (get-buffer-process
+	       (apply 'make-comint (concat "patoline-view-" file-name) (car cmd) nil (cdr cmd))))))))
 
 (defun patoline-goto (file line col)
   (find-file file)
@@ -243,12 +244,12 @@
 
 (defvar patoline-mode-syntax-table
   (let ((patoline-mode-syntax-table (make-syntax-table)))
-	
+
     ; This is added so entity names with underscores can be more easily parsed
 	(modify-syntax-entry ?_ "w" patoline-mode-syntax-table)
 	(modify-syntax-entry ?' "w" patoline-mode-syntax-table)
 	(modify-syntax-entry ?\$ "_" patoline-mode-syntax-table)
-	
+
 	; Comment styles are same as C++
 	(modify-syntax-entry ?\) ")(4" patoline-mode-syntax-table)
 	(modify-syntax-entry ?* ". 23" patoline-mode-syntax-table)
@@ -261,7 +262,7 @@
   (interactive)
   (let ((line (line-number-at-pos))
 	(col (- (position-bytes (point)) (position-bytes (line-beginning-position))))
-	(buffer-name 
+	(buffer-name
 	 (file-name-sans-extension (buffer-file-name (current-buffer)))))
 ;;    (message  (format "e %d %d\n" line col))
     (save-excursion
@@ -285,7 +286,7 @@
   ;; Set up font-lock
   (set (make-local-variable 'font-lock-defaults) '(patoline-font-lock-keywords))
   ;; Register our indentation function
-;  (set (make-local-variable 'indent-line-function) 'patoline-indent-line)  
+;  (set (make-local-variable 'indent-line-function) 'patoline-indent-line)
   (set-input-method "Patoline")
   (make-local-variable 'paren-mode)
   (make-local-variable 'patoline-compile-format)
@@ -298,7 +299,7 @@
 	     (paren-set-mode 'blink-paren t))
     (show-paren-mode 'mixed))
   (setq case-fold-search nil)
-  (setq mmm-primary-mode-entry-hook 
+  (setq mmm-primary-mode-entry-hook
 	(list (lambda () (set-input-method "Patoline"))))
   (patoline-build-menu)
   (run-hooks 'patoline-mode-hook)
@@ -349,17 +350,17 @@
 	(let ((m (match-string 0))
 	      (pos (cons (match-beginning 0) (match-end 0))))
 ;	  (message m)
-	  (cond 
+	  (cond
 	    ((equal m "\\Caml(") (setq depth (+ depth 1) subs (cons (cons mode pos) subs) mode 'caml))
 	    ((equal m "\\caml(") (setq depth (+ depth 1) subs (cons (cons mode pos) subs) mode 'caml))
 	    ((equal m "\\diagram(") (setq depth (+ depth 1) subs (cons (cons mode pos) subs) mode 'caml))
 	    ((equal m "(") (setq depth (+ depth 1) subs (cons nil subs)))
 	    ((equal m "{") (setq depth (+ depth 1)))
 	    ((equal m "[") (setq depth (+ depth 1)))
-	    ((equal m ")") 
+	    ((equal m ")")
 	      (if (and (> depth 1) (car subs))
-		  (progn 
-		    (setq mmm-patoline-subregions 
+		  (progn
+		    (setq mmm-patoline-subregions
 			  (cons (list 'patoline-tuareg (cdr (car subs)) pos)
 				mmm-patoline-subregions))
 		    (setq mode (car (car subs)))))
@@ -368,20 +369,20 @@
 	    ((equal m "]") (setq depth (- depth 1)))
 	    ((equal m "<<") (setq depth (+ depth 1) subs (cons pos subs) mode 'text))
 	    ((equal m "<$") (setq depth (+ depth 1) subs (cons pos subs) mode 'math))
-	    ((equal m ">>") 
+	    ((equal m ">>")
 	      (if (> depth 1)
-		  (setq mmm-patoline-subregions 
+		  (setq mmm-patoline-subregions
 			(cons (list 'patoline-quote-text-args (car subs) pos)
 			      mmm-patoline-subregions)))
 	      (setq depth (- depth 1) subs (cdr subs) mode 'caml))
 
 	    ((equal m "$>")
-	     (if (> depth 1) 
-		 (setq mmm-patoline-subregions 
+	     (if (> depth 1)
+		 (setq mmm-patoline-subregions
 		       (cons (list 'patoline-quote-math-args (car subs) pos)
 			     mmm-patoline-subregions)))
 	     (setq depth (- depth 1) subs (cdr subs) mode 'caml))
-	    ((equal m "\"") 
+	    ((equal m "\"")
 	     (if (equal mode 'string)
 		 (setq depth (- depth 1) mode 'caml)
 	       (setq depth (+ depth 1) mode 'string)))))))
@@ -443,7 +444,7 @@
 
 (defun mmm-patoline-enable-sub-regions ()
   (if (not mmm-patoline-lock)
-      (progn 
+      (progn
 ;;	(message "enable: %S" mmm-patoline-subregions)
 	(setq mmm-patoline-lock t)
 	(dolist (args mmm-patoline-subregions)
@@ -453,16 +454,16 @@
 	(setq mmm-patoline-subregions nil))))
 
 (defun mmm-patoline-caml-back (limit)
-  (mmm-patoline-back limit 'caml)) 
+  (mmm-patoline-back limit 'caml))
 
 (defun mmm-patoline-math-back (limit)
-  (mmm-patoline-back limit 'math)) 
+  (mmm-patoline-back limit 'math))
 
 (defun mmm-patoline-text-back (limit)
-  (mmm-patoline-back limit 'text)) 
+  (mmm-patoline-back limit 'text))
 
 (if (and (featurep 'mmm-mode) (featurep 'tuareg))
-    (progn 
+    (progn
       (setq mmm-global-mode 'maybe)
       (setq mmm-patoline-lock nil)
       (setq mmm-patoline-subregions nil)
