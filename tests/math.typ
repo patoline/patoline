@@ -18,4 +18,6 @@ $$ \bot = ⊥ = \bottom $$
 $$ ab+a*c $$
 
 $$ \sqrt{1 \over {n+1}} + \sqrt{\sqrt{2}}$$
+
+$$ 3^^\sqrt{1 \over {n+1}}_2 $$
 test

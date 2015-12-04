@@ -582,7 +582,7 @@ let print_math_symbol _loc sym=
       let _ = incr count_sym in
       res
 
-let print_math_deco _loc elt ind =
+let print_math_deco_sym _loc elt ind =
   let gn name ind =
     match ind with
       None -> assert false
@@ -617,6 +617,12 @@ let print_math_deco _loc elt ind =
 
      <:expr< { (Maths.noad $print_math_symbol _loc elt$) with $(!r)$ } >>
     end
+
+let print_math_deco _loc elt ind =
+  if ind = no_ind then elt else begin
+    let s = CamlSym <:expr<fun env st -> Maths.draw [env] $elt$>> in
+    <:expr<[Maths.Ordinary $print_math_deco_sym _loc s ind$]>>
+  end
 
 let new_infix_symbol _loc infix_prio sym_names infix_value =
   let infix_macro_names, infix_utf8_names = symbol sym_names in
@@ -784,21 +790,22 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 
   | var:''[a-zA-Z]'' ->
      (fun indices ->
-       <:expr<[Maths.Ordinary $print_math_deco _loc_var (SimpleSym var) indices$] >>), AtomM
+       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_var (SimpleSym var) indices$] >>), AtomM
 
   | num:''[0-9]+\([.][0-9]+\)?'' ->
      (fun indices ->
-       <:expr<[Maths.Ordinary $print_math_deco _loc_num (SimpleSym num) indices$] >>), AtomM
+       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>), AtomM
 
   | sym:math_atom_symbol ->
       (fun indices ->
-	<:expr<[Maths.Ordinary $print_math_deco _loc_sym sym.symbol_value indices$] >>), AtomM
+	<:expr<[Maths.Ordinary $print_math_deco_sym _loc_sym sym.symbol_value indices$] >>), AtomM
 
   | '\\' - id:lid - args:(no_blank_list (change_layout math_macro_argument blank1)) ->
      (fun indices ->
        (* TODO special macro properties to be handled. *)
        let apply acc arg = <:expr<$acc$ $arg$>> in
-       List.fold_left apply <:expr<$lid:id$>> args
+       let e = List.fold_left apply <:expr<$lid:id$>> args in
+       print_math_deco _loc_id e indices
      ), AtomM
 
   | (m,mp):math_aux - (s,h):indices - (r,rp):math_aux ->
@@ -839,7 +846,7 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 	     else
 	       <:expr<
                          Maths.Normal( $bool:nsl$,
-                           $print_math_deco _loc_s s.infix_value indices$,
+                           $print_math_deco_sym _loc_s s.infix_value indices$,
                            $bool:nsr$) >>
 	   in
 	   <:expr<[Maths.Binary { bin_priority= $int:sp$;
