@@ -776,15 +776,25 @@ let parser indices =
 		   | "^" -> Right,Up
 		   | "^^"-> Left,Up
 
+let no_blank_list g = change_layout ( parser g* ) no_blank
+
 let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * math_prio) Decap.grammar =
   | '{' (m,_):math_aux '}' -> (m,AtomM)
 
   | var:''[a-zA-Z]'' ->
-      (fun indices ->
-	<:expr<[Maths.Ordinary $print_math_deco _loc_var (SimpleSym var) indices$] >>), AtomM
+     (fun indices ->
+       <:expr<[Maths.Ordinary $print_math_deco _loc_var (SimpleSym var) indices$] >>), AtomM
+
   | num:''[0-9]+\([.][0-9]+\)?'' ->
-      (fun indices ->
-	<:expr<[Maths.Ordinary $print_math_deco _loc_num (SimpleSym num) indices$] >>), AtomM
+     (fun indices ->
+       <:expr<[Maths.Ordinary $print_math_deco _loc_num (SimpleSym num) indices$] >>), AtomM
+
+  | '\\' - id:lid - args:(no_blank_list (change_layout math_macro_argument blank1)) ->
+     (fun indices ->
+       (* TODO special macro properties to be handled. *)
+       let apply acc arg = <:expr<$acc$ $arg$>> in
+       List.fold_left apply <:expr<$lid:id$>> args
+     ), AtomM
 
   | sym:math_atom_symbol ->
       (fun indices ->
@@ -837,6 +847,9 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
                                 bin_right= $r$ } ] >>
 	 end), s.infix_prio
 
+and math_macro_argument =
+  | '{' (m,_):math_aux '}' -> m no_ind
+  | e:wrapped_caml_expr    -> e
 
 let math_toplevel = parser
   (m,_):math_aux -> m no_ind
@@ -867,31 +880,26 @@ let math_toplevel = parser
   let paragraph_basic_text, set_paragraph_basic_text = grammar_family "paragraph_basic_text"
 
 (***** Patoline macros  *****)
-  let macro_argument =
-    parser
-      '{' l:(paragraph_basic_text TagSet.empty) '}' -> l
-    | | e:wrapped_caml_expr  -> e
-    | | e:wrapped_caml_array -> <:expr<$array:e$>>
-    | | e:wrapped_caml_list  -> <:expr<$list:e$>>
-
-  let lident = "[_a-z][_a-zA-Z0-9']*"
+  let parser macro_argument =
+    | '{' l:(paragraph_basic_text TagSet.empty) '}' -> l
+    | e:wrapped_caml_expr  -> e
+    | e:wrapped_caml_array -> <:expr<$array:e$>>
+    | e:wrapped_caml_list  -> <:expr<$list:e$>>
 
   let reserved_macro = [ "Caml"; "begin"; "end"; "item"; "verb" ]
 
-  let macro_name =
-    change_layout (
-        parser
-          "\\" m:RE(lident) ->
-        if List.mem m reserved_macro then
-          raise (Give_up (m ^ "is a reserved macro")); m
-      ) no_blank
+  let macro_name = change_layout (
+    parser "\\" - m:lid ->
+      if List.mem m reserved_macro then
+        raise (Give_up (m ^ "is a reserved macro")); m
+    ) no_blank
 
   let macro =
     parser
-    | | m:macro_name args:macro_argument** ->
+    | m:macro_name args:macro_argument** ->
                         (let fn = fun acc r -> <:expr@_loc_args<$acc$ $r$>> in
                          List.fold_left fn <:expr@_loc_m<$lid:m$>> args)
-    | | m:verbatim_macro -> m
+    | m:verbatim_macro -> m
 
 (****************************)
 
@@ -996,9 +1004,9 @@ let math_toplevel = parser
                        let _ = $uid:m2$.do_begin_env () ;;
                        let _ = $uid:m2$.do_end_env ()
                      end>>))
-    | | "\\begin{" idb:RE(lident) '}'
+    | | "\\begin{" idb:lid '}'
        ps:(change_layout paragraphs blank2)
-       "\\end{" ide:RE(lident) '}' ->
+       "\\end{" ide:lid '}' ->
          (fun indent_first ->
            if idb <> ide then raise (Give_up "Non-matching begin / end");
            let m1 = freshUid () in
