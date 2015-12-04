@@ -122,14 +122,6 @@ let freshUid () =
   incr counter;
   "MOD" ^ (string_of_int current)
 
-
-
-
-
-
-
-
-
   let wrapped_caml_structure =
     parser
     | | '(' l:structure ')' -> l
@@ -517,17 +509,15 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
     symbol_paragraph _loc sym (math_list _loc names)
   else []
 
-let math_infix_symbol prio =
+let math_infix_symbol =
   black_box (fun buf pos ->
-    Printf.eprintf "Calling partial parse buffer\n%!";
     let name,buf,pos =
       try partial_parse_buffer state.infix_grammar blank buf pos
       with Parse_error _ -> give_up "Not an infix symbol"
     in
-    Printf.eprintf "Partial parse buffer OK %d\n%!" pos;
     try
       let sym = StrMap.find name state.infix_symbols in
-      if sym.infix_prio <= prio then sym,buf,pos else give_up "infix symbol with too high priority"
+      sym,buf,pos
     with Not_found -> give_up "Not an infix symbol")
     Charset.full_charset None "Not an infix symbol"
 
@@ -722,18 +712,20 @@ let pred : math_prio -> math_prio = function
   | Macro -> Macro
   | p -> Obj.magic (Obj.magic p - 1)
 
-let parser math_aux prio : (Parsetree.expression indices -> Parsetree.expression) Decap.grammar =
-  | var:''[a-zA-Z]'' when prio = AtomM ->
+let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * math_prio) Decap.grammar =
+  | var:''[a-zA-Z]'' ->
       (fun indices ->
-	<:expr<[Maths.Ordinary $print_math_deco _loc_var (SimpleSym var) indices$] >>)
-  | num:''[0-9]+\([.][0-9]+\)?'' when prio = AtomM ->
+	<:expr<[Maths.Ordinary $print_math_deco _loc_var (SimpleSym var) indices$] >>), AtomM
+  | num:''[0-9]+\([.][0-9]+\)?'' ->
       (fun indices ->
-	<:expr<[Maths.Ordinary $print_math_deco _loc_num (SimpleSym num) indices$] >>)
+	<:expr<[Maths.Ordinary $print_math_deco _loc_num (SimpleSym num) indices$] >>), AtomM
 
-  | m:(math_aux (pred Ind)) - rd:right_deco when prio = Ind ->
-      (fun indices -> m (rd indices))
+  | (m,mp):math_aux - rd:right_deco ->
+     if mp >= Ind then give_up "No indice/exponent allowed here";
+     (fun indices -> m (rd indices)), Ind
 
-  | l:(math_aux prio) s:(math_infix_symbol prio) r:(math_aux (pred prio)) ->
+  | (l,lp):math_aux s:math_infix_symbol (r,rp):math_aux ->
+     if lp > s.infix_prio || rp >= s.infix_prio then give_up "bad infix priority";
        (fun indices ->
 	 let nsl = s.infix_no_left_space in
 	 let nsr = s.infix_no_right_space in
@@ -746,24 +738,24 @@ let parser math_aux prio : (Parsetree.expression indices -> Parsetree.expression
 	 <:expr<[Maths.Binary { bin_priority= $int:sp$;
                                 bin_drawing = $inter$;
                                 bin_left= $l$;
-                                bin_right= $r$ } ] >>)
-
-  | m:(math_aux (pred prio)) when prio > Macro -> (fun indices -> m indices)
+                                bin_right= $r$ } ] >>), s.infix_prio
 
   (* TODO *)
 
 and right_deco =
-    | "_" - m:(math_aux Ind) ->
+    | "_" - (m,mp):math_aux ->
+      if mp >= Ind then give_up "No indice/exponent allowed here";
       (fun indices ->
 	if indices.down_right <> None then give_up "double indices";
 	{ indices with down_right = Some (m no_ind) })
-    | "^" - m:(math_aux Ind) ->
+    | "^" - (m,mp):math_aux ->
+      if mp >= Ind then give_up "No indice/exponent allowed here";
       (fun indices ->
 	if indices.up_right <> None then give_up "double indices";
 	{ indices with up_right = Some (m no_ind) })
 
 let math_toplevel = parser
-  m:(math_aux Punc) -> m no_ind
+  (m,_):math_aux -> m no_ind
 
 
 
