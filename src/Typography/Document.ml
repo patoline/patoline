@@ -973,7 +973,7 @@ let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=[]) complet
   in str := up (newChildAfter !str (Paragraph para))
 
 (** Adds a new node, just below the last one. *)
-let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
+let newStruct str ?(in_toc=true) ?label ?(numbered=true) ?(extra_tags=[]) displayname =
   let name = match label with
       None -> string_of_contents displayname
     | Some s -> s
@@ -986,7 +986,7 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
     empty with
       name=name;
       displayname =[C (fun _->env_accessed:=true;displayname)];
-      node_tags= (if in_toc then ["intoc",""] else []) @ ["structural",""] @(if numbered then ["numbered",""] else []);
+      node_tags= extra_tags @ (if in_toc then ["intoc",""] else []) @ ["structural",""] @ (if numbered then ["numbered",""] else []);
       node_env=(
         fun env->
         { env with
@@ -1753,6 +1753,8 @@ let flatten ?(initial_path=[]) env0 str=
                 (noindent || List.mem_assoc "noindent" s.node_tags)
                 (Paragraph { p with par_contents=
                     (if is_first then (
+                      (* Set up a marker to be able to obtain section page.
+                         It is added to the MarkerMap in Break. *)
                       let name=String.concat "_" ("_"::List.map string_of_int ((List.map fst path)@initial_path)) in
                       [Env (fun env->
                         let w=try let (_,_,w)=StrMap.find name (names env) in w with
