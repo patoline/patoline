@@ -476,6 +476,10 @@ type grammar_state =
   { mutable verbose          : bool
   ; mutable infix_symbols    : infix StrMap.t (* key are macro_names or utf8_names mixed *)
   ; mutable infix_grammar    : string grammar
+  ; mutable prefix_symbols   : prefix StrMap.t (* key are macro_names or utf8_names mixed *)
+  ; mutable prefix_grammar   : string grammar
+  ; mutable postfix_symbols  : postfix StrMap.t (* key are macro_names or utf8_names mixed *)
+  ; mutable postfix_grammar  : string grammar
   ; mutable atom_symbols     : atom_symbol StrMap.t
   ; mutable atom_grammar     : string grammar
   ; mutable delimiter_symbols: delimiter StrMap.t
@@ -490,6 +494,10 @@ let state =
   { verbose          = false
   ; infix_symbols    = StrMap.empty
   ; infix_grammar    = fail "no infix yet"
+  ; prefix_symbols    = StrMap.empty
+  ; prefix_grammar    = fail "no infix yet"
+  ; postfix_symbols    = StrMap.empty
+  ; postfix_grammar    = fail "no infix yet"
   ; atom_symbols     = StrMap.empty
   ; atom_grammar     = fail "no symbol yet"
   ; delimiter_symbols= StrMap.empty
@@ -508,6 +516,8 @@ let build_grammar () =
 					    (StrMap.bindings m))))
   in
   state.infix_grammar <- map_to_grammar state.infix_symbols;
+  state.prefix_grammar <- map_to_grammar state.prefix_symbols;
+  state.postfix_grammar <- map_to_grammar state.postfix_symbols;
   state.atom_grammar <-map_to_grammar state.atom_symbols;
   state.delimiter_grammar <-map_to_grammar state.delimiter_symbols
 
@@ -519,6 +529,8 @@ let before_parse_hook () =
     let ch = open_in_bin gram in
     Printf.eprintf "Reading default grammar %s\n%!" gram;
     state.infix_symbols <- input_value ch;
+    state.prefix_symbols <- input_value ch;
+    state.postfix_symbols <- input_value ch;
     state.atom_symbols <- input_value ch;
     state.delimiter_symbols <- input_value ch;
     build_grammar ();
@@ -663,15 +675,9 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
   (* Displaying no the document. *)
   if state.verbose then
     let sym = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc infix_value$)]>> in
-    let showuname u =
-      sym (* TODO *)
-    in
-    let showmname m =
-      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (SimpleSym m)$)]>>
-    in
-    let unames = List.map showuname infix_utf8_names in
-    let mnames = List.map showmname infix_macro_names in
-    symbol_paragraph _loc sym (math_list _loc (unames @ mnames))
+    let f s = sym in (* TODO *)
+    let names = List.map f sym_names in
+    symbol_paragraph _loc sym (math_list _loc names)
   else []
 
 let parser math_infix_symbol =
@@ -695,10 +701,13 @@ let new_symbol _loc sym_names symbol_value =
   build_grammar ();
   (* Displaying no the document. *)
   if state.verbose then
-    let sym = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
-    let f s = sym in (* TODO *)
-    let names = List.map f sym_names in
-    symbol_paragraph _loc sym (math_list _loc names)
+    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
+    let sym s =
+      let s = <:expr<Maths.glyphs $string:s$>> in
+      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+    in
+    let names = List.map sym symbol_macro_names @ List.map (fun _ -> sym_val) symbol_utf8_names in
+    symbol_paragraph _loc sym_val (math_list _loc names)
   else []
 
 let math_atom_symbol =
@@ -711,6 +720,64 @@ let math_atom_symbol =
       sym,buf,pos
     with Not_found -> give_up "Not an atom symbol")
     Charset.full_charset None "Not an atom symbol"
+
+let new_prefix_symbol _loc sym_names prefix_value =
+  let prefix_macro_names, prefix_utf8_names = symbol sym_names in
+  let sym = { prefix_prio = Prod; prefix_space = 3; prefix_no_space = false; prefix_macro_names; prefix_utf8_names; prefix_value } in
+  state.prefix_symbols <-
+    List.fold_left (fun map name -> StrMap.add name sym map)
+    state.prefix_symbols sym_names;
+  build_grammar ();
+  (* Displaying no the document. *)
+  if state.verbose then
+    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc prefix_value$)]>> in
+    let sym s =
+      let s = <:expr<Maths.glyphs $string:s$>> in
+      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+    in
+    let names = List.map sym prefix_macro_names @ List.map (fun _ -> sym_val) prefix_utf8_names in
+    symbol_paragraph _loc sym_val (math_list _loc names)
+  else []
+
+let math_prefix_symbol =
+  black_box (fun buf pos ->
+    let name,buf,pos =
+      internal_parse_buffer state.prefix_grammar blank buf pos
+    in
+    try
+      let sym = StrMap.find name state.prefix_symbols in
+      sym,buf,pos
+    with Not_found -> give_up "Not a prefix symbol")
+    Charset.full_charset None "Not a prefix symbol"
+
+let new_postfix_symbol _loc sym_names postfix_value =
+  let postfix_macro_names, postfix_utf8_names = symbol sym_names in
+  let sym = { postfix_prio = Prod; postfix_space = 3; postfix_no_space = false; postfix_macro_names; postfix_utf8_names; postfix_value } in
+  state.postfix_symbols <-
+    List.fold_left (fun map name -> StrMap.add name sym map)
+    state.postfix_symbols sym_names;
+  build_grammar ();
+  (* Displaying no the document. *)
+  if state.verbose then
+    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc postfix_value$)]>> in
+    let sym s =
+      let s = <:expr<Maths.glyphs $string:s$>> in
+      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+    in
+    let names = List.map sym postfix_macro_names @ List.map (fun _ -> sym_val) postfix_utf8_names in
+    symbol_paragraph _loc sym_val (math_list _loc names)
+  else []
+
+let math_postfix_symbol =
+  black_box (fun buf pos ->
+    let name,buf,pos =
+      internal_parse_buffer state.postfix_grammar blank buf pos
+    in
+    try
+      let sym = StrMap.find name state.postfix_symbols in
+      sym,buf,pos
+    with Not_found -> give_up "Not a postfix symbol")
+    Charset.full_charset None "Not a postfix symbol"
 
 let new_delimiter _loc delimiter_kind sym_names delimiter_values =
   let delimiter_macro_names, delimiter_utf8_names = symbol sym_names in
@@ -725,7 +792,15 @@ let new_delimiter _loc delimiter_kind sym_names delimiter_values =
       <:expr<[Maths.Ordinary (Maths.noad
         (fun x y -> List.flatten (Maths.multi_glyphs $delimiter_values$ x y)))]>>
     in
-    let names = [syms] in (* TODO *)
+    let sym_val =
+      <:expr<[Maths.Ordinary (Maths.noad
+        (fun x y -> List.hd $delimiter_values$ x y))]>>
+    in
+    let sym s =
+      let s = <:expr<Maths.glyphs $string:s$>> in
+      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+    in
+    let names = List.map sym delimiter_macro_names @ List.map (fun _ -> sym_val) delimiter_utf8_names in
     symbol_paragraph _loc syms (math_list _loc names)
   else []
 
@@ -807,14 +882,12 @@ let parser symbol_def =
      new_infix_symbol _loc Impl          ss e
   | "\\Add_punctuation"   ss:symbols e:symbol_value ->
      new_infix_symbol _loc Punc   ss e (* FIXME: check *)
-  | "\\Add_negation"      ss:symbols e:symbol_value ->
-     [] (* new_symbol _loc Negation      false ss e*)
   | "\\Add_quantifier"    ss:symbols e:symbol_value ->
      [] (* new_symbol _loc Quantifier    false ss e*)
   | "\\Add_prefix"        ss:symbols e:symbol_value ->
-     [] (* new_symbol _loc Prefix        true  ss e*)
+     new_prefix_symbol _loc ss e
   | "\\Add_postfix"       ss:symbols e:symbol_value ->
-     [] (* new_symbol _loc Postfix       true  ss e*)
+     new_postfix_symbol _loc ss e
   | "\\Add_accent"        ss:symbols e:symbol_value ->
      [] (* new_symbol _loc Accent        true  ss e*)
   | "\\Add_symbol"        ss:symbols e:symbol_value ->
@@ -868,6 +941,16 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
   | sym:math_atom_symbol ->
       (fun indices ->
 	<:expr<[Maths.Ordinary $print_math_deco_sym _loc_sym sym.symbol_value indices$] >>), AtomM
+
+  | sym:math_prefix_symbol (m,mp):math_aux ->
+     if mp > sym.prefix_prio then give_up "bad prefix priority";
+      (fun indices ->
+	<:expr<[Maths.bin $int:sym.prefix_space$ (Maths.Normal(true,$print_math_deco_sym _loc_sym sym.prefix_value indices$,$bool:sym.prefix_no_space$)) [] $m no_ind$] >>), sym.prefix_prio
+
+  | (m,mp):math_aux sym:math_postfix_symbol  ->
+     if mp > sym.postfix_prio then give_up "bad post priority";
+      (fun indices ->
+	<:expr<[Maths.bin $int:sym.postfix_space$ (Maths.Normal($bool:sym.postfix_no_space$,$print_math_deco_sym _loc_sym sym.postfix_value indices$,true)) $m no_ind$ []] >>), sym.postfix_prio
 
   | '\\' - id:lid - args:(no_blank_list (change_layout math_macro_argument blank1)) ->
      (fun indices ->
@@ -1352,6 +1435,8 @@ let _ =
      let ch = open_out_bin name in
      Printf.eprintf "Writing default grammar\n%!";
      output_value ch PaExt.state.infix_symbols;
+     output_value ch PaExt.state.prefix_symbols;
+     output_value ch PaExt.state.postfix_symbols;
      output_value ch PaExt.state.atom_symbols;
      output_value ch PaExt.state.delimiter_symbols;
      Printf.eprintf "Written default grammar\n%!";

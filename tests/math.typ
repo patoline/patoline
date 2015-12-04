@@ -19,7 +19,13 @@ $$ (a+b)^2 = a^2 + 2*ab +b^2 $$
 
 $$ (a₁+a₂)² = a₁² + 2*a₁a₂ + a²₂ $$
 
+$\vec{u} + \vec{v}$
+
 $$ \sqrt{1 \over {n+1}} + \sqrt{\sqrt{2}}$$
 
 $$ 3^^\sqrt{1 \over {n+1}}_2 $$
+
+$$ [(1 \over 2 + 3 \over 4) × {5 \over 7} ] $$
+
+$$ \neg (-x=x!) $$
 test
