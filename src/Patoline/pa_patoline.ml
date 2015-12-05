@@ -581,9 +581,10 @@ let cache_buf = ref []
 let print_math_symbol _loc sym=
   let s,b =
     match sym with
-      SimpleSym s-> <:expr<Maths.glyphs $string:s$>>, false
-    | CamlSym s-> s, false
-    | MultiSym s -> s, true
+      SimpleSym s -> <:expr<Maths.glyphs $string:s$>>, false
+    | CamlSym s   -> s, false
+    | MultiSym s  -> s, true
+    | Invisible   -> <:expr<Maths.glyphs "invisible">>, false
     | _ -> failwith "a faire ds Pa_patoline.print_math_symbol.\n"
   in
   if b then
@@ -948,8 +949,19 @@ let parser indices =
 
 let no_blank_list g = change_layout ( parser g* ) no_blank
 
+let parser any_symbol =
+  | sym:math_infix_symbol   -> sym.infix_value
+  | sym:math_atom_symbol    -> sym.symbol_value
+  | sym:math_prefix_symbol  -> sym.prefix_value
+  | sym:math_postfix_symbol -> sym.postfix_value
+
 let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * math_prio) Decap.grammar =
   | '{' (m,_):math_aux '}' -> (m,AtomM)
+  | '{' s:any_symbol '}' ->
+      if s = Invisible then raise (Give_up "...");
+      (fun indices ->
+        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s indices$]>>
+      ), AtomM
 
   | l:math_left_delimiter (m,_):math_aux r:math_right_delimiter ->
      (fun indices ->
@@ -1109,8 +1121,11 @@ and math_operator =
      in
     (o, i)*)
 
-let math_toplevel = parser
-  (m,_):math_aux -> m no_ind
+let parser math_toplevel =
+  | (m,_):math_aux -> m no_ind
+  | s:any_symbol   ->
+      if s = Invisible then raise (Give_up "...");
+      <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s no_ind$]>>
 
 
 
