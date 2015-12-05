@@ -1635,8 +1635,7 @@ let print_exception = function
      let msg = if msg = [] then "" else (String.concat "," msg)
      in
      let sep = if msg <> "" && expected <> "" then ", " else "" in
-     let fname = if fname = "" then "" else (fname ^ ": ") in
-     Printf.eprintf "%sParse error after %d:%d, %s%s%s\n%!" fname l n msg sep expected
+     Printf.eprintf "File %S, line %d, characters %d-%d:\nParse error:%s%s%s\n%!" fname l n n msg sep expected
   | _ -> assert false
 
 let handle_exception f a =
