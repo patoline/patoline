@@ -51,7 +51,7 @@ $(d)/DefaultGrammar.tgx: $(d)/DefaultGrammar.pdf
 
 $(d)/DefaultGrammar.tgy: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
 	$(ECHO) "[PAT]    $< -> $@"
-	$(Q)$(PA_PATOLINE_IN_SRC) --ascii $< > /dev/null
+	$(Q)$(PA_PATOLINE_IN_SRC) --ascii --no-default-grammar $< > /dev/null
 
 $(d)/quail.el: $(d)/DefaultGrammar.ttml ;
 $(d)/DefaultGrammar_.tml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
