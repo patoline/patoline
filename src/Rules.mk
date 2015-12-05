@@ -5,6 +5,7 @@ d := $(if $(d),$(d)/,)$(mod)
 # Useful directories, to be referenced from other Rules.ml
 SRC_DIR := $(d)
 PATOLINE_IN_SRC := $(d)/Patoline/patoline
+PA_PATOLINE_IN_SRC := $(d)/Patoline/pa_patoline
 PATOLINE_DIR := $(d)/Patoline
 TYPOGRAPHY_DIR := $(d)/Typography
 RAWLIB_DIR := $(d)/rawlib
@@ -45,8 +46,12 @@ MODULES := unicodelib rbuffer patutil imagelib patfonts rawlib db \
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 
 # Building Patoline's grammar
-all: $(d)/DefaultGrammar.txp $(d)/DefaultGrammar.tgx
+all: $(d)/DefaultGrammar.txp $(d)/DefaultGrammar.tgx $(d)/DefaultGrammar.tgy
 $(d)/DefaultGrammar.tgx: $(d)/DefaultGrammar.pdf
+
+$(d)/DefaultGrammar.tgy: $(d)/DefaultGrammar.txp
+	$(ECHO) "[PAT]    $< -> $@"
+	$(Q)$(PA_PATOLINE_IN_SRC) --ascii $< > /dev/null
 
 $(d)/quail.el: $(d)/DefaultGrammar.ttml ;
 $(d)/DefaultGrammar_.tml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
@@ -87,7 +92,7 @@ install-grammars: $(d)/DefaultGrammar.txp $(d)/DefaultGrammar.tgx
 	install -p -m 755 -d $(DESTDIR)/$(INSTALL_GRAMMARS_DIR)
 	install -p -m 644 $(SRC_DIR)/DefaultGrammar.txp $(DESTDIR)/$(INSTALL_GRAMMARS_DIR)/
 	install -p -m 644 $(SRC_DIR)/DefaultGrammar.tgx $(DESTDIR)/$(INSTALL_GRAMMARS_DIR)/
-	install -p -m 644 $(SRC_DIR)/DefaultGrammar2.tgy $(DESTDIR)/$(INSTALL_GRAMMARS_DIR)/DefaultGrammar.tgy
+	install -p -m 644 $(SRC_DIR)/DefaultGrammar.tgy $(DESTDIR)/$(INSTALL_GRAMMARS_DIR)/
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

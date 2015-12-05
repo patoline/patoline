@@ -26,6 +26,7 @@ let files=ref []
 let compile = ref true
 let run = ref true
 let no_grammar=ref false
+let new_parser=ref false
 let deps_only=ref false
 let extras = ref []
 let extras_top = ref []
@@ -80,15 +81,17 @@ let spec =
     message (Cli Build_dir));
    ("--no-build-dir",Arg.Unit (fun ()-> build_dir := ""; extras_top:=["--no-build-dir"]::(!extras_top)),
     message (Cli No_build_dir));
-   ("--main-ml",Arg.Unit (fun () -> main_ml:=true), message (Cli MainMl));
-   ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), message (Cli Ml));
+   ("--main-ml",Arg.Set main_ml, message (Cli MainMl));
+   ("--ml",Arg.Tuple [Arg.Clear compile; Arg.Clear run], message (Cli Ml));
    ("-I",Arg.String (fun x->
      Config2.local_path:=x::(!Config2.local_path);
      Config2.grammarspath:=x::(!Config2.grammarspath);
      dirs := x :: !dirs),
     message (Cli Dirs));
-   ("--recompile",Arg.Unit(fun ()->recompile:=true),message (Cli Recompile));
-   ("--no-grammar",Arg.Unit (fun ()->Parser.grammar:=None), message (Cli No_grammar));
+   ("--recompile",Arg.Set recompile,message (Cli Recompile));
+   ("--no-grammar",Arg.Unit (fun ()-> extras_pp := ["--no-default-grammar"] :: !extras_pp; Parser.grammar:=None), message (Cli No_grammar));
+   ("--new-parser",Arg.Set new_parser, "");
+   ("--old-parser",Arg.Clear new_parser, "");
    ("--format",Arg.String
      (fun f ->formats := Filename.basename f:: !formats), message (Cli Format));
    ("--dynlink",Arg.Unit(fun () -> dynlink:=true),message (Cli Dynlink));
@@ -105,8 +108,8 @@ let spec =
    ("-package",Arg.String (fun s-> package_list:= s::(!package_list)),
     message (Cli Package));
    ("-o",Arg.Set_string output, message (Cli Output));
-   ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), message (Cli Bin));
-   ("--edit-link", Arg.Unit (fun () -> Generateur.edit_link:=true), message (Cli Edit_link));
+   ("--bin",Arg.Tuple [Arg.Set compile; Arg.Clear run], message (Cli Bin));
+   ("--edit-link", Arg.Set Generateur.edit_link, message (Cli Edit_link));
    ("--patoline",Arg.String (fun s->patoline:=s), message (Cli Patoline));
    ("--ocamlopt",Arg.String (fun s->ocamlopt:=s), message (Cli Ocamlopt));
    ("-j",Arg.Int (fun s->Build.j:=max !Build.j s), message (Cli Parallel));
@@ -115,8 +118,8 @@ let spec =
    ("--topopts",Arg.String (fun s -> extras_top := getopts s:: !extras_top), message (Cli TopOpts));
    ("--ccopts",Arg.String (fun s -> extras := getopts s :: !extras), message (Cli CCOpts));
    ("--ppopts",Arg.String (fun s -> extras_pp := getopts s :: !extras_pp), message (Cli PPOpts));
-   ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), message (Cli No_line_directive));
-   ("--debug-parser", Arg.Unit (fun () -> Parser.debug_parser:=true), message (Cli Debug_parser));
+   ("--no-line-directive", Arg.Clear Generateur.line_directive, message (Cli No_line_directive));
+   ("--debug-parser", Arg.Set Parser.debug_parser, message (Cli Debug_parser));
   ]
 
 
@@ -382,10 +385,10 @@ and make_deps pre source=
   let in_deps, do_dep =
     if !recompile || date_source > date_dep then begin
       let cmd=Printf.sprintf
-	"ocamlfind ocamldep %s %s %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp -ml-synonym .typ '%s'"
+	"ocamlfind ocamldep %s %s %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp -ml-synonym .txp '%s'"
 	(let pack=String.concat "," (List.rev opts.packages) in
 	 if pack<>"" then "-package "^pack else "")
-	(if Filename.check_suffix source ".typ" then
+	(if Filename.check_suffix source ".txp" && !new_parser  then
 	    Printf.sprintf "-pp 'pa_patoline --ocamldep %s'" (String.concat " " (List.flatten !extras_pp)) else "")
 	(String.concat " " dirs_)
 	(includes_opt source)
@@ -459,12 +462,8 @@ and compilation_needed sources targets=
 and check_source r =
   let source= chg_ext r ".txp" in
   if Sys.file_exists source then
-    ".ttml",source
-  else
-    let source= chg_ext r ".typ" in
-    if Sys.file_exists source then
-      ".cmx",source
-    else raise Not_found
+    (if !new_parser then ".cmx" else ".ttml"),source
+  else raise Not_found
 
 and patoline_rule objects (builddir:string) (hs:string list)=
   match hs with
@@ -589,8 +588,8 @@ and patoline_rule objects (builddir:string) (hs:string list)=
 	      assert (not is_main); chg_ext ~compile:true pref ".mli", [])
 	    else if Sys.file_exists (chg_ext ~compile:true pref ".ml") then
 	      (assert (not is_main); chg_ext ~compile:true pref ".ml", [])
-	    else if not is_main && Sys.file_exists (chg_ext pref ".typ") then (
-	      let source = chg_ext pref ".typ" in
+	    else if not is_main && !new_parser && Sys.file_exists (chg_ext pref ".txp") then (
+	      let source = chg_ext pref ".txp" in
 	      let ch = open_in source in
 	      let opts= add_format (read_options_from_source_file hs ch) in
 	      let format = match opts.formats with
