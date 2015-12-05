@@ -367,20 +367,16 @@ let uchar =
     let cc = Char.code c in
     if cc < min || cc > max then raise (Give_up "Char not in range..."); c
   in
-  let tail  = char_range 128 191 in
-  let head1 = char_range 0   127 in
-  let head2 = char_range 192 223 in
-  let head3 = char_range 224 239 in
-  let head4 = char_range 240 247 in
+  let tl  = char_range 128 191 in
+  let hd1 = char_range 0   127 in
+  let hd2 = char_range 192 223 in
+  let hd3 = char_range 224 239 in
+  let hd4 = char_range 240 247 in
   parser
-  | c0:head1                               ->
-      String.make 1 c0
-  | c0:head2 - c1:tail                     ->
-      let s = String.make 2 c0 in s.[1] <- c1; s
-  | c0:head3 - c1:tail-  c2:tail           ->
-      let s = String.make 3 c0 in s.[1] <- c1; s.[2] <- c2; s
-  | c0:head4 - c1:tail - c2:tail - c3:tail ->
-      let s = String.make 4 c0 in s.[1] <- c1; s.[2] <- c2; s.[3] <- c3; s
+  | c0:hd1                         -> Printf.sprintf "%c" c0
+  | c0:hd2 - c1:tl                 -> Printf.sprintf "%c%c" c0 c1
+  | c0:hd3 - c1:tl-  c2:tl         -> Printf.sprintf "%c%c%c" c0 c1 c2
+  | c0:hd4 - c1:tl - c2:tl - c3:tl -> Printf.sprintf "%c%c%c%c" c0 c1 c2 c3
 
 let symbol ss =
   List.partition (fun s ->

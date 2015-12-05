@@ -49,7 +49,7 @@ $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 all: $(d)/DefaultGrammar.txp $(d)/DefaultGrammar.tgx $(d)/DefaultGrammar.tgy
 $(d)/DefaultGrammar.tgx: $(d)/DefaultGrammar.pdf
 
-$(d)/DefaultGrammar.tgy: $(d)/DefaultGrammar.txp
+$(d)/DefaultGrammar.tgy: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
 	$(ECHO) "[PAT]    $< -> $@"
 	$(Q)$(PA_PATOLINE_IN_SRC) --ascii $< > /dev/null
 
