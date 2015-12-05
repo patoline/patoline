@@ -987,7 +987,8 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
      let sym,ind = op in
      if mp > sym.operator_prio then give_up "bad operator priority";
     (fun indices ->
-      if indices <> no_ind then give_up "illegal indices for applied operators";
+      if indices.down_right <> None || indices.up_right <> None then give_up "illegal indices for applied operators";
+      let ind = { indices with down_right = ind.down_right; up_right = ind.up_right } in
       match sym.operator_kind with
 	Limits ->
 	  <:expr<[Maths.op_limits [] $print_math_deco_sym _loc_op (MultiSym sym.operator_values) ind$ $m no_ind$]>>
@@ -1099,6 +1100,7 @@ and math_operator =
 
 (*  | (m,mp):math_aux - (s,h):indices - (o,i):math_operator ->
      (* FIXME TODO: decap bug: this loops ! *)
+     (* Anyway, it is a bad way to write the grammar ... a feature od decap ? *)
      if (mp >= Ind && s = Left) then give_up "can not be used as indice";
      if (s = Right) then give_up "No indice/exponent allowed here";
      let i = match h with
