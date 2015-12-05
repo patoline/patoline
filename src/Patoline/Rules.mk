@@ -35,13 +35,17 @@ PATOLINE_DIR := $(d)
 
 SUBSUP_ML := $(d)/Subsup.ml
 
-$(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa
+$(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) \
 		-package patutil,imagelib,dynlink,str,decap \
 		-I $(PA_OCAML_DIR) -I $(PATOLINE_DIR) $(COMPILER_INC) -o $@ \
 		bigarray.cmxa unicodelib.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa str.cmxa \
-		$(COMPILER_LIBO) decap.cmxa decap_ocaml.cmxa Config2.cmx Subsup.cmx $<
+		$(COMPILER_LIBO) decap.cmxa decap_ocaml.cmxa Config2.cmx Subsup.cmx prefixTree.cmx $<
+
+$(d)/prefixTree.cmx: $(d)/prefixTree.ml
+	$(ECHO) "[OPT]    $<"
+	$(Q)$(OCAMLOPT_NOINTF) -o $@ -c $<
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"

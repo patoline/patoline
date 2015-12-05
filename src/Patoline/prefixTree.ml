@@ -4,7 +4,7 @@ type 'a tree = Node of 'a option * (char * 'a tree) list
 (** Empty prefix tree. *)
 let empty : 'a tree = Node(None, [])
 
-(** [is_empty t] returns true if the tree contains no indexed value. *)
+(** [is_empty t] returns [true] if the tree contains no indexed value. *)
 let is_empty : 'a tree -> bool = fun t ->
   let rec is_empty (Node(vo,l)) =
     match vo with
@@ -28,9 +28,9 @@ let linear_branch : char list -> 'a -> 'a tree = fun cs v ->
 let singleton : string -> 'a -> 'a tree = fun s ->
   linear_branch (string_to_char_list s)
 
-(** [insert s v t] inserts the value [v] with the key string [s] in the tree
+(** [add s v t] inserts the value [v] with the key string [s] in the tree
     [t]. If a value is already there, it is overwritten. *)
-let insert : string -> 'a -> 'a tree -> 'a tree = fun s v t ->
+let add : string -> 'a -> 'a tree -> 'a tree = fun s v t ->
   let rec insert v cs (Node(vo,l)) =
     match (cs, vo) with
     | ([]   , None  ) -> Node(Some v, l)
@@ -71,6 +71,10 @@ let find : string -> 'a tree -> 'a = fun s t ->
     | (c::cs, _     ) -> find cs (List.assoc c l)
   in
   find (string_to_char_list s) t
+
+(** [mem s t] returns [true] if the string [s] is mapped in [t]. *)
+let mem : string -> 'a tree -> bool = fun s t ->
+  try ignore (find s t); true with Not_found -> false
 
 (** [every_prefix s t] finds the values stored with keys that are prefix of
     [s] in the tree [t]. The function returns a list of couples of the value
