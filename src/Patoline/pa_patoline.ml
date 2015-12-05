@@ -1250,7 +1250,7 @@ let math_toplevel = parser
   let paragraph_elt =
     parser
     | | verb:verbatim_environment -> (fun _ -> verb)
-    | | "\\Caml" s:wrapped_caml_structure -> (fun _ -> s)
+    | | "\\Caml" s:(change_layout wrapped_caml_structure blank2) -> (fun _ -> s)
     | | "\\Include" '{' id:capitalized_ident '}' -> (fun _ ->
          incr nb_includes;
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
