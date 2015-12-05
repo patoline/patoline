@@ -23,7 +23,7 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-$(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
+$(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX) $(d)/pa_patoline
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -o $@ $(PATOLINE_INCLUDES),threads -thread dyp.cmxa \
 		dynlink.cmxa patutil.cmxa str.cmxa unix.cmxa rbuffer.cmxa \
