@@ -454,9 +454,7 @@ type operator =
   { operator_prio : math_prio;
     operator_utf8_names : string list;
     operator_macro_names : string list; (* with backslash *)
-    operator_value : Parsetree.expression;
-    operator_space : int;
-    operator_no_space : bool;
+    operator_values : Parsetree.expression;
     operator_kind : operator_kind;
   }
 
@@ -484,7 +482,8 @@ type grammar_state =
   ; mutable atom_grammar     : string grammar
   ; mutable delimiter_symbols: delimiter StrMap.t
   ; mutable delimiter_grammar: string grammar
-  ; mutable other_symbols    : StrSet.t
+  ; mutable operator_symbols : operator StrMap.t
+  ; mutable operator_grammar : string grammar
   ; mutable word_macros      : (string * config list) list
   ; mutable math_macros      : (string * config list) list
   ; mutable paragraph_macros : (string * config list) list
@@ -502,7 +501,8 @@ let state =
   ; atom_grammar     = fail "no symbol yet"
   ; delimiter_symbols= StrMap.empty
   ; delimiter_grammar= fail "no symbol yet"
-  ; other_symbols    = StrSet.empty
+  ; operator_symbols= StrMap.empty
+  ; operator_grammar= fail "no symbol yet"
   ; word_macros      = []
   ; math_macros      = []
   ; paragraph_macros = []
@@ -519,7 +519,8 @@ let build_grammar () =
   state.prefix_grammar <- map_to_grammar state.prefix_symbols;
   state.postfix_grammar <- map_to_grammar state.postfix_symbols;
   state.atom_grammar <-map_to_grammar state.atom_symbols;
-  state.delimiter_grammar <-map_to_grammar state.delimiter_symbols
+  state.delimiter_grammar <-map_to_grammar state.delimiter_symbols;
+  state.operator_grammar <-map_to_grammar state.operator_symbols
 
 let before_parse_hook () =
   In.before_parse_hook ();
@@ -533,6 +534,7 @@ let before_parse_hook () =
     state.postfix_symbols <- input_value ch;
     state.atom_symbols <- input_value ch;
     state.delimiter_symbols <- input_value ch;
+    state.operator_symbols <- input_value ch;
     build_grammar ();
     Printf.eprintf "Read default grammar\n%!";
     close_in ch;
@@ -838,17 +840,31 @@ let math_right_delimiter =
     with Not_found -> give_up "Not a delimiter")
     Charset.full_charset None "Not a delimiter"
 
-let new_multi_symbol _loc kind is_infix syms value =
-  (* An parser for the new symbol as an atom. *)
-  let parse_sym = symbol syms in
-  (* TODO *)
+let new_operator_symbol _loc operator_kind sym_names operator_values =
+  let operator_macro_names, operator_utf8_names = symbol sym_names in
+  let operator_prio = match operator_kind with
+      Quantifier -> Impl
+    | Sum | Limit -> Operator
+  in
+  let sym = { operator_prio; operator_kind; operator_macro_names; operator_utf8_names; operator_values } in
+  state.operator_symbols <-
+    List.fold_left (fun map name -> StrMap.add name sym map)
+    state.operator_symbols sym_names;
   (* Displaying no the document. *)
   if state.verbose then
     let syms =
       <:expr<[Maths.Ordinary (Maths.noad
-        (fun x y -> List.flatten (Maths.multi_glyphs $value$ x y)))]>>
+        (fun x y -> List.flatten (Maths.multi_glyphs $operator_values$ x y)))]>>
     in
-    let names = [syms] in (* TODO *)
+    let sym_val =
+      <:expr<[Maths.Ordinary (Maths.noad
+        (fun x y -> List.hd $operator_values$ x y))]>>
+    in
+    let sym s =
+      let s = <:expr<Maths.glyphs $string:s$>> in
+      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+    in
+    let names = List.map sym operator_macro_names @ List.map (fun _ -> sym_val) operator_utf8_names in
     symbol_paragraph _loc syms (math_list _loc names)
   else []
 
@@ -892,7 +908,7 @@ let parser symbol_def =
   | "\\Add_punctuation"   ss:symbols e:symbol_value ->
      new_infix_symbol _loc Punc   ss e (* FIXME: check *)
   | "\\Add_quantifier"    ss:symbols e:symbol_value ->
-     [] (* new_symbol _loc Quantifier    false ss e*)
+     [] (* new_operator_symbol _loc Quantifier   ss e *)
   | "\\Add_prefix"        ss:symbols e:symbol_value ->
      new_prefix_symbol _loc ss e
   | "\\Add_postfix"       ss:symbols e:symbol_value ->
@@ -903,9 +919,9 @@ let parser symbol_def =
      new_symbol _loc ss e
   (* Addition of mutliple symbols (different sizes) *)
   | "\\Add_operator"        ss:symbols e:symbol_values ->
-      new_multi_symbol _loc Operator       false  ss e
+      new_operator_symbol _loc Sum    ss e
   | "\\Add_limits_operator" ss:symbols e:symbol_values ->
-     [] (*new_multi_symbol _loc Limit_operator false  ss e*)
+     new_operator_symbol _loc Limit ss e
   | "\\Add_left"            ss:symbols e:symbol_values ->
      new_delimiter _loc Opening ss e
   | "\\Add_right"           ss:symbols e:symbol_values ->
@@ -1448,6 +1464,7 @@ let _ =
      output_value ch PaExt.state.postfix_symbols;
      output_value ch PaExt.state.atom_symbols;
      output_value ch PaExt.state.delimiter_symbols;
+     output_value ch PaExt.state.operator_symbols;
      Printf.eprintf "Written default grammar\n%!";
      close_out ch
   | _ -> Printf.eprintf "Not writing default grammar, no filename\n%!";
