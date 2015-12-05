@@ -473,12 +473,18 @@ type grammar_state =
   ; mutable prefix_grammar   : string grammar
   ; mutable postfix_symbols  : postfix StrMap.t (* key are macro_names or utf8_names mixed *)
   ; mutable postfix_grammar  : string grammar
+  ; mutable quantifier_symbols   : atom_symbol StrMap.t (* key are macro_names or utf8_names mixed *)
+  ; mutable quantifier_grammar   : string grammar
   ; mutable atom_symbols     : atom_symbol StrMap.t
   ; mutable atom_grammar     : string grammar
+  ; mutable accent_symbols   : atom_symbol StrMap.t
+  ; mutable accent_grammar   : string grammar
   ; mutable delimiter_symbols: delimiter StrMap.t
   ; mutable delimiter_grammar: string grammar
   ; mutable operator_symbols : operator StrMap.t
   ; mutable operator_grammar : string grammar
+  ; mutable combining_symbols: string StrMap.t
+  ; mutable combining_grammar: string grammar
   ; mutable word_macros      : (string * config list) list
   ; mutable math_macros      : (string * config list) list
   ; mutable paragraph_macros : (string * config list) list
@@ -492,12 +498,18 @@ let state =
   ; prefix_grammar    = fail "no infix yet"
   ; postfix_symbols    = StrMap.empty
   ; postfix_grammar    = fail "no infix yet"
+  ; quantifier_symbols    = StrMap.empty
+  ; quantifier_grammar    = fail "no infix yet"
   ; atom_symbols     = StrMap.empty
   ; atom_grammar     = fail "no symbol yet"
+  ; accent_symbols     = StrMap.empty
+  ; accent_grammar     = fail "no symbol yet"
   ; delimiter_symbols= StrMap.empty
   ; delimiter_grammar= fail "no symbol yet"
   ; operator_symbols= StrMap.empty
   ; operator_grammar= fail "no symbol yet"
+  ; combining_symbols= StrMap.empty
+  ; combining_grammar= fail "no symbol yet"
   ; word_macros      = []
   ; math_macros      = []
   ; paragraph_macros = []
@@ -515,7 +527,8 @@ let build_grammar () =
   state.postfix_grammar <- map_to_grammar state.postfix_symbols;
   state.atom_grammar <-map_to_grammar state.atom_symbols;
   state.delimiter_grammar <-map_to_grammar state.delimiter_symbols;
-  state.operator_grammar <-map_to_grammar state.operator_symbols
+  state.operator_grammar <-map_to_grammar state.operator_symbols;
+  state.combining_grammar <-map_to_grammar state.combining_symbols
 
 let before_parse_hook () =
   In.before_parse_hook ();
@@ -527,9 +540,12 @@ let before_parse_hook () =
     state.infix_symbols <- input_value ch;
     state.prefix_symbols <- input_value ch;
     state.postfix_symbols <- input_value ch;
+    state.quantifier_symbols <- input_value ch;
     state.atom_symbols <- input_value ch;
+    state.accent_symbols <- input_value ch;
     state.delimiter_symbols <- input_value ch;
     state.operator_symbols <- input_value ch;
+    state.combining_symbols <- input_value ch;
     build_grammar ();
     Printf.eprintf "Read default grammar\n%!";
     close_in ch;
@@ -732,6 +748,34 @@ let math_atom_symbol =
     with Not_found -> give_up "Not an atom symbol")
     Charset.full_charset None "Not an atom symbol"
 
+let new_accent _loc sym_names symbol_value =
+  let symbol_macro_names, symbol_utf8_names = symbol sym_names in
+  let sym = { symbol_macro_names; symbol_utf8_names; symbol_value } in
+  state.accent_symbols <-
+    List.fold_left (fun map name -> StrMap.add name sym map)
+    state.accent_symbols sym_names;
+  (* Displaying no the document. *)
+  if state.verbose then
+    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
+    let sym s =
+      let s = <:expr<Maths.glyphs $string:s$>> in
+      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+    in
+    let names = List.map sym symbol_macro_names @ List.map (fun _ -> sym_val) symbol_utf8_names in
+    symbol_paragraph _loc sym_val (math_list _loc names)
+  else []
+
+let math_accent_symbol =
+  black_box (fun buf pos ->
+    let name,buf,pos =
+      internal_parse_buffer state.accent_grammar blank buf pos
+    in
+    try
+      let sym = StrMap.find name state.accent_symbols in
+      sym,buf,pos
+    with Not_found -> give_up "Not an accent symbol")
+    Charset.full_charset None "Not an accent symbol"
+
 let new_prefix_symbol _loc sym_names prefix_value =
   let prefix_macro_names, prefix_utf8_names = symbol sym_names in
   let sym = { prefix_prio = Prod; prefix_space = 3; prefix_no_space = false; prefix_macro_names; prefix_utf8_names; prefix_value } in
@@ -787,6 +831,34 @@ let math_postfix_symbol =
       sym,buf,pos
     with Not_found -> give_up "Not a postfix symbol")
     Charset.full_charset None "Not a postfix symbol"
+
+let new_quantifier_symbol _loc sym_names symbol_value =
+  let symbol_macro_names, symbol_utf8_names = symbol sym_names in
+  let sym = { symbol_macro_names; symbol_utf8_names; symbol_value } in
+  state.quantifier_symbols <-
+    List.fold_left (fun map name -> StrMap.add name sym map)
+    state.quantifier_symbols sym_names;
+  (* Displaying no the document. *)
+  if state.verbose then
+    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
+    let sym s =
+      let s = <:expr<Maths.glyphs $string:s$>> in
+      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+    in
+    let names = List.map sym symbol_macro_names @ List.map (fun _ -> sym_val) symbol_utf8_names in
+    symbol_paragraph _loc sym_val (math_list _loc names)
+  else []
+
+let math_quantifier_symbol =
+  black_box (fun buf pos ->
+    let name,buf,pos =
+      internal_parse_buffer state.quantifier_grammar blank buf pos
+    in
+    try
+      let sym = StrMap.find name state.quantifier_symbols in
+      sym,buf,pos
+    with Not_found -> give_up "Not a quantifier symbol")
+    Charset.full_charset None "Not a quantifier symbol"
 
 let new_delimiter _loc delimiter_kind sym_names delimiter_values =
   let delimiter_macro_names, delimiter_utf8_names = symbol sym_names in
@@ -875,6 +947,7 @@ let math_operator_symbol =
 let new_combining_symbol _loc uchr macro =
   (* An parser for the new symbol as an atom. *)
   let parse_sym = string uchr () in
+  state.combining_symbols <- StrMap.add uchr macro state.combining_symbols;
   (* TODO *)
   (* Displaying no the document. *)
   if state.verbose then
@@ -887,6 +960,17 @@ let new_combining_symbol _loc uchr macro =
     in
     symbol_paragraph _loc sym macro
   else []
+
+ let math_combining_symbol =
+  black_box (fun buf pos ->
+    let name,buf,pos =
+      internal_parse_buffer state.combining_grammar blank buf pos
+    in
+    try
+      let sym = StrMap.find name state.combining_symbols in
+      sym,buf,pos
+    with Not_found -> give_up "Not a combining symbol")
+    Charset.full_charset None "Not a combining symbol"
 
 let parser symbol_def =
   | "\\Configure_math_macro" "{" "\\"? - id:lid "}" cs:configs ->
@@ -1186,10 +1270,10 @@ let parser math_toplevel =
          <:expr@_loc_p<bold $p$>>
     | | "||" - p:(paragraph_basic_text (addTag SmallCap tags)) - "||" when allowed SmallCap tags ->
          <:expr@_loc_p<sc $p$>>
-(*    | | "__" - p:(paragraph_basic_text ("__"::tags)) - "__" when not (List.mem "__" tags) ->
+(*    | | "__" - p:(paragraph_basic_text (addTag Underline tags)) - "__" when allowed Underline tags ->
          <:expr@_loc_p<underline $p$>>
-    | | "--" - p:(paragraph_basic_text ("--"::tags)) - "--" when not (List.mem "--" tags) ->
-         <:expr@_loc_p<strike $p$>>*)
+    | | "--" - p:(paragraph_basic_text (addTag Strike tags)) - "--" when allowed Strike tags ->
+      <:expr@_loc_p<strike $p$>>*)
 
     | | v:verbatim_bquote -> <:expr@_loc_v<$v$>>
     | | v:verbatim_sharp  -> <:expr@_loc_v<$v$>>
@@ -1529,9 +1613,12 @@ let _ =
      output_value ch PaExt.state.infix_symbols;
      output_value ch PaExt.state.prefix_symbols;
      output_value ch PaExt.state.postfix_symbols;
+     output_value ch PaExt.state.quantifier_symbols;
      output_value ch PaExt.state.atom_symbols;
+     output_value ch PaExt.state.accent_symbols;
      output_value ch PaExt.state.delimiter_symbols;
      output_value ch PaExt.state.operator_symbols;
+     output_value ch PaExt.state.combining_symbols;
      Printf.eprintf "Written default grammar\n%!";
      close_out ch
   | _ -> Printf.eprintf "Not writing default grammar, no filename\n%!";
