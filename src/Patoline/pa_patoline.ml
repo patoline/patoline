@@ -446,9 +446,8 @@ type atom_symbol =
   }
 
 type operator_kind =
-  | Quantifier
-  | Limit
-  | Sum
+  | Limits
+  | NoLimits
 
 type operator =
   { operator_prio : math_prio;
@@ -842,10 +841,7 @@ let math_right_delimiter =
 
 let new_operator_symbol _loc operator_kind sym_names operator_values =
   let operator_macro_names, operator_utf8_names = symbol sym_names in
-  let operator_prio = match operator_kind with
-      Quantifier -> Impl
-    | Sum | Limit -> Operator
-  in
+  let operator_prio = Operator in
   let sym = { operator_prio; operator_kind; operator_macro_names; operator_utf8_names; operator_values } in
   state.operator_symbols <-
     List.fold_left (fun map name -> StrMap.add name sym map)
@@ -867,6 +863,17 @@ let new_operator_symbol _loc operator_kind sym_names operator_values =
     let names = List.map sym operator_macro_names @ List.map (fun _ -> sym_val) operator_utf8_names in
     symbol_paragraph _loc syms (math_list _loc names)
   else []
+
+let math_operator_symbol =
+  black_box (fun buf pos ->
+    let name,buf,pos =
+      internal_parse_buffer state.operator_grammar blank buf pos
+    in
+    try
+      let sym = StrMap.find name state.operator_symbols in
+      sym,buf,pos
+    with Not_found -> give_up "Not an operator")
+    Charset.full_charset None "Not an operator"
 
 let new_combining_symbol _loc uchr macro =
   (* An parser for the new symbol as an atom. *)
@@ -919,9 +926,9 @@ let parser symbol_def =
      new_symbol _loc ss e
   (* Addition of mutliple symbols (different sizes) *)
   | "\\Add_operator"        ss:symbols e:symbol_values ->
-      new_operator_symbol _loc Sum    ss e
+      new_operator_symbol _loc NoLimits    ss e
   | "\\Add_limits_operator" ss:symbols e:symbol_values ->
-     new_operator_symbol _loc Limit ss e
+     new_operator_symbol _loc Limits ss e
   | "\\Add_left"            ss:symbols e:symbol_values ->
      new_delimiter _loc Opening ss e
   | "\\Add_right"           ss:symbols e:symbol_values ->
@@ -955,9 +962,13 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
        print_math_deco _loc <:expr<[Maths.Decoration (Maths.open_close $l$ $r$, $m no_ind$)]>> indices
      ),AtomM
 
-  | var:''[a-zA-Z]'' ->
+  | name:''[a-zA-Z][a-zA-Z0-9]*'' ->
      (fun indices ->
-       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_var (SimpleSym var) indices$] >>), AtomM
+       if String.length name > 1 then
+	 let elt = <:expr<fun env -> Maths.glyphs $string:name$ (Maths.change_fonts env env.font)>> in
+	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (CamlSym elt) indices$] >>
+       else
+	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (SimpleSym name) indices$] >>), AtomM
 
   | num:''[0-9]+\([.][0-9]+\)?'' ->
      (fun indices ->
@@ -971,6 +982,18 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
      if mp > sym.prefix_prio then give_up "bad prefix priority";
       (fun indices ->
 	<:expr<[Maths.bin $int:sym.prefix_space$ (Maths.Normal(true,$print_math_deco_sym _loc_sym sym.prefix_value indices$,$bool:sym.prefix_no_space$)) [] $m no_ind$] >>), sym.prefix_prio
+
+  | op:math_operator (m,mp):math_aux ->
+     let sym,ind = op in
+     if mp > sym.operator_prio then give_up "bad operator priority";
+    (fun indices ->
+      if indices <> no_ind then give_up "illegal indices for applied operators";
+      match sym.operator_kind with
+	Limits ->
+	  <:expr<[Maths.op_limits [] $print_math_deco_sym _loc_op (MultiSym sym.operator_values) ind$ $m no_ind$]>>
+      | NoLimits ->
+	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym sym.operator_values) ind$ $m no_ind$]>>), sym.operator_prio
+
 
   | (m,mp):math_aux sym:math_postfix_symbol  ->
      if mp > sym.postfix_prio then give_up "bad post priority";
@@ -1056,6 +1079,37 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 and math_macro_argument =
   | '{' (m,_):math_aux '}' -> m no_ind
   | e:wrapped_caml_expr    -> e
+
+and math_operator =
+  | o:math_operator_symbol ->
+     (o, no_ind)
+
+  | (o,i):math_operator - (s,h):indices - (r,rp):math_aux ->
+     if (rp >= Ind && s = Right) then give_up "can not be used as indice";
+     if (s = Left) then give_up "No indice/exponent allowed here";
+     let i = match h with
+       | Down ->
+	  if i.down_right <> None then give_up "double indices";
+	 { i with down_right = Some (r no_ind) }
+       | Up ->
+	  if i.up_right <> None then give_up "double indices";
+	 { i with up_right = Some (r no_ind) }
+     in
+     (o, i)
+
+(*  | (m,mp):math_aux - (s,h):indices - (o,i):math_operator ->
+     (* FIXME TODO: decap bug: this loops ! *)
+     if (mp >= Ind && s = Left) then give_up "can not be used as indice";
+     if (s = Right) then give_up "No indice/exponent allowed here";
+     let i = match h with
+       | Down ->
+	  if i.down_left <> None then give_up "double indices";
+	 { i with down_left = Some (m no_ind) }
+       | Up ->
+	  if i.up_left <> None then give_up "double indices";
+	 { i with up_left = Some (m no_ind) }
+     in
+    (o, i)*)
 
 let math_toplevel = parser
   (m,_):math_aux -> m no_ind

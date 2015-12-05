@@ -28,4 +28,9 @@ $$ 3^^\sqrt{1 \over {n+1}}_2 $$
 $$ [(1 \over 2 + 3 \over 4) × {5 \over 7} ] $$
 
 $$ \neg (-x=x!) $$
-test
+
+test $\sum_{i= 0}^n i^2 = \int_a^b f(t) dt$
+
+$$\sum_{i= 0}^n i^2 = \int_a^b f(t) dt$$
+
+$$ sin(x)  ≠ s i n(x)$$
