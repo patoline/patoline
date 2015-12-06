@@ -45,7 +45,7 @@ $(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTI
 
 $(d)/prefixTree.cmx: $(d)/prefixTree.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT_NOINTF) -o $@ -c $<
+	$(Q)$(OCAMLOPT_NOINTF) -I $(PATOLINE_DIR) -o $@ -c $<
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"

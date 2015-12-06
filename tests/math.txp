@@ -39,8 +39,9 @@ Lonely symbols: $≡$, $-->$, $\bot$
 
 $$ \top ⇒ {≡} $$
 
-\Add_product_like{Multiplication}{×}
+\Add_product_like{@Mul@}{×}
+\Add_prefix{@-@}{-}
 
 \Save_Grammar
 
-$$ 2 Multiplication 2 $$
+$$ 2 @Mul@ {@-@ 2} $$
