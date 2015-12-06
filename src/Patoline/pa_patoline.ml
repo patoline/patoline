@@ -469,49 +469,52 @@ module PMap = PrefixTree
 
 type grammar_state =
   { mutable verbose          : bool
-  ; mutable infix_symbols    : infix StrMap.t (* key are macro_names or utf8_names mixed *)
-  ; mutable infix_grammar    : string grammar
-  ; mutable prefix_symbols   : prefix StrMap.t (* key are macro_names or utf8_names mixed *)
-  ; mutable prefix_grammar   : string grammar
-  ; mutable postfix_symbols  : postfix StrMap.t (* key are macro_names or utf8_names mixed *)
-  ; mutable postfix_grammar  : string grammar
+  ; mutable infix_symbols    : infix PrefixTree.t (* key are macro_names or utf8_names mixed *)
+  ; infix_grammar    : infix grammar
+  ; mutable prefix_symbols   : prefix PrefixTree.t (* key are macro_names or utf8_names mixed *)
+  ; prefix_grammar   : prefix grammar
+  ; mutable postfix_symbols  : postfix PrefixTree.t (* key are macro_names or utf8_names mixed *)
+  ; postfix_grammar  : postfix grammar
   ; mutable quantifier_symbols   : atom_symbol StrMap.t (* key are macro_names or utf8_names mixed *)
-  ; mutable quantifier_grammar   : string grammar
+  ; quantifier_grammar   : string grammar
   ; mutable atom_symbols     : atom_symbol StrMap.t
-  ; mutable atom_grammar     : string grammar
+  ; atom_grammar     : string grammar
   ; mutable accent_symbols   : atom_symbol StrMap.t
-  ; mutable accent_grammar   : string grammar
+  ; accent_grammar   : string grammar
   ; mutable delimiter_symbols: delimiter StrMap.t
-  ; mutable delimiter_grammar: string grammar
+  ; delimiter_grammar: string grammar
   ; mutable operator_symbols : operator StrMap.t
-  ; mutable operator_grammar : string grammar
+  ; operator_grammar : string grammar
   ; mutable combining_symbols: string StrMap.t
-  ; mutable combining_grammar: string grammar
+  ; combining_grammar: string grammar
   ; mutable word_macros      : (string * config list) list
   ; mutable math_macros      : (string * config list) list
   ; mutable paragraph_macros : (string * config list) list
   ; mutable environment      : (string * config list) list }
 
+let new_grammar str =
+  let res = declare_grammar str in set_grammar res (fail ("empty grammar: " ^str)); res
+
 let state =
   { verbose          = false
-  ; infix_symbols    = StrMap.empty
-  ; infix_grammar    = fail "no infix yet"
-  ; prefix_symbols    = StrMap.empty
-  ; prefix_grammar    = fail "no infix yet"
-  ; postfix_symbols    = StrMap.empty
-  ; postfix_grammar    = fail "no infix yet"
+  ; infix_symbols    = PrefixTree.empty
+  ; infix_grammar    = new_grammar "infix"
+  ; prefix_symbols    = PrefixTree.empty
+  ; prefix_grammar    = new_grammar "prefix"
+  ; postfix_symbols    = PrefixTree.empty
+  ; postfix_grammar    = new_grammar "postfix"
   ; quantifier_symbols    = StrMap.empty
-  ; quantifier_grammar    = fail "no infix yet"
+  ; quantifier_grammar    = new_grammar "quantifier"
   ; atom_symbols     = StrMap.empty
-  ; atom_grammar     = fail "no symbol yet"
+  ; atom_grammar     = new_grammar "atom_symbol"
   ; accent_symbols     = StrMap.empty
-  ; accent_grammar     = fail "no symbol yet"
+  ; accent_grammar     = new_grammar "accent"
   ; delimiter_symbols= StrMap.empty
-  ; delimiter_grammar= fail "no symbol yet"
+  ; delimiter_grammar= new_grammar "delimiter"
   ; operator_symbols= StrMap.empty
-  ; operator_grammar= fail "no symbol yet"
+  ; operator_grammar= new_grammar "operator"
   ; combining_symbols= StrMap.empty
-  ; combining_grammar= fail "no symbol yet"
+  ; combining_grammar= new_grammar "combining"
   ; word_macros      = []
   ; math_macros      = []
   ; paragraph_macros = []
@@ -540,13 +543,14 @@ let build_grammar () =
 			  (List.sort cmp (List.map fst
 					    (StrMap.bindings m))))
   in
-  state.infix_grammar <- map_to_grammar state.infix_symbols;
-  state.prefix_grammar <- map_to_grammar state.prefix_symbols;
-  state.postfix_grammar <- map_to_grammar state.postfix_symbols;
-  state.atom_grammar <-map_to_grammar state.atom_symbols;
-  state.delimiter_grammar <-map_to_grammar state.delimiter_symbols;
-  state.operator_grammar <-map_to_grammar state.operator_symbols;
-  state.combining_grammar <-map_to_grammar state.combining_symbols
+  set_grammar state.infix_grammar (tree_to_grammar state.infix_symbols);
+  set_grammar state.prefix_grammar (tree_to_grammar state.prefix_symbols);
+  set_grammar state.postfix_grammar (tree_to_grammar state.postfix_symbols);
+  set_grammar state.atom_grammar (map_to_grammar state.atom_symbols);
+  set_grammar state.delimiter_grammar (map_to_grammar state.delimiter_symbols);
+  set_grammar state.operator_grammar (map_to_grammar state.operator_symbols);
+  set_grammar state.combining_grammar (map_to_grammar state.combining_symbols)
+
 
 let before_parse_hook () =
   In.before_parse_hook ();
@@ -644,12 +648,6 @@ let print_math_symbol _loc sym=
       res
 
 let print_math_deco_sym _loc elt ind =
-  let gn name ind =
-    match ind with
-      None -> assert false
-    | Some m ->
-      <:record< $lid:name$ = $m$ >>
-  in
   if ind = no_ind then (
     <:expr< Maths.noad $print_math_symbol _loc elt$ >>
   ) else
@@ -701,7 +699,7 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
     ; infix_space; infix_no_left_space; infix_no_right_space }
   in
   state.infix_symbols <-
-    List.fold_left (fun map name -> StrMap.add name sym map)
+    List.fold_left (fun map name -> PrefixTree.add name sym map)
     state.infix_symbols sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -728,15 +726,7 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
 
 let parser math_infix_symbol =
     | "*"? -> invisible_product
-    | r:(black_box (fun buf pos ->
-      let name,buf,pos =
-	internal_parse_buffer state.infix_grammar blank buf pos
-      in
-      try
-	let sym = StrMap.find name state.infix_symbols in
-	sym,buf,pos
-      with Not_found -> give_up "Not an infix symbol")
-	Charset.full_charset None "Not an infix symbol") -> r
+    | (state.infix_grammar)
 
 let new_symbol _loc sym_names symbol_value =
   let symbol_macro_names, symbol_utf8_names = symbol sym_names in
@@ -766,7 +756,7 @@ let math_atom_symbol =
     with Not_found -> give_up "Not an atom symbol")
     Charset.full_charset None "Not an atom symbol"
 
-let new_accent _loc sym_names symbol_value =
+let new_accent_symbol _loc sym_names symbol_value =
   let symbol_macro_names, symbol_utf8_names = symbol sym_names in
   let sym = { symbol_macro_names; symbol_utf8_names; symbol_value } in
   state.accent_symbols <-
@@ -798,7 +788,7 @@ let new_prefix_symbol _loc sym_names prefix_value =
   let prefix_macro_names, prefix_utf8_names = symbol sym_names in
   let sym = { prefix_prio = Prod; prefix_space = 3; prefix_no_space = false; prefix_macro_names; prefix_utf8_names; prefix_value } in
   state.prefix_symbols <-
-    List.fold_left (fun map name -> StrMap.add name sym map)
+    List.fold_left (fun map name -> PrefixTree.add name sym map)
     state.prefix_symbols sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -811,22 +801,13 @@ let new_prefix_symbol _loc sym_names prefix_value =
     symbol_paragraph _loc sym_val (math_list _loc names)
   else []
 
-let math_prefix_symbol =
-  black_box (fun buf pos ->
-    let name,buf,pos =
-      internal_parse_buffer state.prefix_grammar blank buf pos
-    in
-    try
-      let sym = StrMap.find name state.prefix_symbols in
-      sym,buf,pos
-    with Not_found -> give_up "Not a prefix symbol")
-    Charset.full_charset None "Not a prefix symbol"
+let math_prefix_symbol = state.prefix_grammar
 
 let new_postfix_symbol _loc sym_names postfix_value =
   let postfix_macro_names, postfix_utf8_names = symbol sym_names in
   let sym = { postfix_prio = Prod; postfix_space = 3; postfix_no_space = false; postfix_macro_names; postfix_utf8_names; postfix_value } in
   state.postfix_symbols <-
-    List.fold_left (fun map name -> StrMap.add name sym map)
+    List.fold_left (fun map name -> PrefixTree.add name sym map)
     state.postfix_symbols sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -839,16 +820,7 @@ let new_postfix_symbol _loc sym_names postfix_value =
     symbol_paragraph _loc sym_val (math_list _loc names)
   else []
 
-let math_postfix_symbol =
-  black_box (fun buf pos ->
-    let name,buf,pos =
-      internal_parse_buffer state.postfix_grammar blank buf pos
-    in
-    try
-      let sym = StrMap.find name state.postfix_symbols in
-      sym,buf,pos
-    with Not_found -> give_up "Not a postfix symbol")
-    Charset.full_charset None "Not a postfix symbol"
+let math_postfix_symbol = state.postfix_grammar
 
 let new_quantifier_symbol _loc sym_names symbol_value =
   let symbol_macro_names, symbol_utf8_names = symbol sym_names in
@@ -964,7 +936,7 @@ let math_operator_symbol =
 
 let new_combining_symbol _loc uchr macro =
   (* An parser for the new symbol as an atom. *)
-  let parse_sym = string uchr () in
+  let _parse_sym = string uchr () in
   state.combining_symbols <- StrMap.add uchr macro state.combining_symbols;
   (* TODO *)
   (* Displaying no the document. *)
@@ -1004,37 +976,37 @@ let parser symbol_def =
   | "\\Add_relation"      ss:symbols e:symbol_value ->
       new_infix_symbol _loc Rel      ss e
   | "\\Add_addition_like" ss:symbols e:symbol_value ->
-      new_infix_symbol _loc Sum ss e
+      new_infix_symbol _loc Sum      ss e
   | "\\Add_product_like"  ss:symbols e:symbol_value ->
-      new_infix_symbol _loc Prod  ss e
+      new_infix_symbol _loc Prod     ss e
   | "\\Add_connector"     ss:symbols e:symbol_value ->
       new_infix_symbol _loc Conj     ss e
   | "\\Add_arrow"         ss:symbols e:symbol_value ->
-     new_infix_symbol _loc Impl          ss e
+     new_infix_symbol _loc Impl      ss e
   | "\\Add_punctuation"   ss:symbols e:symbol_value ->
      new_infix_symbol _loc Punc   ss e (* FIXME: check *)
   | "\\Add_quantifier"    ss:symbols e:symbol_value ->
-     [] (* new_operator_symbol _loc Quantifier   ss e *)
+     new_quantifier_symbol _loc      ss e
   | "\\Add_prefix"        ss:symbols e:symbol_value ->
-     new_prefix_symbol _loc ss e
+     new_prefix_symbol _loc          ss e
   | "\\Add_postfix"       ss:symbols e:symbol_value ->
-     new_postfix_symbol _loc ss e
+     new_postfix_symbol _loc         ss e
   | "\\Add_accent"        ss:symbols e:symbol_value ->
-     [] (* new_symbol _loc Accent        true  ss e*)
+     new_accent_symbol _loc          ss e
   | "\\Add_symbol"        ss:symbols e:symbol_value ->
-     new_symbol _loc ss e
+     new_symbol _loc                 ss e
   (* Addition of mutliple symbols (different sizes) *)
-  | "\\Add_operator"        ss:symbols e:symbol_values ->
-      new_operator_symbol _loc NoLimits    ss e
+  | "\\Add_operator"      ss:symbols e:symbol_values ->
+     new_operator_symbol _loc NoLimits  ss e
   | "\\Add_limits_operator" ss:symbols e:symbol_values ->
      new_operator_symbol _loc Limits ss e
-  | "\\Add_left"            ss:symbols e:symbol_values ->
-     new_delimiter _loc Opening ss e
-  | "\\Add_right"           ss:symbols e:symbol_values ->
-     new_delimiter _loc Closing ss e
+  | "\\Add_left"          ss:symbols e:symbol_values ->
+     new_delimiter _loc Opening      ss e
+  | "\\Add_right"         ss:symbols e:symbol_values ->
+     new_delimiter _loc Closing      ss e
   (* Special case, combining symbol *)
   | "\\Add_combining" "{" c:uchar "}" "{" "\\" - m:lid "}" ->
-      new_combining_symbol _loc c m
+     new_combining_symbol _loc       c m
 
 let pred : math_prio -> math_prio = function
   | Macro -> Macro
@@ -1173,6 +1145,7 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 	   <:expr< [Maths.fraction $l$ $r$] >>
 	 end else begin
 	   let inter =
+
 	     if s.infix_value = Invisible then
 	       <:expr< Maths.Invisible >>
 	     else
@@ -1628,15 +1601,16 @@ let _ =
      let name = chop_extension' s ^ ".tgy" in
      let ch = open_out_bin name in
      Printf.eprintf "Writing default grammar\n%!";
-     output_value ch PaExt.state.infix_symbols;
-     output_value ch PaExt.state.prefix_symbols;
-     output_value ch PaExt.state.postfix_symbols;
-     output_value ch PaExt.state.quantifier_symbols;
-     output_value ch PaExt.state.atom_symbols;
-     output_value ch PaExt.state.accent_symbols;
-     output_value ch PaExt.state.delimiter_symbols;
-     output_value ch PaExt.state.operator_symbols;
-     output_value ch PaExt.state.combining_symbols;
+     let open PaExt in
+     output_value ch state.infix_symbols;
+     output_value ch state.prefix_symbols;
+     output_value ch state.postfix_symbols;
+     output_value ch state.quantifier_symbols;
+     output_value ch state.atom_symbols;
+     output_value ch state.accent_symbols;
+     output_value ch state.delimiter_symbols;
+     output_value ch state.operator_symbols;
+     output_value ch state.combining_symbols;
      Printf.eprintf "Written default grammar\n%!";
      close_out ch
   | _ -> Printf.eprintf "Not writing default grammar, no filename\n%!";

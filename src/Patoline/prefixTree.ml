@@ -1,5 +1,6 @@
 (** Type of a prefix tree. *)
 type 'a tree = Node of 'a option * (char * 'a tree) list
+type 'a t = 'a tree
 
 (** Empty prefix tree. *)
 let empty : 'a tree = Node(None, [])
@@ -18,7 +19,7 @@ let string_to_char_list : string -> char list = fun s ->
   let chars = ref [] in
   String.iter (fun c -> chars := c :: !chars) s;
   List.rev !chars
- 
+
 (* Auxiliary function to obtain a tree with only one branch. *)
 let linear_branch : char list -> 'a -> 'a tree = fun cs v ->
   let aux c acc = Node(None, [(c,acc)]) in

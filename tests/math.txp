@@ -5,7 +5,7 @@ $ 1 $ $ 123 $ $ 42.42 $
 
 $$ a_1 $$
 
-$1+1=2 ⇒A⇒A×B+C+E-F$
+$$1+1=2 ⇒A⇒A×B+C+E-F$$
 
 $$ {A ⇒ A}_1 $$
 
@@ -15,9 +15,9 @@ $$ 2^{2^{2^2}} $$
 
 $$ \bot = ⊥ = \bottom $$
 
-$$ (a+b)^2 = a^2 + 2*ab +b^2 $$
+$$ (a+b)^2 = a^2 + 2*a b +b^2 $$
 
-$$ (a₁+a₂)² = a₁² + 2*a₁a₂ + a²₂ $$
+$$ (a₁+a₂)² = a₁² + 2*a₁ a₂ + a²₂ $$
 
 $\vec{u} + \vec{v}$
 
@@ -38,3 +38,9 @@ $$ sin(x)  ≠ s i n(x)$$
 Lonely symbols: $≡$, $-->$, $\bot$
 
 $$ \top ⇒ {≡} $$
+
+\Add_product_like{Multiplication}{×}
+
+\Save_Grammar
+
+$$ 2 Multiplication 2 $$
