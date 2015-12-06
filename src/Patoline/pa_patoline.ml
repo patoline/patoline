@@ -1032,6 +1032,9 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
       | NoLimits ->
 	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym sym.operator_values) ind$ $m no_ind$]>>), sym.operator_prio
 
+  | (m,mp):math_aux sym:math_combining_symbol  ->
+    if mp > AtomM then give_up "bad post priority";
+    (fun indices -> <:expr<$lid:sym$ $m indices$>>),Accent
 
   | (m,mp):math_aux sym:math_postfix_symbol  ->
      if mp > sym.postfix_prio then give_up "bad post priority";
