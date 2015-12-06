@@ -123,6 +123,45 @@ let fold : ('b -> string -> 'a -> 'b) -> 'b -> 'a tree -> 'b = fun f e t ->
   in
   fold "" e t
 
+(** [iter f t] runs function f on every value stored in the tree. *)
+let iter : (string -> 'a -> unit) -> 'a tree -> unit = fun f t ->
+  let rec iter path (Node(vo,l)) =
+    (match vo with
+     | None   -> ()
+     | Some v -> f path v);
+    let aux (c,t) = iter (path ^ (String.make 1 c)) t in
+    List.iter aux l
+  in
+  iter "" t
+
+(** [map f t] maps the function f on every stored value. *)
+let map : ('a -> 'b) -> 'a tree -> 'b tree = fun f t ->
+  let rec map (Node(vo,l)) =
+    let vo =
+      match vo with
+      | None   -> None
+      | Some v -> Some (f v)
+    in
+    let aux (c,t) = (c, map t) in
+    let l = List.map aux l in
+    Node(vo,l)
+  in
+  map t
+
+(** Same as [mapi], but the function also takes the key as input. *)
+let mapi : (string -> 'a -> 'b) -> 'a tree -> 'b tree = fun f t ->
+  let rec mapi path (Node(vo,l)) =
+    let vo =
+      match vo with
+      | None   -> None
+      | Some v -> Some (f path v)
+    in
+    let aux (c,t) = (c, mapi (path ^ (String.make 1 c)) t) in
+    let l = List.map aux l in
+    Node(vo,l)
+  in
+  mapi "" t
+
 (** [bindings t] computes the list of all the bindings in the tree [t]. *)
 let bindings : 'a tree -> (string * 'a) list =
   fold (fun acc k v -> (k,v) :: acc) []
