@@ -163,13 +163,13 @@ let mapi : (string -> 'a -> 'b) -> 'a tree -> 'b tree = fun f t ->
   mapi "" t
 
 (** [bindings t] computes the list of all the bindings in the tree [t]. *)
-let bindings : 'a tree -> (string * 'a) list =
-  fold (fun acc k v -> (k,v) :: acc) []
+let bindings : 'a tree -> (string * 'a) list = fun t ->
+  fold (fun acc k v -> (k,v) :: acc) [] t
 
 (** [keys t] returns the list of all the keys bound in [t]. *)
-let keys : 'a tree -> string list =
-  fold (fun acc k _ -> k :: acc) []
+let keys : 'a tree -> string list = fun t ->
+  fold (fun acc k _ -> k :: acc) [] t
 
 (** [cardinal t] returns the number of bound keys in [t]. *)
-let cardinal : 'a tree -> int =
-  fold (fun acc _ _ -> acc + 1) 0
+let cardinal : 'a tree -> int = fun t ->
+  fold (fun acc _ _ -> acc + 1) 0 t
