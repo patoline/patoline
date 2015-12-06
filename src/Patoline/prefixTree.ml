@@ -107,3 +107,30 @@ let longest_prefix : string -> 'a tree -> int * 'a = fun s t ->
   match every_prefix s t with
   | []   -> raise Not_found
   | r::_ -> r
+
+(** Folding function on prefix trees. *)
+let fold : ('b -> string -> 'a -> 'b) -> 'b -> 'a tree -> 'b = fun f e t ->
+  let rec fold path acc (Node(vo,l)) =
+    let acc =
+      match vo with
+      | None   -> acc
+      | Some v -> f acc path v
+    in
+    let aux acc (c,t) =
+      fold (path ^ (String.make 1 c)) acc t
+    in
+    List.fold_left aux acc l
+  in
+  fold "" e t
+
+(** [bindings t] computes the list of all the bindings in the tree [t]. *)
+let bindings : 'a tree -> (string * 'a) list =
+  fold (fun acc k v -> (k,v) :: acc) []
+
+(** [keys t] returns the list of all the keys bound in [t]. *)
+let keys : 'a tree -> string list =
+  fold (fun acc k _ -> k :: acc) []
+
+(** [cardinal t] returns the number of bound keys in [t]. *)
+let cardinal : 'a tree -> int =
+  fold (fun acc _ _ -> acc + 1) 0
