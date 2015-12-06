@@ -465,6 +465,8 @@ type delimiter =
     delimiter_kind : delimiter_kind;
   }
 
+module PMap = PrefixTree
+
 type grammar_state =
   { mutable verbose          : bool
   ; mutable infix_symbols    : infix StrMap.t (* key are macro_names or utf8_names mixed *)
@@ -514,6 +516,22 @@ let state =
   ; math_macros      = []
   ; paragraph_macros = []
   ; environment      = [] }
+
+let tree_to_grammar : 'a PMap.tree -> 'a grammar = fun t ->
+  let PMap.Node(_,l) = t in
+  let fn buf pos =
+    let line = Input.line buf in
+    let line = String.sub line pos (String.length line - pos) in
+    try
+      let (n,v) = PMap.longest_prefix line t in
+      (v, buf, pos+n)
+    with Not_found -> raise (Give_up "Not a valid symbol.")
+  in
+  let charset =
+    let f acc (c,_) = Charset.add acc c in
+    List.fold_left f Charset.empty_charset l
+  in
+  black_box fn charset None "symbol"
 
 let build_grammar () =
   let cmp s1 s2 = String.length s2 - String.length s1 in
