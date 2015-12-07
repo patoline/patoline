@@ -1,0 +1,132 @@
+(* patoline --new-parser -package decap stats.txp *)
+====================
+Patoline Statistics
+====================
+
+\Caml(
+
+let authors =
+  [ ( "Pierre-Etienne Meunier"
+    , [ "<pierreetienne.meunier@gmail.com>"
+      ; "pierreetienne.meunier@gmail.com"
+      ; "Pierre-Etienne Meunier <pmeunier@caltech.edu>"
+      ; "pe@patoline.org"
+      ; "pierre-etienne.meunier@lif.univ-mrs.fr"
+      ; "PE" ])
+  ; ( "Christophe Raffalli"
+    , [ "<christophe.raffalli@univ-savoie.fr>"
+      ; "christophe.raffalli@univ-savoie.fr"
+      ; "raffalli@univ-savoie.fr"
+      ; "Christophe.Raffalli@univ-savoie.fr" ])
+  ; ( "Tom Hirschowitz"
+    , [ "tom.hirschowitz@univ-savoie.fr>"
+      ; "tom.hirschowitz@univ-savoie.fr"
+      ; "darcs push" ]) (* :-) *)
+  ; ( "Rodolphe Lepigre"
+    , [ "<rodolphe.lepigre@univ-savoie.fr>"
+      ; "rodolphe.lepigre@univ-savoie.fr" ])
+  ; ( "Florian Hatat"
+    , [ "<fhatat@free.fr>"
+      ; "fhatat@free.fr"
+      ; "florian.hatat@univ-savoie.fr"
+      ; "Florian Hatat <florian.hatat@univ-savoie.fr>" ])
+  ; ( "Pierre Hyvernat"
+    , [ "<pierre.hyvernat@univ-savoie.fr>"
+      ; "pierre.hyvernat@univ-savoie.fr" ])
+  ; ( "Guillaume Theyssier"
+    , [ "<guillaume.theyssier@univ-savoie.fr>"
+      ; "guillaume.theyssier@univ-savoie.fr" ])
+  ; ( "Vincent Laporte"
+    , [ "<vincent.laporte@gmail.com>"
+      ; "vincent.laporte@gmail.com"
+      ; "Vincent Laporte <Vincent.Laporte@gmail.com>"
+      ; "Vincent.Laporte@gmail.com" ])
+  ; ( "Alan Schmitt"
+    , [ "<alan.schmitt@polytechnique.org>"
+      ; "alan.schmitt@polytechnique.org" ])
+  ]
+
+let alias =
+  let build_alias (n,alias) = List.map (fun a -> (a,n)) alias in
+  List.concat (List.map build_alias authors)
+
+type wday = Mon | Tue | Wed | Thu | Fri | Sat | Sun
+let parser wday =
+  | "Mon" -> Mon | "Tue" -> Tue | "Wed" -> Wed | "Thu" -> Thu
+  | "Fri" -> Fri | "Sat" -> Sat | "Sun" -> Sun
+
+let parser month =
+  | "Jan" -> 1  | "Feb" -> 2  | "Mar" -> 3 | "Apr" -> 4 | "May" -> 5
+  | "Jun" -> 6  | "Jul" -> 7  | "Aug" -> 8 | "Sep" -> 9 | "Oct" -> 10
+  | "Nov" -> 11 | "Dec" -> 12
+
+let parser day = d:''[1-9][0-9]*'' -> int_of_string d
+
+let parser time = | h:''[0-9][0-9]'' ":" m:''[0-9][0-9]'' ":" s:''[0-9][0-9]''
+let time = Decap.change_layout time (fun buf pos -> (buf, pos))
+
+let parser tzone = "CET" | "CEST"
+
+let parser year = y:''[0-9][0-9][0-9][0-9]'' -> int_of_string y
+
+let parser date = wd:wday m:month d:day t:time _:tzone y:year
+let date = Decap.change_layout date (Decap.blank_regexp ''[ ]*'')
+
+let parser head_line = "patch " _:''[0-9a-f]*'' "\n"
+
+let parser name = n:''[^\n]*'' ->
+  try List.assoc n alias
+  with Not_found -> (Printf.eprintf "Unknown [%s]\n%!" n; n)
+
+let parser name_line = "Author: " n:name "\n"
+let parser date_line = "Date:   " d:date "\n"
+let parser garbage   = " " _:''[^\n]*'' "\n"
+
+let parser patch =
+  | _:head_line n:name_line d:date_line _:garbage* "\n"? -> (n,d)
+
+let parser patchs = patch*
+
+let parse =
+  let blank buf pos = (buf, pos) in
+  Decap.parse_channel ~filename:"darcs changes" patchs blank
+
+let pipe = Unix.open_process_in "darcs changes"
+
+let data =
+  let data = Decap.handle_exception parse pipe in
+  List.map (fun (n, (_, m, d, _, y)) -> (n, m, y)) data
+
+let total = List.length data
+
+let contrib =
+  let filter_author a (n,_,_) = a = n in
+  let auth_contrib (a, _) =
+    (a, List.length (List.filter (filter_author a) data))
+  in
+  List.map auth_contrib authors
+
+)
+
+\begin{noindent}
+Total number of patches: \id([tT (Printf.sprintf "%i" total)]).
+
+\linesBefore(2)
+Contribution by author:
+\begin{itemize}
+\Caml(
+let item_contrib (n,nb) =
+  D.structure := newChildAfter !D.structure
+    (Node { empty with node_tags = ("item","")::empty.node_tags });
+  let txt =
+    Printf.sprintf "%s (%i patch%s)" n nb (if nb > 1 then "es" else "")
+  in
+  newPar D.structure Complete.normal parameters [tT txt];
+  go_up D.structure
+
+let _ =
+  let contrib = List.sort (fun (_,n1) (_,n2) -> compare n2 n1) contrib in
+  List.iter item_contrib contrib
+)
+\end{itemize}
+\end{noindent}
