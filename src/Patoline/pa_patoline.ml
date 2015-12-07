@@ -464,25 +464,15 @@ module PMap = PrefixTree
 type grammar_state =
   { mutable verbose          : bool
   ; mutable infix_symbols    : infix PrefixTree.t (* key are macro_names or utf8_names mixed *)
-  ; infix_grammar            : infix grammar
   ; mutable prefix_symbols   : prefix PrefixTree.t (* key are macro_names or utf8_names mixed *)
-  ; prefix_grammar           : prefix grammar
   ; mutable postfix_symbols  : postfix PrefixTree.t (* key are macro_names or utf8_names mixed *)
-  ; postfix_grammar          : postfix grammar
   ; mutable quantifier_symbols : atom_symbol PrefixTree.t (* key are macro_names or utf8_names mixed *)
-  ; quantifier_grammar       : atom_symbol grammar
   ; mutable atom_symbols     : atom_symbol PrefixTree.t
-  ; atom_grammar             : atom_symbol grammar
   ; mutable accent_symbols   : atom_symbol PrefixTree.t
-  ; accent_grammar           : atom_symbol grammar
   ; mutable left_delimiter_symbols: delimiter PrefixTree.t
-  ; left_delimiter_grammar        : delimiter grammar
   ; mutable right_delimiter_symbols: delimiter PrefixTree.t
-  ; right_delimiter_grammar        : delimiter grammar
   ; mutable operator_symbols : operator PrefixTree.t
-  ; operator_grammar         : operator grammar
   ; mutable combining_symbols: string PrefixTree.t
-  ; combining_grammar        : string grammar
   ; mutable word_macros      : (string * config list) list
   ; mutable math_macros      : (string * config list) list
   ; mutable paragraph_macros : (string * config list) list
@@ -494,29 +484,33 @@ let new_grammar str =
 let state =
   { verbose          = false
   ; infix_symbols    = PrefixTree.empty
-  ; infix_grammar    = new_grammar "infix"
   ; prefix_symbols    = PrefixTree.empty
-  ; prefix_grammar    = new_grammar "prefix"
   ; postfix_symbols    = PrefixTree.empty
-  ; postfix_grammar    = new_grammar "postfix"
   ; quantifier_symbols    = PrefixTree.empty
-  ; quantifier_grammar    = new_grammar "quantifier"
   ; atom_symbols     = PrefixTree.empty
-  ; atom_grammar     = new_grammar "atom_symbol"
   ; accent_symbols     = PrefixTree.empty
-  ; accent_grammar     = new_grammar "accent"
   ; left_delimiter_symbols= PrefixTree.empty
-  ; left_delimiter_grammar= new_grammar "left delimiter"
   ; right_delimiter_symbols= PrefixTree.empty
-  ; right_delimiter_grammar= new_grammar "right delimiter"
   ; operator_symbols= PrefixTree.empty
-  ; operator_grammar= new_grammar "operator"
   ; combining_symbols= PrefixTree.empty
-  ; combining_grammar= new_grammar "combining"
   ; word_macros      = []
   ; math_macros      = []
   ; paragraph_macros = []
   ; environment      = [] }
+
+let math_atom_symbol = new_grammar "atom_symbol"
+let math_prefix_symbol = new_grammar "prefix"
+let math_postfix_symbol = new_grammar "postfix"
+let math_quantifier_symbol = new_grammar "postfix"
+let math_accent_symbol = new_grammar "accent"
+let math_left_delimiter = new_grammar "left delimiter"
+let math_right_delimiter = new_grammar "right delimiter"
+let math_operator_symbol = new_grammar "operator"
+let math_combining_symbol = new_grammar "combining"
+let math_infix_symbol' = new_grammar "infix"
+let parser math_infix_symbol =
+    | "*"? -> invisible_product
+    | math_infix_symbol'
 
 let tree_to_grammar : 'a PMap.tree -> 'a grammar = fun t ->
   let PMap.Node(_,l) = t in
@@ -535,16 +529,16 @@ let tree_to_grammar : 'a PMap.tree -> 'a grammar = fun t ->
   black_box fn charset None "symbol"
 
 let build_grammar () =
-  set_grammar state.infix_grammar (tree_to_grammar state.infix_symbols);
-  set_grammar state.prefix_grammar (tree_to_grammar state.prefix_symbols);
-  set_grammar state.postfix_grammar (tree_to_grammar state.postfix_symbols);
-  set_grammar state.quantifier_grammar (tree_to_grammar state.quantifier_symbols);
-  set_grammar state.atom_grammar (tree_to_grammar state.atom_symbols);
-  set_grammar state.accent_grammar (tree_to_grammar state.accent_symbols);
-  set_grammar state.left_delimiter_grammar (tree_to_grammar state.left_delimiter_symbols);
-  set_grammar state.right_delimiter_grammar (tree_to_grammar state.right_delimiter_symbols);
-  set_grammar state.operator_grammar (tree_to_grammar state.operator_symbols);
-  set_grammar state.combining_grammar (tree_to_grammar state.combining_symbols)
+  set_grammar math_infix_symbol' (tree_to_grammar state.infix_symbols);
+  set_grammar math_prefix_symbol (tree_to_grammar state.prefix_symbols);
+  set_grammar math_postfix_symbol (tree_to_grammar state.postfix_symbols);
+  set_grammar math_quantifier_symbol (tree_to_grammar state.quantifier_symbols);
+  set_grammar math_atom_symbol (tree_to_grammar state.atom_symbols);
+  set_grammar math_accent_symbol (tree_to_grammar state.accent_symbols);
+  set_grammar math_left_delimiter (tree_to_grammar state.left_delimiter_symbols);
+  set_grammar math_right_delimiter (tree_to_grammar state.right_delimiter_symbols);
+  set_grammar math_operator_symbol (tree_to_grammar state.operator_symbols);
+  set_grammar math_combining_symbol (tree_to_grammar state.combining_symbols)
 
 
 let before_parse_hook () =
@@ -720,10 +714,6 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
 *)
   else []
 
-let parser math_infix_symbol =
-    | "*"? -> invisible_product
-    | (state.infix_grammar)
-
 let new_symbol _loc sym_names symbol_value =
   let symbol_macro_names, symbol_utf8_names = symbol sym_names in
   let sym = { symbol_macro_names; symbol_utf8_names; symbol_value } in
@@ -740,8 +730,6 @@ let new_symbol _loc sym_names symbol_value =
     let names = List.map sym symbol_macro_names @ List.map (fun _ -> sym_val) symbol_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
   else []
-
-let math_atom_symbol = state.atom_grammar
 
 let new_accent_symbol _loc sym_names symbol_value =
   let symbol_macro_names, symbol_utf8_names = symbol sym_names in
@@ -760,8 +748,6 @@ let new_accent_symbol _loc sym_names symbol_value =
     symbol_paragraph _loc sym_val (math_list _loc names)
   else []
 
-let math_accent_symbol = state.accent_grammar
-
 let new_prefix_symbol _loc sym_names prefix_value =
   let prefix_macro_names, prefix_utf8_names = symbol sym_names in
   let sym = { prefix_prio = Prod; prefix_space = 3; prefix_no_space = false; prefix_macro_names; prefix_utf8_names; prefix_value } in
@@ -778,8 +764,6 @@ let new_prefix_symbol _loc sym_names prefix_value =
     let names = List.map sym prefix_macro_names @ List.map (fun _ -> sym_val) prefix_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
   else []
-
-let math_prefix_symbol = state.prefix_grammar
 
 let new_postfix_symbol _loc sym_names postfix_value =
   let postfix_macro_names, postfix_utf8_names = symbol sym_names in
@@ -798,8 +782,6 @@ let new_postfix_symbol _loc sym_names postfix_value =
     symbol_paragraph _loc sym_val (math_list _loc names)
   else []
 
-let math_postfix_symbol = state.postfix_grammar
-
 let new_quantifier_symbol _loc sym_names symbol_value =
   let symbol_macro_names, symbol_utf8_names = symbol sym_names in
   let sym = { symbol_macro_names; symbol_utf8_names; symbol_value } in
@@ -816,8 +798,6 @@ let new_quantifier_symbol _loc sym_names symbol_value =
     let names = List.map sym symbol_macro_names @ List.map (fun _ -> sym_val) symbol_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
   else []
-
-let math_quantifier_symbol = state.quantifier_grammar
 
 let new_left_delimiter _loc sym_names delimiter_values =
   let delimiter_macro_names, delimiter_utf8_names = symbol sym_names in
@@ -843,8 +823,6 @@ let new_left_delimiter _loc sym_names delimiter_values =
     symbol_paragraph _loc syms (math_list _loc names)
   else []
 
-let math_left_delimiter = state.left_delimiter_grammar
-
 let new_right_delimiter _loc sym_names delimiter_values =
   let delimiter_macro_names, delimiter_utf8_names = symbol sym_names in
   let sym = { delimiter_macro_names; delimiter_utf8_names; delimiter_values } in
@@ -868,8 +846,6 @@ let new_right_delimiter _loc sym_names delimiter_values =
     let names = List.map sym delimiter_macro_names @ List.map (fun _ -> sym_val) delimiter_utf8_names in
     symbol_paragraph _loc syms (math_list _loc names)
   else []
-
-let math_right_delimiter = state.right_delimiter_grammar
 
 let new_operator_symbol _loc operator_kind sym_names operator_values =
   let operator_macro_names, operator_utf8_names = symbol sym_names in
@@ -896,8 +872,6 @@ let new_operator_symbol _loc operator_kind sym_names operator_values =
     symbol_paragraph _loc syms (math_list _loc names)
   else []
 
-let math_operator_symbol = state.operator_grammar
-
 let new_combining_symbol _loc uchr macro =
   (* An parser for the new symbol as an atom. *)
   let _parse_sym = string uchr () in
@@ -914,8 +888,6 @@ let new_combining_symbol _loc uchr macro =
     in
     symbol_paragraph _loc sym macro
   else []
-
-let math_combining_symbol = state.combining_grammar
 
 let parser symbol_def =
   | "\\Configure_math_macro" "{" "\\"? - id:lid "}" cs:configs ->
