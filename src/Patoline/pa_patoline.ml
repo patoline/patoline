@@ -509,7 +509,7 @@ let math_operator_symbol = new_grammar "operator"
 let math_combining_symbol = new_grammar "combining"
 let math_infix_symbol' = new_grammar "infix"
 let parser math_infix_symbol =
-    | "*"? -> invisible_product
+    | (empty invisible_product)
     | math_infix_symbol'
 
 let tree_to_grammar : 'a PMap.tree -> 'a grammar = fun t ->
@@ -1039,6 +1039,15 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
     let rd indices =
       if indices.up_right <> None then give_up "double indices";
       { indices with up_right = Some s }
+    in
+    (fun indices -> m (rd indices)), Ind
+
+  | (m,mp):math_aux s:math_accent_symbol ->
+     if mp > Ind then give_up "No indice/exponent allowed here";
+    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s.symbol_value no_ind$] >> in
+    let rd indices =
+      if indices.up_right <> None then give_up "double indices";
+      { indices with up_right = Some s; up_right_same_script = true }
     in
     (fun indices -> m (rd indices)), Ind
 
