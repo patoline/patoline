@@ -3,6 +3,8 @@ open UsualMake
 open FilenameExtra
 open Pa_ocaml_prelude
 
+let _ = Sys.catch_break true
+
 (*
  * The patoline language is implemented as a DeCaP OCaml syntax extension. It
  * contains:
@@ -511,14 +513,16 @@ let math_infix_symbol' = new_grammar "infix"
 let parser math_infix_symbol =
     | (empty invisible_product)
     | math_infix_symbol'
+let math_punctuation_symbol = new_grammar "punctuation"
+let math_relation_symbol = new_grammar "relation"
 
-let tree_to_grammar : 'a PMap.tree -> 'a grammar = fun t ->
+let tree_to_grammar : ?filter:('a -> bool) -> 'a PMap.tree -> 'a grammar = fun ?(filter=fun x -> true) t ->
   let PMap.Node(_,l) = t in
   let fn buf pos =
     let line = Input.line buf in
     let line = String.sub line pos (String.length line - pos) in
     try
-      let (n,v) = PMap.longest_prefix line t in
+      let (n,v) = PMap.longest_prefix ~filter line t in
       (v, buf, pos+n)
     with Not_found -> raise (Give_up "Not a valid symbol.")
   in
@@ -530,6 +534,8 @@ let tree_to_grammar : 'a PMap.tree -> 'a grammar = fun t ->
 
 let build_grammar () =
   set_grammar math_infix_symbol' (tree_to_grammar state.infix_symbols);
+  set_grammar math_punctuation_symbol (tree_to_grammar ~filter:(fun s -> s.infix_prio = Punc) state.infix_symbols);
+  set_grammar math_relation_symbol (tree_to_grammar ~filter:(fun s -> s.infix_prio = Rel) state.infix_symbols);
   set_grammar math_prefix_symbol (tree_to_grammar state.prefix_symbols);
   set_grammar math_postfix_symbol (tree_to_grammar state.postfix_symbols);
   set_grammar math_quantifier_symbol (tree_to_grammar state.quantifier_symbols);
@@ -675,8 +681,8 @@ let print_math_deco _loc elt ind =
 
 let new_infix_symbol _loc infix_prio sym_names infix_value =
   let infix_macro_names, infix_utf8_names = symbol sym_names in
-  let infix_no_left_space = false in
-  let infix_no_right_space = (infix_prio = Punc) in
+  let infix_no_left_space = (infix_prio = Punc) in
+  let infix_no_right_space =  false in
   let infix_space = match infix_prio with
     | Sum -> 2
     | Prod -> 3
@@ -992,6 +998,24 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
       (fun indices ->
 	<:expr<[Maths.bin $int:sym.prefix_space$ (Maths.Normal(true,$print_math_deco_sym _loc_sym sym.prefix_value indices$,$bool:sym.prefix_no_space$)) [] $m no_ind$] >>), sym.prefix_prio
 
+  | sym:math_quantifier_symbol d:math_declaration p:math_punctuation_symbol? (m,mp):math_aux ->
+     if mp > Operator then give_up "bad prefix priority";
+    (fun indices ->
+      let inter = match p with
+	  None -> <:expr<Maths.Invisible>>
+	| Some s ->
+	   let nsl = s.infix_no_left_space in
+	   let nsr = s.infix_no_right_space in
+                <:expr<
+                         Maths.Normal( $bool:nsl$,
+                           $print_math_deco_sym _loc_p s.infix_value no_ind$,
+                           $bool:nsr$) >>
+      in
+	<:expr<[Maths.bin 3
+                    (Maths.Normal(true,$print_math_deco_sym _loc_sym sym.symbol_value indices$,true))
+                    []
+                    [Maths.bin 1 $inter$ $d$ $m no_ind$]]>>), Operator
+
   | op:math_operator (m,mp):math_aux ->
      let sym,ind = op in
      if mp > sym.operator_prio then give_up "bad operator priority";
@@ -1134,6 +1158,35 @@ and math_operator =
 	 { i with up_left = Some (m no_ind) }
      in
     (o, i)*)
+
+and math_punc_list =
+  | (m,p):math_aux -> if p > Ind then give_up "too hight math priority"; m no_ind
+  | l:math_punc_list s:math_punctuation_symbol (m,p):math_aux ->
+     if p > Ind then give_up "too hight math priority";
+    let nsl = s.infix_no_left_space in
+    let nsr = s.infix_no_right_space in
+    let r = m no_ind in
+    let inter =
+      <:expr<
+                         Maths.Normal( $bool:nsl$,
+                           $print_math_deco_sym _loc_s s.infix_value no_ind$,
+                           $bool:nsr$) >>
+    in
+    <:expr<[Maths.bin 3 $inter$ $l$ $r$]>>
+
+and math_declaration =
+  | m:math_punc_list -> m
+  | l:math_declaration s:math_relation_symbol r:math_punc_list ->
+    let nsl = s.infix_no_left_space in
+    let nsr = s.infix_no_right_space in
+    let inter =
+      <:expr<
+                         Maths.Normal( $bool:nsl$,
+                           $print_math_deco_sym _loc_s s.infix_value no_ind$,
+                           $bool:nsr$) >>
+    in
+    <:expr<[Maths.bin 2 $inter$ $l$ $r$] >>
+
 
 let parser math_toplevel =
   | (m,_):math_aux -> m no_ind
@@ -1529,28 +1582,33 @@ let _ =
 end (* of the functor *)
 
 (* Creating and running the extension *)
-module ParserExt = Pa_parser.Ext(Pa_ocaml_prelude.Initial)
-module PaExt = Ext(ParserExt)
-module PatolineDefault = Pa_ocaml.Make(PaExt)
-module M = Pa_main.Start(PatolineDefault)
-
 let _ =
-  match !Pa_ocaml_prelude.file, !in_ocamldep with
-  | Some s, false ->
-     let name = chop_extension' s ^ ".tgy" in
-     let ch = open_out_bin name in
-     Printf.eprintf "Writing default grammar\n%!";
-     let open PaExt in
-     output_value ch state.infix_symbols;
-     output_value ch state.prefix_symbols;
-     output_value ch state.postfix_symbols;
-     output_value ch state.quantifier_symbols;
-     output_value ch state.atom_symbols;
-     output_value ch state.accent_symbols;
-     output_value ch state.left_delimiter_symbols;
-     output_value ch state.right_delimiter_symbols;
-     output_value ch state.operator_symbols;
-     output_value ch state.combining_symbols;
-     Printf.eprintf "Written default grammar\n%!";
-     close_out ch
-  | _ -> Printf.eprintf "Not writing default grammar, no filename\n%!";
+  try
+    let _ = Printexc.record_backtrace true in
+    let module ParserExt = Pa_parser.Ext(Pa_ocaml_prelude.Initial) in
+    let module PaExt = Ext(ParserExt) in
+    let module PatolineDefault = Pa_ocaml.Make(PaExt) in
+    let module M = Pa_main.Start(PatolineDefault) in
+    match !Pa_ocaml_prelude.file, !in_ocamldep with
+    | Some s, false ->
+       let name = chop_extension' s ^ ".tgy" in
+       let ch = open_out_bin name in
+       Printf.eprintf "Writing default grammar\n%!";
+       let open PaExt in
+       output_value ch state.infix_symbols;
+       output_value ch state.prefix_symbols;
+       output_value ch state.postfix_symbols;
+       output_value ch state.quantifier_symbols;
+       output_value ch state.atom_symbols;
+       output_value ch state.accent_symbols;
+       output_value ch state.left_delimiter_symbols;
+       output_value ch state.right_delimiter_symbols;
+       output_value ch state.operator_symbols;
+       output_value ch state.combining_symbols;
+       Printf.eprintf "Written default grammar\n%!";
+       close_out ch
+    | _ -> Printf.eprintf "Not writing default grammar, no filename\n%!";
+
+  with e ->
+    Printf.eprintf "Exception: %s\nTrace:\n%!" (Printexc.to_string e);
+    Printexc.print_backtrace stderr

@@ -80,20 +80,20 @@ let mem : string -> 'a tree -> bool = fun s t ->
 (** [every_prefix s t] finds the values stored with keys that are prefix of
     [s] in the tree [t]. The function returns a list of couples of the value
     and the number of characters consumed for the value. The entries are
-    sorted in order of the longest prefix. *)
-let every_prefix : string -> 'a tree -> (int * 'a) list = fun s t ->
+    sorted in order of the longest prefix. An optional filter may be profided *)
+let every_prefix : ?filter:('a -> bool) -> string -> 'a tree -> (int * 'a) list = fun ?(filter=fun x -> true) s t ->
   let rec find n found cs (Node(vo,l)) =
     match (cs, vo) with
-    | ([]   , None  ) -> found
-    | ([]   , Some v) -> (n,v) :: found
-    | (c::cs, None  ) ->
+    | ([]   , None) -> found
+    | ([]   , Some v) -> if filter v then (n,v) :: found else found
+    | (c::cs, None) ->
         begin
           try find (n+1) found cs (List.assoc c l)
           with Not_found -> found
         end
     | (c::cs, Some v) ->
         begin
-          let found = (n,v) :: found in
+          let found = if filter v then (n,v) :: found else found in
           try find (n+1) found cs (List.assoc c l)
           with Not_found -> found
         end
@@ -104,8 +104,8 @@ let every_prefix : string -> 'a tree -> (int * 'a) list = fun s t ->
     in the tree [t]. The function returns a couple of the value and the
     number of characters consumed. If there is no such value, the exception
     [Not_found] is thrown. *)
-let longest_prefix : string -> 'a tree -> int * 'a = fun s t ->
-  match every_prefix s t with
+let longest_prefix : ?filter:('a -> bool) -> string -> 'a tree -> int * 'a = fun ?(filter=fun x -> true) s t ->
+  match every_prefix ~filter s t with
   | []   -> raise Not_found
   | r::_ -> r
 
