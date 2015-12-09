@@ -2033,8 +2033,10 @@ module MathsFormat=struct
                              glyph_utf8="\033\146"} in
                let gl_arr=Fonts.loadGlyph font utf8_arr in
                let arr=Fonts.outlines gl_arr in
+	       (* arr: (float array * float array) list list is a list of lists of pairs of arrays of floats *)
+	       (* w1 is the max of all x-coordinates in there, assuming the involved arrays are non-decreasing *)
                let w1=List.fold_left (List.fold_left (fun y (v,_)->max y (max v.(0) v.(Array.length v-1)))) 0. arr in
-               (* Extrema de la fleche *)
+               (* Extrema de la fleche en ordonnee *)
                let y0,y1=List.fold_left (List.fold_left (fun (yy0,yy1) (_,v)->
                                                            let a,b=Bezier.bernstein_extr v in
                                                              min yy0 a, max yy1 b)) (0.,0.) arr in

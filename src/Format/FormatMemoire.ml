@@ -34,16 +34,22 @@ let defaultPageMaster = PageLayout.(
     let w = default.paperWidth in
     let h = default.paperHeight in
 { default with
-    marginTop = h /. 8.;
-    marginBottom = h /. 8.;
-    marginLeft = w /. 8.;
-    marginRight = w /. 8.;
+    marginTop = h /. 7.5;
+    marginBottom = h /. 7.5;
+    marginLeft = w /. 7.5;
+    marginRight = w /. 7.5;
   })
 
 include FormatThese.Format(D)
-let defaultEnv = { defaultEnv with hyphenate=DefaultFormat.hyphenate_dict "hyph-fr.hdict" ;
-				   new_page=PageLayout.new_page defaultPageMaster ;
-				   normalMeasure=(fst a4) -. defaultPageMaster.marginLeft -. defaultPageMaster.marginLeft
+let defaultEnv = 
+    let fsize=3.7 *. 11. /. 12. in
+    { defaultEnv
+    with hyphenate=DefaultFormat.hyphenate_dict "hyph-fr.hdict" ;
+	 new_page=PageLayout.new_page defaultPageMaster ;
+	 normalMeasure=(fst a4) -. defaultPageMaster.marginLeft -. defaultPageMaster.marginLeft ;
+	 size=fsize;
+	 lead=13./.10.*.fsize;
+	 normalLead=13./.10.*.fsize;	 
 		 }
 			  
   module Env_defi=Default.Make_theorem
