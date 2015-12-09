@@ -99,3 +99,6 @@ val oriente :
 
 val length : (float array*float array)-> float
 val partial_length : float -> (float array*float array)-> float
+
+(* Rotation d'une courbe de Bezier, autour de l'origine *)
+val rotate: float -> (float array*float array) -> (float array*float array)

@@ -1095,3 +1095,12 @@ let intersection ?(epsilon=1e-6) ?(thick=1e-4) (xa, ya as ba) (xb, yb as bb) =
   List.iter (fun (x,y) -> Printf.printf "(%f,%f) " x y) r;
   print_newline ();*)
   r
+
+
+let pi = 4. *. atan 1.
+let rotate angle  (xs,ys) = (* angle en degres *)
+  let angle = angle *. pi /. 180. in
+  Array.mapi (fun i x -> x *. cos angle -. ys.(i) *. sin angle) xs,
+  Array.mapi (fun i y -> xs.(i) *. sin angle +. y *. cos angle) ys
+
+    

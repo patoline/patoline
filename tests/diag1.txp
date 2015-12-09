@@ -20,8 +20,227 @@
 \Caml(open Diagrams
 
 
-)
+  module Edge' = struct
+    include Edge
 
+      open Transfo
+      open Style
+
+      let head_moustache env info params =
+      	(* let _ = begin  *)
+      	(* 	 Printf.fprintf stderr "Entering head: lineWidth = %f, true lineWidth = %f \n" *)
+      	(* 	   params.lineWidth info.tip_line_width ; *)
+      	(* 	 flush stderr *)
+      	(* end in *)
+      	let scale = scale_env env in
+      	if info.is_double then
+      	  let short = max (info.tip_line_width *. 0.15) 0.06 in
+      	  let thickness = max (0.5 *. params.lineWidth) 0.06 in
+      	  let height = max (1.5 *. short) 0.22 in
+      	  let width = max (0.3 *. info.tip_line_width) 0.2 in
+      	  let _ = Printf.fprintf stderr "double tip_line_width=%f\n" info.tip_line_width ; flush stderr
+      	  in
+      	  (scale *. short, scale *. thickness, scale *. height, scale *. width, scale *. 0.01)
+
+      	else
+
+      	  let short = max (0.15 *. params.lineWidth) 0.06 in
+      	  let thickness = max (0.18 *. params.lineWidth) 0.04 in
+      	  let height = max (0.4 *. params.lineWidth) 0.23 in
+      	  let width = max (0.4 *. params.lineWidth) 0.23 in
+      	  (* let short = max (0.5 *. params.lineWidth) 0.2 in *)
+      	  (* let thickness = max (0.6 *. params.lineWidth) 0.2 in *)
+      	  (* let height = max (2. *. short) 0.6 in *)
+      	  (* let width = max (1.3 *. params.lineWidth) 0.4 in *)
+      	  let _ = Printf.fprintf stderr "tip_line_width=%f\n" params.lineWidth ; flush stderr
+      	  in
+      	  (scale *. short, scale *. thickness, scale *. height, scale *. width, scale *. 0.01)
+
+
+      let fontArrowHeadCurves env =
+	let size=scale_env env /. 1000. in
+	let env'=Maths.env_style env.mathsEnvironment env.mathStyle in
+	let font=Lazy.force (env'.Mathematical.mathsFont) in
+	let utf8_arr={FTypes.glyph_index=(Fonts.glyph_of_uchar font (UChar.chr 0x2192));
+                      FTypes.glyph_utf8="\033\146"} in
+	let gl_arr=Fonts.loadGlyph font utf8_arr in
+	Fonts.outlines gl_arr, size
+
+      let fontArrowHeadShorten size arr =
+	begin
+	  match arr with
+	    courbes :: _ -> begin
+			   match courbes with
+			     c0 :: c1 :: c2 :: _ ->
+			     let x0 = (fst c0).(0) in
+			     let xt = array_last (fst c2) in
+			     ((xt -. x0) *. size *. 0.5 -. 0.(* 0.0001 *. size *))
+			   | _ -> assert false
+			 end
+	  | _ -> assert false
+	end
+
+(* let _ = (default_line_width := 0.004) *)
+
+let array_update_last a x =
+  a.(Array.length a - 1) <- x
+			      
+let fontArrowHead (xe,ye) angle env info params arr size  =
+  let arr, (x_tip,y_tip),wdtip,wdshaft,totalWidth = begin
+      match arr with
+	courbes :: _ -> begin
+		       match courbes with
+			 c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: _ ->
+			 let x0 = (fst c0).(0) in
+			 let y0 = (snd c0).(0) in
+			 let xn = array_last (fst c5) in
+			 let yn = array_last (snd c5) in
+			 let wdtip = array_last (fst c1) -. (fst c1).(0) in
+			 let xt,yt as tip = ((array_last (fst c2)),
+					     (array_last (snd c2))) in
+			 let tipCurve = if info.is_double then
+					  (* Compute the "co-tip" point by subtracting the 
+                                              "linewidth" horizontally to the tip *)
+					  let x = xt -. (array_last (fst c1) -. (fst c1).(0)) in
+					  let _ = (fst c0).(0) <- x in
+					  let _ = (snd c0).(0) <- yt in
+					  let _ = array_update_last (fst c5) x in
+					  let _ = array_update_last (snd c5) yt in
+					  c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: []
+					else
+					  c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: ([|x0;xn|],[|y0;yn|]) :: []
+			 in
+			 tipCurve,
+			 tip,
+                         wdtip,
+                         (yn -. y0),
+			 ((array_last (snd c3)) -. y0)
+		       | _ -> assert false
+		     end
+      | _ -> assert false
+    end
+  in
+  (* let _ = Printf.fprintf stderr "lineWidth = %f.\n" params.lineWidth in *)
+  (* let _ = Printf.fprintf stderr "wd = %f.\n" wdshaft in *)
+  (* let widthFactor = (scale_env env) *. wdtip *. params.lineWidth *. 10. /. wdshaft in *)
+  let widthFactor = if info.is_double then
+		      let _ = Printf.fprintf stderr "tiplineWidth = %f \n totalWidth = %f \n size = %f.\n"
+					     info.tip_line_width totalWidth size in
+		      info.tip_line_width /. size /. totalWidth
+		    else params.lineWidth *. 10. in
+  (* let heightFactor = widthFactor *. 0.1 in *)
+  (* let widthFactor = 1. in *)
+  (* let _ = Printf.fprintf stderr "widthFact = %f.\n" widthFactor in *)
+  let arr'= Curve.map (fun x-> ((x -. x_tip)*.size *. widthFactor))
+		      (fun y-> ((y -. y_tip)*.size *. widthFactor)) arr in
+  let arr''= Curve.rotate angle arr' in
+  let arr'''= Curve.map (fun x-> (x +. xe)) (fun y-> (y +. ye)) arr'' in
+  arr'''
+
+
+	(* let cliptip tip curve = *)
+	(*   let (j,t') as finish = begin *)
+	(*   match tip with *)
+	(*     | [] -> ((Curve.nb_beziers curve) - 1,1.) *)
+	(*     | [xs,ys] when Array.length xs <= 1 -> ((Curve.nb_beziers curve) - 1,1.) *)
+	(*     | curve2 -> *)
+	(*       Curve.(app_default earliest_intersection curve curve2 ((Curve.nb_beziers curve) - 1,1.)) *)
+	(* end in *)
+	(* if Curve.compare_lt (0,0.) finish < 0 then *)
+	(*   Curve.internal_restrict curve (0,0.) finish *)
+	(* else Curve.restrict curve 0. 0. *)
+
+let cliptip grad info tip curve0 =
+  (* if info.tip_info.is_double then *)
+    let _ = Printf.fprintf stderr "WELCOME TO CLIPTIP!\n" in
+    let margin = 	if info.tip_info.is_double then
+			  0.5 *. (info.tip_info.tip_line_width +. info.params.lineWidth)  else 0. in
+    let normale = Vector.(normalise ~norm:margin (turn_left grad)) in
+    let curve = Curve.translate normale curve0 in
+    let (j,t') as finish = begin
+	match tip with
+	| [] -> ((Curve.nb_beziers curve) - 1,1.)
+	| [xs,ys] when Array.length xs <= 1 -> ((Curve.nb_beziers curve) - 1,1.)
+	| curve2 ->
+	   Curve.(app_default
+                    (* earliest_intersection *)
+		    (if info.tip_info.is_double then
+		      latest_intersection
+		    else earliest_intersection)
+		   curve curve2 ((Curve.nb_beziers curve) - 1,1.))
+      end in
+    let _ = Printf.fprintf stderr "margin: %f \n normale: (%f,%f) \n finish: (%d,%f) \n"
+			   margin
+			   (fst normale)
+			   (snd normale)
+			   j
+			   t'
+    in
+    if Curve.compare_lt (0,0.) finish < 0 then
+      Curve.internal_restrict curve0 (0,0.) finish
+    else Curve.restrict curve0 0. 0.
+  (* else *)
+  (*   curve0 *)
+			    
+      let base_arrow env ?head_or_tail:(head_or_tail=true) (* head_params *) transfos edge_info=
+	let info = edge_info.tip_info in
+	let params = edge_info.params in
+	let underlying_curve = edge_info.underlying_curve in
+	let time = if head_or_tail then 1. else 0. in
+	let (da,db) as grad = Vector.scal_mul (if head_or_tail then 1. else -1.) (Curve.eval (Curve.gradient underlying_curve) time) in
+
+	(* Control point on the curve *)
+	let (xe,ye) as e = Curve.eval underlying_curve time in
+	let arrowCurves, size = fontArrowHeadCurves env in
+	(* let short = fontArrowHeadShorten size arrowCurves in *)
+	(* let edge_info' = Transfo.transform [(if head_or_tail then shortenE else shortenS) short] edge_info in *)
+	let edge_info' = edge_info in
+	begin match edge_info'.underlying_curve with
+		[xs,ys] when Array.length xs = 1 ->
+		edge_info'
+	      | _ when params.lineWidth = 0. -> edge_info'
+	      | _ ->
+		 let angle = Vector.angle grad in
+		 let tip = fontArrowHead e angle env edge_info'.tip_info params arrowCurves size in 
+		 { edge_info' with
+		   curves = List.map (fun (params,curve) -> params, cliptip grad edge_info' tip curve)
+				     edge_info'.curves ;
+		   decorations = edge_info'.decorations @
+						   [Curve ({ params with
+	      						     strokingColor=None;
+							     close = true ;
+							     fillColor = params.strokingColor ;
+							     lineWidth = 0. }, tip)]}
+	end
+
+
+
+      let arrowOf, arrow_head_pet =
+	Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow head"
+		     (fun pet env (* head_params *) ->
+		      { pet = pet ; transfo = base_arrow env (* head_params *) })
+      let arrow env = arrowOf env (* head_moustache *)
+
+      let backArrowOf, backArrow_head_pet =
+	Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow tail"
+		     (fun pet env (* head_params *) ->
+		      { pet = pet ; transfo = base_arrow env ~head_or_tail:false (* head_params *) })
+      let arrow' env = backArrowOf env (* head_moustache *)
+
+
+  end
+  module Edge = Edge'		  
+
+module Env_Diagram (Arg : sig val env : environment end) = struct
+  include Env_Diagram (Arg) 
+
+
+  module Edge = Edge'
+end
+
+let dark_blue=Color.rgb 0. 0. 0.4
+
+)
 
 
 \diagram(
@@ -35,11 +254,18 @@
 	([],[]) ; ([],<<A>>) ; ([], <<B>>) 
       ]])
 
-	     let [delta;pi;sigma] = Edge.(edges [draw;arrow env (* ;dashed [2.;1.] *)] [
+  let sedges ?style:(style=Edge.([arrow env;draw])) = 
+    List.map (fun (st,s,e) -> edge Edge.(style @ st) s e) 
+  let sedges_matrix ?style:(st=Edge.([arrow env;draw])) ms l = 
+    sedges ~style:st
+      (List.map (fun (st',(ai,aj),(bi,bj)) -> (st',ms.(ai).(aj),ms.(bi).(bj))) l)
+
+	     let [delta;pi;sigma] = Edge.(edges [arrow env;draw (* ;dashed [2.;1.] *)] [
 	       ([], ms.(0).(1), [], ms.(0).(0));
 	       ([], ms.(0).(1), [], ms.(0).(2));
 	       ([], ms.(0).(2), [], ms.(0).(3));
 	     ])
+
 
 	     let e = Edge.(edge [draw] ms.(0).(0) ~controls:[[ms.(1).(1).Node.anchor `Center];
 							     [ms.(1).(2).Node.anchor `Center];[]] ms.(0).(3))
@@ -61,12 +287,6 @@ $S'(p) = ⋀_{\{(v \xto{α} p) ∈ P_X\}} S(v)$
 
 (* $⋀_{0 \xto{f} 1} f$ *)
 
-\Caml(
-open Diagrams
-
-let dark_blue=RGB{red=0.;green=0.;blue=0.4}
-
-)
 
 
 
@@ -74,8 +294,8 @@ let dark_blue=RGB{red=0.;green=0.;blue=0.4}
 \begin{center}
 \diagram(
 let nombre = 8
-let facteur_epaisseur = 0.6
-let facteur_marge = 0.6
+let facteur_epaisseur = 0.04
+let facteur_marge = 0.5
   let sedges ?style:(style=Edge.([arrow env;draw])) = 
     List.map (fun (st,s,e) -> edge Edge.(style @ st) s e) 
   let sedges_matrix ?style:(st=Edge.([arrow env;draw])) ms l = 
@@ -99,6 +319,55 @@ let rec dessine taille n =
     in 
     dessine (taille +. 1.) (n + 1) 
 
-let _ = dessine 0. 0
+let _ = dessine 1. 0
+
 )
+\end{center}
+\begin{center}
+\diagram(
+  let sedges ?style:(style=Edge.([arrow env;draw])) = 
+    List.map (fun (st,s,e) -> edge Edge.(style @ st) s e) 
+  let sedges_matrix ?style:(st=Edge.([arrow env;draw])) ms l = 
+    sedges ~style:st
+      (List.map (fun (st',(ai,aj),(bi,bj)) -> (st',ms.(ai).(aj),ms.(bi).(bj))) l)
+
+let default_all = Matrix.(allNodes Node.([mainAnchor `Base;anchor `Line]))
+  let default_allmain = Matrix.([
+			  default_all;
+			  mainNode Node.([at (0.,0.);anchor `South])])
+  let default_math_matrix_style = Matrix.(centers 20. 20. :: default_allmain)
+  let simple_math_matrix ?style:(style= default_math_matrix_style) l = 
+    math_matrix style
+     (List.map (fun line -> (List.map (fun contents -> ([],contents)) line)) l)
+let twocellStyle  ?short:(short=0.5) env = Edge.([double 0.5 ; shorten short short;arrow env;draw])
+let twocell env ?short:(short=0.5) e e' t t' st = 
+edge (twocellStyle ~short:short env @ st)
+(coordinate (e.Edge.anchor (`Temporal t)))
+(coordinate (e'.Edge.anchor (`Temporal t')))	    
+let twocellStart env ?short:(short=0.5) e e' ?start:(start=0.3) ?startt:(startt=start) st =
+twocell env ~short:short e e' start startt st
+let twocellStartR env ?short:(short=0.5) e e' ?start:(start=0.3)  ?startt:(startt=start) ?bent:(bent=30.)
+st =
+twocellStart env ~short:short e e' ~start:start ~startt:startt (Edge.([bendRight bent]) @ st)
+let twocellStartL env ?short:(short=0.5) e e' ?start:(start=0.3)  ?startt:(startt=start) ?bent:(bent=30.)
+st =
+twocellStart env ~short:short e e' ~start:start ~startt:startt (Edge.([bendLeft bent]) @ st)
+
+  let m,ms = simple_math_matrix ~style:Matrix.([centers 10. 10.] @ default_allmain) [[
+	[] ; <$Y'$>
+	];[
+	<$Y$>
+	];[
+	[] ; <$X$>
+	]]
+
+	let u :: w :: u' :: _ = Edge.(sedges_matrix ms ~style:[arrow env; draw] [
+	([],(1,0),(2,1));
+	([],(0,1),(1,0));
+	([],(0,1),(2,1));
+	])
+
+	(* let _ = twocellStartR env w u' Edge.([labelbl <<$α$>>]) *)
+	let _ = twocellStartL env u' w Edge.([labelbl <<$α$>>])
+)	
 \end{center}

@@ -54,6 +54,9 @@ let only_last l x = [x]
 let array_last xs =
   let n = Array.length xs in
   xs.(n-1)
+(* Helper function to update the last element of an array; should probably go elsewhere *)
+let array_update_last a x =
+  a.(Array.length a - 1) <- x
 
 let list_split_last_rev l =
   let rec list_split_last_rec res = function
@@ -452,6 +455,11 @@ module Curve = struct
       1.0)
     else
       scan z 0. 0. curve
+
+  let map fx fy = List.map (fun (u,v)-> Array.map fx u, Array.map fy v)
+	       
+  let rotate angle = List.map (Bezier.rotate angle)
+
 
 end
 
@@ -2214,102 +2222,151 @@ Doing a rectangle.\n" ;
 	  in
 	  let delta = 0.02 in
 	  let info_white = Transfo.transform [shorten delta delta] { info with curves = white_paths } in
-	  let info_black = Transfo.transform [shorten (delta +. 0.1) (delta +. 0.1)]
+	  let info_black = Transfo.transform [shorten (delta +. 0.01) (delta +. 0.01)]
 	    { info with curves = black_paths } in
 	  { info_black with
 	    tip_info = { tip_line_width = margin +. 2.0 *. info.params.lineWidth ;
 			 is_double = true };
 	    curves = (info_black.curves @ info_white.curves) }) })
 
-      let head_moustache env info params =
-	(* let _ = begin  *)
-	(* 	 Printf.fprintf stderr "Entering head: lineWidth = %f, true lineWidth = %f \n" *)
-	(* 	   params.lineWidth info.tip_line_width ; *)
-	(* 	 flush stderr *)
-	(* end in *)
-	let scale = scale_env env in
-	if info.is_double then
-	  let short = max (info.tip_line_width *. 0.15) 0.06 in
-	  let thickness = max (0.5 *. params.lineWidth) 0.06 in
-	  let height = max (1.5 *. short) 0.22 in
-	  let width = max (0.3 *. info.tip_line_width) 0.2 in
-(*	  let _ = Printf.fprintf stderr "double tip_line_width=%f\n" info.tip_line_width ; flush stderr in*)
-	  (scale *. short, scale *. thickness, scale *. height, scale *. width, scale *. 0.01)
+      (* Get curves for standard arrow from the font, given current mathematical style *)
+      (* Something around here should probably be memoized *)
+      let fontArrowHeadCurves env =
+	let size=scale_env env /. 1000. in
+	let env'=Maths.env_style env.mathsEnvironment env.mathStyle in
+	let font=Lazy.force (env'.Mathematical.mathsFont) in
+	let utf8_arr={FTypes.glyph_index=(Fonts.glyph_of_uchar font (UChar.chr 0x2192));
+                      FTypes.glyph_utf8="\033\146"} in
+	let gl_arr=Fonts.loadGlyph font utf8_arr in
+	Fonts.outlines gl_arr, size
+				    
+      let fontArrowHead (xe,ye) angle env info params arr size  =
+	(* We start by extracting the arrow head from the whole arrow *)
+	(* In passing, we need to do a little surgery to compensate for the missing shaft *)
+	(* This is done differently depending on whether we have a "double" arrow or not *)
+	let arr, (x_tip,y_tip),totalWidth = begin
+	    match arr with
+	      courbes :: _ -> begin
+			     match courbes with
+			       c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: _ ->
+			       (* Extract various points from the curve, which are needed for surgery below *)
+			       let x0 = (fst c0).(0) in
+			       let y0 = (snd c0).(0) in
+			       let xn = array_last (fst c5) in
+			       let yn = array_last (snd c5) in
+			       let xt,yt as tip = ((array_last (fst c2)),
+						   (array_last (snd c2))) in
+			       let wdtip = array_last (fst c1) -. (fst c1).(0) in
+			       let tipCurve = if info.is_double then
+						(* Compute the "co-tip" point by subtracting the 
+                                              "linewidth" horizontally to the tip *)
+						let x = xt -. (array_last (fst c1) -. (fst c1).(0)) in
+						let _ = (fst c0).(0) <- x in
+						let _ = (snd c0).(0) <- yt in
+						let _ = array_update_last (fst c5) x in
+						let _ = array_update_last (snd c5) yt in
+						c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: []
+					      else
+						(* For simple arrows we merely close the curve *)
+						c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: ([|x0;xn|],[|y0;yn|]) :: []
+			       in
+			       tipCurve,
+			       tip,
+			       ((array_last (snd c3)) -. y0)
+			     | _ -> assert false
+			   end
+	    | _ -> assert false
+	  end
+	in
+	(* Compute how much we should scale the arrow when the line width is modified *)
+	let widthFactor = if info.is_double then
+			    info.tip_line_width /. size /. totalWidth
+			  else params.lineWidth *. 10. in
+	(* Bring the tip of the arrow  *)
+	let arr'= Curve.map (fun x-> ((x -. x_tip)*.size *. widthFactor))
+			    (fun y-> ((y -. y_tip)*.size *. widthFactor)) arr in
+	let arr''= Curve.rotate angle arr' in
+	let arr'''= Curve.map (fun x-> (x +. xe)) (fun y-> (y +. ye)) arr'' in
+	arr'''
 
-	else
-
-	  let short = max (0.15 *. params.lineWidth) 0.06 in
-	  let thickness = max (0.18 *. params.lineWidth) 0.04 in
-	  let height = max (0.4 *. params.lineWidth) 0.23 in
-	  let width = max (0.4 *. params.lineWidth) 0.23 in
-	  (* let short = max (0.5 *. params.lineWidth) 0.2 in *)
-	  (* let thickness = max (0.6 *. params.lineWidth) 0.2 in *)
-	  (* let height = max (2. *. short) 0.6 in *)
-	  (* let width = max (1.3 *. params.lineWidth) 0.4 in *)
-(*	  let _ = Printf.fprintf stderr "tip_line_width=%f\n" params.lineWidth ; flush stderr in*)
-	  (scale *. short, scale *. thickness, scale *. height, scale *. width, scale *. 0.01)
-
-      let base_arrow env ?head_or_tail:(head_or_tail=true) head_params transfos edge_info=
+(* Helper function to shorten the main curves of a path when an arrow head is added *)
+(* grad is the gradient of the curve at the point where the arrow head is added *)
+(* info is the current Edge.info *)
+(* tip is the curve of the added arrow head *)
+(* curve0 is the curve we want to shorten *)
+(* Note: in the presence of a "double" arrow, we need to raise [curve0] because the line width isn't *)
+(* taken into account when computing intersections *)
+(* Note 2: in the presence of a "double arrow" we take the latest
+intersection. Maybe this could be modified by slightly changing the
+[margin], but the current solution is the best I could get for now. *)
+let cliptip grad info tip curve0 =
+    let margin = 	if info.tip_info.is_double then
+			  0.5 *. (info.tip_info.tip_line_width +. info.params.lineWidth)  else 0. in
+    let normale = Vector.(normalise ~norm:margin (turn_left grad)) in
+    let curve = Curve.translate normale curve0 in
+    let (j,t') as finish = begin
+	match tip with
+	| [] -> ((Curve.nb_beziers curve) - 1,1.)
+	| [xs,ys] when Array.length xs <= 1 -> ((Curve.nb_beziers curve) - 1,1.)
+	| curve2 ->
+	   Curve.(app_default
+		    (if info.tip_info.is_double then
+		      latest_intersection
+		    else earliest_intersection)
+		   curve curve2 ((Curve.nb_beziers curve) - 1,1.))
+      end in
+    if Curve.compare_lt (0,0.) finish < 0 then
+      Curve.internal_restrict curve0 (0,0.) finish
+    else Curve.restrict curve0 0. 0.
+			    
+(* Transformation for adding an arrow head *)
+      let base_arrow env ?head_or_tail:(head_or_tail=true) transfos edge_info=
+	(* We first compute the gradient where the arrow head should be added *)
 	let info = edge_info.tip_info in
 	let params = edge_info.params in
 	let underlying_curve = edge_info.underlying_curve in
 	let time = if head_or_tail then 1. else 0. in
-	let (da,db) as grad = Vector.scal_mul (if head_or_tail then 1. else -1.) (Curve.eval (Curve.gradient underlying_curve) time) in
-	let short, thickness, height, width, lw = head_params env info params in
-	let thickness' = thickness -. thickness *. info.tip_line_width /. 2. /. width in
-
-	(* Control points on the curve *)
+	let (da,db) as grad = Vector.scal_mul
+				(if head_or_tail then 1. else -1.)
+				(Curve.eval (Curve.gradient underlying_curve) time)
+	in
+	(* Corresponding point on the curve *)
 	let (xe,ye) as e = Curve.eval underlying_curve time in
-	(*let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in*)
-	let edge_info' = Transfo.transform [(if head_or_tail then shortenE else shortenS) short] edge_info in
-	begin match edge_info'.underlying_curve with
-	  [xs,ys] when Array.length xs = 1 ->
-	    edge_info'
-	| _ ->
-	  let curve0 = edge_info'.underlying_curve in
-	(*let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in*)
-	  let e0 = Curve.eval curve0 time in
-	  let ee0 = Vector.of_points e e0 in
-	  let e1 = Vector.(+) e (Vector.normalise ~norm:thickness ee0) in
-	  let e2 = Vector.(+) e (Vector.normalise ~norm:height ee0) in
-
-	  let lnormale = Vector.rotate 90. (Vector.normalise grad) in
-	  let rnormale = Vector.rotate (-. 90.) (Vector.normalise grad) in
-
-	(* Left control points *)
-	  let l = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) lnormale) in
-	  let ll = Vector.(+) e2 (Vector.normalise ~norm:(width) lnormale) in
-	  let l' = Vector.(+) l (Vector.normalise ~norm:thickness' ee0) in
-
-	(* Right control points *)
-	  let r = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) rnormale) in
-	  let rr = Vector.(+) e2 (Vector.normalise ~norm:(width) rnormale) in
-	  let r' = Vector.(+) r (Vector.normalise ~norm:thickness' ee0) in
-
-	(* Put everything together *)
-	  let tip = Curve.of_point_lists ((Curve.make_quadratic e l ll)
-					  @ (Curve.make_quadratic ll l' e1)
-					  @ (Curve.make_quadratic e1 r' rr)
-					  @ (Curve.make_quadratic rr r e))
-	  in
-	  { edge_info' with decorations = edge_info'.decorations @
-	      [Curve ({ params with
-		close = true ;
-		fillColor = params.strokingColor ;
-		lineWidth = lw }, tip)]}
+	(* We then extract curves for the standard arrow head from the font; [env] is used to determine the size *)
+	let arrowCurves, size = fontArrowHeadCurves env in
+	(* We then eliminate some degenerate cases *)
+	begin match edge_info.underlying_curve with
+		[xs,ys] when Array.length xs = 1 ->
+		edge_info
+	      | _ when params.lineWidth = 0. -> edge_info
+	      | _ ->
+		 (* Now we're in business *)
+		 let angle = Vector.angle grad in
+		 let tip = fontArrowHead e angle env edge_info.tip_info params arrowCurves size in 
+		 { edge_info with
+		   (* We shorten the main curves as needed *)
+		   curves = List.map (fun (params,curve) -> params, cliptip grad edge_info tip curve)
+				     edge_info.curves ;
+		   (* and add the new decoration *)
+		   decorations = edge_info.decorations @
+						   [Curve ({ params with
+	      						     strokingColor=None;
+							     close = true ;
+							     fillColor = params.strokingColor ;
+							     lineWidth = 0. }, tip)]}
 	end
 
       let arrowOf, arrow_head_pet =
-        Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow head"
-          (fun pet env head_params ->
-	     { pet = pet ; transfo = base_arrow env head_params })
-      let arrow env = arrowOf env head_moustache
+	Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow head"
+		     (fun pet env  ->
+		      { pet = pet ; transfo = base_arrow env  })
+      let arrow env = arrowOf env 
 
       let backArrowOf, backArrow_head_pet =
-        Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow tail"
-          (fun pet env head_params ->
-	     { pet = pet ; transfo = base_arrow env ~head_or_tail:false head_params })
-      let arrow' env = backArrowOf env head_moustache
+	Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow tail"
+		     (fun pet env ->
+		      { pet = pet ; transfo = base_arrow env ~head_or_tail:false })
+      let arrow' env = backArrowOf env
 
       let modToOf,mod_to_of_pet = Pet.register ~depends:[draw_pet] "mod to"
 	(fun pet time width env ->
