@@ -1226,12 +1226,12 @@ let parser math_toplevel =
     | e:wrapped_caml_array -> <:expr<$array:e$>>
     | e:wrapped_caml_list  -> <:expr<$list:e$>>
 
-  let reserved_macro = [ "Caml"; "begin"; "end"; "item"; "verb" ]
+  let reserved_macro = [ "Caml"; "begin"; "end"; "item"; "verb"; "diagram" ]
 
   let macro_name = change_layout (
     parser "\\" - m:lid ->
       if List.mem m reserved_macro then
-        raise (Give_up (m ^ "is a reserved macro")); m
+        raise (Give_up (m ^ " is a reserved macro")); m
     ) no_blank
 
   let macro =
@@ -1240,6 +1240,16 @@ let parser math_toplevel =
                         (let fn = fun acc r -> <:expr@_loc_args<$acc$ $r$>> in
                          List.fold_left fn <:expr@_loc_m<$lid:m$>> args)
     | m:verbatim_macro -> m
+
+    | "\\diagram" s:(change_layout wrapped_caml_structure blank2) ->
+        <:expr<
+          [bB (fun env ->
+            let module Res =
+              struct
+                module EnvDiagram = Env_Diagram (struct let env = env end) ;;
+                $s$ ;;
+              end
+             in [ Drawing (Res.EnvDiagram.make ()) ])]>>
 
 (****************************)
 
