@@ -567,16 +567,21 @@ let before_parse_hook () =
     let gram = findPath "DefaultGrammar.tgy" path in
     let ch = open_in_bin gram in
     Printf.eprintf "Reading default grammar %s\n%!" gram;
-    state.infix_symbols <- input_value ch;
-    state.prefix_symbols <- input_value ch;
-    state.postfix_symbols <- input_value ch;
-    state.quantifier_symbols <- input_value ch;
-    state.atom_symbols <- input_value ch;
-    state.accent_symbols <- input_value ch;
-    state.left_delimiter_symbols <- input_value ch;
-    state.right_delimiter_symbols <- input_value ch;
-    state.operator_symbols <- input_value ch;
-    state.combining_symbols <- input_value ch;
+    let fstate = input_value ch in
+    state.infix_symbols           <- fstate.infix_symbols;
+    state.prefix_symbols          <- fstate.prefix_symbols;
+    state.postfix_symbols         <- fstate.postfix_symbols;
+    state.quantifier_symbols      <- fstate.quantifier_symbols;
+    state.atom_symbols            <- fstate.atom_symbols;
+    state.accent_symbols          <- fstate.accent_symbols;
+    state.left_delimiter_symbols  <- fstate.left_delimiter_symbols;
+    state.right_delimiter_symbols <- fstate.right_delimiter_symbols;
+    state.operator_symbols        <- fstate.operator_symbols;
+    state.combining_symbols       <- fstate.combining_symbols;
+    state.word_macros             <- fstate.word_macros;
+    state.math_macros             <- fstate.math_macros;
+    state.paragraph_macros        <- fstate.paragraph_macros;
+    state.environment             <- fstate.environment;
     build_grammar ();
     Printf.eprintf "Read default grammar\n%!";
     close_in ch;
@@ -1643,16 +1648,7 @@ let _ =
        let ch = open_out_bin name in
        Printf.eprintf "Writing default grammar\n%!";
        let open PaExt in
-       output_value ch state.infix_symbols;
-       output_value ch state.prefix_symbols;
-       output_value ch state.postfix_symbols;
-       output_value ch state.quantifier_symbols;
-       output_value ch state.atom_symbols;
-       output_value ch state.accent_symbols;
-       output_value ch state.left_delimiter_symbols;
-       output_value ch state.right_delimiter_symbols;
-       output_value ch state.operator_symbols;
-       output_value ch state.combining_symbols;
+       output_value ch state;
        Printf.eprintf "Written default grammar\n%!";
        close_out ch
     | _ -> Printf.eprintf "Not writing default grammar, no filename\n%!";
