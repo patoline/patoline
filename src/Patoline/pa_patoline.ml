@@ -1335,7 +1335,7 @@ let parser math_toplevel =
          <:structure< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output)(D)
                       open $uid:temp_id$>>)
     | | "\\item" -> (fun _ ->
-        (let m1 = freshUid () in
+         let m1 = freshUid () in
          let m2 = freshUid () in
          let _Item = "Item" in
          <:structure< module $uid:m1$ =
@@ -1343,18 +1343,42 @@ let parser math_toplevel =
                        module $uid:m2$ = $uid : _Item$ ;;
                        let _ = $uid:m2$.do_begin_env () ;;
                        let _ = $uid:m2$.do_end_env ()
-                     end>>))
-    | | "\\begin{" idb:lid '}'
+                     end>>)
+    | | "\\begin{" idb:lid '}' args:macro_argument**
        ps:(change_layout paragraphs blank2)
        "\\end{" ide:lid '}' ->
          (fun indent_first ->
            if idb <> ide then raise (Give_up "Non-matching begin / end");
            let m1 = freshUid () in
            let m2 = freshUid () in
-           let _Env = "Env_" in
+           let arg =
+             if args = [] then <:structure<>> else
+               let gen i e =
+                 let id = Printf.sprintf "arg%i" (i+1) in
+                 <:structure<let $lid:id$ = $e$ ;;>>
+               in
+               let args = List.mapi gen args in
+               let combine acc e = <:structure<$acc$ ;; $e$ ;;>> in
+               let args = List.fold_left combine <:structure<>> args in
+               <:structure<
+                 module $uid:("Arg_"^m2)$ =
+                   struct
+                     $args$ ;;
+                   end
+               >>
+           in
+           let def =
+             let name = "Env_" ^ idb in
+             let argname = "Arg_" ^ m2 in
+             if args = [] then
+               <:structure<module $uid:m2$ = $uid:name$ ;;>>
+             else
+               <:structure<module $uid:m2$ = $uid:name$($uid:argname$) ;;>>
+           in
            <:structure< module $uid:m1$ =
                        struct
-                         module $uid:m2$ = $uid:(_Env^idb)$ ;;
+                         $arg$ ;;
+                         $def$ ;;
                          open $uid:m2$ ;;
                          let _ = $uid:m2$ . do_begin_env () ;;
                          $(ps indent_first)$ ;;
