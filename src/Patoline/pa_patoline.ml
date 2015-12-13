@@ -388,6 +388,19 @@ let symbol ss =
 type config = EatR | EatL | Name of string list * string | Arity of int
   | GivePos | Arg of int * string | ArgNoPar of int | IsIdentity
 
+let real_name id cs =
+  let rec find_name : config list -> string list * string = function
+    | []               -> raise Not_found
+    | Name(mp,id) :: _ -> (mp,id)
+    | _ :: cs          -> find_name cs
+  in
+  let (mp, id) = try find_name cs with Not_found -> ([], id) in
+  let _loc = Location.none in
+  if mp = [] then
+    <:expr<$lid:id$>>
+  else
+    assert false (* TODO *)
+
 let parser config =
   | "eat_right"                           -> EatR
   | "eat_left"                            -> EatL
@@ -1042,9 +1055,10 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
        let config =
          try List.assoc id state.math_macros with Not_found -> []
        in
+       let m = real_name id config in
        (* TODO special macro properties to be handled. *)
        let apply acc arg = <:expr<$acc$ $arg$>> in
-       let e = List.fold_left apply <:expr<$lid:id$>> args in
+       let e = List.fold_left apply <:expr<$m$>> args in
        print_math_deco _loc_id e indices
      ), AtomM
 
