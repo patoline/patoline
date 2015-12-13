@@ -394,12 +394,13 @@ let real_name id cs =
     | Name(mp,id) :: _ -> (mp,id)
     | _ :: cs          -> find_name cs
   in
-  let (mp, id) = try find_name cs with Not_found -> ([], id) in
+  let (mp, mid) = try find_name cs with Not_found -> ([], id) in
   let _loc = Location.none in
   if mp = [] then
-    <:expr<$lid:id$>>
+    <:expr<$lid:mid$>>
   else
-    assert false (* TODO *)
+    (* FIXME module path *)
+    <:expr<$lid:mid$>>
 
 let parser config =
   | "eat_right"                           -> EatR
@@ -1266,6 +1267,7 @@ let parser math_toplevel =
             let module Res =
               struct
                 module EnvDiagram = Env_Diagram (struct let env = env end) ;;
+                open EnvDiagram ;;
                 $s$ ;;
               end
              in [ Drawing (Res.EnvDiagram.make ()) ])]>>
