@@ -106,6 +106,7 @@ type entry_point =
   | Interface of Parsetree.signature_item list Decap.grammar* blank
 module Initial =
   struct
+    let before_parse_hook () = ()
     let char_literal: char grammar = declare_grammar "char_literal"
     let string_literal: string grammar = declare_grammar "string_literal"
     let regexp_literal: string grammar = declare_grammar "regexp_literal"
@@ -127,7 +128,7 @@ module Initial =
              | '*' ->
                  let (c',_,_) = Input.read str' pos' in
                  if c' = ')'
-                 then raise (Give_up "Not the place to close a comment")
+                 then give_up "Not the place to close a comment"
                  else ((), str', pos')
              | _ -> ((), str', pos')) Charset.full_charset None "ANY"
     let comment_content =
@@ -480,7 +481,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Expression e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
       | Not_found  -> assert false
     let push_expression pos e =
       match Stack.top quote_stack with
@@ -497,7 +498,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Module_expr e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
       | Not_found  -> assert false
     let push_module_expr pos e =
       match Stack.top quote_stack with
@@ -514,7 +515,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Module_type e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
       | Not_found  -> assert false
     let push_module_type pos e =
       match Stack.top quote_stack with
@@ -529,7 +530,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Expression_list e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_expression_list pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -542,7 +543,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Constr_decl e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_constr_decl pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -555,7 +556,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Field_decl e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_field_decl pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -568,7 +569,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Record e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_record pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -581,7 +582,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Cases e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_cases pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -594,7 +595,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Let_binding e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_let_binding pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -609,7 +610,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Type e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_type pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -622,7 +623,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Type_list e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_type_list pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -637,7 +638,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Pattern e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_pattern pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -650,7 +651,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Pattern_list e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_pattern_list pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -663,7 +664,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Structure e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_structure pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -676,7 +677,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Signature e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_signature pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -689,7 +690,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | String e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_string pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -702,7 +703,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Int e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_int pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -715,7 +716,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Int32 e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_int32 pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -728,7 +729,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Int64 e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_int64 pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -741,7 +742,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Natint e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_natint pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -754,7 +755,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Float e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_float pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -767,7 +768,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Char e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_char pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -780,7 +781,7 @@ module Initial =
             (match List.assoc pos (!env) with
              | Bool e -> e
              | _ -> assert false)
-      with | Stack.Empty  -> raise (Give_up "Illegal anti-quotation")
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
     let push_bool pos e =
       match Stack.top quote_stack with
       | First env -> assert false
@@ -1027,9 +1028,7 @@ module Initial =
       Decap.alternatives
         [Decap.apply
            (fun id  ->
-              if is_reserved_id id
-              then raise (Give_up (id ^ " is a keyword..."));
-              id)
+              if is_reserved_id id then give_up (id ^ " is a keyword..."); id)
            (Decap.regexp ~name:"ident" ident_re (fun groupe  -> groupe 0));
         Decap.fsequence
           (Decap.apply_position
@@ -1091,8 +1090,7 @@ module Initial =
                        else raise Exit in
                    push_location id'
                with | Exit  -> ());
-              if is_reserved_id id
-              then raise (Give_up (id ^ " is a keyword..."));
+              if is_reserved_id id then give_up (id ^ " is a keyword...");
               id)
            (Decap.regexp ~name:"lident" lident_re (fun groupe  -> groupe 0));
         Decap.fsequence
@@ -1146,6 +1144,8 @@ module Initial =
         "|]";
         "}";
         "~"]
+    let arrow_re =
+      Decap.regexp "\\(->\\)\\|\\(\226\134\146\\)" (fun groupe  -> groupe 0)
     let infix_symb_re =
       union_re
         ["[=<>@^|&+*/$%-][!$%&*+./:<=>?@^|~-]*";
@@ -1166,8 +1166,7 @@ module Initial =
       Decap.apply
         (fun sym  ->
            if is_reserved_symb sym
-           then
-             raise (Give_up ("The infix sybol " ^ (sym ^ "is reserved...")));
+           then give_up ("The infix sybol " ^ (sym ^ "is reserved..."));
            sym)
         (Decap.regexp ~name:"infix_symb" infix_symb_re
            (fun groupe  -> groupe 0))
@@ -1175,9 +1174,7 @@ module Initial =
       Decap.apply
         (fun sym  ->
            if (is_reserved_symb sym) || (sym = "!=")
-           then
-             raise
-               (Give_up ("The prefix symbol " ^ (sym ^ "is reserved...")));
+           then give_up ("The prefix symbol " ^ (sym ^ "is reserved..."));
            sym)
         (Decap.regexp ~name:"prefix_symb" prefix_symb_re
            (fun groupe  -> groupe 0))
@@ -1192,8 +1189,7 @@ module Initial =
              for i = 0 to len_s - 1 do
                (let (c,_str',_pos') = read (!str') (!pos') in
                 if c <> (s.[i])
-                then
-                  raise (Give_up ("The keyword " ^ (s ^ " was expected...")));
+                then give_up ("The keyword " ^ (s ^ " was expected..."));
                 str' := _str';
                 pos' := _pos')
              done;
@@ -1202,7 +1198,7 @@ module Initial =
               let (c,_,_) = read str' pos' in
               match c with
               | 'a'..'z'|'A'..'Z'|'0'..'9'|'_'|'\'' ->
-                  raise (Give_up ("The keyword " ^ (s ^ " was expected...")))
+                  give_up ("The keyword " ^ (s ^ " was expected..."))
               | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) None s
     let mutable_kw = key_word "mutable"
     let mutable_flag =

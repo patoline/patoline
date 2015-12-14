@@ -521,9 +521,7 @@ module Ext(In:Extension) =
                            __loc__end__buf __loc__end__pos in
                        ((opt <> None),
                          (if (String.length s) = 0
-                          then
-                            raise
-                              (Decap.Give_up "Empty string litteral in rule.");
+                          then Decap.give_up "Empty string litteral in rule.";
                           (let e =
                              loc_expr _loc_s (Pexp_constant (const_string s)) in
                            let opt =
@@ -599,10 +597,10 @@ module Ext(In:Extension) =
              then
                let (c',_,_) = Input.read str' pos' in
                (if c' = '>'
-                then raise (Decap.Give_up "'-' expected")
+                then Decap.give_up "'-' expected"
                 else ((), str', pos'))
-             else raise (Decap.Give_up "'-' expexted"))
-        (Charset.singleton '-') None "-"
+             else Decap.give_up "'-' expexted") (Charset.singleton '-') None
+        "-"
     let glr_left_member =
       let f x y = match x with | Some x -> x | None  -> y in
       Decap.sequence
@@ -725,8 +723,8 @@ module Ext(In:Extension) =
         [Decap.sequence (Decap.string "->>" "->>") glr_rule
            (fun _  ->
               fun r  -> let (a,b,c) = build_rule r in DepSeq (a, b, c));
-        Decap.sequence (Decap.string "->" "->") expression
-          (fun _  -> fun action  -> Normal action);
+        Decap.sequence arrow_re expression
+          (fun _default_0  -> fun action  -> Normal action);
         Decap.apply (fun _  -> Default) (Decap.empty ())]
     let _ =
       Decap.set_grammar glr_rule
@@ -883,9 +881,7 @@ module Ext(In:Extension) =
                                match (a, ls) with
                                | (None ,(a,_)::ls) -> fn (Some a) ls
                                | (Some a',(a,_)::ls) when a <> a' ->
-                                   raise
-                                     (Decap.Give_up
-                                        "Inhomogenous alternatives")
+                                   Decap.give_up "Inhomogenous alternatives"
                                | (_,_::ls) -> fn a ls
                                | (_,[]) -> a in
                              let a = fn a rs in

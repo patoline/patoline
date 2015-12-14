@@ -45,7 +45,11 @@ function build {
     ./tests_pa_ocaml.sh
 }
 
-#we need a pa_ocaml able to bootstrap and 4.00 and 3.12 compiler-libs can't print ast, hence the copy below
+build 4.02.3
+cp -f pa_ocaml pa_ocaml-4.02.3
+
+build 4.02.2
+cp -f pa_ocaml pa_ocaml-4.02.2
 
 build 4.02.1
 cp -f pa_ocaml pa_ocaml-4.02.1
@@ -56,14 +60,16 @@ cp -f pa_ocaml pa_ocaml-4.02.0
 build 4.01.0
 cp -f pa_ocaml pa_ocaml-4.01.0
 
-cp -f pa_ocaml-4.01.0 pa_ocaml
-build 4.00.1
-
-cp -f pa_ocaml-4.01.0 pa_ocaml
-build 3.12.1
+# starting to remove support for 3.12.1 and 4.00.1 that
+# can not print ast.
+#cp -f pa_ocaml-4.01.0 pa_ocaml
+#build 4.00.1
+#
+#cp -f pa_ocaml-4.01.0 pa_ocaml
+#build 3.12.1
 
 export PATH=$OPATH
 
 #make sure not to have a pa_ocaml which can not bootstrap
-cp -f pa_ocaml-4.01.0 pa_ocaml
+cp -f pa_ocaml-`ocamlc -vnum` pa_ocaml
 $MAKE distclean

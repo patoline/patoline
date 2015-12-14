@@ -2,7 +2,7 @@ open Pa_ocaml_prelude
 open Pa_ocaml
 open Decap
 open Format
-module type Final =
+module type Final  =
   sig
     include Extension
     exception Top_Exit
@@ -14,6 +14,7 @@ module Start(Main:Final) =
     let _ =
       Arg.parse (!spec) anon_fun
         (Printf.sprintf "usage: %s [options] file" (Sys.argv.(0)))
+    let _ = Main.before_parse_hook ()
     let entry =
       match ((!entry), (!file)) with
       | (FromExt ,Some s) ->

@@ -11,22 +11,26 @@ let memoize1 f =
     with | Not_found  -> let res = f x in (Hashtbl.add h x res; res)
 let memoize2 f =
   let h = Hashtbl.create 1001 in
-  fun x  y  ->
-    try Hashtbl.find h (x, y)
-    with | Not_found  -> let res = f x y in (Hashtbl.add h (x, y) res; res)
+  fun x  ->
+    fun y  ->
+      try Hashtbl.find h (x, y)
+      with | Not_found  -> let res = f x y in (Hashtbl.add h (x, y) res; res)
 let memoize2' f =
   let h = Hashtbl.create 1001 in
-  fun a  x  y  ->
-    try Hashtbl.find h (x, y)
-    with | Not_found  -> let res = f a x y in (Hashtbl.add h (x, y) res; res)
+  fun a  ->
+    fun x  ->
+      fun y  ->
+        try Hashtbl.find h (x, y)
+        with
+        | Not_found  -> let res = f a x y in (Hashtbl.add h (x, y) res; res)
 let fast = ref false
 let file: string option ref = ref None
 let ascii = ref false
 let in_ocamldep = ref false
-type entry =  
+type entry =
   | FromExt
   | Impl
-  | Intf 
+  | Intf
 let entry = ref FromExt
 let modern = ref false
 let spec =
@@ -84,9 +88,10 @@ let (push_frame,pop_frame,push_location,pop_location) =
        try
          let h = Stack.pop loc_tbl in
          Hashtbl.iter
-           (fun l  _  ->
-              try let h' = Stack.top loc_tbl in Hashtbl.replace h' l ()
-              with | Stack.Empty  -> ()) h
+           (fun l  ->
+              fun _  ->
+                try let h' = Stack.top loc_tbl in Hashtbl.replace h' l ()
+                with | Stack.Empty  -> ()) h
        with | Stack.Empty  -> ()),
     (fun id  ->
        try let h = Stack.top loc_tbl in Hashtbl.replace h id ()
@@ -96,11 +101,12 @@ let (push_frame,pop_frame,push_location,pop_location) =
          let h = Stack.top loc_tbl in
          if Hashtbl.mem h id then (Hashtbl.remove h id; true) else false
        with | Stack.Empty  -> false))
-type entry_point =  
+type entry_point =
   | Implementation of Parsetree.structure_item list Decap.grammar* blank
-  | Interface of Parsetree.signature_item list Decap.grammar* blank 
+  | Interface of Parsetree.signature_item list Decap.grammar* blank
 module Initial =
   struct
+    let before_parse_hook () = ()
     let char_literal: char grammar = declare_grammar "char_literal"
     let string_literal: string grammar = declare_grammar "string_literal"
     let regexp_literal: string grammar = declare_grammar "regexp_literal"
@@ -121,48 +127,56 @@ module Initial =
            | '*' ->
                let (c',_,_) = Input.read str' pos' in
                if c' = ')'
-               then give_up "Not the place to close a comment"
+               then raise (Give_up "Not the place to close a comment")
                else ((), str', pos')
            | _ -> ((), str', pos')) Charset.full_charset None "ANY"
     let comment_content =
       Decap.alternatives'
         [Decap.apply (fun _  -> ()) comment;
         Decap.apply (fun _  -> ()) string_literal;
+        Decap.apply (fun _  -> ()) char_literal;
         Decap.apply (fun _  -> ()) any_not_closing]
     let _ =
       set_grammar comment
         (change_layout
            (Decap.fsequence
               (Decap.apply_position
-                 (fun _  __loc__start__buf  __loc__start__pos 
-                    __loc__end__buf  __loc__end__pos  ->
-                    let _loc =
-                      locate __loc__start__buf __loc__start__pos
-                        __loc__end__buf __loc__end__pos in
-                    Stack.push _loc cstack) (Decap.string "(*" "(*"))
+                 (fun _  ->
+                    fun __loc__start__buf  ->
+                      fun __loc__start__pos  ->
+                        fun __loc__end__buf  ->
+                          fun __loc__end__pos  ->
+                            let _loc =
+                              locate __loc__start__buf __loc__start__pos
+                                __loc__end__buf __loc__end__pos in
+                            Stack.push _loc cstack) (Decap.string "(*" "(*"))
               (Decap.sequence
                  (Decap.apply List.rev
                     (Decap.fixpoint' []
-                       (Decap.apply (fun x  l  -> x :: l) comment_content)))
+                       (Decap.apply (fun x  -> fun l  -> x :: l)
+                          comment_content)))
                  (Decap.apply (fun _  -> Stack.pop cstack)
                     (Decap.string "*)" "*)"))
-                 (fun _default_1  _default_0  _default_2  ->
-                    (_default_2, _default_1, _default_0)))) no_blank)
+                 (fun _default_1  ->
+                    fun _default_0  ->
+                      fun _default_2  -> (_default_2, _default_1, _default_0))))
+           no_blank)
     let comments =
       Decap.apply (fun _  -> ())
         (Decap.apply List.rev
-           (Decap.fixpoint' [] (Decap.apply (fun x  l  -> x :: l) comment)))
+           (Decap.fixpoint' []
+              (Decap.apply (fun x  -> fun l  -> x :: l) comment)))
     let blank_blank_blank =
       Decap.sequence (Decap.regexp "[ \t\r]*" (fun groupe  -> groupe 0))
         (Decap.apply List.rev
            (Decap.fixpoint' []
-              (Decap.apply (fun x  l  -> x :: l)
+              (Decap.apply (fun x  -> fun l  -> x :: l)
                  (Decap.sequence (Decap.char '\n' '\n')
                     (Decap.regexp "[ \t\r]*" (fun groupe  -> groupe 0))
-                    (fun _  _  -> ()))))) (fun _  _  -> ())
+                    (fun _  -> fun _  -> ()))))) (fun _  -> fun _  -> ())
     let blank_blank = blank_grammar blank_blank_blank no_blank
     let blank = blank_grammar comments blank_blank
-    exception Unclosed_comment of int*int
+    exception Unclosed_comment of int* int
     let blank str pos =
       let rec fn lvl state prev ((str,pos) as cur) =
         let (c,str',pos') = read str pos in
@@ -175,7 +189,7 @@ module Initial =
         | (`Chr,_) -> fn lvl `Ini cur next
         | (`Str,'\\') -> fn lvl `Esc cur next
         | (`Str,_) -> fn lvl `Str cur next
-        | (`StrO l,('a'..'z')) -> fn lvl (`StrO (c :: l)) cur next
+        | (`StrO l,'a'..'z') -> fn lvl (`StrO (c :: l)) cur next
         | (`StrO l,'|') -> fn lvl (`StrI (List.rev l)) cur next
         | (`StrO _,_) -> fn lvl `Ini cur next
         | (`StrI l,'|') -> fn lvl (`StrC (l, l)) cur next
@@ -198,7 +212,7 @@ module Initial =
         | (_,_) when lvl > 0 -> fn lvl `Ini cur next
         | (_,_) -> cur in
       fn 0 `Ini (str, pos) (str, pos)
-    type expression_prio =  
+    type expression_prio =
       | Top
       | Let
       | Seq
@@ -219,7 +233,7 @@ module Initial =
       | Dash
       | Dot
       | Prefix
-      | Atom 
+      | Atom
     let next_exp =
       function
       | Top  -> Let
@@ -253,27 +267,27 @@ module Initial =
       declare_grammar "signature_item"
     let ((parameter :
            bool ->
-             [ `Arg of (string* expression option* pattern)
-             | `Type of string] grammar),set_parameter)
+             [ `Arg of (string* expression option* pattern) 
+             | `Type of string ] grammar),set_parameter)
       = grammar_family "parameter"
     let structure =
       Decap.apply (fun l  -> List.flatten l)
         (Decap.apply List.rev
            (Decap.fixpoint' []
-              (Decap.apply (fun x  l  -> x :: l) structure_item)))
+              (Decap.apply (fun x  -> fun l  -> x :: l) structure_item)))
     let signature =
       Decap.apply (fun l  -> List.flatten l)
         (Decap.apply List.rev
            (Decap.fixpoint' []
-              (Decap.apply (fun x  l  -> x :: l) signature_item)))
-    type type_prio =  
+              (Decap.apply (fun x  -> fun l  -> x :: l) signature_item)))
+    type type_prio =
       | TopType
       | As
       | Arr
       | ProdType
       | DashType
       | AppType
-      | AtomType 
+      | AtomType
     let type_prios =
       [TopType; As; Arr; ProdType; DashType; AppType; AtomType]
     let type_prio_to_string =
@@ -297,14 +311,14 @@ module Initial =
     let ((typexpr_lvl : type_prio -> core_type grammar),set_typexpr_lvl) =
       grammar_family ~param_to_string:type_prio_to_string "typexpr_lvl"
     let typexpr = typexpr_lvl TopType
-    type pattern_prio =  
+    type pattern_prio =
       | TopPat
       | AsPat
       | AltPat
       | TupPat
       | ConsPat
       | ConstrPat
-      | AtomPat 
+      | AtomPat
     let ((pattern_lvl : pattern_prio -> pattern grammar),set_pattern_lvl) =
       grammar_family "pattern_lvl"
     let pattern = pattern_lvl TopPat
@@ -441,16 +455,19 @@ module Initial =
            { pc_lhs = pat; pc_rhs = expr; pc_guard = guard }) cases
     let pexp_function cases = Pexp_function cases
     let pexp_fun (label,opt,pat,expr) = Pexp_fun (label, opt, pat, expr)
+    type record_field = (Longident.t Asttypes.loc* Parsetree.expression)
     let constr_decl_list: constructor_declaration list grammar =
       declare_grammar "constr_decl_list"
     let field_decl_list: label_declaration list grammar =
       declare_grammar "field_decl_list"
+    let record_list: record_field list grammar =
+      declare_grammar "record_list"
     let ((match_cases : expression_prio -> case list grammar),set_match_cases)
       = grammar_family "match_cases"
     let module_expr: module_expr grammar = declare_grammar "module_expr"
     let module_type: module_type grammar = declare_grammar "module_type"
-    type quote_env1 = (int* string* Parsetree.expression) list ref 
-    type quote_env2_data =  
+    type quote_env1 = (int* string* Parsetree.expression) list ref
+    type quote_env2_data =
       | Expression of Parsetree.expression
       | Expression_list of Parsetree.expression list
       | Pattern of Parsetree.pattern
@@ -461,6 +478,7 @@ module Initial =
       | Signature of Parsetree.signature_item list
       | Constr_decl of constructor_declaration list
       | Field_decl of label_declaration list
+      | Record of record_field list
       | Let_binding of value_binding list
       | Module_expr of module_expr
       | Module_type of module_type
@@ -472,11 +490,11 @@ module Initial =
       | Natint of nativeint
       | Float of float
       | Char of char
-      | Bool of bool 
-    type quote_env2 = (int* quote_env2_data) list ref 
-    type quote_env =  
+      | Bool of bool
+    type quote_env2 = (int* quote_env2_data) list ref
+    type quote_env =
       | First of quote_env1
-      | Second of quote_env2 
+      | Second of quote_env2
     let quote_stack: quote_env Stack.t = Stack.create ()
     let empty_quote_env1 () = First (ref [])
     let empty_quote_env2 () = Second (ref [])
@@ -568,6 +586,19 @@ module Initial =
       match Stack.top quote_stack with
       | First env -> assert false
       | Second env -> env := ((pos, (Field_decl e)) :: (!env))
+    let push_pop_record pos e =
+      try
+        match Stack.top quote_stack with
+        | First env -> (env := ((pos, "push_record", e) :: (!env)); [])
+        | Second env ->
+            (match List.assoc pos (!env) with
+             | Record e -> e
+             | _ -> assert false)
+      with | Stack.Empty  -> give_up "Illegal anti-quotation"
+    let push_record pos e =
+      match Stack.top quote_stack with
+      | First env -> assert false
+      | Second env -> env := ((pos, (Record e)) :: (!env))
     let push_pop_cases pos e =
       try
         match Stack.top quote_stack with
@@ -818,6 +849,7 @@ module Initial =
          | "structure" -> ignore (parse_string' structure e)
          | "signature" -> ignore (parse_string' signature e)
          | "constructors" -> ignore (parse_string' constr_decl_list e)
+         | "record" -> ignore (parse_string' record_list e)
          | "fields" -> ignore (parse_string' field_decl_list e)
          | "cases" -> ignore (parse_string' (match_cases Top) e)
          | "let_binding" -> ignore (parse_string' let_binding e)
@@ -855,18 +887,20 @@ module Initial =
                            _loc))))])) in
        let push_expr =
          List.fold_left
-           (fun acc  (pos,name,e)  ->
-              let push_e =
-                loc_expr _loc
-                  (Pexp_apply
-                     ((loc_expr _loc
-                         (Pexp_ident
-                            (id_loc
-                               (Ldot ((Lident "Pa_ocaml_prelude"), name))
-                               _loc))),
-                       [("", (loc_expr _loc (Pexp_constant (Const_int pos))));
-                       ("", e)])) in
-              loc_expr _loc (Pexp_sequence (acc, push_e))) push_expr (
+           (fun acc  ->
+              fun (pos,name,e)  ->
+                let push_e =
+                  loc_expr _loc
+                    (Pexp_apply
+                       ((loc_expr _loc
+                           (Pexp_ident
+                              (id_loc
+                                 (Ldot ((Lident "Pa_ocaml_prelude"), name))
+                                 _loc))),
+                         [("",
+                            (loc_expr _loc (Pexp_constant (Const_int pos))));
+                         ("", e)])) in
+                loc_expr _loc (Pexp_sequence (acc, push_e))) push_expr (
            !env) in
        let pop_expr =
          loc_expr _loc
@@ -929,6 +963,7 @@ module Initial =
     let quote_signature_2 loc e = parse_string' signature e
     let quote_constructors_2 loc e = parse_string' constr_decl_list e
     let quote_fields_2 loc e = parse_string' field_decl_list e
+    let quote_record_2 loc e = parse_string' record_list e
     let quote_let_binding_2 loc e = parse_string' let_binding e
     let quote_module_expr_2 loc e =
       mexpr_loc loc (parse_string' module_expr e).pmod_desc
@@ -942,7 +977,8 @@ module Initial =
     let cident_re = "[A-Z][a-zA-Z0-9_']*"
     let ident_re = "[A-Za-z_][a-zA-Z0-9_']*"
     let make_reserved l =
-      let reserved = ref (List.sort (fun s  s'  -> - (compare s s')) l) in
+      let reserved =
+        ref (List.sort (fun s  -> fun s'  -> - (compare s s')) l) in
       let re_from_list l =
         Str.regexp
           (String.concat "\\|"
@@ -953,7 +989,8 @@ module Initial =
             ((Str.match_end ()) = (String.length s))),
         (fun s  ->
            reserved :=
-             (List.sort (fun s  s'  -> - (compare s s')) (s :: (!reserved)));
+             (List.sort (fun s  -> fun s'  -> - (compare s s')) (s ::
+                (!reserved)));
            re := (re_from_list (!reserved))))
     let (is_reserved_id,add_reserved_id) =
       make_reserved
@@ -1017,36 +1054,52 @@ module Initial =
         [Decap.apply
            (fun id  ->
               if is_reserved_id id
-              then give_up (id ^ " is a keyword...");
+              then raise (Give_up (id ^ " is a keyword..."));
               id)
            (Decap.regexp ~name:"ident" ident_re (fun groupe  -> groupe 0));
         Decap.fsequence
           (Decap.apply_position
-             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (fun x  ->
+                fun str  ->
+                  fun pos  ->
+                    fun str'  -> fun pos'  -> ((locate str pos str' pos'), x))
              (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "ident" "ident")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
                    (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
-                   (fun e  _  _  _  dol  ->
-                      let (_loc_dol,dol) = dol in
-                      push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e))))]
+                   (fun e  ->
+                      fun _  ->
+                        fun _  ->
+                          fun _  ->
+                            fun dol  ->
+                              let (_loc_dol,dol) = dol in
+                              push_pop_string
+                                (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let capitalized_ident =
       Decap.alternatives
         [Decap.regexp ~name:"cident" cident_re (fun groupe  -> groupe 0);
         Decap.fsequence
           (Decap.apply_position
-             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (fun x  ->
+                fun str  ->
+                  fun pos  ->
+                    fun str'  -> fun pos'  -> ((locate str pos str' pos'), x))
              (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "uid" "uid")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
                    (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
-                   (fun e  _  _  _  dol  ->
-                      let (_loc_dol,dol) = dol in
-                      push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e))))]
+                   (fun e  ->
+                      fun _  ->
+                        fun _  ->
+                          fun _  ->
+                            fun dol  ->
+                              let (_loc_dol,dol) = dol in
+                              push_pop_string
+                                (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let lowercase_ident =
       Decap.alternatives
         [Decap.apply
@@ -1065,21 +1118,29 @@ module Initial =
                    push_location id'
                with | Exit  -> ());
               if is_reserved_id id
-              then give_up (id ^ " is a keyword...");
+              then raise (Give_up (id ^ " is a keyword..."));
               id)
            (Decap.regexp ~name:"lident" lident_re (fun groupe  -> groupe 0));
         Decap.fsequence
           (Decap.apply_position
-             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (fun x  ->
+                fun str  ->
+                  fun pos  ->
+                    fun str'  -> fun pos'  -> ((locate str pos str' pos'), x))
              (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "lid" "lid")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
                    (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
-                   (fun e  _  _  _  dol  ->
-                      let (_loc_dol,dol) = dol in
-                      push_pop_string (start_pos _loc_dol).Lexing.pos_cnum e))))]
+                   (fun e  ->
+                      fun _  ->
+                        fun _  ->
+                          fun _  ->
+                            fun dol  ->
+                              let (_loc_dol,dol) = dol in
+                              push_pop_string
+                                (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let (is_reserved_symb,add_reserved_symb) =
       make_reserved
         ["#";
@@ -1111,6 +1172,8 @@ module Initial =
         "|]";
         "}";
         "~"]
+    let arrow_re =
+      Decap.regexp "\\(->\\)\\|\\(\226\134\146\\)" (fun groupe  -> groupe 0)
     let infix_symb_re =
       union_re
         ["[=<>@^|&+*/$%-][!$%&*+./:<=>?@^|~-]*";
@@ -1154,7 +1217,7 @@ module Initial =
              (let (c,_str',_pos') = read (!str') (!pos') in
               if c <> (s.[i])
               then
-                give_up ("The keyword " ^ (s ^ " was expected..."));
+                raise (Give_up ("The keyword " ^ (s ^ " was expected...")));
               str' := _str';
               pos' := _pos')
            done;
@@ -1162,7 +1225,7 @@ module Initial =
             let (c,_,_) = read str' pos' in
             match c with
             | 'a'|'b'..'z'|'A'..'Z'|'0'..'9'|'_'|'\'' ->
-                give_up ("The keyword " ^ (s ^ " was expected..."))
+                raise (Give_up ("The keyword " ^ (s ^ " was expected...")))
             | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) None s
     let mutable_kw = key_word "mutable"
     let mutable_flag =
@@ -1249,87 +1312,128 @@ module Initial =
            (Decap.regexp ~name:"int_pos" int_pos_re (fun groupe  -> groupe 0));
         Decap.fsequence
           (Decap.apply_position
-             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (fun x  ->
+                fun str  ->
+                  fun pos  ->
+                    fun str'  -> fun pos'  -> ((locate str pos str' pos'), x))
              (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "int" "int")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
                    (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
-                   (fun e  _  _  _  dol  ->
-                      let (_loc_dol,dol) = dol in
-                      push_pop_int (start_pos _loc_dol).Lexing.pos_cnum e))))]
+                   (fun e  ->
+                      fun _  ->
+                        fun _  ->
+                          fun _  ->
+                            fun dol  ->
+                              let (_loc_dol,dol) = dol in
+                              push_pop_int
+                                (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let int32_lit =
       Decap.alternatives
         [Decap.apply (fun i  -> Int32.of_string i)
            (Decap.regexp ~name:"int32" int32_re (fun groupe  -> groupe 1));
         Decap.fsequence
           (Decap.apply_position
-             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (fun x  ->
+                fun str  ->
+                  fun pos  ->
+                    fun str'  -> fun pos'  -> ((locate str pos str' pos'), x))
              (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "int32" "int32")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
                    (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
-                   (fun e  _  _  _  dol  ->
-                      let (_loc_dol,dol) = dol in
-                      push_pop_int32 (start_pos _loc_dol).Lexing.pos_cnum e))))]
+                   (fun e  ->
+                      fun _  ->
+                        fun _  ->
+                          fun _  ->
+                            fun dol  ->
+                              let (_loc_dol,dol) = dol in
+                              push_pop_int32
+                                (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let int64_lit =
       Decap.alternatives
         [Decap.apply (fun i  -> Int64.of_string i)
            (Decap.regexp ~name:"int64" int64_re (fun groupe  -> groupe 1));
         Decap.fsequence
           (Decap.apply_position
-             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (fun x  ->
+                fun str  ->
+                  fun pos  ->
+                    fun str'  -> fun pos'  -> ((locate str pos str' pos'), x))
              (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "int64" "int64")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
                    (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
-                   (fun e  _  _  _  dol  ->
-                      let (_loc_dol,dol) = dol in
-                      push_pop_int64 (start_pos _loc_dol).Lexing.pos_cnum e))))]
+                   (fun e  ->
+                      fun _  ->
+                        fun _  ->
+                          fun _  ->
+                            fun dol  ->
+                              let (_loc_dol,dol) = dol in
+                              push_pop_int64
+                                (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let nat_int_lit =
       Decap.alternatives
         [Decap.apply (fun i  -> Nativeint.of_string i)
            (Decap.regexp ~name:"natint" natint_re (fun groupe  -> groupe 1));
         Decap.fsequence
           (Decap.apply_position
-             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (fun x  ->
+                fun str  ->
+                  fun pos  ->
+                    fun str'  -> fun pos'  -> ((locate str pos str' pos'), x))
              (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "natint" "natint")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
                    (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
-                   (fun e  _  _  _  dol  ->
-                      let (_loc_dol,dol) = dol in
-                      push_pop_natint (start_pos _loc_dol).Lexing.pos_cnum e))))]
+                   (fun e  ->
+                      fun _  ->
+                        fun _  ->
+                          fun _  ->
+                            fun dol  ->
+                              let (_loc_dol,dol) = dol in
+                              push_pop_natint
+                                (start_pos _loc_dol).Lexing.pos_cnum e))))]
     let bool_lit =
       Decap.alternatives
         [Decap.apply (fun _default_0  -> "false") false_kw;
         Decap.apply (fun _default_0  -> "true") true_kw;
         Decap.fsequence
           (Decap.apply_position
-             (fun x  str  pos  str'  pos'  -> ((locate str pos str' pos'), x))
+             (fun x  ->
+                fun str  ->
+                  fun pos  ->
+                    fun str'  -> fun pos'  -> ((locate str pos str' pos'), x))
              (Decap.ignore_next_blank (Decap.char '$' '$')))
           (Decap.fsequence (Decap.string "bool" "bool")
              (Decap.fsequence (Decap.char ':' ':')
                 (Decap.sequence
                    (Decap.ignore_next_blank (expression_lvl App))
                    (Decap.char '$' '$')
-                   (fun e  _  _  _  dol  ->
-                      let (_loc_dol,dol) = dol in
-                      if push_pop_bool (start_pos _loc_dol).Lexing.pos_cnum e
-                      then "true"
-                      else "false"))))]
+                   (fun e  ->
+                      fun _  ->
+                        fun _  ->
+                          fun _  ->
+                            fun dol  ->
+                              let (_loc_dol,dol) = dol in
+                              if
+                                push_pop_bool
+                                  (start_pos _loc_dol).Lexing.pos_cnum e
+                              then "true"
+                              else "false"))))]
     let entry_points: (string* entry_point) list ref =
       ref
         [(".mli", (Interface (signature, blank)));
         (".ml", (Implementation (structure, blank)))]
   end
-module type Extension = module type of Initial
-module type FExt = functor (E : Extension) -> Extension
+module type Extension  = module type of Initial
+module type FExt  = functor (E : Extension) -> Extension
 include Initial
