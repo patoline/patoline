@@ -511,17 +511,23 @@ module Ext(In:Extension) =
              string_literal) glr_opt_expr
           (fun s  ->
              let (_loc_s,s) = s in
-             fun opt  __loc__start__buf  __loc__start__pos  __loc__end__buf 
-               __loc__end__pos  ->
-               let _loc =
-                 locate __loc__start__buf __loc__start__pos __loc__end__buf
-                   __loc__end__pos in
-               ((opt <> None),
-                 (if (String.length s) = 0
-                  then raise (Decap.Give_up "Empty string litteral in rule.");
-                  (let e = loc_expr _loc_s (Pexp_constant (const_string s)) in
-                   let opt = match opt with | None  -> e | Some e -> e in
-                   exp_apply _loc (exp_glr_fun _loc "string") [e; opt]))));
+             fun opt  ->
+               fun __loc__start__buf  ->
+                 fun __loc__start__pos  ->
+                   fun __loc__end__buf  ->
+                     fun __loc__end__pos  ->
+                       let _loc =
+                         locate __loc__start__buf __loc__start__pos
+                           __loc__end__buf __loc__end__pos in
+                       ((opt <> None),
+                         (if (String.length s) = 0
+                          then Decap.give_up "Empty string litteral in rule.";
+                          (let e =
+                             loc_expr _loc_s (Pexp_constant (const_string s)) in
+                           let opt =
+                             match opt with | None  -> e | Some e -> e in
+                           exp_apply _loc (exp_glr_fun _loc "string")
+                             [e; opt]))));
         Decap.sequence_position
           (Decap.alternatives
              [Decap.sequence (Decap.string "RE" "RE")
@@ -584,16 +590,17 @@ module Ext(In:Extension) =
         Decap.apply (fun _  -> (None, ("_", None))) (Decap.empty ())]
     let dash =
       Decap.black_box
-        (fun str  pos  ->
-           let (c,str',pos') = Input.read str pos in
-           if c = '-'
-           then
-             let (c',_,_) = Input.read str' pos' in
-             (if c' = '>'
-              then raise (Decap.Give_up "'-' expected")
-              else ((), str', pos'))
-           else raise (Decap.Give_up "'-' expexted")) (Charset.singleton '-')
-        None "-"
+        (fun str  ->
+           fun pos  ->
+             let (c,str',pos') = Input.read str pos in
+             if c = '-'
+             then
+               let (c',_,_) = Input.read str' pos' in
+               (if c' = '>'
+                then Decap.give_up "'-' expected"
+                else ((), str', pos'))
+             else Decap.give_up "'-' expexted") (Charset.singleton '-') None
+        "-"
     let glr_left_member =
       let f x y = match x with | Some x -> x | None  -> y in
       Decap.sequence

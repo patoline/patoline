@@ -119,17 +119,18 @@ module Initial =
     let comment = declare_grammar "comment"
     let any_not_closing =
       black_box
-        (fun str  pos  ->
-           let (c,str',pos') = Input.read str pos in
-           match c with
-           | '\255' ->
-               let locs = get_unclosed () in raise (Unclosed_comments locs)
-           | '*' ->
-               let (c',_,_) = Input.read str' pos' in
-               if c' = ')'
-               then raise (Give_up "Not the place to close a comment")
-               else ((), str', pos')
-           | _ -> ((), str', pos')) Charset.full_charset None "ANY"
+        (fun str  ->
+           fun pos  ->
+             let (c,str',pos') = Input.read str pos in
+             match c with
+             | '\255' ->
+                 let locs = get_unclosed () in raise (Unclosed_comments locs)
+             | '*' ->
+                 let (c',_,_) = Input.read str' pos' in
+                 if c' = ')'
+                 then give_up "Not the place to close a comment"
+                 else ((), str', pos')
+             | _ -> ((), str', pos')) Charset.full_charset None "ANY"
     let comment_content =
       Decap.alternatives'
         [Decap.apply (fun _  -> ()) comment;
@@ -1053,9 +1054,7 @@ module Initial =
       Decap.alternatives
         [Decap.apply
            (fun id  ->
-              if is_reserved_id id
-              then raise (Give_up (id ^ " is a keyword..."));
-              id)
+              if is_reserved_id id then give_up (id ^ " is a keyword..."); id)
            (Decap.regexp ~name:"ident" ident_re (fun groupe  -> groupe 0));
         Decap.fsequence
           (Decap.apply_position
@@ -1117,8 +1116,7 @@ module Initial =
                        else raise Exit in
                    push_location id'
                with | Exit  -> ());
-              if is_reserved_id id
-              then raise (Give_up (id ^ " is a keyword..."));
+              if is_reserved_id id then give_up (id ^ " is a keyword...");
               id)
            (Decap.regexp ~name:"lident" lident_re (fun groupe  -> groupe 0));
         Decap.fsequence
@@ -1210,23 +1208,24 @@ module Initial =
       let len_s = String.length s in
       assert (len_s > 0);
       black_box
-        (fun str  pos  ->
-           let str' = ref str in
-           let pos' = ref pos in
-           for i = 0 to len_s - 1 do
-             (let (c,_str',_pos') = read (!str') (!pos') in
-              if c <> (s.[i])
-              then
-                raise (Give_up ("The keyword " ^ (s ^ " was expected...")));
-              str' := _str';
-              pos' := _pos')
-           done;
-           (let str' = !str' and pos' = !pos' in
-            let (c,_,_) = read str' pos' in
-            match c with
-            | 'a'|'b'..'z'|'A'..'Z'|'0'..'9'|'_'|'\'' ->
-                raise (Give_up ("The keyword " ^ (s ^ " was expected...")))
-            | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) None s
+        (fun str  ->
+           fun pos  ->
+             let str' = ref str in
+             let pos' = ref pos in
+             for i = 0 to len_s - 1 do
+               (let (c,_str',_pos') = read (!str') (!pos') in
+                if c <> (s.[i])
+                then give_up ("The keyword " ^ (s ^ " was expected..."));
+                str' := _str';
+                pos' := _pos')
+             done;
+             (let str' = !str'
+              and pos' = !pos' in
+              let (c,_,_) = read str' pos' in
+              match c with
+              | 'a'..'z'|'A'..'Z'|'0'..'9'|'_'|'\'' ->
+                  give_up ("The keyword " ^ (s ^ " was expected..."))
+              | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) None s
     let mutable_kw = key_word "mutable"
     let mutable_flag =
       Decap.alternatives

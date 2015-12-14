@@ -131,13 +131,14 @@ module Make(Initial:Extension) =
       | Re
     let single_quote =
       black_box
-        (fun str  pos  ->
-           let (c,str',pos') = read str pos in
-           if c = '\''
-           then
-             let (c',_,_) = read str' pos' in
-             (if c' = '\'' then raise (Give_up "") else ((), str', pos'))
-           else raise (Give_up "")) (Charset.singleton '\'') None "'"
+        (fun str  ->
+           fun pos  ->
+             let (c,str',pos') = read str pos in
+             if c = '\''
+             then
+               let (c',_,_) = read str' pos' in
+               (if c' = '\'' then give_up "" else ((), str', pos'))
+             else give_up "") (Charset.singleton '\'') None "'"
     let (one_char,one_char__set__grammar) = Decap.grammar_family "one_char"
     let _ =
       one_char__set__grammar
@@ -1121,23 +1122,31 @@ module Make(Initial:Extension) =
                       (fun t  -> fun _  -> t))))
              (Decap.sequence (Decap.ignore_next_blank (expression_lvl App))
                 (Decap.char '$' '$')
-                (fun e  _  t  dol  ->
-                   let (_loc_dol,dol) = dol in
-                   fun __loc__start__buf  __loc__start__pos  __loc__end__buf 
-                     __loc__end__pos  ->
-                     let _loc =
-                       locate __loc__start__buf __loc__start__pos
-                         __loc__end__buf __loc__end__pos in
-                     match t with
-                     | None  ->
-                         push_pop_type (start_pos _loc_dol).Lexing.pos_cnum e
-                     | Some str ->
-                         let l =
-                           push_pop_type_list
-                             (start_pos _loc_dol).Lexing.pos_cnum e in
-                         (match str with
-                          | "tuple" -> loc_typ _loc (Ptyp_tuple l)
-                          | _ -> raise (Give_up "")))))]
+                (fun e  ->
+                   fun _  ->
+                     fun t  ->
+                       fun dol  ->
+                         let (_loc_dol,dol) = dol in
+                         fun __loc__start__buf  ->
+                           fun __loc__start__pos  ->
+                             fun __loc__end__buf  ->
+                               fun __loc__end__pos  ->
+                                 let _loc =
+                                   locate __loc__start__buf __loc__start__pos
+                                     __loc__end__buf __loc__end__pos in
+                                 match t with
+                                 | None  ->
+                                     push_pop_type
+                                       (start_pos _loc_dol).Lexing.pos_cnum e
+                                 | Some str ->
+                                     let l =
+                                       push_pop_type_list
+                                         (start_pos _loc_dol).Lexing.pos_cnum
+                                         e in
+                                     (match str with
+                                      | "tuple" ->
+                                          loc_typ _loc (Ptyp_tuple l)
+                                      | _ -> give_up ""))))]
     let extra_type_suits_grammar =
       memoize2
         (fun lvl'  ->
@@ -1569,26 +1578,31 @@ module Make(Initial:Extension) =
            type_information
            (fun tcn  ->
               let (_loc_tcn,tcn) = tcn in
-              fun ti  tps  __loc__start__buf  __loc__start__pos 
-                __loc__end__buf  __loc__end__pos  ->
-                let _loc =
-                  locate __loc__start__buf __loc__start__pos __loc__end__buf
-                    __loc__end__pos in
-                let _loc =
-                  match prev_loc with
-                  | None  -> _loc
-                  | Some l -> merge2 l _loc in
-                let (pri,te,tkind,cstrs) = ti in
-                let (pri,te) =
-                  match te with
-                  | None  -> (pri, None)
-                  | Some (Private ,te) ->
-                      (if pri = Private then raise (Give_up "");
-                       (Private, (Some te)))
-                  | Some (_,te) -> (pri, (Some te)) in
-                ((id_loc tcn _loc_tcn),
-                  (type_declaration _loc (id_loc (filter tcn) _loc_tcn) tps
-                     cstrs tkind pri te))))
+              fun ti  ->
+                fun tps  ->
+                  fun __loc__start__buf  ->
+                    fun __loc__start__pos  ->
+                      fun __loc__end__buf  ->
+                        fun __loc__end__pos  ->
+                          let _loc =
+                            locate __loc__start__buf __loc__start__pos
+                              __loc__end__buf __loc__end__pos in
+                          let _loc =
+                            match prev_loc with
+                            | None  -> _loc
+                            | Some l -> merge2 l _loc in
+                          let (pri,te,tkind,cstrs) = ti in
+                          let (pri,te) =
+                            match te with
+                            | None  -> (pri, None)
+                            | Some (Private ,te) ->
+                                (if pri = Private then give_up "";
+                                 (Private, (Some te)))
+                            | Some (_,te) -> (pri, (Some te)) in
+                          ((id_loc tcn _loc_tcn),
+                            (type_declaration _loc
+                               (id_loc (filter tcn) _loc_tcn) tps cstrs tkind
+                               pri te))))
     let typedef = typedef_gen typeconstr_name (fun x  -> x)
     let typedef_in_constraint prev_loc =
       typedef_gen ~prev_loc typeconstr Longident.last
@@ -2229,38 +2243,71 @@ module Make(Initial:Extension) =
                                          (Decap.apply (fun x  -> Some x)
                                             (Decap.string ";" ";")))
                                       (Decap.string "}" "}")
-                                      (fun _default_0  _  clsd  fps  p  f  ->
-                                         let (_loc_f,f) = f in
-                                         fun s  __loc__start__buf 
-                                           __loc__start__pos  __loc__end__buf
-                                            __loc__end__pos  ->
-                                           let _loc =
-                                             locate __loc__start__buf
-                                               __loc__start__pos
-                                               __loc__end__buf
-                                               __loc__end__pos in
-                                           let all = ((id_loc f _loc_f), p)
-                                             :: fps in
-                                           let f (lab,pat) =
-                                             match pat with
-                                             | Some p -> (lab, p)
-                                             | None  ->
-                                                 let slab =
-                                                   match lab.txt with
-                                                   | Lident s ->
-                                                       id_loc s lab.loc
-                                                   | _ -> raise (Give_up "") in
-                                                 (lab,
-                                                   (loc_pat lab.loc
-                                                      (Ppat_var slab))) in
-                                           let all = List.map f all in
-                                           let cl =
-                                             match clsd with
-                                             | None  -> Closed
-                                             | Some _ -> Open in
-                                           (AtomPat,
-                                             (loc_pat _loc
-                                                (Ppat_record (all, cl))))))))));
+                                      (fun _default_0  ->
+                                         fun _  ->
+                                           fun clsd  ->
+                                             fun fps  ->
+                                               fun p  ->
+                                                 fun f  ->
+                                                   let (_loc_f,f) = f in
+                                                   fun s  ->
+                                                     fun __loc__start__buf 
+                                                       ->
+                                                       fun __loc__start__pos 
+                                                         ->
+                                                         fun __loc__end__buf 
+                                                           ->
+                                                           fun
+                                                             __loc__end__pos 
+                                                             ->
+                                                             let _loc =
+                                                               locate
+                                                                 __loc__start__buf
+                                                                 __loc__start__pos
+                                                                 __loc__end__buf
+                                                                 __loc__end__pos in
+                                                             let all =
+                                                               ((id_loc f
+                                                                   _loc_f),
+                                                                 p)
+                                                               :: fps in
+                                                             let f (lab,pat)
+                                                               =
+                                                               match pat with
+                                                               | Some p ->
+                                                                   (lab, p)
+                                                               | None  ->
+                                                                   let slab =
+                                                                    match 
+                                                                    lab.txt
+                                                                    with
+                                                                    | 
+                                                                    Lident s
+                                                                    ->
+                                                                    id_loc s
+                                                                    lab.loc
+                                                                    | 
+                                                                    _ ->
+                                                                    give_up
+                                                                    "" in
+                                                                   (lab,
+                                                                    (loc_pat
+                                                                    lab.loc
+                                                                    (Ppat_var
+                                                                    slab))) in
+                                                             let all =
+                                                               List.map f all in
+                                                             let cl =
+                                                               match clsd
+                                                               with
+                                                               | None  ->
+                                                                   Closed
+                                                               | Some _ ->
+                                                                   Open in
+                                                             (AtomPat,
+                                                               (loc_pat _loc
+                                                                  (Ppat_record
+                                                                    (all, cl))))))))));
                      Decap.fsequence_position (Decap.string "[" "[")
                        (Decap.fsequence pattern
                           (Decap.fsequence
@@ -2443,13 +2490,14 @@ module Make(Initial:Extension) =
                      Decap.sequence
                        (Decap.ignore_next_blank (Decap.char '$' '$'))
                        capitalized_ident
-                       (fun _  c  ->
-                          try
-                            let str = Sys.getenv c in
-                            (AtomPat,
-                              (parse_string ~filename:("ENV:" ^ c) pattern
-                                 blank str))
-                          with | Not_found  -> raise (Give_up ""));
+                       (fun _  ->
+                          fun c  ->
+                            try
+                              let str = Sys.getenv c in
+                              (AtomPat,
+                                (parse_string ~filename:("ENV:" ^ c) pattern
+                                   blank str))
+                            with | Not_found  -> give_up "");
                      Decap.fsequence_position
                        (Decap.apply_position
                           (fun x  ->
@@ -2475,35 +2523,44 @@ module Make(Initial:Extension) =
                           (Decap.sequence
                              (Decap.ignore_next_blank (expression_lvl App))
                              (Decap.char '$' '$')
-                             (fun e  _  t  dol  ->
-                                let (_loc_dol,dol) = dol in
-                                fun __loc__start__buf  __loc__start__pos 
-                                  __loc__end__buf  __loc__end__pos  ->
-                                  let _loc =
-                                    locate __loc__start__buf
-                                      __loc__start__pos __loc__end__buf
-                                      __loc__end__pos in
-                                  match t with
-                                  | None  ->
-                                      (AtomPat,
-                                        (push_pop_pattern
-                                           (start_pos _loc_dol).Lexing.pos_cnum
-                                           e))
-                                  | Some str ->
-                                      let l =
-                                        push_pop_pattern_list
-                                          (start_pos _loc_dol).Lexing.pos_cnum
-                                          e in
-                                      (match str with
-                                       | "tuple" ->
-                                           (AtomPat,
-                                             (loc_pat _loc (Ppat_tuple l)))
-                                       | "array" ->
-                                           (AtomPat,
-                                             (loc_pat _loc (Ppat_array l)))
-                                       | "list" ->
-                                           (AtomPat, (ppat_list _loc l))
-                                       | _ -> raise (Give_up "")))))] in
+                             (fun e  ->
+                                fun _  ->
+                                  fun t  ->
+                                    fun dol  ->
+                                      let (_loc_dol,dol) = dol in
+                                      fun __loc__start__buf  ->
+                                        fun __loc__start__pos  ->
+                                          fun __loc__end__buf  ->
+                                            fun __loc__end__pos  ->
+                                              let _loc =
+                                                locate __loc__start__buf
+                                                  __loc__start__pos
+                                                  __loc__end__buf
+                                                  __loc__end__pos in
+                                              match t with
+                                              | None  ->
+                                                  (AtomPat,
+                                                    (push_pop_pattern
+                                                       (start_pos _loc_dol).Lexing.pos_cnum
+                                                       e))
+                                              | Some str ->
+                                                  let l =
+                                                    push_pop_pattern_list
+                                                      (start_pos _loc_dol).Lexing.pos_cnum
+                                                      e in
+                                                  (match str with
+                                                   | "tuple" ->
+                                                       (AtomPat,
+                                                         (loc_pat _loc
+                                                            (Ppat_tuple l)))
+                                                   | "array" ->
+                                                       (AtomPat,
+                                                         (loc_pat _loc
+                                                            (Ppat_array l)))
+                                                   | "list" ->
+                                                       (AtomPat,
+                                                         (ppat_list _loc l))
+                                                   | _ -> give_up ""))))] in
                    if lvl <= ConstrPat
                    then
                      (Decap.sequence_position tag_name
@@ -5044,34 +5101,43 @@ module Make(Initial:Extension) =
                                     (Decap.ignore_next_blank
                                        (Decap.char '$' '$'))
                                     capitalized_ident
-                                    (fun _  c  __loc__start__buf 
-                                       __loc__start__pos  __loc__end__buf 
-                                       __loc__end__pos  ->
-                                       let _loc =
-                                         locate __loc__start__buf
-                                           __loc__start__pos __loc__end__buf
-                                           __loc__end__pos in
-                                       (Atom,
-                                         (match c with
-                                          | "FILE" ->
-                                              loc_expr _loc
-                                                (Pexp_constant
-                                                   (const_string
-                                                      (start_pos _loc).Lexing.pos_fname))
-                                          | "LINE" ->
-                                              loc_expr _loc
-                                                (Pexp_constant
-                                                   (Const_int
-                                                      ((start_pos _loc).Lexing.pos_lnum)))
-                                          | _ ->
-                                              (try
-                                                 let str = Sys.getenv c in
-                                                 parse_string
-                                                   ~filename:("ENV:" ^ c)
-                                                   expression blank str
-                                               with
-                                               | Not_found  ->
-                                                   raise (Give_up "")))));
+                                    (fun _  ->
+                                       fun c  ->
+                                         fun __loc__start__buf  ->
+                                           fun __loc__start__pos  ->
+                                             fun __loc__end__buf  ->
+                                               fun __loc__end__pos  ->
+                                                 let _loc =
+                                                   locate __loc__start__buf
+                                                     __loc__start__pos
+                                                     __loc__end__buf
+                                                     __loc__end__pos in
+                                                 (Atom,
+                                                   (match c with
+                                                    | "FILE" ->
+                                                        loc_expr _loc
+                                                          (Pexp_constant
+                                                             (const_string
+                                                                (start_pos
+                                                                   _loc).Lexing.pos_fname))
+                                                    | "LINE" ->
+                                                        loc_expr _loc
+                                                          (Pexp_constant
+                                                             (Const_int
+                                                                ((start_pos
+                                                                    _loc).Lexing.pos_lnum)))
+                                                    | _ ->
+                                                        (try
+                                                           let str =
+                                                             Sys.getenv c in
+                                                           parse_string
+                                                             ~filename:(
+                                                             "ENV:" ^ c)
+                                                             expression blank
+                                                             str
+                                                         with
+                                                         | Not_found  ->
+                                                             give_up ""))));
                                   Decap.fsequence_position
                                     (Decap.apply_position
                                        (fun x  ->
@@ -5106,47 +5172,66 @@ module Make(Initial:Extension) =
                                           (Decap.ignore_next_blank
                                              (expression_lvl App))
                                           (Decap.char '$' '$')
-                                          (fun e  _  t  dol  ->
-                                             let (_loc_dol,dol) = dol in
-                                             fun __loc__start__buf 
-                                               __loc__start__pos 
-                                               __loc__end__buf 
-                                               __loc__end__pos  ->
-                                               let _loc =
-                                                 locate __loc__start__buf
-                                                   __loc__start__pos
-                                                   __loc__end__buf
-                                                   __loc__end__pos in
-                                               match t with
-                                               | None  ->
-                                                   (Atom,
-                                                     (push_pop_expression
-                                                        (start_pos _loc_dol).Lexing.pos_cnum
-                                                        e))
-                                               | Some str ->
-                                                   let l =
-                                                     push_pop_expression_list
-                                                       (start_pos _loc_dol).Lexing.pos_cnum
-                                                       e in
-                                                   (match str with
-                                                    | "tuple" ->
-                                                        (Atom,
-                                                          (loc_expr _loc
-                                                             (Pexp_tuple l)))
-                                                    | "array" ->
-                                                        (Atom,
-                                                          (loc_expr _loc
-                                                             (Pexp_array l)))
-                                                    | "list" ->
-                                                        let l =
-                                                          List.map
-                                                            (fun x  ->
-                                                               (x, _loc)) l in
-                                                        (Atom,
-                                                          (loc_expr _loc
-                                                             (pexp_list _loc
-                                                                l).pexp_desc))
-                                                    | _ -> raise (Give_up "")))));
+                                          (fun e  ->
+                                             fun _  ->
+                                               fun t  ->
+                                                 fun dol  ->
+                                                   let (_loc_dol,dol) = dol in
+                                                   fun __loc__start__buf  ->
+                                                     fun __loc__start__pos 
+                                                       ->
+                                                       fun __loc__end__buf 
+                                                         ->
+                                                         fun __loc__end__pos 
+                                                           ->
+                                                           let _loc =
+                                                             locate
+                                                               __loc__start__buf
+                                                               __loc__start__pos
+                                                               __loc__end__buf
+                                                               __loc__end__pos in
+                                                           match t with
+                                                           | None  ->
+                                                               (Atom,
+                                                                 (push_pop_expression
+                                                                    (start_pos
+                                                                    _loc_dol).Lexing.pos_cnum
+                                                                    e))
+                                                           | Some str ->
+                                                               let l =
+                                                                 push_pop_expression_list
+                                                                   (start_pos
+                                                                    _loc_dol).Lexing.pos_cnum
+                                                                   e in
+                                                               (match str
+                                                                with
+                                                                | "tuple" ->
+                                                                    (Atom,
+                                                                    (loc_expr
+                                                                    _loc
+                                                                    (Pexp_tuple
+                                                                    l)))
+                                                                | "array" ->
+                                                                    (Atom,
+                                                                    (loc_expr
+                                                                    _loc
+                                                                    (Pexp_array
+                                                                    l)))
+                                                                | "list" ->
+                                                                    let l =
+                                                                    List.map
+                                                                    (fun x 
+                                                                    ->
+                                                                    (x, _loc))
+                                                                    l in
+                                                                    (Atom,
+                                                                    (loc_expr
+                                                                    _loc
+                                                                    (pexp_list
+                                                                    _loc l).pexp_desc))
+                                                                | _ ->
+                                                                    give_up
+                                                                    ""))));
                                   Decap.iter
                                     (Decap.apply
                                        (fun p  ->
@@ -5439,22 +5524,24 @@ module Make(Initial:Extension) =
           loc_expr (merge2 x.pexp_loc res.pexp_loc) (Pexp_sequence (x, res))
     let semi_col =
       black_box
-        (fun str  pos  ->
-           let (c,str',pos') = read str pos in
-           if c = ';'
-           then
-             let (c',_,_) = read str' pos' in
-             (if c' = ';' then raise (Give_up "") else ((), str', pos'))
-           else raise (Give_up "")) (Charset.singleton ';') None ";"
+        (fun str  ->
+           fun pos  ->
+             let (c,str',pos') = read str pos in
+             if c = ';'
+             then
+               let (c',_,_) = read str' pos' in
+               (if c' = ';' then give_up "" else ((), str', pos'))
+             else give_up "") (Charset.singleton ';') None ";"
     let double_semi_col =
       black_box
-        (fun str  pos  ->
-           let (c,str',pos') = read str pos in
-           if c = ';'
-           then
-             let (c',_,_) = read str' pos' in
-             (if c' <> ';' then raise (Give_up "") else ((), str', pos'))
-           else raise (Give_up "")) (Charset.singleton ';') None ";;"
+        (fun str  ->
+           fun pos  ->
+             let (c,str',pos') = read str pos in
+             if c = ';'
+             then
+               let (c',_,_) = read str' pos' in
+               (if c' <> ';' then give_up "" else ((), str', pos'))
+             else give_up "") (Charset.singleton ';') None ";;"
     let extra_expression_suits_grammar =
       memoize2
         (fun lvl'  ->
@@ -6446,24 +6533,35 @@ module Make(Initial:Extension) =
                    (Decap.sequence (Decap.string "=" "=")
                       (Decap.apply List.rev
                          (Decap.fixpoint []
-                            (Decap.apply (fun x  l  -> x :: l) string_literal)))
-                      (fun _  ls  ty  _  n  ->
-                         let (_loc_n,n) = n in
-                         fun _default_0  __loc__start__buf  __loc__start__pos
-                            __loc__end__buf  __loc__end__pos  ->
-                           let _loc =
-                             locate __loc__start__buf __loc__start__pos
-                               __loc__end__buf __loc__end__pos in
-                           let l = List.length ls in
-                           if (l < 1) || (l > 3) then raise (Give_up "");
-                           Pstr_primitive
-                             {
-                               pval_name = (id_loc n _loc_n);
-                               pval_type = ty;
-                               pval_prim = ls;
-                               pval_loc = _loc;
-                               pval_attributes = []
-                             })))));
+                            (Decap.apply (fun x  -> fun l  -> x :: l)
+                               string_literal)))
+                      (fun _  ->
+                         fun ls  ->
+                           fun ty  ->
+                             fun _  ->
+                               fun n  ->
+                                 let (_loc_n,n) = n in
+                                 fun _default_0  ->
+                                   fun __loc__start__buf  ->
+                                     fun __loc__start__pos  ->
+                                       fun __loc__end__buf  ->
+                                         fun __loc__end__pos  ->
+                                           let _loc =
+                                             locate __loc__start__buf
+                                               __loc__start__pos
+                                               __loc__end__buf
+                                               __loc__end__pos in
+                                           let l = List.length ls in
+                                           if (l < 1) || (l > 3)
+                                           then give_up "";
+                                           Pstr_primitive
+                                             {
+                                               pval_name = (id_loc n _loc_n);
+                                               pval_type = ty;
+                                               pval_prim = ls;
+                                               pval_loc = _loc;
+                                               pval_attributes = []
+                                             })))));
         Decap.apply (fun td  -> Pstr_type (List.map snd td)) type_definition;
         exception_definition;
         Decap.sequence module_kw
@@ -6829,18 +6927,28 @@ module Make(Initial:Extension) =
                             (Decap.fixpoint []
                                (Decap.apply (fun x  -> fun l  -> x :: l)
                                   string_literal))) post_item_attributes
-                         (fun ls  a  _  ty  _  n  ->
-                            let (_loc_n,n) = n in
-                            fun _default_0  __loc__start__buf 
-                              __loc__start__pos  __loc__end__buf 
-                              __loc__end__pos  ->
-                              let _loc =
-                                locate __loc__start__buf __loc__start__pos
-                                  __loc__end__buf __loc__end__pos in
-                              let l = List.length ls in
-                              if (l < 1) || (l > 3) then raise (Give_up "");
-                              psig_value ~attributes:a _loc (id_loc n _loc_n)
-                                ty ls))))));
+                         (fun ls  ->
+                            fun a  ->
+                              fun _  ->
+                                fun ty  ->
+                                  fun _  ->
+                                    fun n  ->
+                                      let (_loc_n,n) = n in
+                                      fun _default_0  ->
+                                        fun __loc__start__buf  ->
+                                          fun __loc__start__pos  ->
+                                            fun __loc__end__buf  ->
+                                              fun __loc__end__pos  ->
+                                                let _loc =
+                                                  locate __loc__start__buf
+                                                    __loc__start__pos
+                                                    __loc__end__buf
+                                                    __loc__end__pos in
+                                                let l = List.length ls in
+                                                if (l < 1) || (l > 3)
+                                                then give_up "";
+                                                psig_value ~attributes:a _loc
+                                                  (id_loc n _loc_n) ty ls))))));
         Decap.apply (fun td  -> Psig_type (List.map snd td)) type_definition;
         Decap.apply
           (fun ((name,ed,_loc') as _default_0)  ->
