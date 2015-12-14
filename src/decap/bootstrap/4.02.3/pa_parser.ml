@@ -399,7 +399,7 @@ module Ext(In:Extension) =
                    __loc__end__pos in
                ((opt <> None),
                  (if (String.length s) = 0
-                  then raise (Decap.Give_up "Empty string litteral in rule.");
+                  then Decap.give_up "Empty string litteral in rule.";
                   (let e = loc_expr _loc_s (Pexp_constant (const_string s)) in
                    let opt = match opt with | None  -> e | Some e -> e in
                    exp_apply _loc (exp_glr_fun _loc "string") [e; opt]))));
@@ -460,9 +460,9 @@ module Ext(In:Extension) =
            then
              let (c',_,_) = Input.read str' pos' in
              (if c' = '>'
-              then raise (Decap.Give_up "'-' expected")
+              then Decap.give_up "'-' expected"
               else ((), str', pos'))
-           else raise (Decap.Give_up "'-' expexted")) (Charset.singleton '-')
+           else Decap.give_up "'-' expexted") (Charset.singleton '-')
         None "-"
     let glr_left_member =
       let f x y = match x with | Some x -> x | None  -> y in

@@ -128,8 +128,8 @@ module Make(Initial:Extension) =
            if c = '\''
            then
              let (c',_,_) = read str' pos' in
-             (if c' = '\'' then raise (Give_up "") else ((), str', pos'))
-           else raise (Give_up "")) (Charset.singleton '\'') None "'"
+             (if c' = '\'' then give_up "" else ((), str', pos'))
+           else give_up "") (Charset.singleton '\'') None "'"
     let (one_char,one_char__set__grammar) = Decap.grammar_family "one_char"
     let _ =
       one_char__set__grammar
@@ -913,7 +913,7 @@ module Make(Initial:Extension) =
                              (start_pos _loc_dol).Lexing.pos_cnum e in
                          (match str with
                           | "tuple" -> loc_typ _loc (Ptyp_tuple l)
-                          | _ -> raise (Give_up "")))))]
+                          | _ -> give_up ""))))]
     let extra_type_suits_grammar =
       memoize2
         (fun lvl'  lvl  ->
@@ -1217,7 +1217,7 @@ module Make(Initial:Extension) =
         Decap.apply
           (fun cds  ->
              if cds = []
-             then raise (Give_up "Illegal empty constructors declaration");
+             then give_up "Illegal empty constructors declaration";
              Ptype_variant cds) constr_decl_list]
     let type_information =
       Decap.fsequence
@@ -1259,7 +1259,7 @@ module Make(Initial:Extension) =
                   match te with
                   | None  -> (pri, None)
                   | Some (Private ,te) ->
-                      (if pri = Private then raise (Give_up "");
+                      (if pri = Private then give_up "";
                        (Private, (Some te)))
                   | Some (_,te) -> (pri, (Some te)) in
                 ((id_loc tcn _loc_tcn),
@@ -1757,7 +1757,7 @@ module Make(Initial:Extension) =
                                                    match lab.txt with
                                                    | Lident s ->
                                                        id_loc s lab.loc
-                                                   | _ -> raise (Give_up "") in
+                                                   | _ -> give_up "" in
                                                  (lab,
                                                    (loc_pat lab.loc
                                                       (Ppat_var slab))) in
@@ -1898,7 +1898,7 @@ module Make(Initial:Extension) =
                             (AtomPat,
                               (parse_string ~filename:("ENV:" ^ c) pattern
                                  blank str))
-                          with | Not_found  -> raise (Give_up ""));
+                          with | Not_found  -> give_up "");
                      Decap.fsequence_position
                        (Decap.apply_position
                           (fun x  str  pos  str'  pos'  ->
@@ -1947,7 +1947,7 @@ module Make(Initial:Extension) =
                                              (loc_pat _loc (Ppat_array l)))
                                        | "list" ->
                                            (AtomPat, (ppat_list _loc l))
-                                       | _ -> raise (Give_up "")))))] in
+                                       | _ -> give_up ""))))] in
                    if lvl <= ConstrPat
                    then
                      (Decap.sequence_position tag_name
@@ -3743,7 +3743,7 @@ module Make(Initial:Extension) =
                                                    expression blank str
                                                with
                                                | Not_found  ->
-                                                   raise (Give_up "")))));
+                                                   give_up ""))));
                                   Decap.fsequence_position
                                     (Decap.apply_position
                                        (fun x  str  pos  str'  pos'  ->
@@ -3813,7 +3813,7 @@ module Make(Initial:Extension) =
                                                           (loc_expr _loc
                                                              (pexp_list _loc
                                                                 l).pexp_desc))
-                                                    | _ -> raise (Give_up "")))));
+                                                    | _ -> give_up ""))));
                                   Decap.iter
                                     (Decap.apply
                                        (fun p  ->
@@ -4031,8 +4031,8 @@ module Make(Initial:Extension) =
            if c = ';'
            then
              let (c',_,_) = read str' pos' in
-             (if c' = ';' then raise (Give_up "") else ((), str', pos'))
-           else raise (Give_up "")) (Charset.singleton ';') None ";"
+             (if c' = ';' then give_up "" else ((), str', pos'))
+           else give_up "") (Charset.singleton ';') None ";"
     let double_semi_col =
       black_box
         (fun str  pos  ->
@@ -4040,8 +4040,8 @@ module Make(Initial:Extension) =
            if c = ';'
            then
              let (c',_,_) = read str' pos' in
-             (if c' <> ';' then raise (Give_up "") else ((), str', pos'))
-           else raise (Give_up "")) (Charset.singleton ';') None ";;"
+             (if c' <> ';' then give_up "" else ((), str', pos'))
+           else give_up "") (Charset.singleton ';') None ";;"
     let extra_expression_suits_grammar =
       memoize2
         (fun lvl'  lvl  ->
@@ -4750,7 +4750,7 @@ module Make(Initial:Extension) =
                              locate __loc__start__buf __loc__start__pos
                                __loc__end__buf __loc__end__pos in
                            let l = List.length ls in
-                           if (l < 1) || (l > 3) then raise (Give_up "");
+                           if (l < 1) || (l > 3) then give_up "";
                            Pstr_primitive
                              {
                                pval_name = (id_loc n _loc_n);
@@ -5016,7 +5016,7 @@ module Make(Initial:Extension) =
                                 locate __loc__start__buf __loc__start__pos
                                   __loc__end__buf __loc__end__pos in
                               let l = List.length ls in
-                              if (l < 1) || (l > 3) then raise (Give_up "");
+                              if (l < 1) || (l > 3) then give_up "";
                               psig_value ~attributes:a _loc (id_loc n _loc_n)
                                 ty ls))))));
         Decap.apply (fun td  -> Psig_type (List.map snd td)) type_definition;
