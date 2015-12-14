@@ -49,6 +49,8 @@ open Str
 open Charset
 open Input
 
+let debug_lvl = ref 0
+
 exception Parse_error of string * int * int * string list * string list
 exception Give_up of string
 exception Error
@@ -64,13 +66,18 @@ let (~~) t1 = Expected t1
 let (~!) t1 = Message t1
 
 let collect_tree t =
-  let rec fn acc acc' = function
-      Empty -> acc, acc'
-    | Message t -> if List.mem t acc then acc, acc' else (t::acc), acc'
-    | Expected t -> if List.mem t acc' then acc, acc' else acc, (t::acc')
-    | Node(t1,t2) ->
-       let acc, acc' = fn acc acc' t1 in
-       fn acc acc' t2
+  let adone = ref [] in
+  let rec fn acc acc' t =
+    if List.memq t !adone then acc, acc' else begin
+      adone := t :: !adone;
+      match t with
+	Empty -> acc, acc'
+      | Message t -> if List.mem t acc then acc, acc' else (t::acc), acc'
+      | Expected t -> if List.mem t acc' then acc, acc' else acc, (t::acc')
+      | Node(t1,t2) ->
+	 let acc, acc' = fn acc acc' t1 in
+	 fn acc acc' t2
+    end
   in
   let acc, acc' = fn [] [] t in
   List.sort compare acc, List.sort compare acc'
@@ -113,13 +120,29 @@ type stack = int list * stack'
 
 let print_stack ch (l, s) =
   Printf.fprintf ch "<<%a>> " (fun ch l ->
-			      List.iter (Printf.fprintf ch "%d") l) l;
+			      List.iter (Printf.fprintf ch "%d ") l) l;
   match s with
   | Pushed(n,_) -> Printf.fprintf ch "W %d" n
   | EmptyStack -> ()
 
+let list_add n l =
+  let rec fn acc = function
+    | n'::_  when n' = n -> l
+    | n'::l' when n' < n -> fn (n'::acc) l'
+    | l' -> List.rev_append acc (n::l')
+  in fn [] l
+
+let list_merge l1 l2 =
+  let rec fn acc l1 l2 = match l1, l2 with
+    | [], l | l, []                            -> List.rev_append acc l
+    | (n1::l1), (n2::l2)        when n1 = n2   -> fn (n1::acc) l1 l2
+    | (n1::l1), (n2::_ as l2)   when n1 < n2   -> fn (n1::acc) l1 l2
+    | (n1::_ as l1), (n2::l2) (*when n1 > n2*) -> fn (n2::acc) l1 l2
+  in fn [] l1 l2
+
 let pop_stack n = function
-  | l, Pushed(n',v) when n = n' -> Obj.obj v, (l, EmptyStack)
+  | l, Pushed(n',v) when n = n' -> (Obj.obj v, (l, EmptyStack))
+  | l, _ when List.mem n l -> raise Error
   | _ -> raise Not_found
 
 type grouped = {
@@ -128,7 +151,7 @@ type grouped = {
   stack : stack;
 }
 
-let rec test_clear grouped =
+let test_clear grouped =
   match grouped.stack with
   | _, Pushed(_,_) -> raise Error
   | l', EmptyStack -> [], EmptyStack
@@ -138,6 +161,8 @@ let print_info ch grouped =
 
 let set_stack grouped stack =
   if grouped.stack == stack then grouped else { grouped with stack; }
+
+let push_stack g n v (l, _) = { g with stack = (l, Pushed(n,v)) }
 
 (* if a grammar has a prefix which is a left recursive grammar with ident n,
       (n, b, s) is in the list and
@@ -278,6 +303,9 @@ let tryif cond f g =
   else
     f ()
 
+let accept_empty l1 = match l1.accept_empty with Non_empty -> false | _ -> true
+let accept_empty' l1 = match l1.accept_empty with Unknown | Non_empty -> false | _ -> true
+
 let test grouped next str p =
   let c = get str p in
   (*  Printf.eprintf "test: %c %a %a\n%!" c print_info grouped print_next next; *)
@@ -301,24 +329,24 @@ let test grouped next str p =
      with
        Not_found -> false
 
-let test_next l1 grouped str p =
+let test_next l1 empty_ok grouped str p =
   let c = get str p in
-  (*  assert (Printf.eprintf "test_next: %c %a %a\n%!" c print_info grouped print_next l1.next; true);*)
+  assert (if !debug_lvl > 1 then Printf.eprintf "test_next: %c %a %a\n%!" c print_info grouped print_next l1.next; true);
   l1.next == all_next || match grouped.stack with
   | _, EmptyStack ->
-     let res = mem l1.next.accepted_char c in
+     let res = (accept_empty l1 && empty_ok) || mem l1.next.accepted_char c in
      if not res then record_error grouped l1.next.first_syms str p;
      res
   | _, Pushed(n,_) ->
      try
-       let (_,s,msg) = List.assoc n l1.next.next_after_prefix in
-       let res = mem s c in
+       let (ae,s,msg) = List.assoc n l1.next.next_after_prefix in
+       let res = ae || mem s c in
        if not res then record_error grouped msg str p;
        res
      with Not_found ->
      try
-       let (_,s,msg) = List.assoc (-1) l1.next.next_after_prefix in
-       let res = mem s c in
+       let (ae,s,msg) = List.assoc (-1) l1.next.next_after_prefix in
+       let res = ae || mem s c in
        if not res then record_error grouped msg str p;
        res
      with
@@ -375,9 +403,6 @@ let sum_next n1 n2 =
 
 let sum_nexts ls =
   List.fold_left (fun s l -> sum_next s l.next) empty_next ls
-
-let accept_empty l1 = match l1.accept_empty with Non_empty -> false | _ -> true
-let accept_empty' l1 = match l1.accept_empty with Unknown | Non_empty -> false | _ -> true
 
 let compose_next l1 l2 =
   let n1 = l1.next in
@@ -449,13 +474,13 @@ let chg_empty s1 s2 = match s1, s2 with
   | _ -> true
 
 let rec update (g : empty_type grammar) =
-  assert (Printf.eprintf "update(1) %d: accept empty = %a, next = %a\n%!"
+  assert (if !debug_lvl > 0 then Printf.eprintf "update(1) %d: accept empty = %a, next = %a\n%!"
 					g.ident print_accept_empty g.accept_empty print_next g.next; true);
   let old_accepted_char = g.next.accepted_char in
   let old_accept_empty = g.accept_empty in
   let old_next_after_prefix = g.next.next_after_prefix in
   g.set_info ();
-  assert (Printf.eprintf "update(2) %d: accept empty = %a, next = %a\n%!"
+  assert (if !debug_lvl > 0 then Printf.eprintf "update(2) %d: accept empty = %a, next = %a\n%!"
 			 g.ident print_accept_empty g.accept_empty print_next g.next; true);
   if (old_accepted_char <> g.next.accepted_char
       || chg_empty old_accept_empty g.accept_empty
@@ -474,6 +499,7 @@ let set_grammar p1 p2 =
   p1.def <- Some p2;
   let companion = ref [cast p1] in
   let rec fn p =
+    assert (if !debug_lvl > 0 then Printf.eprintf "compute companion for %d\n%!" p1.ident; true);
     match p.deps with
       None -> false
     | Some deps ->
@@ -493,102 +519,100 @@ let set_grammar p1 p2 =
     List.iter (fun p -> p.left_rec <- Left_rec !companion) !companion)
   else
     p1.left_rec <- Non_rec;
-  assert (Printf.eprintf "set_grammar p1.next = %a, p2.next = %a, left_rec = %a\n" print_next p1.next print_next p2.next print_left_rec p1.left_rec; true);
+  assert (if !debug_lvl > 0 then Printf.eprintf "set_grammar p1.next = %a, p2.next = %a, left_rec = %a\n"
+	    print_next p1.next print_next p2.next print_left_rec p1.left_rec; true);
   Ahash.clear tbl;
   let parse =
-    fun grouped str pos next g -> match p1.left_rec with Left_rec companion ->
-      (try
-	assert (Printf.eprintf "trying to pop %d in %a...\n%!" p1.ident print_stack grouped.stack; true);
-	let v, stack = pop_stack p1.ident grouped.stack in
-	assert (Printf.eprintf "pop ok\n%!"; true);
-	g str pos str pos str pos stack v
-      with Not_found ->
-	if List.mem p1.ident (fst grouped.stack) then raise Error;
+    fun grouped str pos next g ->
+      assert (if !debug_lvl > 0 then Printf.eprintf "parsing %d in %a\n%!" p1.ident print_stack grouped.stack; true);
+      match p1.left_rec with
+      | Left_rec companion ->
+	 (try
+	    assert (if !debug_lvl > 0 then Printf.eprintf "trying to pop %d in %a...\n%!"
+		p1.ident print_stack grouped.stack; true);
+	    let v, stack =
+	      try pop_stack p1.ident grouped.stack
+	      with Error ->
+		assert (if !debug_lvl > 0 then Printf.eprintf "pop raise Error\n%!"; true);
+		raise Error
+	    in
+	    assert (if !debug_lvl > 0 then Printf.eprintf "pop ok\n%!"; true);
+	    g str pos str pos str pos stack v
+	  with
+	  | Not_found ->
+	      assert (if !debug_lvl > 0 then Printf.eprintf "pop raise Not_found\n%!"; true);
+
+	(* if this grammar is allready begin tested, only try to finish parsing *)
 	let grouped = {
 	    grouped with
-	    stack = ((List.map (fun p -> p.ident) companion @ fst grouped.stack), snd grouped.stack)
+	      stack =
+	    (List.fold_left (fun acc p -> list_add p.ident acc) (fst grouped.stack)  companion,
+	     snd grouped.stack)
 	} in
-	assert (Printf.eprintf " failed %a\n%!" print_stack grouped.stack; true);
 	let next' = List.fold_left (fun n l -> sum_next l.next n) next companion in
 	let next_tbl =
 	  List.map (fun l -> (l.ident, add_next next' l.ident)) companion
 	in
 
-	let rec fn pi str' pos' str'' pos'' stack v =
+	(* this function tries the grammar pi as suffix of the recursive grammar, the stack must be empty *)
+	let rec parse_suffix pi str' pos' str'' pos'' stack v =
 	  if snd stack <> EmptyStack then raise Error;
- 	  assert (Printf.eprintf "PUSH W %d in %a\n%!" pi.ident print_stack stack; true);
-	  let grouped' = {
-	    grouped with
-	    stack = (fst stack, Pushed(pi.ident, Obj.repr v))
-	  } in
-	  let grouped = set_stack grouped stack in
-	  let rec fn' = function
+ 	  assert (if !debug_lvl > 0 then Printf.eprintf "PUSH W %d in %a\n%!" pi.ident print_stack stack; true);
+	  let grouped' = push_stack grouped pi.ident (Obj.repr v) stack in
+	  let rec fn = function
 	    | [] -> raise Error
-	    | [p] ->
-	       (match p.def with None -> assert false
-			       | Some p' -> gn (uncast p) (uncast p'))
-	    | p::l ->
-	       try
-		 (match p.def with None -> assert false
-				 | Some p' -> gn (uncast p) (uncast p'))
-	       with Error -> fn' l
-
-	  and gn pi pidef =
+	    | [p] -> gn (uncast p)
+	    | p::l -> try gn (uncast p) with Error -> fn l
+	  and gn pi =
+	    assert (if !debug_lvl > 0 then Printf.eprintf "parse_suffix calling %d %a %a\n%!" pi.ident print_next next' print_stack grouped'.stack; true);
+	    let pidef = match pi.def with None -> assert false | Some p -> p in
 	    let next' = try List.assoc pi.ident next_tbl with Not_found -> next' in
-	    assert (Printf.eprintf "testing %d = %d (%d)&& next = %a && next' = %a\n%!" p1.ident pi.ident pidef.ident print_next next print_next next'; true);
-	    if p1 == pi && test grouped next str'' pos'' then
-	      try
-		assert (Printf.eprintf "calling in try %d %a\n%!" pi.ident print_stack grouped'.stack; true);
-		pidef.parse grouped' str'' pos'' next'
-			    (fun _ _ str0' pos0' str0'' pos0'' stack v ->
-			     assert (Printf.eprintf "call continuation in try %d %a\n%!" pi.ident print_stack stack; true);
-			     fn pi str0' pos0' str0'' pos0'' stack v)
-	      with Error ->
-		assert (Printf.eprintf "capturing Error %d %a\n%!" pi.ident print_stack stack; true);
-		g str pos str' pos' str'' pos'' stack v
-	    else (
-	      assert (Printf.eprintf "calling without try %d %a\n%!" pi.ident print_stack grouped'.stack; true);
-	      pidef.parse grouped' str'' pos'' next'
-		(fun _ _ str0' pos0' str0'' pos0'' stack v ->
-		  assert (Printf.eprintf "call continuation without try %d %a\n%!" p1.ident print_stack stack; true);
-		  fn pi str0' pos0' str0'' pos0'' stack v))
+	    pidef.parse grouped' str'' pos'' next'
+	      (fun _ _ str0' pos0' str0'' pos0'' stack v ->
+		assert (if !debug_lvl > 0 then Printf.eprintf "parse_suffix call continuation in try %d %a\n%!" pi.ident print_stack stack; true);
+		parse_suffix pi str0' pos0' str0'' pos0'' stack v)
 	  in
-	  let companion = List.filter
-			    (fun g -> g.ident == p1.ident || test_next g grouped' str'' pos'')
-			    companion
+	  let grouped = set_stack grouped stack in
+	  let empty_ok = p1 == pi && test grouped next str'' pos'' in
+	  let companion = List.filter (fun g ->
+	    test_next g empty_ok grouped' str'' pos'') companion
 	  in
-	  fn' companion
+	  assert (if !debug_lvl > 0 then Printf.eprintf "testing for finish  %d = %d && next = %a\n%!" p1.ident pi.ident print_next next; true);
+	  tryif empty_ok
+	    (fun () -> fn companion)
+	    (fun () ->
+	      assert (if !debug_lvl > 0 then Printf.eprintf "capturing Error %d %a\n%!" pi.ident print_stack stack; true);
+	      g str pos str' pos' str'' pos'' stack v)
 	in
-	assert (Printf.eprintf "initial calling %d\n%!" p1.ident; true);
-	let fn'' p =
-	  (match p.def with
-	     None -> assert false
-	   | Some p' ->
-	      tryif (accept_empty p')
-		    (fun () ->
-		      let next' = try List.assoc p.ident next_tbl with Not_found -> next' in
-		      assert (Printf.eprintf "initial calling in (%d,%d) && next = %a && next' = %a\n%!" p'.ident p.ident print_next next print_next next'; true);
-		      (uncast p').parse grouped str pos next'
-				(fun _ _ str' pos' str'' pos'' stack v ->
-				 assert (Printf.eprintf "initial call continuation %d %a\n%!" p.ident print_stack stack; true);
-				 fn (uncast p) str' pos' str'' pos'' stack v))
-		    (fun () ->
-		     let v = read_empty (uncast p') str pos in
-		     fn (uncast p) str pos str pos grouped.stack v))
+	(* this function tries the grammar pi as prefix of the recursive grammar *)
+	let parse_prefix pi =
+	  let pidef = match pi.def with None -> assert false | Some p -> p in
+	  tryif (accept_empty pidef)
+	    (fun () ->
+	      let next' = try List.assoc pi.ident next_tbl with Not_found -> next' in
+	      assert (if !debug_lvl > 0 then Printf.eprintf "parse_prefix calling in (%d,%d) stack = %a next = %a && next' = %a\n%!"
+			pidef.ident pi.ident print_stack grouped.stack print_next next print_next next'; true);
+	      (uncast pidef).parse grouped str pos next'
+		(fun _ _ str' pos' str'' pos'' stack v ->
+		  assert (if !debug_lvl > 0 then Printf.eprintf "parse_prefix call continuation %d %a\n%!" pi.ident print_stack stack; true);
+		  parse_suffix (uncast pi) str' pos' str'' pos'' stack v))
+	    (fun () ->
+	      let v = read_empty (uncast pidef) str pos in
+	      parse_suffix (uncast pi) str pos str pos grouped.stack v)
 	in
-	let rec fn' = function
+	let rec fn = function
 	  | [] -> raise Error
-	  | [p] -> fn'' p
-	  | p::l -> try fn'' p with Error -> fn' l
+	  | [p] -> parse_prefix p
+	  | p::l -> try parse_prefix p with Error -> fn l
 	in
 	let empty_ok = test grouped next str pos in
 	let companion = List.filter
-			  (fun g -> (empty_ok && accept_empty g)
-			  || test_next g grouped str pos)
+	  (fun g ->
+	    test_next g empty_ok grouped str pos)
 			  companion
 	in
-	assert(Printf.eprintf "companion length = %d\n" (List.length companion); true);
-	fn' companion)
+	assert(if !debug_lvl > 0 then Printf.eprintf "companion length = %d\n" (List.length companion); true);
+	fn companion)
 
      | Non_rec -> p2.parse grouped str pos next g
   in
@@ -1496,10 +1520,9 @@ let alternatives : 'a grammar list -> 'a grammar
     left_rec = Non_rec;
     def = None;
     parse =
-      fun grouped str pos next g ->
+	fun grouped str pos next g ->
           let empty_ok = test grouped next str pos in
-          let ls = List.filter (fun g ->
-                                (empty_ok && accept_empty g) || test_next g grouped str pos) ls in
+          let ls = List.filter (fun g -> test_next g empty_ok grouped str pos) ls in
 	  if ls = [] then raise Error else
           let rec fn = function
             | [l] ->
@@ -1539,8 +1562,7 @@ let alternatives' : 'a grammar list -> 'a grammar
     parse =
         fun grouped str pos next g ->
           let empty_ok = test grouped next str pos in
-          let ls = List.filter (fun g ->
-                                (empty_ok && accept_empty g) || test_next g grouped str pos) ls in
+          let ls = List.filter (fun g -> test_next g empty_ok grouped str pos) ls in
 	  if ls = [] then raise Error else
           let rec fn = function
             | [l] ->

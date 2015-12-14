@@ -278,7 +278,7 @@ struct
     | s:string_literal opt:glr_opt_expr ->
        (opt <> None,
         (if String.length s = 0 then
-	  raise (Decap.Give_up "Empty string litteral in rule.");
+	  Decap.give_up "Empty string litteral in rule.";
 	let e = loc_expr _loc_s (Pexp_constant (const_string s)) in
 	let opt = match opt with None -> e | Some e -> e in
 	exp_apply _loc (exp_glr_fun _loc "string") [e; opt]))
@@ -325,10 +325,10 @@ struct
        let c,str',pos' = Input.read str pos in
        if c = '-' then
          let c',_,_ = Input.read str' pos' in
-         if c' = '>' then raise (Decap.Give_up "\'-\' expected")
+         if c' = '>' then Decap.give_up "\'-\' expected"
          else (), str', pos'
       else
-        raise (Decap.Give_up "\'-\' expexted")
+        Decap.give_up "\'-\' expexted"
     ) (Charset.singleton '-') None ("-")
 
   let glr_left_member =
@@ -487,7 +487,7 @@ struct
     | a:alt? r:glr_rule rs:{ a:alt r:glr_rule -> (a,r)}** ->
       let rec fn a ls = match a, ls with
 	  None, (a,_)::ls -> fn (Some a) ls
-	| Some a', (a,_)::ls when a <> a' -> raise (Decap.Give_up "Inhomogenous alternatives")
+	| Some a', (a,_)::ls when a <> a' -> Decap.give_up "Inhomogenous alternatives"
 	| _, _::ls -> fn a ls
 	| _, [] -> a
       in

@@ -60,12 +60,9 @@ open Input
   or [expected] is non empty *)
 exception Parse_error of string * int * int * string list * string list
 
-(** [Give_up msg] can be raised when a parsing rule needs to be rejected. It
+(** [give_up msg] can be called when a parsing rule needs to be rejected. It
   is strongly advised to provide a very explicit message [msg] while raising
   this exception, in order for DeCaP to provide useful error messages. *)
-exception Give_up of string
-
-(* raise the above exception *)
 val give_up : string -> 'a
 
 (** {2 Blank functions} *)
@@ -391,3 +388,6 @@ val accept_empty : 'a grammar -> bool
   [grammar] and the blank function [blank]. It parses the input using the
   [partial_parse_buffer] function and returns the position reached. *)
 val blank_grammar : unit grammar -> blank -> buffer -> int -> buffer * int
+
+(* developper only *)
+val debug_lvl : int ref
