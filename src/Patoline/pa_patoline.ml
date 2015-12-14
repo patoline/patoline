@@ -79,7 +79,7 @@ let any_not_closing =
                 raise (Unclosed_comments locs)
     | '*'    -> let (c', _, _) = Input.read str' pos' in
                 if c' = ')' then
-                  raise (Give_up "Not the place to close a comment")
+                  give_up "Not the place to close a comment"
                 else
                   ((), str', pos')
     | _      -> ((), str', pos')
@@ -157,10 +157,10 @@ let freshUid () =
        let c,str',pos' = Input.read str pos in
        if List.mem c non_special then
          let c',_,_ = Input.read str' pos' in
-         if c' = c then raise (Give_up "") (* FIXME *)
+         if c' = c then give_up "" (* FIXME *)
          else c, str', pos'
        else
-         raise (Give_up "")) (* FIXME *)
+         give_up "") (* FIXME *)
       (List.fold_left Charset.add Charset.empty_charset non_special) None
       (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
 
@@ -181,7 +181,7 @@ let freshUid () =
              let w = String.concat "" cs in
              if String.length w >= 2 &&
                   List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<";">>";"$>";]
-             then raise (Give_up (w ^ "is not a word"));
+             then give_up (w ^ "is not a word");
              w
         | | c:special -> c
       ) no_blank
@@ -367,7 +367,7 @@ let parser num = n:''[0-9]+'' -> int_of_string n
 let uchar =
   let char_range min max = parser c:ANY ->
     let cc = Char.code c in
-    if cc < min || cc > max then raise (Give_up "Char not in range..."); c
+    if cc < min || cc > max then give_up "Char not in range..."; c
   in
   let tl  = char_range 128 191 in
   let hd1 = char_range 0   127 in
@@ -538,7 +538,7 @@ let tree_to_grammar : ?filter:('a -> bool) -> 'a PMap.tree -> 'a grammar = fun ?
     try
       let (n,v) = PMap.longest_prefix ~filter line t in
       (v, buf, pos+n)
-    with Not_found -> raise (Give_up "Not a valid symbol.")
+    with Not_found -> give_up "Not a valid symbol."
   in
   let charset =
     let f acc (c,_) = Charset.add acc c in
@@ -984,7 +984,7 @@ let parser any_symbol =
 let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * math_prio) Decap.grammar =
   | '{' (m,_):math_aux '}' -> (m,AtomM)
   | '{' s:any_symbol '}' ->
-      if s = Invisible then raise (Give_up "...");
+      if s = Invisible then give_up "...";
       (fun indices ->
         <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s indices$]>>
       ), AtomM
@@ -1211,7 +1211,7 @@ and math_declaration =
 let parser math_toplevel =
   | (m,_):math_aux -> m no_ind
   | s:any_symbol   ->
-      if s = Invisible then raise (Give_up "...");
+      if s = Invisible then give_up "...";
       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s no_ind$]>>
 
 
@@ -1251,7 +1251,7 @@ let parser math_toplevel =
   let macro_name = change_layout (
     parser "\\" - m:lid ->
       if List.mem m reserved_macro then
-        raise (Give_up (m ^ " is a reserved macro")); m
+        give_up (m ^ " is a reserved macro"); m
     ) no_blank
 
   let macro =
@@ -1379,7 +1379,7 @@ let parser math_toplevel =
        ps:(change_layout paragraphs blank2)
        "\\end{" ide:lid '}' ->
          (fun indent_first ->
-           if idb <> ide then raise (Give_up "Non-matching begin / end");
+           if idb <> ide then give_up "Non-matching begin / end";
            let m1 = freshUid () in
            let m2 = freshUid () in
            let arg =
@@ -1458,7 +1458,7 @@ let parser math_toplevel =
          let numbered = match op.[0], cl.[0] with
              '=', '=' -> <:expr@_loc_op<newStruct>>
            | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
-           | _ -> raise (Give_up "Non-matching relative section markers")
+           | _ -> give_up "Non-matching relative section markers"
          in
          true, lvl, <:structure< let _ = $numbered$ D.structure $title$;;
                      $(txt false (lvl+1))$;;
@@ -1467,11 +1467,11 @@ let parser math_toplevel =
     | | op:RE(section) title:text_only cl:RE(section) txt:text ->
         (fun _ lvl ->
          if String.length op <> String.length cl then
-     raise (Give_up "Non-matching absolute section marker");
+	   give_up "Non-matching absolute section marker";
          let numbered = match op.[0], cl.[0] with
              '=', '=' -> <:expr@_loc_op<newStruct>>
            | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
-           | _ -> raise (Give_up "Non-mathing section marker")
+           | _ -> give_up "Non-mathing section marker"
          in
          let l = String.length op - 1 in
          if l > lvl + 1 then failwith "Illegal level skip";
@@ -1514,7 +1514,7 @@ let patoline_config : unit grammar =
            | "FORMAT"  -> patoline_format := a
            | "DRIVER"  -> patoline_driver := a
            | "PACKAGE" -> patoline_packages := a :: !patoline_packages
-           | _         -> raise (Give_up ("Unknown directive #"^n)))
+           | _         -> give_up ("Unknown directive #"^n))
   ) no_blank
 
 let header = parser _:patoline_config**
@@ -1609,7 +1609,7 @@ let directive =
        | "FORMAT"  -> patoline_format := a
        | "DRIVER"  -> patoline_driver := a
        | "PACKAGE" -> patoline_packages := a :: !patoline_packages
-       | _ -> raise (Give_up ("Unknown directive #"^n)));
+       | _ -> give_up ("Unknown directive #"^n));
     <:structure<>>)
 let extra_structure = directive :: extra_structure
 
