@@ -361,6 +361,7 @@ let parser symbol_values =
   | e:wrapped_caml_expr -> e
 
 let parser lid = id:''[_a-z][_a-zA-Z0-9']*'' -> id
+let parser mathlid = id:''[a-z][a-zA-Z0-9']*'' -> id
 let parser uid = id:''[A-Z][_a-zA-Z0-9']*''  -> id
 let parser num = n:''[0-9]+'' -> int_of_string n
 
@@ -489,6 +490,7 @@ type grammar_state =
   ; mutable right_delimiter_symbols: delimiter PrefixTree.t
   ; mutable operator_symbols : operator PrefixTree.t
   ; mutable combining_symbols: string PrefixTree.t
+  ; mutable reserved_symbols: unit PrefixTree.t
   ; mutable word_macros      : (string * config list) list
   ; mutable math_macros      : (string * config list) list
   ; mutable paragraph_macros : (string * config list) list
@@ -509,6 +511,7 @@ let state =
   ; right_delimiter_symbols= PrefixTree.empty
   ; operator_symbols= PrefixTree.empty
   ; combining_symbols= PrefixTree.empty
+  ; reserved_symbols = PrefixTree.empty
   ; word_macros      = []
   ; math_macros      = []
   ; paragraph_macros = []
@@ -579,6 +582,7 @@ let before_parse_hook () =
     state.right_delimiter_symbols <- fstate.right_delimiter_symbols;
     state.operator_symbols        <- fstate.operator_symbols;
     state.combining_symbols       <- fstate.combining_symbols;
+    state.reserved_symbols        <- fstate.reserved_symbols;
     state.word_macros             <- fstate.word_macros;
     state.math_macros             <- fstate.math_macros;
     state.paragraph_macros        <- fstate.paragraph_macros;
@@ -698,6 +702,15 @@ let print_math_deco _loc elt ind =
     <:expr<[Maths.Ordinary $print_math_deco_sym _loc s ind$]>>
   end
 
+let add_reserved sym_names =
+  state.reserved_symbols <-
+    List.fold_left (fun map name ->
+      let len = String.length name in
+      if len > 0 && name.[0] = '\\' then (
+	let name = String.sub name 1 (len - 1) in
+	PrefixTree.add name () map)
+      else map) state.reserved_symbols sym_names
+
 let new_infix_symbol _loc infix_prio sym_names infix_value =
   let infix_macro_names, infix_utf8_names = symbol sym_names in
   let infix_no_left_space = (infix_prio = Punc) in
@@ -716,6 +729,7 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
   state.infix_symbols <-
     List.fold_left (fun map name -> PrefixTree.add name sym map)
     state.infix_symbols sym_names;
+  add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
     let sym = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc infix_value$)]>> in
@@ -762,6 +776,7 @@ let new_accent_symbol _loc sym_names symbol_value =
   state.accent_symbols <-
     List.fold_left (fun map name -> PrefixTree.add name sym map)
     state.accent_symbols sym_names;
+  add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
     let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
@@ -779,6 +794,7 @@ let new_prefix_symbol _loc sym_names prefix_value =
   state.prefix_symbols <-
     List.fold_left (fun map name -> PrefixTree.add name sym map)
     state.prefix_symbols sym_names;
+  add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
     let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc prefix_value$)]>> in
@@ -796,6 +812,7 @@ let new_postfix_symbol _loc sym_names postfix_value =
   state.postfix_symbols <-
     List.fold_left (fun map name -> PrefixTree.add name sym map)
     state.postfix_symbols sym_names;
+  add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
     let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc postfix_value$)]>> in
@@ -813,6 +830,7 @@ let new_quantifier_symbol _loc sym_names symbol_value =
   state.quantifier_symbols <-
     List.fold_left (fun map name -> PrefixTree.add name sym map)
     state.quantifier_symbols sym_names;
+  add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
     let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
@@ -830,6 +848,7 @@ let new_left_delimiter _loc sym_names delimiter_values =
   state.left_delimiter_symbols <-
     List.fold_left (fun map name -> PrefixTree.add name sym map)
     state.left_delimiter_symbols sym_names;
+  add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
     let syms =
@@ -854,6 +873,7 @@ let new_right_delimiter _loc sym_names delimiter_values =
   state.right_delimiter_symbols <-
     List.fold_left (fun map name -> PrefixTree.add name sym map)
     state.right_delimiter_symbols sym_names;
+  add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
     let syms =
@@ -879,6 +899,7 @@ let new_operator_symbol _loc operator_kind sym_names operator_values =
   state.operator_symbols <-
     List.fold_left (fun map name -> PrefixTree.add name sym map)
     state.operator_symbols sym_names;
+  add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
     let syms =
@@ -976,7 +997,7 @@ let parser indices =
 let no_blank_list g = change_layout ( parser g* ) no_blank
 
 let parser any_symbol =
-  | sym:math_infix_symbol   -> sym.infix_value
+  | sym:math_infix_symbol'  -> sym.infix_value
   | sym:math_atom_symbol    -> sym.symbol_value
   | sym:math_prefix_symbol  -> sym.prefix_value
   | sym:math_postfix_symbol -> sym.postfix_value
@@ -1082,7 +1103,8 @@ and math_atom =
      (fun indices ->
        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>), AtomM
 
-  | '\\' - id:lid - args:(no_blank_list (change_layout math_macro_argument blank1)) ->
+  | '\\' - id:mathlid - args:(no_blank_list (change_layout math_macro_argument blank1)) ->
+     if PrefixTree.mem id state.reserved_symbols then give_up "not a macro";
      (fun indices ->
        let config =
          try List.assoc id state.math_macros with Not_found -> []
