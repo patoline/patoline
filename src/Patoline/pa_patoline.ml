@@ -1246,7 +1246,8 @@ let parser math_toplevel =
     | e:wrapped_caml_array -> <:expr<$array:e$>>
     | e:wrapped_caml_list  -> <:expr<$list:e$>>
 
-  let reserved_macro = [ "Caml"; "begin"; "end"; "item"; "verb"; "diagram" ]
+  let reserved_macro =
+    [ "Caml"; "begin"; "end"; "item"; "verb"; "diagram" ; "tableOfContents" ]
 
   let macro_name = change_layout (
     parser "\\" - m:lid ->
@@ -1365,6 +1366,13 @@ let parser math_toplevel =
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
          <:structure< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output)(D)
                       open $uid:temp_id$>>)
+    | | "\\tableOfContents" -> (fun _ ->
+         let m = freshUid () in
+         <:structure<
+           module $uid:m$ = TableOfContents ;;
+           let _ = $uid:m$.do_begin_env () ;;
+           let _ = $uid:m$.do_end_env () ;;
+         >>)
     | | "\\item" -> (fun _ ->
          let m1 = freshUid () in
          let m2 = freshUid () in
@@ -1509,7 +1517,7 @@ let parser math_toplevel =
 let patoline_config : unit grammar =
   change_layout (
     parser
-    | "#" n:capitalized_ident ' ' a:capitalized_ident ->
+    | "#" - n:capitalized_ident ' ' a:capitalized_ident ->
           (match n with
            | "FORMAT"  -> patoline_format := a
            | "DRIVER"  -> patoline_driver := a
