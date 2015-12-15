@@ -1090,7 +1090,7 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 	 let nsl = s.infix_no_left_space in
 	 let nsr = s.infix_no_right_space in
 	 let sp = s.infix_space in
-	 let l = l no_ind and r = r no_ind in
+	 let l = l no_ind and r = r (if s.infix_value = Invisible then indices else no_ind) in
 	 if s.infix_value = SimpleSym "over" then begin
 	   if indices <> no_ind then give_up "indices on fraction";
 	   <:expr< [Maths.fraction $l$ $r$] >>
