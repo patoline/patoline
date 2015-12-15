@@ -567,12 +567,9 @@ let math_quantifier_symbol = new_grammar "postfix"
 let math_accent_symbol = new_grammar "accent"
 let math_left_delimiter = new_grammar "left delimiter"
 let math_right_delimiter = new_grammar "right delimiter"
-let math_operator_symbol = new_grammar "operator"
+let math_operator = new_grammar "operator"
 let math_combining_symbol = new_grammar "combining"
-let math_infix_symbol' = new_grammar "infix"
-let parser math_infix_symbol =
-    | (empty invisible_product)
-    | math_infix_symbol'
+let math_infix_symbol = new_grammar "infix"
 let math_punctuation_symbol = new_grammar "punctuation"
 let math_relation_symbol = new_grammar "relation"
 
@@ -593,7 +590,7 @@ let tree_to_grammar : ?filter:('a -> bool) -> 'a PMap.tree -> 'a grammar = fun ?
   black_box fn charset None "symbol"
 
 let build_grammar () =
-  set_grammar math_infix_symbol' (tree_to_grammar state.infix_symbols);
+  set_grammar math_infix_symbol (tree_to_grammar state.infix_symbols);
   set_grammar math_punctuation_symbol (tree_to_grammar ~filter:(fun s -> s.infix_prio = Punc) state.infix_symbols);
   set_grammar math_relation_symbol (tree_to_grammar ~filter:(fun s -> s.infix_prio = Rel) state.infix_symbols);
   set_grammar math_prefix_symbol (tree_to_grammar state.prefix_symbols);
@@ -603,7 +600,7 @@ let build_grammar () =
   set_grammar math_accent_symbol (tree_to_grammar state.accent_symbols);
   set_grammar math_left_delimiter (tree_to_grammar state.left_delimiter_symbols);
   set_grammar math_right_delimiter (tree_to_grammar state.right_delimiter_symbols);
-  set_grammar math_operator_symbol (tree_to_grammar state.operator_symbols);
+  set_grammar math_operator (tree_to_grammar state.operator_symbols);
   set_grammar math_combining_symbol (tree_to_grammar state.combining_symbols)
 
 
@@ -1036,10 +1033,20 @@ let parser indices =
 let no_blank_list g = change_layout ( parser g+ ) no_blank
 
 let parser any_symbol =
-  | sym:math_infix_symbol'  -> sym.infix_value
+  | sym:math_infix_symbol  -> sym.infix_value
   | sym:math_atom_symbol    -> sym.symbol_value
   | sym:math_prefix_symbol  -> sym.prefix_value
   | sym:math_postfix_symbol -> sym.postfix_value
+  | sym:math_quantifier_symbol -> sym.symbol_value
+
+let merge_indices indices ind =
+  assert(ind.down_left = None);
+  assert(ind.up_left = None);
+  if (indices.down_right <> None && ind.down_right <> None) ||
+     (indices.up_right <> None && ind.up_right <> None) then give_up "doubles indices";
+  { indices with
+    down_right = if ind.down_right <> None then ind.down_right else indices.down_right;
+    up_right = if ind.up_right <> None then ind.up_right else indices.up_right}
 
 let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * math_prio) Decap.grammar =
   | m:math_atom -> m
@@ -1067,12 +1074,11 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
                     []
                     [Maths.bin 1 $inter$ $d$ $m no_ind$]]>>), Operator
 
-  | op:math_operator (m,mp):math_aux ->
+  | op:(with_indices math_operator) (m,mp):math_aux ->
      let sym,ind = op in
      if mp > sym.operator_prio then give_up "bad operator priority";
-    (fun indices ->
-      if indices.down_right <> None || indices.up_right <> None then give_up "illegal indices for applied operators";
-      let ind = { indices with down_right = ind.down_right; up_right = ind.up_right } in
+     (fun indices ->
+       let ind = merge_indices indices ind in
       match sym.operator_kind with
 	Limits ->
 	  <:expr<[Maths.op_limits [] $print_math_deco_sym _loc_op (MultiSym sym.operator_values) ind$ $m no_ind$]>>
@@ -1084,9 +1090,11 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
       (fun indices ->
 	<:expr<[Maths.bin $int:sym.postfix_space$ (Maths.Normal($bool:sym.postfix_no_space$,$print_math_deco_sym _loc_sym sym.postfix_value indices$,true)) $m no_ind$ []] >>), sym.postfix_prio
 
-  | (l,lp):math_aux s:math_infix_symbol (r,rp):math_aux ->
+  | (l,lp):math_aux st:{(with_indices2 math_infix_symbol) | s:(empty invisible_product) -> (s,no_ind) } (r,rp):math_aux ->
+     let s,ind = st in
      if lp > s.infix_prio || rp >= s.infix_prio then give_up "bad infix priority";
-       (fun indices ->
+    (fun indices ->
+         let indices = merge_indices indices ind in
 	 let nsl = s.infix_no_left_space in
 	 let nsr = s.infix_no_right_space in
 	 let sp = s.infix_space in
@@ -1102,7 +1110,7 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 	     else
 	       <:expr<
                          Maths.Normal( $bool:nsl$,
-                           $print_math_deco_sym _loc_s s.infix_value indices$,
+                           $print_math_deco_sym _loc_st s.infix_value indices$,
                            $bool:nsr$) >>
 	   in
 	   <:expr<[Maths.Binary { bin_priority= $int:sp$;
@@ -1217,11 +1225,11 @@ and math_macro_argument =
   | '{' (m,_):math_aux '}' -> m no_ind
   | e:wrapped_caml_expr    -> e
 
-and math_operator =
-  | o:math_operator_symbol ->
+and with_indices sym =
+  | o:sym ->
      (o, no_ind)
 
-  | (o,i):math_operator - (s,h):indices - (r,rp):math_aux ->
+  | (o,i):(with_indices sym) - (s,h):indices - (r,rp):math_aux ->
      if (rp >= Ind && s = Right) then give_up "can not be used as indice";
      if (s = Left) then give_up "No indice/exponent allowed here";
      let i = match h with
@@ -1233,6 +1241,25 @@ and math_operator =
 	 { i with up_right = Some (r no_ind) }
      in
      (o, i)
+
+and with_indices2 sym =
+  | o:sym ->
+     (o, no_ind)
+
+  | (o,i):(with_indices2 sym) - (s,h):indices - (r,rp):math_aux ->
+     if (rp >= Ind && s = Right) then give_up "can not be used as indice";
+     if (s = Left) then give_up "No indice/exponent allowed here";
+     let i = match h with
+       | Down ->
+	  if i.down_right <> None then give_up "double indices";
+	 { i with down_right = Some (r no_ind) }
+       | Up ->
+	  if i.up_right <> None then give_up "double indices";
+	 { i with up_right = Some (r no_ind) }
+     in
+     (o, i)
+
+
 
 (*  | (m,mp):math_aux - (s,h):indices - (o,i):math_operator ->
      (* FIXME TODO: decap bug: this loops ! *)
@@ -1265,13 +1292,13 @@ and math_punc_list =
 
 and math_declaration =
   | m:math_punc_list -> m
-  | l:math_declaration s:math_relation_symbol r:math_punc_list ->
-    let nsl = s.infix_no_left_space in
-    let nsr = s.infix_no_right_space in
+  | l:math_declaration s:(with_indices2 math_relation_symbol) r:math_punc_list ->
+    let nsl = (fst s).infix_no_left_space in
+    let nsr = (fst s).infix_no_right_space in
     let inter =
       <:expr<
                          Maths.Normal( $bool:nsl$,
-                           $print_math_deco_sym _loc_s s.infix_value no_ind$,
+                           $print_math_deco_sym _loc_s (fst s).infix_value (snd s)$,
                            $bool:nsr$) >>
     in
     <:expr<[Maths.bin 2 $inter$ $l$ $r$] >>
