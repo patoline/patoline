@@ -725,10 +725,38 @@ let print_math_deco_sym _loc elt ind =
     end
 
 let print_math_deco _loc elt ind =
-  if ind = no_ind then elt else begin
-    let s = CamlSym <:expr<fun env st -> Maths.draw [env] $elt$>> in
-    <:expr<[Maths.Ordinary $print_math_deco_sym _loc s ind$]>>
-  end
+  if ind = no_ind then
+    <:expr<
+      [Maths.Ordinary (Maths.noad (fun env st -> Maths.draw [env] $elt$))]
+    >>
+  else
+    begin
+      let r = ref [] in
+      (match ind.up_right with
+       | Some i ->
+     	     if ind.up_right_same_script then
+	           r:= <:record<Maths.super_right_same_script = true>> @ !r;
+	         r := <:record<Maths.superscript_right = $i$ >> @ !r
+       | _ -> ());
+      (match ind.down_right with
+       | Some i ->
+           r:= <:record<Maths.subscript_right = $i$ >> @ !r
+       | _ -> ());
+      (match ind.up_left with
+       | Some i ->
+           if ind.up_left_same_script then
+	           r:= <:record<Maths.super_left_same_script = true>> @ !r;
+           r:= <:record<Maths.superscript_left = $i$ >> @ !r
+       | _ -> ());
+      (match ind.down_left with
+       | Some i -> r:= <:record<Maths.subscript_left = $i$ >> @ !r
+       | _ -> ());
+      <:expr<
+        [Maths.Ordinary {
+          (Maths.noad (fun env st -> Maths.draw [env] $elt$)) with $(!r)$
+        }]
+      >>
+    end
 
 let add_reserved sym_names =
   let insert map name =
