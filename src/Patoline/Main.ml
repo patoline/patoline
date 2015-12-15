@@ -50,6 +50,17 @@ let aliasDriver=
   List.filter (fun (c, c') -> c <> c')
   (List.combine shortDrivers Config2.drivers)
 
+(* Regexp for pragma-style things. *)
+let set_format   =      Str.regexp "^[ \t(*]*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
+let set_driver   =      Str.regexp "^[ \t(*]*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
+let set_grammar  =     Str.regexp "^[ \t(*]*[ \t]*#GRAMMAR[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
+let set_noamble  =     Str.regexp "^[ \t(*]*[ \t]*#NOAMBLE[ )*\t\r]*$"
+let link         =        Str.regexp "^[ \t(*]*[ \t]*#LINK[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
+let depends      =     Str.regexp "^[ \t(*]*[ \t]*#DEPENDS[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
+let add_comp_opt = Str.regexp "^[ \t(*]*[ \t]*#COMPILATION[ \t]+\\(.+\\)[ )*\t\r]*$"
+let add_package  =    Str.regexp "^[ \t(*]*[ \t]*#PACKAGES[ \t]+\\([^ \t]+\\(,[ \t]*[^ \t]+\\)*\\)[ )*\t\r]*$"
+let add_dir      = Str.regexp "^[ \t(*]*[ \t]*#DIRECTORIES[ \t]+\\([^ \t]+\\(,[ \t]*[^ \t]+\\)*\\)[ )*\t\r]*$"
+
 open Language
 
        let getopts str=
@@ -181,8 +192,6 @@ let last_options_used file=
   let fread=open_in file in
   let _formats=ref "" in
   let _driver=ref "" in
-  let set_format = Str.regexp "^[ \t]*(\\*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
-  let set_driver = Str.regexp "^[ \t]*(\\*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let rec pump () =
     let s = input_line fread in
     if Str.string_match set_format s 0 then (
@@ -265,15 +274,6 @@ let rec read_options_from_source_file f fread =
 
   let nothing = Str.regexp "^[ \t]*\\((\\*.*\\*)\\)?[ \t\r]*$" in
   let blank=Str.regexp "^[ \t]*$" in
-  let set_format = Str.regexp "^[ \t]*(\\*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
-  let set_driver = Str.regexp "^[ \t]*(\\*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
-  let set_grammar = Str.regexp "^[ \t]*(\\*[ \t]*#GRAMMAR[ \t]+\\([^ \t]*\\)[ \t]*\\*)[ \t\r]*$" in
-  let set_noamble = Str.regexp "^[ \t]*(\\*[ \t]*#NOAMBLE[ \t]*\\*)[ \t\r]*$" in
-  let link = Str.regexp "^[ \t]*(\\*[ \t]*#LINK[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
-  let depends = Str.regexp "^[ \t]*(\\*[ \t]*#DEPENDS[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
-  let add_compilation_option = Str.regexp "^[ \t]*(\\*[ \t]*#COMPILATION[ \t]+\\(.+\\)[ \t]*\\*)[ \t\r]*$" in
-  let add_package = Str.regexp "^[ \t]*(\\*[ \t]*#PACKAGES[ \t]+\\([^ \t]+\\(,[ \t]*[^ \t]+\\)*\\)[ \t]*\\*)[ \t\r]*$" in
-  let add_directories = Str.regexp "^[ \t]*(\\*[ \t]*#DIRECTORIES[ \t]+\\([^ \t]+\\(,[ \t]*[^ \t]+\\)*\\)[ \t]*\\*)[ \t\r]*$" in
   let rec pump () =
     let s = input_line fread in
     if Str.string_match link s 0 then (
@@ -327,7 +327,7 @@ let rec read_options_from_source_file f fread =
       noamble:=true;
       pump ()
     )
-    else if Str.string_match add_compilation_option s 0 then (
+    else if Str.string_match add_comp_opt s 0 then (
       let str=Str.matched_group 1 s in
       let opts=getopts str in
       comp_opts := opts@(!comp_opts);
@@ -336,7 +336,7 @@ let rec read_options_from_source_file f fread =
       packages := (Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)) @ (!packages);
       pump ())
 
-    else if Str.string_match add_directories s 0 then
+    else if Str.string_match add_dir s 0 then
       (let dirs_ = Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)
        in
        directories := dirs_ ;
