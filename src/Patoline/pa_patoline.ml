@@ -524,6 +524,24 @@ let state =
   ; paragraph_macros = []
   ; environment      = [] }
 
+let local_state =
+  { verbose          = false
+  ; infix_symbols    = PrefixTree.empty
+  ; prefix_symbols    = PrefixTree.empty
+  ; postfix_symbols    = PrefixTree.empty
+  ; quantifier_symbols    = PrefixTree.empty
+  ; atom_symbols     = PrefixTree.empty
+  ; accent_symbols     = PrefixTree.empty
+  ; left_delimiter_symbols= PrefixTree.empty
+  ; right_delimiter_symbols= PrefixTree.empty
+  ; operator_symbols= PrefixTree.empty
+  ; combining_symbols= PrefixTree.empty
+  ; reserved_symbols = PrefixTree.empty
+  ; word_macros      = []
+  ; math_macros      = []
+  ; paragraph_macros = []
+  ; environment      = [] }
+
 let merge_states : grammar_state -> grammar_state -> unit = fun s1 s2 ->
   s1.verbose                 <- s1.verbose || s2.verbose;
   s1.infix_symbols           <- PrefixTree.union s1.infix_symbols s2.infix_symbols;
@@ -591,17 +609,19 @@ let build_grammar () =
 
 let before_parse_hook () =
   In.before_parse_hook ();
-  if not !no_default_grammar then begin
-    let path = "." :: !Config2.grammarspath in
-    let gram = findPath "DefaultGrammar.tgy" path in
-    let ch = open_in_bin gram in
-    Printf.eprintf "Reading default grammar %s\n%!" gram;
-    let fstate = input_value ch in
-    merge_states state fstate;
-    build_grammar ();
-    Printf.eprintf "Read default grammar\n%!";
+  let path = "." :: !Config2.grammarspath in
+  let add_grammar g =
+    if !no_default_grammar && g = "DefaultGrammar" then () else
+    let g = findPath (g ^ ".tgy") path in
+    Printf.eprintf "Reading grammar %s\n%!" g;
+    let ch = open_in_bin g in
+    let st = input_value ch in
+    merge_states state st;
     close_in ch;
-  end
+    Printf.eprintf "Done with grammar %s\n%!" g
+  in
+  List.iter add_grammar !patoline_grammar;
+  build_grammar ()
 
 let symbol_paragraph _loc syms names =
   <:structure<
@@ -714,13 +734,15 @@ let print_math_deco _loc elt ind =
   end
 
 let add_reserved sym_names =
-  state.reserved_symbols <-
-    List.fold_left (fun map name ->
-      let len = String.length name in
-      if len > 0 && name.[0] = '\\' then (
-	let name = String.sub name 1 (len - 1) in
-	PrefixTree.add name () map)
-      else map) state.reserved_symbols sym_names
+  let insert map name =
+    let len = String.length name in
+    if len > 0 && name.[0] = '\\' then
+      let name = String.sub name 1 (len - 1) in
+      PrefixTree.add name () map
+    else map
+  in
+  state.reserved_symbols <- List.fold_left insert state.reserved_symbols sym_names;
+  local_state.reserved_symbols <- List.fold_left insert local_state.reserved_symbols sym_names
 
 let new_infix_symbol _loc infix_prio sym_names infix_value =
   let infix_macro_names, infix_utf8_names = symbol sym_names in
@@ -737,9 +759,9 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
     { infix_prio; infix_macro_names; infix_utf8_names; infix_value
     ; infix_space; infix_no_left_space; infix_no_right_space }
   in
-  state.infix_symbols <-
-    List.fold_left (fun map name -> PrefixTree.add name sym map)
-    state.infix_symbols sym_names;
+  let insert map name = PrefixTree.add name sym map in
+  state.infix_symbols <- List.fold_left insert state.infix_symbols sym_names;
+  local_state.infix_symbols <- List.fold_left insert local_state.infix_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -767,9 +789,9 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
 let new_symbol _loc sym_names symbol_value =
   let symbol_macro_names, symbol_utf8_names = symbol sym_names in
   let sym = { symbol_macro_names; symbol_utf8_names; symbol_value } in
-  state.atom_symbols <-
-    List.fold_left (fun map name -> PrefixTree.add name sym map)
-    state.atom_symbols sym_names;
+  let insert map name = PrefixTree.add name sym map in
+  state.atom_symbols <- List.fold_left insert state.atom_symbols sym_names;
+  local_state.atom_symbols <- List.fold_left insert local_state.atom_symbols sym_names;
   (* Displaying no the document. *)
   if state.verbose then
     let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
@@ -784,9 +806,9 @@ let new_symbol _loc sym_names symbol_value =
 let new_accent_symbol _loc sym_names symbol_value =
   let symbol_macro_names, symbol_utf8_names = symbol sym_names in
   let sym = { symbol_macro_names; symbol_utf8_names; symbol_value } in
-  state.accent_symbols <-
-    List.fold_left (fun map name -> PrefixTree.add name sym map)
-    state.accent_symbols sym_names;
+  let insert map name = PrefixTree.add name sym map in
+  state.accent_symbols <- List.fold_left insert state.accent_symbols sym_names;
+  local_state.accent_symbols <- List.fold_left insert local_state.accent_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -802,9 +824,9 @@ let new_accent_symbol _loc sym_names symbol_value =
 let new_prefix_symbol _loc sym_names prefix_value =
   let prefix_macro_names, prefix_utf8_names = symbol sym_names in
   let sym = { prefix_prio = Prod; prefix_space = 3; prefix_no_space = false; prefix_macro_names; prefix_utf8_names; prefix_value } in
-  state.prefix_symbols <-
-    List.fold_left (fun map name -> PrefixTree.add name sym map)
-    state.prefix_symbols sym_names;
+  let insert map name = PrefixTree.add name sym map in
+  state.prefix_symbols <- List.fold_left insert state.prefix_symbols sym_names;
+  local_state.prefix_symbols <- List.fold_left insert local_state.prefix_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -820,9 +842,9 @@ let new_prefix_symbol _loc sym_names prefix_value =
 let new_postfix_symbol _loc sym_names postfix_value =
   let postfix_macro_names, postfix_utf8_names = symbol sym_names in
   let sym = { postfix_prio = Prod; postfix_space = 3; postfix_no_space = false; postfix_macro_names; postfix_utf8_names; postfix_value } in
-  state.postfix_symbols <-
-    List.fold_left (fun map name -> PrefixTree.add name sym map)
-    state.postfix_symbols sym_names;
+  let insert map name = PrefixTree.add name sym map in
+  state.postfix_symbols <- List.fold_left insert state.postfix_symbols sym_names;
+  local_state.postfix_symbols <- List.fold_left insert local_state.postfix_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -838,9 +860,9 @@ let new_postfix_symbol _loc sym_names postfix_value =
 let new_quantifier_symbol _loc sym_names symbol_value =
   let symbol_macro_names, symbol_utf8_names = symbol sym_names in
   let sym = { symbol_macro_names; symbol_utf8_names; symbol_value } in
-  state.quantifier_symbols <-
-    List.fold_left (fun map name -> PrefixTree.add name sym map)
-    state.quantifier_symbols sym_names;
+  let insert map name = PrefixTree.add name sym map in
+  state.quantifier_symbols <- List.fold_left insert state.quantifier_symbols sym_names;
+  local_state.quantifier_symbols <- List.fold_left insert local_state.quantifier_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -856,9 +878,9 @@ let new_quantifier_symbol _loc sym_names symbol_value =
 let new_left_delimiter _loc sym_names delimiter_values =
   let delimiter_macro_names, delimiter_utf8_names = symbol sym_names in
   let sym = { delimiter_macro_names; delimiter_utf8_names; delimiter_values } in
-  state.left_delimiter_symbols <-
-    List.fold_left (fun map name -> PrefixTree.add name sym map)
-    state.left_delimiter_symbols sym_names;
+  let insert map name = PrefixTree.add name sym map in
+  state.left_delimiter_symbols <- List.fold_left insert state.left_delimiter_symbols sym_names;
+  local_state.left_delimiter_symbols <- List.fold_left insert local_state.left_delimiter_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -881,9 +903,9 @@ let new_left_delimiter _loc sym_names delimiter_values =
 let new_right_delimiter _loc sym_names delimiter_values =
   let delimiter_macro_names, delimiter_utf8_names = symbol sym_names in
   let sym = { delimiter_macro_names; delimiter_utf8_names; delimiter_values } in
-  state.right_delimiter_symbols <-
-    List.fold_left (fun map name -> PrefixTree.add name sym map)
-    state.right_delimiter_symbols sym_names;
+  let insert map name = PrefixTree.add name sym map in
+  state.right_delimiter_symbols <- List.fold_left insert state.right_delimiter_symbols sym_names;
+  local_state.right_delimiter_symbols <- List.fold_left insert local_state.right_delimiter_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -907,9 +929,9 @@ let new_operator_symbol _loc operator_kind sym_names operator_values =
   let operator_macro_names, operator_utf8_names = symbol sym_names in
   let operator_prio = Operator in
   let sym = { operator_prio; operator_kind; operator_macro_names; operator_utf8_names; operator_values } in
-  state.operator_symbols <-
-    List.fold_left (fun map name -> PrefixTree.add name sym map)
-    state.operator_symbols sym_names;
+  let insert map name = PrefixTree.add name sym map in
+  state.operator_symbols <- List.fold_left insert state.operator_symbols sym_names;
+  local_state.operator_symbols <- List.fold_left insert local_state.operator_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -933,6 +955,7 @@ let new_combining_symbol _loc uchr macro =
   (* An parser for the new symbol as an atom. *)
   let _parse_sym = string uchr () in
   state.combining_symbols <- PrefixTree.add uchr macro state.combining_symbols;
+  local_state.combining_symbols <- PrefixTree.add uchr macro local_state.combining_symbols;
   (* TODO *)
   (* Displaying no the document. *)
   if state.verbose then
@@ -948,14 +971,19 @@ let new_combining_symbol _loc uchr macro =
 
 let parser symbol_def =
   | "\\Configure_math_macro" "{" "\\"? - id:lid "}" cs:configs ->
-      state.math_macros <- (id, cs) :: state.math_macros; []
+      state.math_macros <- (id, cs) :: state.math_macros;
+      local_state.math_macros <- (id, cs) :: local_state.math_macros; []
   | "\\Configure_word_macro" "{" "\\"? - id:lid "}" cs:configs ->
-      state.word_macros <- (id, cs) :: state.word_macros; []
+      state.word_macros <- (id, cs) :: state.word_macros;
+      local_state.word_macros <- (id, cs) :: local_state.word_macros; []
   | "\\Configure_paragraph_macro" "{" "\\"? - id:lid "}" cs:configs ->
-      state.paragraph_macros <- (id, cs) :: state.paragraph_macros; []
+      state.paragraph_macros <- (id, cs) :: state.paragraph_macros;
+      local_state.paragraph_macros <- (id, cs) :: local_state.paragraph_macros; []
   | "\\Configure_environment" "{" id:lid "}" cs:configs ->
-      state.environment <- (id, cs) :: state.environment; []
-  | "\\Verbose_Changes" -> state.verbose <- true; []
+      state.environment <- (id, cs) :: state.environment;
+      local_state.environment <- (id, cs) :: local_state.environment; []
+  | "\\Verbose_Changes" ->
+      state.verbose <- true; local_state.verbose <- true; []
   | "\\Save_Grammar"    -> build_grammar (); []
   | "\\Add_relation"      ss:symbols e:symbol_value ->
       new_infix_symbol _loc Rel      ss e
@@ -1682,12 +1710,12 @@ let _ =
     match !Pa_ocaml_prelude.file, !in_ocamldep with
     | Some s, false ->
        let name = chop_extension' s ^ ".tgy" in
+       Printf.eprintf "Writing grammar %s\n%!" name;
        let ch = open_out_bin name in
-       Printf.eprintf "Writing default grammar\n%!";
        let open PaExt in
-       output_value ch state;
-       Printf.eprintf "Written default grammar\n%!";
-       close_out ch
+       output_value ch local_state;
+       close_out ch;
+       Printf.eprintf "Written grammar %s\n%!" name
     | _ -> Printf.eprintf "Not writing default grammar, no filename\n%!";
 
   with e ->
