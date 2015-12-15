@@ -1033,7 +1033,7 @@ let parser indices =
 		   | "^" -> Right,Up
 		   | "^^"-> Left,Up
 
-let no_blank_list g = change_layout ( parser g* ) no_blank
+let no_blank_list g = change_layout ( parser g+ ) no_blank
 
 let parser any_symbol =
   | sym:math_infix_symbol'  -> sym.infix_value
@@ -1153,6 +1153,17 @@ and math_atom =
        let apply acc arg = <:expr<$acc$ $arg$>> in
        let e = List.fold_left apply <:expr<$m$>> args in
        print_math_deco _loc_id e indices
+     ), AtomM
+
+  | '\\' - id:mathlid ->
+     if PrefixTree.mem id state.reserved_symbols then give_up "not a macro";
+     (fun indices ->
+       let config =
+         try List.assoc id state.math_macros with Not_found -> []
+       in
+       let m = real_name id config in
+       (* TODO special macro properties to be handled. *)
+       print_math_deco _loc_id m indices
      ), AtomM
 
   | (m,mp):math_atom sym:math_combining_symbol  ->
