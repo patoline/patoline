@@ -982,35 +982,7 @@ let parser any_symbol =
   | sym:math_postfix_symbol -> sym.postfix_value
 
 let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * math_prio) Decap.grammar =
-  | '{' (m,_):math_aux '}' -> (m,AtomM)
-  | '{' s:any_symbol '}' ->
-      if s = Invisible then give_up "...";
-      (fun indices ->
-        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s indices$]>>
-      ), AtomM
-
-  | l:math_left_delimiter (m,_):math_aux r:math_right_delimiter ->
-     (fun indices ->
-       let l = print_math_symbol _loc_l (MultiSym l.delimiter_values) in
-       let r = print_math_symbol _loc_r (MultiSym r.delimiter_values) in
-       print_math_deco _loc <:expr<[Maths.Decoration (Maths.open_close $l$ $r$, $m no_ind$)]>> indices
-     ),AtomM
-
-  | name:''[a-zA-Z][a-zA-Z0-9]*'' ->
-     (fun indices ->
-       if String.length name > 1 then
-	 let elt = <:expr<fun env -> Maths.glyphs $string:name$ (Maths.change_fonts env env.font)>> in
-	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (CamlSym elt) indices$] >>
-       else
-	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (SimpleSym name) indices$] >>), AtomM
-
-  | num:''[0-9]+\([.][0-9]+\)?'' ->
-     (fun indices ->
-       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>), AtomM
-
-  | sym:math_atom_symbol ->
-      (fun indices ->
-	<:expr<[Maths.Ordinary $print_math_deco_sym _loc_sym sym.symbol_value indices$] >>), AtomM
+  | m:math_atom -> m
 
   | sym:math_prefix_symbol (m,mp):math_aux ->
      if mp > sym.prefix_prio then give_up "bad prefix priority";
@@ -1047,74 +1019,10 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
       | NoLimits ->
 	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym sym.operator_values) ind$ $m no_ind$]>>), sym.operator_prio
 
-  | (m,mp):math_aux sym:math_combining_symbol  ->
-    if mp > AtomM then give_up "bad post priority";
-    (fun indices -> <:expr<$lid:sym$ $m indices$>>),Accent
-
   | (m,mp):math_aux sym:math_postfix_symbol  ->
      if mp > sym.postfix_prio then give_up "bad post priority";
       (fun indices ->
 	<:expr<[Maths.bin $int:sym.postfix_space$ (Maths.Normal($bool:sym.postfix_no_space$,$print_math_deco_sym _loc_sym sym.postfix_value indices$,true)) $m no_ind$ []] >>), sym.postfix_prio
-
-  | '\\' - id:lid - args:(no_blank_list (change_layout math_macro_argument blank1)) ->
-     (fun indices ->
-       let config =
-         try List.assoc id state.math_macros with Not_found -> []
-       in
-       let m = real_name id config in
-       (* TODO special macro properties to be handled. *)
-       let apply acc arg = <:expr<$acc$ $arg$>> in
-       let e = List.fold_left apply <:expr<$m$>> args in
-       print_math_deco _loc_id e indices
-     ), AtomM
-
-  | (m,mp):math_aux s:Subsup.subscript ->
-     if mp > Ind then give_up "No indice/exponent allowed here";
-    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
-    let rd indices =
-      if indices.down_right <> None then give_up "double indices";
-      { indices with down_right = Some s }
-    in
-    (fun indices -> m (rd indices)), Ind
-
-  | (m,mp):math_aux s:Subsup.superscript ->
-     if mp > Ind then give_up "No indice/exponent allowed here";
-    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
-    let rd indices =
-      if indices.up_right <> None then give_up "double indices";
-      { indices with up_right = Some s }
-    in
-    (fun indices -> m (rd indices)), Ind
-
-  | (m,mp):math_aux s:math_accent_symbol ->
-     if mp > Ind then give_up "No indice/exponent allowed here";
-    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s.symbol_value no_ind$] >> in
-    let rd indices =
-      if indices.up_right <> None then give_up "double indices";
-      { indices with up_right = Some s; up_right_same_script = true }
-    in
-    (fun indices -> m (rd indices)), Ind
-
-  | (m,mp):math_aux - (s,h):indices - (r,rp):math_aux ->
-     if (mp >= Ind && s = Left) then give_up "can not be used as indice";
-     if (rp >= Ind && s = Right) then give_up "can not be used as indice";
-     if (mp > Ind && s = Right) then give_up "No indice/exponent allowed here";
-     if (rp > Ind && s = Left) then give_up "No indice/exponent allowed here";
-     let rd indices = function
-       | Left,Down ->
-	  if indices.down_left <> None then give_up "double indices";
-	 { indices with down_left = Some (m no_ind) }
-       | Right,Down ->
-	  if indices.down_right <> None then give_up "double indices";
-	 { indices with down_right = Some (r no_ind) }
-       | Left,Up ->
-	  if indices.up_left <> None then give_up "double indices";
-	 { indices with up_left = Some (m no_ind) }
-       | Right,Up ->
-	  if indices.up_right <> None then give_up "double indices";
-	 { indices with up_right = Some (r no_ind) }
-     in
-     (fun indices -> (if s = Left then r else m) (rd indices (s,h))), Ind
 
   | (l,lp):math_aux s:math_infix_symbol (r,rp):math_aux ->
      if lp > s.infix_prio || rp >= s.infix_prio then give_up "bad infix priority";
@@ -1142,6 +1050,96 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
                                 bin_left= $l$;
                                 bin_right= $r$ } ] >>
 	 end), s.infix_prio
+
+and math_atom =
+  | '{' (m,_):math_aux '}' -> (m,AtomM)
+  | '{' s:any_symbol '}' ->
+      if s = Invisible then give_up "...";
+      (fun indices ->
+        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s indices$]>>
+      ), AtomM
+
+  | l:math_left_delimiter (m,_):math_aux r:math_right_delimiter ->
+     (fun indices ->
+       let l = print_math_symbol _loc_l (MultiSym l.delimiter_values) in
+       let r = print_math_symbol _loc_r (MultiSym r.delimiter_values) in
+       print_math_deco _loc <:expr<[Maths.Decoration (Maths.open_close $l$ $r$, $m no_ind$)]>> indices
+     ),AtomM
+
+  | name:''[a-zA-Z][a-zA-Z0-9]*'' ->
+     (fun indices ->
+       if String.length name > 1 then
+	 let elt = <:expr<fun env -> Maths.glyphs $string:name$ (Maths.change_fonts env env.font)>> in
+	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (CamlSym elt) indices$] >>
+       else
+	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (SimpleSym name) indices$] >>), AtomM
+
+  | sym:math_atom_symbol ->
+      (fun indices ->
+	<:expr<[Maths.Ordinary $print_math_deco_sym _loc_sym sym.symbol_value indices$] >>), AtomM
+
+  | num:''[0-9]+\([.][0-9]+\)?'' ->
+     (fun indices ->
+       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>), AtomM
+
+  | '\\' - id:lid - args:(no_blank_list (change_layout math_macro_argument blank1)) ->
+     (fun indices ->
+       let config =
+         try List.assoc id state.math_macros with Not_found -> []
+       in
+       let m = real_name id config in
+       (* TODO special macro properties to be handled. *)
+       let apply acc arg = <:expr<$acc$ $arg$>> in
+       let e = List.fold_left apply <:expr<$m$>> args in
+       print_math_deco _loc_id e indices
+     ), AtomM
+
+  | (m,mp):math_atom sym:math_combining_symbol  ->
+    if mp > AtomM then give_up "bad post priority";
+    (fun indices -> <:expr<$lid:sym$ $m indices$>>),Accent
+
+  | (m,mp):math_atom s:Subsup.subscript ->
+    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+    let rd indices =
+      if indices.down_right <> None then give_up "double indices";
+      { indices with down_right = Some s }
+    in
+    (fun indices -> m (rd indices)), Ind
+
+  | (m,mp):math_atom s:Subsup.superscript ->
+    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+    let rd indices =
+      if indices.up_right <> None then give_up "double indices";
+      { indices with up_right = Some s }
+    in
+    (fun indices -> m (rd indices)), Ind
+
+  | (m,mp):math_atom s:math_accent_symbol ->
+    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s.symbol_value no_ind$] >> in
+    let rd indices =
+      if indices.up_right <> None then give_up "double indices";
+      { indices with up_right = Some s; up_right_same_script = true }
+    in
+    (fun indices -> m (rd indices)), Ind
+
+  | (m,mp):math_atom - (s,h):indices - (r,rp):math_atom ->
+     if (mp >= Ind && s = Left) then give_up "can not be used as indice";
+     if (rp >= Ind && s = Right) then give_up "can not be used as indice";
+     let rd indices = function
+       | Left,Down ->
+	  if indices.down_left <> None then give_up "double indices";
+	 { indices with down_left = Some (m no_ind) }
+       | Right,Down ->
+	  if indices.down_right <> None then give_up "double indices";
+	 { indices with down_right = Some (r no_ind) }
+       | Left,Up ->
+	  if indices.up_left <> None then give_up "double indices";
+	 { indices with up_left = Some (m no_ind) }
+       | Right,Up ->
+	  if indices.up_right <> None then give_up "double indices";
+	 { indices with up_right = Some (r no_ind) }
+     in
+     (fun indices -> (if s = Left then r else m) (rd indices (s,h))), Ind
 
 and math_macro_argument =
   | '{' (m,_):math_aux '}' -> m no_ind
@@ -1180,9 +1178,8 @@ and math_operator =
     (o, i)*)
 
 and math_punc_list =
-  | (m,p):math_aux -> if p > Ind then give_up "too hight math priority"; m no_ind
-  | l:math_punc_list s:math_punctuation_symbol (m,p):math_aux ->
-     if p > Ind then give_up "too hight math priority";
+  | (m,_):math_atom -> m no_ind
+  | l:math_punc_list s:math_punctuation_symbol (m,_):math_atom ->
     let nsl = s.infix_no_left_space in
     let nsr = s.infix_no_right_space in
     let r = m no_ind in
