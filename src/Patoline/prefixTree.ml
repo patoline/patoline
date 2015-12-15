@@ -149,6 +149,11 @@ let map : ('a -> 'b) -> 'a tree -> 'b tree = fun f t ->
   in
   map t
 
+(** [union t1 t2] merges two prefix trees. If a value is mapped both in [t1]
+    and in [t2] then the value in [t2] is kept. *)
+let union : 'a tree -> 'a tree -> 'a tree = fun t1 t2 ->
+  fold (fun t k v -> add k v t) t1 t2
+
 (** Same as [mapi], but the function also takes the key as input. *)
 let mapi : (string -> 'a -> 'b) -> 'a tree -> 'b tree = fun f t ->
   let rec mapi path (Node(vo,l)) =

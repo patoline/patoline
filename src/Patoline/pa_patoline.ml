@@ -17,6 +17,7 @@ let _ = Sys.catch_break true
 let patoline_format   = ref "DefaultFormat"
 let patoline_driver   = ref "Pdf"
 let patoline_packages = ref ["Typography"]
+let patoline_grammar  = ref ["DefaultGrammar"]
 
 let set_patoline_format f =
   patoline_format := f
@@ -28,6 +29,9 @@ let add_patoline_packages ps =
   let ps = Util.split ',' ps in
   patoline_packages := !patoline_packages @ ps
 
+let add_patoline_grammar g =
+  patoline_grammar := g :: !patoline_grammar
+
 let no_default_grammar = ref false
 
 let spec =
@@ -37,7 +41,10 @@ let spec =
      "The document format to use.")
   ; ("--package", Arg.String add_patoline_packages,
      "Package to link.")
-  ; ("--no-default-grammar", Arg.Set no_default_grammar, "do not load DefaultGrammar")
+  ; ("--no-default-grammar", Arg.Set no_default_grammar,
+     "do not load DefaultGrammar")
+  ; ("--grammar", Arg.String add_patoline_grammar,
+     "load the given grammar file.")
   ]
 
 let _ = extend_cl_args spec
@@ -517,6 +524,24 @@ let state =
   ; paragraph_macros = []
   ; environment      = [] }
 
+let merge_states : grammar_state -> grammar_state -> unit = fun s1 s2 ->
+  s1.verbose                 <- s1.verbose || s2.verbose;
+  s1.infix_symbols           <- PrefixTree.union s1.infix_symbols s2.infix_symbols;
+  s1.prefix_symbols          <- PrefixTree.union s1.prefix_symbols s2.prefix_symbols;
+  s1.postfix_symbols         <- PrefixTree.union s1.postfix_symbols s2.postfix_symbols;
+  s1.quantifier_symbols      <- PrefixTree.union s1.quantifier_symbols s2.quantifier_symbols;
+  s1.atom_symbols            <- PrefixTree.union s1.atom_symbols s2.atom_symbols;
+  s1.accent_symbols          <- PrefixTree.union s1.accent_symbols s2.accent_symbols;
+  s1.left_delimiter_symbols  <- PrefixTree.union s1.left_delimiter_symbols s2.left_delimiter_symbols;
+  s1.right_delimiter_symbols <- PrefixTree.union s1.right_delimiter_symbols s2.right_delimiter_symbols;
+  s1.operator_symbols        <- PrefixTree.union s1.operator_symbols s2.operator_symbols;
+  s1.combining_symbols       <- PrefixTree.union s1.combining_symbols s2.combining_symbols;
+  s1.reserved_symbols        <- PrefixTree.union s1.reserved_symbols s2.reserved_symbols;
+  s1.word_macros             <- s2.word_macros @ s1.word_macros;
+  s1.math_macros             <- s2.math_macros @ s1.math_macros;
+  s1.paragraph_macros        <- s2.paragraph_macros @ s1.paragraph_macros;
+  s1.environment             <- s2.environment @ s1.environment
+
 let math_atom_symbol = new_grammar "atom_symbol"
 let math_prefix_symbol = new_grammar "prefix"
 let math_postfix_symbol = new_grammar "postfix"
@@ -572,21 +597,7 @@ let before_parse_hook () =
     let ch = open_in_bin gram in
     Printf.eprintf "Reading default grammar %s\n%!" gram;
     let fstate = input_value ch in
-    state.infix_symbols           <- fstate.infix_symbols;
-    state.prefix_symbols          <- fstate.prefix_symbols;
-    state.postfix_symbols         <- fstate.postfix_symbols;
-    state.quantifier_symbols      <- fstate.quantifier_symbols;
-    state.atom_symbols            <- fstate.atom_symbols;
-    state.accent_symbols          <- fstate.accent_symbols;
-    state.left_delimiter_symbols  <- fstate.left_delimiter_symbols;
-    state.right_delimiter_symbols <- fstate.right_delimiter_symbols;
-    state.operator_symbols        <- fstate.operator_symbols;
-    state.combining_symbols       <- fstate.combining_symbols;
-    state.reserved_symbols        <- fstate.reserved_symbols;
-    state.word_macros             <- fstate.word_macros;
-    state.math_macros             <- fstate.math_macros;
-    state.paragraph_macros        <- fstate.paragraph_macros;
-    state.environment             <- fstate.environment;
+    merge_states state fstate;
     build_grammar ();
     Printf.eprintf "Read default grammar\n%!";
     close_in ch;
@@ -1538,6 +1549,7 @@ let patoline_config : unit grammar =
     | "#DRIVER " d:capitalized_ident -> set_patoline_driver d
     | "#PACKAGES " ps:''[,a-zA-Z]+'' ->
         add_patoline_packages ps
+    | "#GRAMMAR " g:''[a-zA-Z]+''    -> add_patoline_grammar g
   ) no_blank
 
 let header = parser _:patoline_config**
