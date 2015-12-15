@@ -24,8 +24,8 @@ let set_patoline_format f =
 let set_patoline_driver d =
   patoline_driver := d
 
-let add_patoline_package p =
-  let ps = Util.split ',' p in
+let add_patoline_packages ps =
+  let ps = Util.split ',' ps in
   patoline_packages := !patoline_packages @ ps
 
 let no_default_grammar = ref false
@@ -35,7 +35,7 @@ let spec =
      "The driver against which to compile.")
   ; ("--format",  Arg.String set_patoline_format,
      "The document format to use.")
-  ; ("--package", Arg.String add_patoline_package,
+  ; ("--package", Arg.String add_patoline_packages,
      "Package to link.")
   ; ("--no-default-grammar", Arg.Set no_default_grammar, "do not load DefaultGrammar")
   ]
@@ -1524,9 +1524,7 @@ let parser math_toplevel =
           r)
       )
 
-  let text =
-    parser
-      txt:text -> txt true 0
+  let text = parser txt:text -> txt true 0
 
 
 
@@ -1536,12 +1534,10 @@ let parser math_toplevel =
 let patoline_config : unit grammar =
   change_layout (
     parser
-    | "#" - n:capitalized_ident ' ' a:capitalized_ident ->
-          (match n with
-           | "FORMAT"  -> patoline_format := a
-           | "DRIVER"  -> patoline_driver := a
-           | "PACKAGE" -> patoline_packages := a :: !patoline_packages
-           | _         -> give_up ("Unknown directive #"^n))
+    | "#FORMAT " f:capitalized_ident -> set_patoline_driver f
+    | "#DRIVER " d:capitalized_ident -> set_patoline_driver d
+    | "#PACKAGES " ps:''[,a-zA-Z]+'' ->
+        add_patoline_packages ps
   ) no_blank
 
 let header = parser _:patoline_config**
