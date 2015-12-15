@@ -1058,6 +1058,10 @@ let parser indices =
 		   | "^" -> Right,Up
 		   | "^^"-> Left,Up
 
+let parser right_indices =
+		   | "_" -> Down
+		   | "^" -> Up
+
 let no_blank_list g = change_layout ( parser g+ ) no_blank
 
 let parser any_symbol =
@@ -1079,14 +1083,16 @@ let merge_indices indices ind =
 let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * math_prio) Decap.grammar =
   | m:math_atom -> m
 
-  | sym:math_prefix_symbol (m,mp):math_aux ->
+  | sym:math_prefix_symbol ind:with_indices (m,mp):math_aux ->
      if mp > sym.prefix_prio then give_up "bad prefix priority";
-      (fun indices ->
+    (fun indices ->
+      let indices = merge_indices indices ind in
 	<:expr<[Maths.bin $int:sym.prefix_space$ (Maths.Normal(true,$print_math_deco_sym _loc_sym sym.prefix_value indices$,$bool:sym.prefix_no_space$)) [] $m no_ind$] >>), sym.prefix_prio
 
-  | sym:math_quantifier_symbol d:math_declaration p:math_punctuation_symbol? (m,mp):math_aux ->
+  | sym:math_quantifier_symbol ind:with_indices d:math_declaration p:math_punctuation_symbol? (m,mp):math_aux ->
      if mp > Operator then give_up "bad prefix priority";
     (fun indices ->
+      let indices = merge_indices indices ind in
       let inter = match p with
 	  None -> <:expr<Maths.Invisible>>
 	| Some s ->
@@ -1102,23 +1108,23 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
                     []
                     [Maths.bin 1 $inter$ $d$ $m no_ind$]]>>), Operator
 
-  | op:(with_indices math_operator) (m,mp):math_aux ->
-     let sym,ind = op in
-     if mp > sym.operator_prio then give_up "bad operator priority";
+  | op:math_operator ind:with_indices (m,mp):math_aux ->
+     if mp > op.operator_prio then give_up "bad operator priority";
      (fun indices ->
        let ind = merge_indices indices ind in
-      match sym.operator_kind with
+      match op.operator_kind with
 	Limits ->
-	  <:expr<[Maths.op_limits [] $print_math_deco_sym _loc_op (MultiSym sym.operator_values) ind$ $m no_ind$]>>
+	  <:expr<[Maths.op_limits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>
       | NoLimits ->
-	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym sym.operator_values) ind$ $m no_ind$]>>), sym.operator_prio
+	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>), op.operator_prio
 
   | (m,mp):math_aux sym:math_postfix_symbol  ->
      if mp > sym.postfix_prio then give_up "bad post priority";
       (fun indices ->
 	<:expr<[Maths.bin $int:sym.postfix_space$ (Maths.Normal($bool:sym.postfix_no_space$,$print_math_deco_sym _loc_sym sym.postfix_value indices$,true)) $m no_ind$ []] >>), sym.postfix_prio
 
-  | (l,lp):math_aux st:{(with_indices2 math_infix_symbol) | s:(empty invisible_product) -> (s,no_ind) } (r,rp):math_aux ->
+  | (l,lp):math_aux st:{s:math_infix_symbol i:with_indices -> (s,i)
+		      | s:(empty invisible_product) -> (s,no_ind) } (r,rp):math_aux ->
      let s,ind = st in
      if lp > s.infix_prio || rp >= s.infix_prio then give_up "bad infix priority";
     (fun indices ->
@@ -1253,13 +1259,11 @@ and math_macro_argument =
   | '{' (m,_):math_aux '}' -> m no_ind
   | e:wrapped_caml_expr    -> e
 
-and with_indices sym =
-  | o:sym ->
-     (o, no_ind)
+and with_indices =
+  | EMPTY -> no_ind
 
-  | (o,i):(with_indices sym) - (s,h):indices - (r,rp):math_aux ->
-     if (rp >= Ind && s = Right) then give_up "can not be used as indice";
-     if (s = Left) then give_up "No indice/exponent allowed here";
+  | i:with_indices h:right_indices - (r,rp):math_aux ->
+     if rp >= Ind then give_up "can not be used as indice";
      let i = match h with
        | Down ->
 	  if i.down_right <> None then give_up "double indices";
@@ -1268,26 +1272,7 @@ and with_indices sym =
 	  if i.up_right <> None then give_up "double indices";
 	 { i with up_right = Some (r no_ind) }
      in
-     (o, i)
-
-and with_indices2 sym =
-  | o:sym ->
-     (o, no_ind)
-
-  | (o,i):(with_indices2 sym) - (s,h):indices - (r,rp):math_aux ->
-     if (rp >= Ind && s = Right) then give_up "can not be used as indice";
-     if (s = Left) then give_up "No indice/exponent allowed here";
-     let i = match h with
-       | Down ->
-	  if i.down_right <> None then give_up "double indices";
-	 { i with down_right = Some (r no_ind) }
-       | Up ->
-	  if i.up_right <> None then give_up "double indices";
-	 { i with up_right = Some (r no_ind) }
-     in
-     (o, i)
-
-
+     i
 
 (*  | (m,mp):math_aux - (s,h):indices - (o,i):math_operator ->
      (* FIXME TODO: decap bug: this loops ! *)
@@ -1320,13 +1305,12 @@ and math_punc_list =
 
 and math_declaration =
   | m:math_punc_list -> m
-  | l:math_declaration s:(with_indices2 math_relation_symbol) r:math_punc_list ->
-    let nsl = (fst s).infix_no_left_space in
-    let nsr = (fst s).infix_no_right_space in
+  | l:math_declaration s:math_relation_symbol ind:with_indices r:math_punc_list ->
+    let nsl = s.infix_no_left_space in
+    let nsr = s.infix_no_right_space in
     let inter =
-      <:expr<
-                         Maths.Normal( $bool:nsl$,
-                           $print_math_deco_sym _loc_s (fst s).infix_value (snd s)$,
+      <:expr<Maths.Normal( $bool:nsl$,
+                           $print_math_deco_sym _loc_s s.infix_value ind$,
                            $bool:nsr$) >>
     in
     <:expr<[Maths.bin 2 $inter$ $l$ $r$] >>
