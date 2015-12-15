@@ -609,7 +609,7 @@ let build_grammar () =
 
 let before_parse_hook () =
   In.before_parse_hook ();
-  let path = "." :: !Config2.grammarspath in
+  let path = "." :: "_patobuild" :: !Config2.grammarspath in
   let add_grammar g =
     if !no_default_grammar && g = "DefaultGrammar" then () else
     let g = findPath (g ^ ".tgy") path in
@@ -1709,7 +1709,10 @@ let _ =
     let module M = Pa_main.Start(PatolineDefault) in
     match !Pa_ocaml_prelude.file, !in_ocamldep with
     | Some s, false ->
-       let name = chop_extension' s ^ ".tgy" in
+       let dir = Filename.dirname s in
+       let name = Filename.basename s in
+       let name = chop_extension' name ^ ".tgy" in
+       let name = Filename.concat (Filename.concat dir "_patobuild") name in
        Printf.eprintf "Writing grammar %s\n%!" name;
        let ch = open_out_bin name in
        let open PaExt in

@@ -92,7 +92,7 @@ install-grammars: $(d)/DefaultGrammar.txp $(d)/DefaultGrammar.tgx
 	install -p -m 755 -d $(DESTDIR)/$(INSTALL_GRAMMARS_DIR)
 	install -p -m 644 $(SRC_DIR)/DefaultGrammar.txp $(DESTDIR)/$(INSTALL_GRAMMARS_DIR)/
 	install -p -m 644 $(SRC_DIR)/DefaultGrammar.tgx $(DESTDIR)/$(INSTALL_GRAMMARS_DIR)/
-	install -p -m 644 $(SRC_DIR)/DefaultGrammar.tgy $(DESTDIR)/$(INSTALL_GRAMMARS_DIR)/
+	install -p -m 644 $(SRC_DIR)/_patobuild/DefaultGrammar.tgy $(DESTDIR)/$(INSTALL_GRAMMARS_DIR)/
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
