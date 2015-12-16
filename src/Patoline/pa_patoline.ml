@@ -1263,16 +1263,23 @@ and with_indices =
   | EMPTY -> no_ind
 
   | i:with_indices h:right_indices - (r,rp):math_aux ->
-     if rp >= Ind then give_up "can not be used as indice";
-     let i = match h with
-       | Down ->
-	  if i.down_right <> None then give_up "double indices";
-	 { i with down_right = Some (r no_ind) }
-       | Up ->
-	  if i.up_right <> None then give_up "double indices";
-	 { i with up_right = Some (r no_ind) }
-     in
-     i
+     begin
+       match h with
+       | Down -> if i.down_right <> None then give_up "double indices";
+	               { i with down_right = Some (r no_ind) }
+       | Up   -> if i.up_right <> None then give_up "double indices";
+	               { i with up_right = Some (r no_ind) }
+     end
+
+  | i:with_indices s:Subsup.superscript ->
+      let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+      if i.up_right <> None then give_up "double indices";
+      { i with up_right = Some s }
+
+  | i:with_indices s:Subsup.subscript ->
+      let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+      if i.down_right <> None then give_up "double indices";
+      { i with down_right = Some s }
 
 (*  | (m,mp):math_aux - (s,h):indices - (o,i):math_operator ->
      (* FIXME TODO: decap bug: this loops ! *)
@@ -1318,9 +1325,9 @@ and math_declaration =
 
 let parser math_toplevel =
   | (m,_):math_aux -> m no_ind
-  | s:any_symbol   ->
+  | s:any_symbol i:with_indices ->
       if s = Invisible then give_up "...";
-      <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s no_ind$]>>
+      <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s i$]>>
 
 
 
