@@ -1355,7 +1355,7 @@ let parser math_toplevel =
     | e:wrapped_caml_list  -> <:expr<$list:e$>>
 
   let reserved_macro =
-    [ "Caml"; "begin"; "end"; "item"; "verb"; "diagram" ; "tableOfContents" ]
+    [ "begin"; "end"; "item"; "verb"; "diagram" ]
 
   let macro_name = change_layout (
     parser "\\" - m:lid ->
@@ -1474,7 +1474,7 @@ let parser math_toplevel =
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
          <:structure< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output)(D)
                       open $uid:temp_id$>>)
-    | | "\\tableOfContents" -> (fun _ ->
+    | | "\\TableOfContents" -> (fun _ ->
          let m = freshUid () in
          <:structure<
            module $uid:m$ = TableOfContents ;;

@@ -51,14 +51,14 @@ let aliasDriver=
   (List.combine shortDrivers Config2.drivers)
 
 (* Regexp for pragma-style things. *)
-let set_format   =      Str.regexp "^[ \t(*]*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
-let set_driver   =      Str.regexp "^[ \t(*]*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
-let set_grammar  =     Str.regexp "^[ \t(*]*[ \t]*#GRAMMAR[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
-let set_noamble  =     Str.regexp "^[ \t(*]*[ \t]*#NOAMBLE[ )*\t\r]*$"
-let link         =        Str.regexp "^[ \t(*]*[ \t]*#LINK[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
-let depends      =     Str.regexp "^[ \t(*]*[ \t]*#DEPENDS[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
+let set_format   = Str.regexp "^[ \t(*]*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
+let set_driver   = Str.regexp "^[ \t(*]*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
+let set_grammar  = Str.regexp "^[ \t(*]*[ \t]*#GRAMMAR[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
+let set_noamble  = Str.regexp "^[ \t(*]*[ \t]*#NOAMBLE[ )*\t\r]*$"
+let link         = Str.regexp "^[ \t(*]*[ \t]*#LINK[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
+let depends      = Str.regexp "^[ \t(*]*[ \t]*#DEPENDS[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
 let add_comp_opt = Str.regexp "^[ \t(*]*[ \t]*#COMPILATION[ \t]+\\(.+\\)[ )*\t\r]*$"
-let add_package  =    Str.regexp "^[ \t(*]*[ \t]*#PACKAGES[ \t]+\\([^ \t]+\\(,[ \t]*[^ \t]+\\)*\\)[ )*\t\r]*$"
+let add_package  = Str.regexp "^[ \t(*]*[ \t]*#PACKAGES[ \t]+\\([^ \t]+\\(,[ \t]*[^ \t]+\\)*\\)[ )*\t\r]*$"
 let add_dir      = Str.regexp "^[ \t(*]*[ \t]*#DIRECTORIES[ \t]+\\([^ \t]+\\(,[ \t]*[^ \t]+\\)*\\)[ )*\t\r]*$"
 
 open Language
