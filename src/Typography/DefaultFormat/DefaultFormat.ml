@@ -1125,28 +1125,33 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
       let do_end_env ()=
 
         let stru,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
-        let p=find_last is_paragraph stru in
-        let a,b=follow (stru,path) p in
-        let a'=match a with
-            Paragraph p->
-              Paragraph { p with
-                par_parameters=(fun a b c d e f g line->
-                  let pp=(p.par_parameters a b c d e f g line) in
-                  { pp with
-                    min_lines_after=
-                      if line.lineEnd>=Array.length b.(line.paragraph) then 2 else pp.min_lines_after;
-                  });
-              }
-          | _->assert false
-        in
-        D.structure:=up_n (List.length p) (a',b);
+        begin
+          try
+            let p=find_last is_paragraph stru in
+            let a,b=follow (stru,path) p in
+            let a'=match a with
+                Paragraph p->
+                  Paragraph { p with
+                    par_parameters=(fun a b c d e f g line->
+                      let pp=(p.par_parameters a b c d e f g line) in
+                      { pp with
+                        min_lines_after=
+                          if line.lineEnd>=Array.length b.(line.paragraph) then 2 else pp.min_lines_after;
+                      });
+                  }
+              | _->assert false
+            in
+            D.structure:=up_n (List.length p) (a',b);
 
-        D.structure:=
-          up (change_env !D.structure
-                (fun x->
-                  { x with
-                    normalLeftMargin=x.normalLeftMargin+.(fst x.normalPageFormat)/.18.;
-                    normalMeasure=x.normalMeasure-.2.*.(fst x.normalPageFormat)/.18.}));
+            D.structure:=
+              up (change_env !D.structure
+                    (fun x->
+                      { x with
+                        normalLeftMargin=x.normalLeftMargin+.(fst x.normalPageFormat)/.18.;
+                        normalMeasure=x.normalMeasure-.2.*.(fst x.normalPageFormat)/.18.}));
+          with
+            Not_found->()
+        end;
         env_stack:=List.tl !env_stack
 
     end
