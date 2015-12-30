@@ -49,9 +49,9 @@ $(d)/prefixTree.cmx: $(d)/prefixTree.ml
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLDEP) -rectypes -pp $(PA_OCAML) -I $(<D) -I $(PA_OCAML_DIR) -I $(UTIL_DIR) -package patutil,decap $< > $@
+	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) -I $(<D) -I $(PA_OCAML_DIR) -I $(UTIL_DIR) -package patutil,decap $< > $@
 
-$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(d)/Subsup.cmx
+$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(d)/Subsup.cmx $(d)/prefixTree.cmx
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -rectypes -pp $(PA_OCAML) -I $(PATOLINE_DIR) -c -package patutil,decap $(COMPILER_INC) -o $@ $<
 
