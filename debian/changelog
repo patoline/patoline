@@ -1,6 +1,12 @@
-patoline (0~20151104) unstable; urgency=medium
+patoline (0~20151213) unstable; urgency=medium
 
   * Sync with upstream
+  * Decap improvements
+
+ -- Florian Hatat <florian@diego.hatat.fr>  Sun, 13 Dec 2015 19:16:34 +0100
+
+patoline (0~20151104) unstable; urgency=medium
+
   * Remove obsolete dependency on camomile.
   * Add missing build dependency on libocaml-findlib-dev.
 
