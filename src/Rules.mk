@@ -46,10 +46,10 @@ MODULES := unicodelib rbuffer patutil imagelib patfonts rawlib db \
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 
 # Building Patoline's grammar
-all: $(d)/DefaultGrammar.txp $(d)/DefaultGrammar.tgx $(d)/DefaultGrammar.tgy
+all: $(d)/DefaultGrammar.txp $(d)/DefaultGrammar.tgx $(d)/_patobuild/DefaultGrammar.tgy
 $(d)/DefaultGrammar.tgx: $(d)/DefaultGrammar.pdf
 
-$(d)/DefaultGrammar.tgy: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
+$(d)/_patobuild/DefaultGrammar.tgy: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
 	$(ECHO) "[PAT]    $< -> $@"
 	$(Q)$(PA_PATOLINE_IN_SRC) --ascii --no-default-grammar $< > /dev/null
 

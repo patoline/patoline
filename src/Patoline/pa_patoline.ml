@@ -1769,8 +1769,13 @@ let _ =
        let dir = Filename.dirname s in
        let name = Filename.basename s in
        let name = chop_extension' name ^ ".tgy" in
-       let name = Filename.concat (Filename.concat dir "_patobuild") name in
+       let patobuild_dir = Filename.concat dir "_patobuild" in
+       let name = Filename.concat patobuild_dir name in
        Printf.eprintf "Writing grammar %s\n%!" name;
+       (* Check if _patobuild/ needs to be created *)
+       if not (Sys.file_exists patobuild_dir)
+       then Unix.mkdir patobuild_dir 0o700;
+       (* Now write the grammar *)
        let ch = open_out_bin name in
        let open PaExt in
        output_value ch local_state;
