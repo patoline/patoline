@@ -98,15 +98,50 @@ let list_of_charset cs =
   !res
 
 let print_charset oc cs =
-      begin
-        Printf.fprintf oc "{";
-        for i = 0 to 255 do
-          if mem cs (Char.chr i) then
-            Printf.fprintf oc "%s" (Char.escaped (Char.chr i))
-        done;
-        Printf.fprintf oc "}"
-      end
+  if cs = full_charset then output_string oc "<FULL>"
+  else begin
+    output_string oc "{";
+    let has_range min max =
+      let has_all = ref true in
+      for i = (Char.code min) to (Char.code max) do
+        if not (mem cs (Char.chr i)) then has_all := false
+      done;
+      !has_all
+    in
+    let print_all min max =
+      for i = min to max do
+        if mem cs (Char.chr i) then
+          output_string oc (Char.escaped (Char.chr i))
+      done
+    in
+    let has_all_nums  = has_range '0' '9' in
+    let has_all_upper = has_range 'A' 'Z' in
+    let has_all_lower = has_range 'a' 'z' in
+    (* Before character '0' *)
+    print_all 0 (Char.code '0' - 1);
+    (* Numbers. *)
+    if has_all_nums then output_string oc "0-9"
+    else print_all (Char.code '0') (Char.code '9');
+    (* Before character 'A' *)
+    print_all (Char.code '9' + 1) (Char.code 'A' - 1);
+    (* Uppercase letters. *)
+    if has_all_upper then output_string oc "A-Z"
+    else print_all (Char.code 'A') (Char.code 'Z');
+    (* Before character 'a' *)
+    print_all (Char.code 'Z' + 1) (Char.code 'a' - 1);
+    (* Lowercase letters. *)
+    if has_all_lower then output_string oc "a-z"
+    else print_all (Char.code 'a') (Char.code 'z');
+    (* After character 'z'. *)
+    print_all (Char.code 'z' + 1) 255;
+    output_string oc "}"
+  end
 
-type char_tree = Any
-               | Leaf of charset
-               | Node of char_tree array
+let print_raw_charset oc cs =
+  output_string oc "{";
+  for i = 0 to 255 do
+    if mem cs (Char.chr i) then output_string oc (Char.escaped (Char.chr i))
+  done;
+  output_string oc "}"
+
+type char_tree = Any | Leaf of charset | Node of char_tree array

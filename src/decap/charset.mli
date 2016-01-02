@@ -94,6 +94,9 @@ val copy : charset -> charset
    If no charset is provided, ["None"] is printed. *)
 val print_charset : out_channel -> charset -> unit
 
+(** Same as [print_charset], but do not use abreviations such as [a-z]. *)
+val print_raw_charset : out_channel -> charset -> unit
+
 (** [list_of_charset cs] transforms a charset into a list of strings, each
    containing an escaped character. *)
 val list_of_charset : charset -> string list
