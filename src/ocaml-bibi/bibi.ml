@@ -454,7 +454,7 @@ let rec default_biblio_format ?separator:(separator=". ")
           in
           let volume=if pub_in=[] then (
             match row.(field_num "volume"),row.(field_num "series") with
-                None, None-> date
+                None, None-> []
               | Some a,Some b->(tT (sprintf "volume %s of %s" a b)) :: []
               | Some a,_->(tT (sprintf "volume %s" a))::[]
               | _, Some a->(tT (sprintf "volume %s" a))::[]
