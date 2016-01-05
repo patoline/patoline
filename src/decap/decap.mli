@@ -174,6 +174,10 @@ val internal_parse_buffer : 'a grammar -> blank -> buffer -> int
 (** [char c v] is a grammar that parses the character [c] and returns [v]. *)
 val char : char -> 'a -> 'a grammar
 
+(** [in_charset cs] is a grammar that parses any character in the charset
+  [cs] and returns it. *)
+val in_charset : charset -> char grammar
+
 (** [string str v] is a grammar that parses the string [str] and returns
   [v]. *)
 val string : string -> 'a -> 'a grammar

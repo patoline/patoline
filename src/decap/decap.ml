@@ -974,6 +974,27 @@ let char : char -> 'a -> 'a grammar
           g str pos str' pos' str'' pos'' stack a
     }
 
+let in_charset : charset -> char grammar
+  = fun cs ->
+    { ident = new_ident ()
+    ; next  =
+      { accepted_char = cs
+      ; first_syms = ~~ "Charset"
+      ; next_after_prefix = [] }
+    ; accept_empty = if cs = empty_charset then Non_empty else Non_empty
+    ; left_rec = Non_rec
+    ; deps = None
+    ; set_info = (fun () -> ())
+    ; def = None
+    ; parse =
+        fun grouped str pos next g ->
+          let stack = test_clear grouped in
+          let c, str', pos' = read str pos in
+          if not (mem cs c) then parse_error grouped (~~ "Charset") str pos;
+          let str'', pos'' = apply_blank grouped str' pos' in
+          g str pos str' pos' str'' pos'' stack c
+    }
+
 let any : char grammar
   = let set = del full_charset '\255' in
     { ident = new_ident ();
