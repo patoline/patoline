@@ -461,24 +461,21 @@ struct
     match ls with
     | [] -> exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]
     | [r] -> apply_def_cond _loc r
-    | _::_ ->
-      (match ls with
-	elt1::elt2::_ ->
-	  (*	  Format.eprintf "comparing\n  %a\nwith\n  %a\n%!" Pprintast.expression e Pprintast.expression e';*)
-	  if factorisable elt1 elt2 then
-	    Printf.eprintf "can left factorise\n%!"
-      | _ -> ());
-      let l = List.fold_right (fun r y ->
-	let (def,cond,e) = build_rule r in
-	match cond with
-	  None ->
-	    def (exp_Cons _loc e y)
-        | Some c ->
-	  def (loc_expr _loc (Pexp_let(Nonrecursive,[value_binding _loc (pat_ident _loc "y") y],
-				       loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc
-					 e (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
-      ) ls (exp_Nil _loc) in
-      exp_apply _loc (exp_glr_fun _loc comb) [l]
+    | elt1::elt2::_ ->
+        (*
+        if factorisable elt1 elt2 then
+          Printf.eprintf "can left factorise\n%!";
+        *)
+        let l = List.fold_right (fun r y ->
+          let (def,cond,e) = build_rule r in
+          match cond with
+          | None -> def (exp_Cons _loc e y)
+          | Some c -> def (loc_expr _loc (Pexp_let(Nonrecursive,[value_binding _loc (pat_ident _loc "y") y],
+                                loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc
+                                 e (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
+          ) ls (exp_Nil _loc)
+        in
+        exp_apply _loc (exp_glr_fun _loc comb) [l]
 
   let alt = parser '|' x:'|'? -> x = None
 
