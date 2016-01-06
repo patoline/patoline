@@ -82,7 +82,11 @@ val del : charset -> char -> charset
 
 (** [union cs1 cs2] returns a charset that is the union of charset [cs1] and
    charset [cs2]. *)
-val union: charset -> charset -> charset
+val union : charset -> charset -> charset
+
+(** [complement cs] returns the charset that contains exactly the characters
+   that were not in [cs]. *)
+val complement : charset -> charset
 
 (** [singleton c] returns a charset containing only character [c]. *)
 val singleton : char -> charset

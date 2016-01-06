@@ -190,10 +190,10 @@ let all_next =
 
 let print_char_set_after_left ch l =
   List.iter (fun (id,(b,first,_)) ->
-	     Printf.fprintf ch "(%d, %b, %a) " id b print_charset first) l
+    Printf.fprintf ch "(%d, %b, {%a}) " id b print_charset first) l
 
 let print_next ch n =
-  Printf.fprintf ch "%a [%a]" print_charset n.accepted_char print_char_set_after_left n.next_after_prefix
+  Printf.fprintf ch "{%a} [%a]" print_charset n.accepted_char print_char_set_after_left n.next_after_prefix
 
 type ('a, 'b) continuation = buffer -> int -> buffer -> int -> buffer -> int -> stack -> 'a -> 'b
 

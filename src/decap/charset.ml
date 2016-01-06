@@ -47,14 +47,16 @@
 
 type charset = int array
 
-let used, mask, shift, size =
+let mask, shift, size =
   match Sys.word_size with
-  | 32 -> -1, 15, 4, 256 / 16
-  | 64 -> -1, 31, 5, 256 / 32
+  | 32 -> 15, 4, 256 / 16
+  | 64 -> 31, 5, 256 / 32
   | _  -> assert false (* Cannot happen... *)
 
 let empty_charset = Array.make size 0
-let full_charset  = Array.make size used
+let full_charset  = Array.make size (-1)
+
+let complement = Array.map ((lxor) (-1))
  
 let mem cs c =
   let i = Char.code c in
@@ -100,7 +102,6 @@ let list_of_charset cs =
 let print_charset oc cs =
   if cs = full_charset then output_string oc "<FULL>"
   else begin
-    output_string oc "{";
     let has_range min max =
       let has_all = ref true in
       for i = (Char.code min) to (Char.code max) do
@@ -134,14 +135,11 @@ let print_charset oc cs =
     else print_all (Char.code 'a') (Char.code 'z');
     (* After character 'z'. *)
     print_all (Char.code 'z' + 1) 255;
-    output_string oc "}"
   end
 
 let print_raw_charset oc cs =
-  output_string oc "{";
   for i = 0 to 255 do
     if mem cs (Char.chr i) then output_string oc (Char.escaped (Char.chr i))
-  done;
-  output_string oc "}"
+  done
 
 type char_tree = Any | Leaf of charset | Node of char_tree array
