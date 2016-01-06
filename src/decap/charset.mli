@@ -88,6 +88,10 @@ val union : charset -> charset -> charset
    that were not in [cs]. *)
 val complement : charset -> charset
 
+(** [range cmin cmax] returns the charset containing all the characters
+   between [cmin] and [cmax]. *)
+val range : char -> char -> charset
+
 (** [singleton c] returns a charset containing only character [c]. *)
 val singleton : char -> charset
 

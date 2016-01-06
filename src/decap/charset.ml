@@ -72,6 +72,12 @@ let add cs c =
   cs.(i lsr shift) <- cs.(i lsr shift) lor (1 lsl (i land mask));
   cs
 
+let range cmin cmax =
+  let res = ref empty_charset in
+  for i = Char.code cmin to Char.code cmax do
+    res := add !res (Char.chr i)
+  done; !res
+
 let delq cs c =
   let i = Char.code c in
   cs.(i lsr shift) <- cs.(i lsr shift) land (lnot (1 lsl (i land mask)))
