@@ -219,14 +219,13 @@ let editableText ?(global=false) ?(empty_case="Type in here")
       | Some d -> d
     in
 
-    let dataO = db.create_data ~global (name^"_ouput") "" in
-
-    let update () =
-      let s = data.read() in
-      let s' = if s = "" then empty_case else s in
-      s, Util.split '\n' s'
+    let init_res = match extra with
+	None -> ""
+      | Some f ->  f filename (fun _ -> ()) init_text
     in
 
+    let dataO = db.create_data ~global (name^"_ouput") init_res in
+    
     let eval t =
       match extra with
 	None -> Private
@@ -240,6 +239,13 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 	dataO.write res;
 	Private
     in
+
+    let update () =
+      let s = data.read() in
+      let s' = if s = init_text then init_text else s in
+      s, Util.split '\n' s'
+    in
+
     dynamic name'
       (function
       | Edit(n, t) when name = n ->
@@ -279,10 +285,6 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 		      let resultLines = match extra with None -> []
 			| Some f ->
 			  let str = dataO.read () in
-			  let str =
-			    if str = "" && s <> init_text then (ignore (eval (data.read())); dataO.read ())
-			    else str
-			  in
 			  mk_length (Util.split '\n' str) err_lines
 		      in
        		      (List.fold_left (fun acc line ->
