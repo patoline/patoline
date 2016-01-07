@@ -76,10 +76,10 @@ type regexp =
   | Opt of regexp          (* Optional regexp. *)
   | Str of regexp          (* Zero or more times the regexp. *)
   | Pls of regexp          (* One or more times the regexp. *)
-  | BOL                    (* Beginning of line. *)
-  | EOL                    (* End of line. *)
   | Grp of regexp          (* Group containing a regular expression. *)
   | Ref of int             (* Reference to a group. *)
+  | BOL                    (* Beginning of line. *)
+  | EOL                    (* End of line. *)
   | Bnd                    (* Word boundary. *)
 
 
@@ -104,10 +104,10 @@ let rec print_regexp ch r =
   | Opt(r)  -> Printf.fprintf ch "%a?" print_regexp r
   | Str(r)  -> Printf.fprintf ch "%a*" print_regexp r
   | Pls(r)  -> Printf.fprintf ch "%a+" print_regexp r
-  | BOL     -> prnt "^"
-  | EOL     -> prnt "$"
   | Grp(r)  -> prnt "\\(%a\\)" print_regexp r
   | Ref(i)  -> prnt "\\%i" i
+  | BOL     -> prnt "^"
+  | EOL     -> prnt "$"
   | Bnd     -> prnt "\\b"
 
 
@@ -143,100 +143,49 @@ let parser re =
                                  if c = None then cs
                                  else Charset.complement cs
                                in Set(cs)
-  | '^'                     -> BOL
-  | '$'                     -> EOL
   | r:re rs:{"\\|" r:re}+   -> Alt(r::rs)
   | r:re rs:re+             -> Seq(r::rs)
   | "\\(" r:re "\\)"        -> Grp(r)
   | '\\' i:grp_ref          -> Ref(i-1)
+  | '^'                     -> BOL
+  | '$'                     -> EOL
   | "\\b"                   -> Bnd
 
 (*************************************************************************
- * Compilation to combinators.                                           *
+ * Regular expression combinatorsCompilation to combinators.                                           *
  *************************************************************************)
 
-module Buffers =
-  struct
-    type t = unit
-
-    let create : int -> t =
-      assert false
-
-    let madd_char : char -> int list -> t -> t =
-      assert false
-
-    let madd_string : string -> int list -> t -> t =
-      assert false
-
-    let icontents : t -> int -> string =
-      assert false
-
-    let contents : t -> string array =
-      assert false
-
-    let add_char c b = assert false
-    let add_string s b = assert false
-  end
-
-exception Invalid_regexp of string
-let invalid_regexp msg = raise (Invalid_regexp msg)
-
-let compile : regexp -> string array Decap.grammar =
-  let next_grp = ref 0 in
-  let avail_grp = ref [] in
-  let rec compile wgrps bufs = function
-    | Chr(c)  -> let act () = Buffers.madd_char c wgrps bufs in
-                 Decap.apply act (Decap.char c ())
-    | Set(cs) -> let act c = Buffers.madd_char c wgrps bufs in
-                 Decap.apply act (Decap.in_charset cs)
-    | Seq(rs) -> assert false
-    | Alt(rs) -> assert false
-    | Opt(r)  -> assert false
-    | Str(r)  -> assert false
-    | Pls(r)  -> assert false
-    | BOL     -> assert false
-    | EOL     -> assert false
-    | Grp(r)  -> let gid = !next_grp in
-                 incr next_grp;
-                 let res = compile (gid::wgrps) bufs r in
-                 avail_grp := gid :: !avail_grp;
-                 res
-    | Ref(i)  -> if not (List.mem i !avail_grp) then
-                   invalid_regexp "Undefined group...";
-                 let s = Buffers.icontents bufs i in
-                 let act () = Buffers.madd_string s wgrps bufs in
-                 Decap.apply act (Decap.string s ())
-    | Bnd     -> assert false
+let raw_regexp : regexp -> string Decap.grammar = fun r ->
+  let rec compile = function
+    | Chr(c)  -> Decap.char c (String.make 1 c)
+    | Set(cs) -> Decap.apply (String.make 1) (Decap.in_charset cs)
+    | Seq(rs) ->
+        begin
+          match rs with
+          | []    -> Decap.empty ""
+          | r::rs -> Decap.sequence (compile r) (compile (Seq(rs))) (^)
+        end
+    | Alt(rs) -> Decap.alternatives' (List.map compile rs)
+    | Opt(r)  -> Decap.option' "" (compile r)
+    | Str(r)  -> Decap.fixpoint' "" (Decap.apply (fun a b -> b^a) (compile r))
+    | Pls(r)  -> compile (Seq([r; Str(r)]))
+    | Grp(r)  -> compile r (* FIXME *)
+    | Ref(i)  -> assert false (* TODO *)
+    | BOL     -> assert false (* TODO *)
+    | EOL     -> assert false (* TODO *)
+    | Bnd     -> assert false (* TODO *)
   in
-  let compile = compile [] (Buffers.create 9) in
-  let compile r = Decap.apply Buffers.contents (compile r) in
-  compile
+  Decap.change_layout (compile r) Decap.no_blank
 
-
-    (*
-
-  | Chr(c)   -> Decap.char c ()
-  | Set(cs)  -> Decap.apply (fun _ -> ()) (Decap.in_charset cs)
-  | Seq(a,b) -> Decap.sequence (compile a) (compile b) (fun _ _ -> ())
-  | Alt(rs)  -> Decap.alternatives' (List.map compile rs)
-  | Opt(r)   -> Decap.option () (compile r)
-  | Str(r)   -> let g = Decap.apply (fun _ -> (fun _ -> ())) (compile r) in
-                Decap.fixpoint () g
-  | Pls(r)   -> compile (Seq(r,Str(r)))
-*)
-
-
-
-
-let parse_re = Decap.parse_string re Decap.no_blank
+let regexp : string -> string Decap.grammar = fun s ->
+  raw_regexp (Decap.parse_string re Decap.no_blank s)
+ 
+(*************************************************************************
+ * Tests.                                                                *
+ *************************************************************************)
 
 let _ =
-  let r = parse_re Sys.argv.(1) in
-  Printf.fprintf stdout "Regexp parsed: \"%a\"\n" print_regexp r
-
-  (*
-  let g = compile r in
-  try Decap.parse_string g no_blank Sys.argv.(2); Printf.printf "OK\n"
-  with _ -> Printf.printf "Error...\n"
-  *)
- 
+  let re = Sys.argv.(1) in
+  let input = Sys.argv.(2) in
+  let parse_r = Decap.parse_string (regexp re) Decap.no_blank in
+  Printf.fprintf stdout "Parsed: %S\n" (Decap.handle_exception parse_r input)
