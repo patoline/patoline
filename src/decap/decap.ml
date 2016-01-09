@@ -352,8 +352,7 @@ let test_next l1 empty_ok grouped str p =
      with
        Not_found -> false
 
-let read_empty stack e =
-  if fst stack <> [] then raise Error;
+let read_empty e =
   match e.accept_empty with
   | May_empty x -> x
   | _ -> assert false
@@ -556,7 +555,7 @@ let set_grammar p1 p2 =
 	in
 
 	(* this function tries the grammar pi as suffix of the recursive grammar, the stack must be empty *)
-	let rec parse_suffix pi str' pos' str'' pos'' stack v =
+	let rec parse_suffix dangerous pi str' pos' str'' pos'' stack v =
 	  if snd stack <> EmptyStack then raise Error;
  	  assert (if !debug_lvl > 0 then Printf.eprintf "PUSH W %d in %a\n%!" pi.ident print_stack stack; true);
 	  let grouped' = push_stack grouped pi.ident (Obj.repr v) stack in
@@ -570,8 +569,13 @@ let set_grammar p1 p2 =
 	    let next' = try List.assoc pi.ident next_tbl with Not_found -> next' in
 	    pidef.parse grouped' str'' pos'' next'
 	      (fun _ _ str0' pos0' str0'' pos0'' stack v ->
+		let dangerous =
+		  if str0' == str'' && pos0' = pos'' then
+		    if List.mem pi.ident dangerous then raise Error else pi.ident :: dangerous
+		  else []
+		in
 		assert (if !debug_lvl > 0 then Printf.eprintf "parse_suffix call continuation in try %d %a\n%!" pi.ident print_stack stack; true);
-		parse_suffix pi str0' pos0' str0'' pos0'' stack v)
+		parse_suffix dangerous pi str0' pos0' str0'' pos0'' stack v)
 	  in
 	  let grouped = set_stack grouped stack in
 	  let empty_ok = p1 == pi && test grouped next str'' pos'' in
@@ -596,10 +600,10 @@ let set_grammar p1 p2 =
 	      (uncast pidef).parse grouped str pos next'
 		(fun _ _ str' pos' str'' pos'' stack v ->
 		  assert (if !debug_lvl > 0 then Printf.eprintf "parse_prefix call continuation %d %a\n%!" pi.ident print_stack stack; true);
-		  parse_suffix (uncast pi) str' pos' str'' pos'' stack v))
+		  parse_suffix [pi.ident] (uncast pi) str' pos' str'' pos'' stack v))
 	    (fun () ->
-	      let v = read_empty ([], EmptyStack) (uncast pidef) str pos in
-	      parse_suffix (uncast pi) str pos str pos grouped.stack v)
+	      let v = read_empty (uncast pidef) str pos in
+	      parse_suffix [pi.ident] (uncast pi) str pos str pos grouped.stack v)
 	in
 	let rec fn = function
 	  | [] -> raise Error
@@ -1113,10 +1117,10 @@ let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
 						(fun _ _ str' pos' str'' pos'' stack x ->
 						 let res = try f a x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
 						 g str pos str' pos' str'' pos'' stack res))
-			    (fun () -> let x = read_empty stack l2 in
+			    (fun () -> let x = read_empty l2 in
 				       let res = try f a (x str' pos') with Give_up msg -> parse_error grouped (~!msg) str' pos' in
 				       g str pos str' pos' str'' pos'' stack res)))
-	  (fun () ->  let a = read_empty grouped.stack l1 in
+	  (fun () ->  let a = read_empty l1 in
 		      l2.parse grouped str pos next
 			       (fun str pos str' pos' str'' pos'' stack x ->
 				let res = try f (a str pos) x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
@@ -1151,10 +1155,10 @@ let sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -
                              (fun _ _ str' pos' str'' pos'' stack b ->
 			      let res = try f a b str pos str' pos' with Give_up msg -> parse_error grouped (~!msg) str' pos' in
                               g str pos str' pos' str'' pos'' stack res))
-		     (fun () -> let b = read_empty stack l2 in
+		     (fun () -> let b = read_empty l2 in
 			      let res = try f a (b str' pos') str pos str' pos' with Give_up msg -> parse_error grouped (~!msg) str' pos' in
                               g str pos str' pos' str'' pos'' stack res)))
-	  (fun () -> let a = read_empty grouped.stack l1 in
+	  (fun () -> let a = read_empty l1 in
 		    l2.parse grouped str pos next
                              (fun str pos str' pos' str'' pos'' stack b ->
 			      let res = try f (a str pos) b str pos str' pos' with Give_up msg -> parse_error grouped (~!msg) str' pos' in
@@ -1216,9 +1220,9 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
 			(fun () -> g2.parse grouped str'' pos'' next
 					    (fun _ _ str' pos' str'' pos'' stack b ->
 					     g str pos str' pos' str'' pos'' stack b))
-			(fun () -> let b = read_empty stack g2 in
+			(fun () -> let b = read_empty g2 in
 				   g str pos str' pos' str'' pos'' stack (b str' pos'))))
-	    (fun () ->  let a = read_empty grouped.stack l1 in
+	    (fun () ->  let a = read_empty l1 in
 			(f2 (a str pos)).parse grouped str pos next
 			       (fun str pos str' pos' str'' pos'' stack x ->
 				g str pos str' pos' str'' pos'' stack x))
@@ -1256,10 +1260,10 @@ let conditional_sequence : 'a grammar -> ('a -> bool) -> 'b grammar -> ('a -> 'b
 						(fun _ _ str' pos' str'' pos'' stack x ->
 						 let res = try f a x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
 						 g str pos str' pos' str'' pos'' stack res))
-			    (fun () -> let x = read_empty stack l2 in
+			    (fun () -> let x = read_empty l2 in
 				       let res = try f a (x str' pos') with Give_up msg -> parse_error grouped (~!msg) str' pos' in
 				       g str pos str' pos' str'' pos'' stack res)))
-	  (fun () ->  let a = read_empty grouped.stack l1 in
+	  (fun () ->  let a = read_empty l1 in
 		      l2.parse grouped str pos next
 			       (fun str pos str' pos' str'' pos'' stack x ->
 				let res = try f (a str pos) x with Give_up msg -> parse_error grouped (~!msg) str' pos' in
