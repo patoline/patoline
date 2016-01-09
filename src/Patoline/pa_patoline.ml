@@ -1710,13 +1710,13 @@ let full_text =
   parser
   | h:header basename:init ->>
     let basename = basename () in
-    t:title?? txt:text EOF ->
+    tx1:text t:title?? tx2:text EOF ->
       begin
         let t = match t with
                 | None   -> <:structure<>>
                 | Some t -> t
         in
-        let ast = <:structure<$t$;; $txt$>> in
+        let ast = <:structure<$t$;; $tx1$;; $tx2$>> in
         wrap basename _loc ast
       end
 
