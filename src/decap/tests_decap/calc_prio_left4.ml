@@ -18,14 +18,14 @@ let sum_sym = parser
 let parser expr =
   | f:float_num -> (Atom,f)
   | '(' (_,e):expr ')'  -> Atom,e
-  | '-' (p,e):expr -> if p < Pow then raise (Give_up ""); Pow, -. e
-  | '+' (p,e):expr -> if p < Pow then raise (Give_up ""); Pow, e
+  | '-' (p,e):expr -> if p < Pow then give_up ""; Pow, -. e
+  | '+' (p,e):expr -> if p < Pow then give_up ""; Pow, e
   | (conditional_sequence expr (fun (p,e) -> p > Pow) (parser "**" expr) (fun (p, e) (p', e') ->
-					      if p' < Pow then raise (Give_up ""); Pow, e ** e'))
+					      if p' < Pow then give_up ""; Pow, e ** e'))
   | (conditional_sequence expr (fun (p,e) -> p >= Prod) (parser prod_sym expr) (fun (p, e) (fn,(p', e')) ->
-					      if p' <= Prod then raise (Give_up ""); Pow, fn e e'))
+					      if p' <= Prod then give_up ""; Pow, fn e e'))
   | (conditional_sequence expr (fun (p,e) -> p >= Sum) (parser sum_sym expr) (fun (p, e) (fn,(p', e')) ->
-					      if p' <= Sum then raise (Give_up ""); Pow, fn e e'))
+					      if p' <= Sum then give_up ""; Pow, fn e e'))
 
 (* The main loop *)
 let _ = run (apply snd expr)

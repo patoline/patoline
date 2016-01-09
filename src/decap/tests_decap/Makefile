@@ -5,7 +5,7 @@ TESTS = test_combinators calc_prio_left calc_prio_left2 calc_prio_left3 calc_pri
 all: $(TESTS)
 
 clean:
-	rm $(TESTS) *.cm* *.o *.a
+	rm -f $(TESTS) *.cm* *.o *.a
 
 test_kind.cmx: test_kind.ml $(DECAP_DIR)/decap.cmxa $(DECAP_DIR)/decap.cmi
 	ocamlopt -c $<

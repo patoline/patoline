@@ -18,15 +18,15 @@ let sum_sym = parser
 let cached parser expr =
   | f:float_num -> (Atom,f)
   | '(' (_,e):expr ')' -> Atom,e
-  | '-' (p,e):expr -> if p < Pow then raise (Give_up ""); Pow, -. e
-  | '+' (p,e):expr -> if p < Pow then raise (Give_up ""); Pow, e
+  | '-' (p,e):expr -> if p < Pow then give_up ""; Pow, -. e
+  | '+' (p,e):expr -> if p < Pow then give_up ""; Pow, e
   | (p,e):expr ->>
 	    { "**" (p',e'):expr when p > Pow ->
-		   if p' < Pow then raise (Give_up ""); Pow, e ** e'
+		   if p' < Pow then give_up ""; Pow, e ** e'
             | fn:prod_sym (p',e'):expr when p >= Prod ->
-	  	   if p' <= Prod then raise (Give_up ""); Prod, fn e e'
+	  	   if p' <= Prod then give_up ""; Prod, fn e e'
             | fn:sum_sym (p',e'):expr when p >= Sum ->
-		   if p' <= Sum then raise (Give_up ""); Sum, fn e e' }
+		   if p' <= Sum then give_up ""; Sum, fn e e' }
 
 (* The main loop *)
 let _ = run (apply snd expr)
