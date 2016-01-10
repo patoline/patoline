@@ -36,6 +36,8 @@ let read_file file =
 
 let arrow = tT ">>" :: hspace(1.0)
 
+let file_table = Hashtbl.create 101
+
 module Make(D:DocumentStructure)
  (Format:module type of DefaultFormat.Format(D)
    (* a strange way to remove Output from the
@@ -193,8 +195,6 @@ let interEnv x =
 	normalLead = x.normalLead *. x.fontMonoRatio *. 0.75;
         normalLeftMargin = 0.2;}
 
-let file_table = Hashtbl.create 101
-
 type eval_fun = string option -> (result -> unit) -> string -> string
 
 let editableText ?(global=false) ?(empty_case="Type in here")
@@ -210,7 +210,9 @@ let editableText ?(global=false) ?(empty_case="Type in here")
       | Some d -> d
     in
     (match filename with
-      Some name -> Hashtbl.add file_table name data
+      Some name ->
+	Printf.eprintf "recording filename: %S\n%!" name;
+	Hashtbl.add file_table name data
     | None -> ());
 
     let dataR =
@@ -225,7 +227,7 @@ let editableText ?(global=false) ?(empty_case="Type in here")
     in
 
     let dataO = db.create_data ~global (name^"_ouput") init_res in
-    
+
     let eval t =
       match extra with
 	None -> Private
@@ -314,15 +316,17 @@ let ocaml_dir () =
 
 let do_dep filename =
   try
-    let data = Hashtbl.find file_table filename in
     let dir = ocaml_dir () in
+    Printf.eprintf "write dep:%S\n%!" (Filename.concat dir filename);
+    let data = Hashtbl.find file_table filename in
+    Printf.eprintf "dep found:%S\n%!" (Filename.concat dir filename);
     let prg = data.Db.read () in
     let ch = open_out (Filename.concat dir filename) in
     output_string ch prg;
     close_out ch
   with
     Not_found ->
-      Printf.eprintf "Missing dependencies %s\n" filename
+      Printf.eprintf "Missing dependencies %S\n" filename
 
 let test_ocaml ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") filename writeR prg =
   List.iter do_dep deps;
