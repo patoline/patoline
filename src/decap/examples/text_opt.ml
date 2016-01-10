@@ -10,14 +10,12 @@ let blank1 str pos =
     else str, pos
   in fn false str pos
 
-let blank2 = blank_regexp (Str.regexp "[ \n\t\r]*")
-
-let word_re = "[^ \t\r\n]+"
+let blank2 = blank_regexp ''[ \n\t\r]*''
 
 let paragraph =
   change_layout
     (parser
-      l:{w:RE(word_re)[let w = groupe 0 in fun l -> w::l]}+[[]] -> List.rev l)
+      l:{w:''[^ \t\r\n]+''[let w = groupe 0 in fun l -> w::l]}+[[]] -> List.rev l)
   blank1
 
 let text =
@@ -25,7 +23,6 @@ let text =
       ll:{l:paragraph -> fun ll -> l::ll}*[[]] EOF -> List.rev ll
 
 let _ = handle_exception (fun () ->
-			  let l = parse_channel text blank2 "stdin" stdin in
+			  let l = parse_channel text blank2 stdin in
 			  Printf.printf "=> %d paragraphs\n" (List.length l))
 			 ()
-

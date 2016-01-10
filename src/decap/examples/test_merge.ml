@@ -7,9 +7,12 @@ type 'a tree =
 
 let merge a b = Or(a,b)
 
-let gram = declare_grammar ()
+let parser* gram =
+  w:''[a-zA-Z0-9]+'' gram*[fun x y -> Node(y,x)] ->
+
+  declare_grammar ()
 let _ = set_grammar gram
-  (dependant_merge_sequence merge (regexp (Str.regexp "[a-zA-Z0-9]+") (fun groupe -> Leaf (groupe 0))) 
+  (dependant_merge_sequence merge (regexp ''[a-zA-Z0-9]+'' (fun groupe -> Leaf (groupe 0)))
     (fun x -> merge_fixpoint merge x (apply (fun x y -> Node(y,x)) gram)))
 
 let rec count = function
@@ -26,7 +29,7 @@ let rec str n = if n = 0 then "" else if n = 1 then "a " else
     let s1 = str n' in
     if n mod 2 = 0 then s1 ^ s1 else s1 ^ s1 ^ "a "
 
-let blank = blank_regexp (Str.regexp "[ \t\n\r]*")
+let blank = blank_regexp ''[ \t\n\r]*''
 
 let n = if Array.length Sys.argv <> 2 then 10 else int_of_string (Sys.argv.(1))
 let _ =
@@ -35,4 +38,3 @@ let _ =
     let n = count t and s = size t in
     Printf.printf "%d => size = %d, catalan = %d, compression = %f\n%!" i s n (float n *. float i /. float s)
   done
-

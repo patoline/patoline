@@ -11,80 +11,66 @@ ifeq ("$(METADIR)","")
 	METADIR=$(LIBDIR)
 endif
 
-all: calc calc_prio
+all: calc text text_opt
 
 calc: calc.cmx ../decap.cmxa
-	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../decap.cmxa $< -o $@
-
-calc_prio: calc.cmx ../decap.cmxa
 	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../decap.cmxa $< -o $@
 
 calc.cmx: calc.ml ../decap.cmx ../pa_glr
 	$(CAMLOPT) -I .. -pp ../pa_ocaml -c $<
 
-calc_simple: gcalc_simple.cmx ../glr.cmxa
-	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../glr.cmxa $< -o $@
+text: text.cmx ../decap.cmxa
+	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../decap.cmxa $< -o $@
 
-calc_simple.cmx: gcalc_simple.ml ../glr.cmxa ../pa_glr
-	$(CAMLOPT) -pp ../pa_glr -c $<
+text.cmx: text.ml ../decap.cmxa ../pa_ocaml
+	$(CAMLOPT) -I .. -pp ../pa_ocaml -c $<
 
-gcalc_strict: calc_strict.cmx ../glr.cmxa
-	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../glr.cmxa $< -o $@
+text_opt: text_opt.cmx ../decap.cmxa
+	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../decap.cmxa $< -o $@
 
-gcalc_strict.cmx: calc_strict.ml ../glr.cmxa ../pa_glr
-	$(CAMLOPT) -pp ../pa_glr -c $<
+text_opt.cmx: text_opt.ml ../decap.cmxa ../pa_ocaml
+	$(CAMLOPT) -I .. -pp ../pa_ocaml -c $<
 
-gtext: gtext.cmx ../glr.cmxa
-	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../glr.cmxa $< -o $@
 
-gtext.cmx: gtext.ml ../glr.cmxa ../pa_glr
-	$(CAMLOPT) -pp ../pa_glr -c $<
+test_merge: test_merge.cmx ../decap.cmxa
+	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../decap.cmxa $< -o $@
 
-gtext_opt: gtext_opt.cmx ../glr.cmxa
-	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../glr.cmxa $< -o $@
-
-gtext_opt.cmx: gtext_opt.ml ../glr.cmxa ../pa_glr
-	$(CAMLOPT) -pp ../pa_glr -c $<
-
-gtest_merge: gtest_merge.cmx ../glr.cmxa
-	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../glr.cmxa $< -o $@
-
-gtest_merge.cmx: gtest_merge.ml ../glr.cmxa
+test_merge.cmx: test_merge.ml ../decap.cmxa
 	$(CAMLOPT) -c $<
 
-gtest_list: gtest_list.cmx ../glr.cmxa
-	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../glr.cmxa $< -o $@
+test_list: test_list.cmx ../decap.cmxa
+	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../decap.cmxa $< -o $@
 
-gtest_list.cmx: gtest_list.ml ../glr.cmxa
-	$(CAMLOPT) -pp ../pa_glr -c $<
+test_list.cmx: test_list.ml ../decap.cmxa
+	$(CAMLOPT) -pp ../pa_ocaml -c $<
 
 check: all
-	cd benchmark; tar xvf test.tar.ge; cd ..
-	time gcalc < benchmark/test/test3.txt
-	time gcalc < benchmark/test/test2.txt
-	time gcalc < benchmark/test/test1.txt
-#	time gcalc < benchmark/test/test5.txt
-#	time gcalc < benchmark/test/test4.txt
-	time gcalc_simple < benchmark/test/test3.txt
-	time gcalc_simple < benchmark/test/test2.txt
-	time gcalc_simple < benchmark/test/test1.txt
-	time gcalc_simple < benchmark/test/test5.txt
-	time gcalc_simple < benchmark/test/test4.txt
-	time gcalc_strict < benchmark/test/test3.txt
-	time gcalc_strict < benchmark/test/test2.txt
-	time gcalc_strict < benchmark/test/test1.txt
-	time gcalc_strict < benchmark/test/test5.txt
-	time gcalc_strict < benchmark/test/test4.txt
-	time gtext < benchmark/test/text0.txt
-	time gtext < benchmark/test/text1.txt
-	time gtext < benchmark/test/text2.txt
-	time gtext < benchmark/test/text3.txt
-	time gtext_opt < benchmark/test/text0.txt
-	time gtext_opt < benchmark/test/text1.txt
-	time gtext_opt < benchmark/test/text2.txt
-	time gtext_opt < benchmark/test/text3.txt
-	time gtest_merge 15
-	time gtest_list 12
+	cd benchmark; tar xvf test.tar.gz; cd ..
+	time ./calc < benchmark/test/test3.txt
+	time ./calc < benchmark/test/test2.txt
+#	time ./calc < benchmark/test/test1.txt
+#	time calc < benchmark/test/test5.txt
+#	time calc < benchmark/test/test4.txt
+	time ./calc_simple < benchmark/test/test3.txt
+	time ./calc_simple < benchmark/test/test2.txt
+	time ./calc_simple < benchmark/test/test1.txt
+	time ./calc_simple < benchmark/test/test5.txt
+	time ./calc_simple < benchmark/test/test4.txt
+#	time calc_strict < benchmark/test/test3.txt
+#	time calc_strict < benchmark/test/test2.txt
+#	time calc_strict < benchmark/test/test1.txt
+#	time calc_strict < benchmark/test/test5.txt
+#	time calc_strict < benchmark/test/test4.txt
+	time text < benchmark/test/text0.txt
+	time text < benchmark/test/text1.txt
+	time text < benchmark/test/text2.txt
+	time text < benchmark/test/text3.txt
+	time text_opt < benchmark/test/text0.txt
+	time text_opt < benchmark/test/text1.txt
+	time text_opt < benchmark/test/text2.txt
+	time text_opt < benchmark/test/text3.txt
+	time test_merge 15
+	time test_list 12
 
 clean:
 	rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa calc calc_strict text text_opt test_merge

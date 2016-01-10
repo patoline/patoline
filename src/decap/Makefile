@@ -46,7 +46,6 @@ COMPILER_PARSERO := $(COMPILER_PARSERO:.cmo=.cmx)
 decap.cmi: charset.cmi input.cmi ahash.cmi
 
 decap.cmo: charset.cmi input.cmi ahash.cmi
-decap.cmo: OCAMLFLAGS=-noassert
 
 decap.cmx: charset.cmx charset.cmi input.cmx input.cmi ahash.cmi ahash.cmx
 decap.cmx: OCAMLFLAGS=-noassert

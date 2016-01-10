@@ -1,49 +1,49 @@
 open Decap
 
-let blank = blank_regexp "[ \t\n\r]*"
+let blank = blank_regexp ''[ \t\n\r]*''
 
-let arith_sum
-  = declare_grammar "arith_sum"
+let float_re = ''[0-9]+\([.][0-9]+\)?\([eE][-]?[0-9]+\)?''
+let ident_re = ''[a-zA-Z_'][a-zA-Z0-9_']*''
 
-let re_float = ''[0-9]+\([.][0-9]+\)?\([eE][-]?[0-9]+\)?''
+type calc_prio = Sum | Prod | Pow | Atom
 
-let parser arith_atom =
-  | f:RE(re_float)[float_of_string (groupe 0)]
-  | '-' f:RE(re_float)[float_of_string (groupe 0)] -> -. f
-  | "(" s:arith_sum ")"
+let env = Hashtbl.create 101
 
-let arith_pow = declare_grammar "arith_pow"
-let _ = set_grammar arith_pow 
-   parser
-    a:arith_atom r:{"**" b:arith_pow -> fun x -> x ** b}?[fun x -> x] -> r a
-        (* ?[...] avoid to use None | Some for option *)
+let parser expression prio =
+  | f:RE(float_re) when prio = Atom -> float_of_string f
+  | id:RE(ident_re) when prio = Atom ->
+      (try Hashtbl.find env id
+       with Not_found ->
+	 Printf.eprintf "Unbound %s\n%!" id; raise Exit)
+  | '(' e:(expression Sum) ')' when prio = Atom -> e
+  | e:(expression Atom) "**" e':(expression Pow) when prio = Pow -> e ** e'
+  | e:(expression Prod) fn:{'*' -> ( *. ) | '/' -> ( /. )} e':(expression Pow) when prio = Prod ->
+     fn e e'
+  | e:(expression Sum) fn:{'+' -> ( +. ) | '-' -> ( -. )} e':(expression Prod) when prio = Sum ->
+     fn e e'
+  | e:(expression Prod) when prio = Sum -> e
+  | e:(expression Pow) when prio = Prod -> e
+  | e:(expression Atom) when prio = Pow -> e
+  | '-' - e:(expression Pow) when prio = Pow -> -. e
+  | '+' - e:(expression Pow) when prio = Pow -> e
 
-let arith_prod =
-  parser
-    a:arith_pow 
-    f:{op:''[*]\|/'' b:arith_pow
-           -> fun f x -> if op = "*" then f x *. b else if b = 0.0 then raise (Give_up "Division by 0") else f x /. b}*[fun x -> x]
-                   (* *[...] avoid to use lists for repetition *)
-      -> f a
-
-let _ = set_grammar arith_sum
-  parser
-    a:arith_prod
-    f:{op:''[+]\|-'' b:arith_prod
-           -> fun f x -> if op = "+" then f x +. b else f x -. b}*[fun x -> x]
-      -> f a
+let parser arith =
+  | id:RE(ident_re) CHR('=') e:(expression Sum) -> Hashtbl.add env id e; e
+  | e:(expression Sum) -> e
 
 let _ =
   if Unix.((fstat (descr_of_in_channel Pervasives.stdin)).st_kind = S_REG)
-  then handle_exception (fun () ->
-		     let x = parse_channel arith_sum blank stdin in
-		     Printf.printf "=> %f\n" x) ()
+  then
+      handle_exception (fun () ->
+	let x = parse_channel arith blank stdin in
+	Printf.printf "=> %f\n" x) ()
   else
     try
       while true do
 	handle_exception (fun () ->
 	  Printf.printf ">> %!";
-	  let x = parse_string arith_sum blank (input_line stdin) in
+	  let x = parse_string arith blank (input_line stdin) in
 	  Printf.printf "=> %f\n%!" x) ()
+
       done
   with End_of_file -> ()
