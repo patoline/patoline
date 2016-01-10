@@ -101,9 +101,9 @@ let cPos = db.create_data ~global:false "Cpos" (10.0,-10.0)
  let _ = edge Edge.([draw]) a b
  let _ = edge Edge.([draw]) b c
  let _ = edge Edge.([draw]) c a
- let _ = edge Edge.([draw]) a bc
- let _ = edge Edge.([draw]) b ca
- let _ = edge Edge.([draw]) c ab
+ let _ = edge Edge.([draw;dashed[1.;2.]]) a bc
+ let _ = edge Edge.([draw;dashed[1.;2.]]) b ca
+ let _ = edge Edge.([draw;dashed[1.;2.]]) c ab
 )>>)
 
 \end{center}

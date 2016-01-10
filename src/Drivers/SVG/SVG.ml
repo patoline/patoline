@@ -537,7 +537,7 @@ let buffered_output' ?dynCache ?(structure:structure=empty_structure) pages pref
 
 let default_script = ""
 
-let basic_html ?script:(script=default_script) ?onload:(onload="") ?onhashchange:(onhashchange="")
+let basic_html ?(extraheader="") ?script:(script=default_script) ?onload:(onload="") ?onhashchange:(onhashchange="")
     ?keyboard
     cache structure pages prefix=
   let html=Rbuffer.create 10000 in
@@ -593,6 +593,7 @@ else if(n<current_slide)
 <title>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title><script src=\"hammer.js\"></script> \n";
+  Rbuffer.add_string html extraheader;
   Rbuffer.add_string html "<script>\n";
   Rbuffer.add_string html script;
 

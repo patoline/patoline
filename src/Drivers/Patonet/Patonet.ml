@@ -34,6 +34,17 @@ let duck_ico =
 type presentation={ mutable cur_slide:int; mutable cur_state:int; mutable starttime:float;mutable max_slide:int; }
 let present={cur_slide=0;cur_state=0;starttime=0.;max_slide=0;}
 
+let type_from_extension name =
+  if Filename.check_suffix name ".js" then "text/javascript" else
+  if Filename.check_suffix name ".png" then "image/png" else
+  if Filename.check_suffix name ".jpeg" then "image/jpeg" else
+  if Filename.check_suffix name ".jpg" then "image/jpg" else
+  if Filename.check_suffix name ".gif" then "image/gif" else
+  if Filename.check_suffix name ".html" then "text/html" else
+  if Filename.check_suffix name ".css" then "text/css" else
+  if Filename.check_suffix name ".ico" then "image/vnd.microsoft.icon" else
+    "application/octet-stream"
+
 exception Send_error
 (* Implémentation partielle, et sans doute naive, des websockets *)
 let resp_slave fd data=
@@ -171,6 +182,7 @@ let slave=Str.regexp "/?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let logged=Str.regexp "/?\\([a-zA-Z0-9]+\\)[?]key=\\([a-z0-9]+\\)\\(&group=\\([-a-zA-Z0-9_]+\\)\\(&friends=\\([-a-zA-Z0-9_+,]+\\)\\)?\\)?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css_reg=Str.regexp "/style\\.css"
+let static_reg=Str.regexp "/static/\\([^\n\r]+\\)"
 let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
 let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
 
@@ -182,10 +194,14 @@ let drag=Str.regexp "drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*
 let ping=Str.regexp "ping"
 
 let filter_options argv = argv
+let static_folder = ref ""
+
 let driver_options =
   SVG.driver_options @
-  [("--master",Arg.Set_string master_page,"Set the master page");
-   ("--port",Arg.Set_int port_num,"Set the port number to listen to")]
+  [("--master"       , Arg.Set_string master_page   ,"Set the master page");
+   ("--port"         , Arg.Set_int port_num         ,"Set the port number to listen to");
+   ("--static-folder", Arg.Set_string static_folder ,"Set the folder containing static css, html, etc.");
+  ]
 
 let websocket  =
   Printf.sprintf
@@ -326,6 +342,42 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     slide, state
   in
 
+  let codemirror = Filename.concat !static_folder "codemirror/lib" in
+  let use_codemirror = !static_folder <> "" &&
+    Sys.file_exists codemirror && Sys.is_directory codemirror
+  in
+  let extraheader =
+    if use_codemirror then
+      "<link rel=\"stylesheet\" href=\"/static/codemirror/lib/codemirror.css\">
+       <script src=\"/static/codemirror/lib/codemirror.js\"></script>
+       <script src=\"/static/codemirror/addon/edit/matchbrackets.js\"></script>
+       <script src=\"/static/codemirror/addon/mode/loadmode.js\"></script>
+       <script src=\"/static/codemirror/mode/meta.js\"></script>
+    " else ""
+  in
+
+  let editor_init =
+    if use_codemirror then "
+      CodeMirror.modeURL = \"/static/codemirror/mode/%N/%N.js\";
+      var mode = CodeMirror.findModeByExtension(extension);
+      var textArea = document.getElementById('edit_'+name);
+      var editor = CodeMirror.fromTextArea(textArea,
+         { lineNumbers: true, mode: 'text/x-ocaml', matchBrackets: true,
+           smartIndent: true, indentWithTabs: false});
+      var extension = name.split('_').pop();
+      var info = CodeMirror.findModeByExtension(extension);
+      var mode = info.mode;
+      var spec = info.mime;
+      if (mode) {
+        editor.setOption(\"mode\", spec);
+        CodeMirror.autoLoadMode(editor, mode);
+        editor.textContent = spec;
+      }
+      finaliser = editor.save;
+    "
+    else "function finaliser() {}\n"
+  in
+
   let mouse_script=
     let w,h = pages.(0).(0).size in (* FIXME: assume same format for all pages *)
     Printf.sprintf
@@ -368,7 +420,7 @@ function start_edit(name,dest,ev) {
   div.className='editor';
   div.style.left = '50px';
   div.style.top = '50px';
-  div.innerHTML = \"<table><tr id='editorTitleBar'><td>Editor</td><td align='right'><button type='button' id='reset_button_\"+name+\"' >Reset</button><button type='button' id='cancel_button_\"+name+\"' >Cancel</button><button type='button' id='edit_button_\"+name+\"' >Save</button></td></tr><tr><td colspan='2'><textarea cols='80'; rows='30'; id='edit_\"+name+\"'>\"+contents+\"</textarea></td></tr></table>\";
+  div.innerHTML = \"<table><tr id='editorTitleBar'><td>Editor</td><td align='right'><button type='button' id='reset_button_\"+name+\"' >Reset</button><button type='button' id='cancel_button_\"+name+\"' >Cancel</button><button type='button' id='edit_button_\"+name+\"' >Save</button></td></tr><tr><td colspan='2'><textarea cols='100'; rows='40'; id='edit_\"+name+\"'>\"+contents+\"</textarea></td></tr></table>\";
   function restart_edit(name,dest) {
     return(function (e) { start_edit(name,dest,e); });
   }
@@ -385,9 +437,10 @@ function start_edit(name,dest,ev) {
       }
     }
   }
-  function stop_edit(name,dest,div) {
+  function stop_edit(name,dest,div,extra) {
     return function () {
       var message = name+' '+dest;
+      extra();
       var textArea = document.getElementById('edit_'+name);
       var elt =  document.getElementById(name);
       elt.setAttribute('contents', textArea.value);
@@ -415,15 +468,16 @@ function start_edit(name,dest,ev) {
     }
   }
   document.body.appendChild(div);
-  var title = document.getElementById('editorTitleBar');
-  draggable(title,div);
   window.onkeydown = null;
+  %s
   var button = document.getElementById('edit_button_'+name);
-  button.onclick = stop_edit(name,dest,div);
+  button.onclick = stop_edit(name,dest,div,finaliser);
   var button2 = document.getElementById('reset_button_'+name);
   button2.onclick = reset_edit(name,dest);
   var button3 = document.getElementById('cancel_button_'+name);
   button3.onclick = cancel_edit(name,dest,div);
+  var title = document.getElementById('editorTitleBar');
+  draggable(title,div);
 }
 
 function start_drag(name,dest,ev) {
@@ -674,7 +728,7 @@ Base64DecodeEnumerator.prototype =
         }
     }
 };
-" w h
+" editor_init w h
   in
 
   let keyboard=Printf.sprintf
@@ -730,6 +784,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
   in
 
   let page,css=SVG.basic_html
+    ~extraheader
     ~script:websocket
     ~onload
     ~keyboard:keyboard
@@ -862,6 +917,37 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     Printf.eprintf "sent 404\n%!";
     http_send 404 "text/plain" [message] ouc;
   in
+
+  let http_send_file ?sessid code ctype path ouc =
+    let ch = open_in path in
+    let len = in_channel_length ch in
+    Printf.fprintf ouc "HTTP/1.1 %d OK\r\n" code;
+    Printf.fprintf ouc "Content-type: %s\r\n" ctype;
+    Printf.fprintf ouc "Content-Length: %d\r\n" len;
+    Printf.eprintf "Content-Length: %d\r\n" len;
+    (match sessid with
+      Some (sessid, groupid, friends) ->
+	Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" sessid;
+	Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
+	Printf.eprintf "Set-Cookie: GROUPID=%s;\r\n" groupid;
+	Printf.fprintf ouc "Set-Cookie: GROUPID=%s;\r\n" groupid;
+	let str = Db.friends_to_string friends in
+	Printf.eprintf "Set-Cookie: FRIENDS=%s;\r\n" str;
+	Printf.fprintf ouc "Set-Cookie: FRIENDS=%s;\r\n" str;
+    | None -> ());
+    output_string ouc "\r\n";
+    let buf = Buffer.create 4096 in
+    let remain = ref len in
+    while !remain > 0 do
+      Buffer.add_channel buf ch (min 4096 !remain);
+      Buffer.output_buffer ouc buf;
+      Buffer.clear buf;
+      remain := !remain - 4096;
+     done;
+    output_string ouc "\r\n";
+    flush ouc
+  in
+
 (*
   let generate_ok sessid ouc =
     let data =
@@ -908,6 +994,16 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     http_send 200 "text/css" [css] ouc;
   in
 
+  let serve_static_file folder filename ouc =
+    try
+      let path = Filename.concat folder filename in
+      Printf.eprintf "path: %S\n%!" path;
+      let ext=type_from_extension filename in
+      Printf.eprintf "type: %S\n%!" ext;
+      http_send_file 200 ext path ouc;
+    with _ ->
+      generate_error ouc
+  in
 
   let serve fdfather num fd =
 
@@ -1201,22 +1297,19 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
             serve_font otf ouc;
             process_req master "" [] reste
 
+	  ) else if !static_folder <> "" && Str.string_match static_reg get 0 then (
+	    let filename = Str.matched_group 1 get in
+	    Printf.eprintf "serve static: %S\n%!" filename;
+
+	    serve_static_file !static_folder filename ouc;
+	    process_req master "" [] reste
 	  ) else (
 	    let name = String.sub get 1 (String.length get-1) in
 
             (try
 	      Printf.eprintf "serve %d: image or js: %s\n%!" num name;
               let img=StrMap.find name imgs in
-              let ext=
-		if Filename.check_suffix name ".js" then "text/javascript" else
-		  if Filename.check_suffix name ".png" then "image/png" else
-		    if Filename.check_suffix name ".jpeg" then "image/jpeg" else
-		      if Filename.check_suffix name ".jpg" then "image/jpg" else
-			if Filename.check_suffix name ".gif" then "image/gif" else
-			  if Filename.check_suffix name ".ico" then "image/vnd.microsoft.icon" else
-			    "application/octet-stream"
-              in
-
+              let ext=type_from_extension name in
 	      http_send 200 ext [img] ouc;
               fun () -> process_req master "" [] []
             with
