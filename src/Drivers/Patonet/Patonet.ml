@@ -359,20 +359,18 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let editor_init =
     if use_codemirror then "
       CodeMirror.modeURL = \"/static/codemirror/mode/%N/%N.js\";
-      var mode = CodeMirror.findModeByExtension(extension);
       var textArea = document.getElementById('edit_'+name);
       var editor = CodeMirror.fromTextArea(textArea,
-         { lineNumbers: true, mode: 'text/x-ocaml', matchBrackets: true,
+         { lineNumbers: true, matchBrackets: true,
            smartIndent: true, indentWithTabs: false});
       var extension = name.split('_').pop();
       var info = CodeMirror.findModeByExtension(extension);
+      if (!info) info = CodeMirror.findModeByExtension('ml');
       var mode = info.mode;
       var spec = info.mime;
-      if (mode) {
-        editor.setOption(\"mode\", spec);
-        CodeMirror.autoLoadMode(editor, mode);
-        editor.textContent = spec;
-      }
+      editor.setOption(\"mode\", spec);
+      CodeMirror.autoLoadMode(editor, mode);
+      editor.textContent = spec;
       finaliser = editor.save;
     "
     else "function finaliser() {}\n"
