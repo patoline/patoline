@@ -77,6 +77,7 @@ let sessid = ref (None: (string * string * (string * string) list) option)
 let secret = ref ""
 
 let init_db table_name db_info =
+  let log_name = table_name ^"_log" in
   match db_info with
   | Memory ->
     let total_table = Hashtbl.create 1001 in
@@ -150,6 +151,8 @@ let init_db table_name db_info =
       `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `VALUE` text,
       `createtime` DATETIME NOT NULL,
       `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);" table_name in
+     let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
+      `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `time` DATETIME NOT NULL);" log_name in
      let _r = Mysql.exec (db ()) sql in
      match Mysql.errmsg (db ()) with
      | None -> ()
@@ -180,6 +183,13 @@ let init_db table_name db_info =
 		  0 ->
 		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `value`, `createtime`) VALUES ('%s','%s','%s','%s', NOW());"
 					   table_name sessid groupid name v in
+		  (*Printf.eprintf "inserting: %s\n%!" sql;*)
+		  let _r = Mysql.exec (db ()) sql in
+		  (match Mysql.errmsg (db ()) with
+		  | None -> (*Printf.eprintf "inserting OK\n%!";*)()
+		   | Some err -> raise (Failure err));
+		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', NOW());"
+					   log_name sessid groupid name in
 		  (*Printf.eprintf "inserting: %s\n%!" sql;*)
 		  let _r = Mysql.exec (db ()) sql in
 		  (match Mysql.errmsg (db ()) with
@@ -219,9 +229,16 @@ let init_db table_name db_info =
 		let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
 					 table_name v name sessid groupid in
 		let _r = Mysql.exec (db ()) sql in
-		match Mysql.errmsg (db ()) with
-		    | None -> ()
-		    | Some err -> Printf.eprintf "DB Error: %s\n%!" err
+		(match Mysql.errmsg (db ()) with
+		| None -> ()
+		| Some err -> Printf.eprintf "DB Error: %s\n%!" err);
+		let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', NOW());"
+		  log_name sessid groupid name in
+		  (*Printf.eprintf "inserting: %s\n%!" sql;*)
+		let _r = Mysql.exec (db ()) sql in
+		(match Mysql.errmsg (db ()) with
+		| None -> (*Printf.eprintf "inserting OK\n%!";*)()
+		| Some err -> Printf.eprintf "DB Error: %s\n%!" err)
 	      with Exit -> ()
 	    in
 	    fn (sessid, groupid);
