@@ -371,9 +371,12 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       editor.setOption(\"mode\", spec);
       CodeMirror.autoLoadMode(editor, mode);
       editor.textContent = spec;
-      finaliser = editor.save;
+      function finaliser()  { editor.save(); }
+      function reseter(v) { editor.getDoc().setValue(v); }
     "
-    else "function finaliser() {}\n"
+    else "function finaliser() {}
+          function reseter(v) {}
+         "
   in
 
   let mouse_script=
@@ -422,16 +425,14 @@ function start_edit(name,dest,ev) {
   function restart_edit(name,dest) {
     return(function (e) { start_edit(name,dest,e); });
   }
-  function reset_edit(name,dest) {
+  function reset_edit(name,dest,reseter) {
     return function () {
       var icontents = elt.getAttribute('initial');
       var textArea = document.getElementById('edit_'+name);
-      if (icontents.replace(/\\r\\n/g,'\\n') != textArea.value.replace(/\\r\\n/g,'\\n')) {
-        if (confirm('This will discard your edit and return to the initial text, are you sure ?')) {
-          elt.setAttribute('contents', icontents);
+      if (confirm('This will discard your edit and return to the initial text, are you sure ?')) {
           textArea.value = icontents;
+          reseter(icontents);
           return false;
-        }
       }
     }
   }
@@ -471,7 +472,7 @@ function start_edit(name,dest,ev) {
   var button = document.getElementById('edit_button_'+name);
   button.onclick = stop_edit(name,dest,div,finaliser);
   var button2 = document.getElementById('reset_button_'+name);
-  button2.onclick = reset_edit(name,dest);
+  button2.onclick = reset_edit(name,dest,reseter);
   var button3 = document.getElementById('cancel_button_'+name);
   button3.onclick = cancel_edit(name,dest,div);
   var title = document.getElementById('editorTitleBar');
