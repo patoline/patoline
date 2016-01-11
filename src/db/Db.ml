@@ -60,7 +60,7 @@ let dummyData = {
 
 type db = {
   db : unit -> database;
-  create_data : 'a.( ?global:bool -> string -> 'a -> 'a data);
+  create_data : 'a.( ?log:bool -> ?global:bool -> string -> 'a -> 'a data);
   disconnect : unit -> unit;
 }
 
@@ -83,7 +83,7 @@ let init_db table_name db_info =
     let total_table = Hashtbl.create 1001 in
     { db = (fun () -> MemoryDb);
       disconnect = (fun () -> ());
-      create_data = fun ?(global=false) name vinit ->
+      create_data = fun ?(log=false) ?(global=false) name vinit ->
 	let table = Hashtbl.create 1001 in
 	let sessid () = match !sessid with None -> ("", "", []) | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs in
 	let read = fun () ->
@@ -162,7 +162,7 @@ let init_db table_name db_info =
       disconnect = (fun () ->
 	match !dbptr with None -> ()
 	| Some db -> Mysql.disconnect db);
-      create_data = fun ?(global=false) name vinit ->
+      create_data = fun ?(log=false) ?(global=false) name vinit ->
 	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
 	Hashtbl.add created name ();
 	let v = base64_encode (Marshal.to_string vinit []) in
@@ -188,13 +188,15 @@ let init_db table_name db_info =
 		  (match Mysql.errmsg (db ()) with
 		  | None -> (*Printf.eprintf "inserting OK\n%!";*)()
 		   | Some err -> raise (Failure err));
-		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', NOW());"
+		  if (log) then begin
+		    let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', NOW());"
 					   log_name sessid groupid name in
-		  (*Printf.eprintf "inserting: %s\n%!" sql;*)
-		  let _r = Mysql.exec (db ()) sql in
-		  (match Mysql.errmsg (db ()) with
-		  | None -> (*Printf.eprintf "inserting OK\n%!";*)()
-		   | Some err -> raise (Failure err))
+  		    (*Printf.eprintf "inserting: %s\n%!" sql;*)
+	 	    let _r = Mysql.exec (db ()) sql in
+		    (match Mysql.errmsg (db ()) with
+		    | None -> (*Printf.eprintf "inserting OK\n%!";*)()
+		    | Some err -> raise (Failure err))
+		  end
 		| 1 -> ()
       		| _ -> raise (Failure "SQL duplicate data in base"))
             | Some err, _ -> raise (Failure err)
@@ -232,13 +234,15 @@ let init_db table_name db_info =
 		(match Mysql.errmsg (db ()) with
 		| None -> ()
 		| Some err -> Printf.eprintf "DB Error: %s\n%!" err);
-		let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', NOW());"
-		  log_name sessid groupid name in
+		if log then begin
+		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', NOW());"
+		    log_name sessid groupid name in
 		  (*Printf.eprintf "inserting: %s\n%!" sql;*)
-		let _r = Mysql.exec (db ()) sql in
-		(match Mysql.errmsg (db ()) with
-		| None -> (*Printf.eprintf "inserting OK\n%!";*)()
-		| Some err -> Printf.eprintf "DB Error: %s\n%!" err)
+		  let _r = Mysql.exec (db ()) sql in
+		  (match Mysql.errmsg (db ()) with
+		  | None -> (*Printf.eprintf "inserting OK\n%!";*)()
+		  | Some err -> Printf.eprintf "DB Error: %s\n%!" err)
+		end
 	      with Exit -> ()
 	    in
 	    fn (sessid, groupid);

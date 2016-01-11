@@ -197,7 +197,7 @@ let interEnv x =
 
 type eval_fun = string option -> (result -> unit) -> string -> string
 
-let editableText ?(global=false) ?(empty_case="Type in here")
+let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
       ?nb_lines ?err_lines ?(init_text="") ?(lang=lang_default)
       ?(extra:eval_fun option) ?resultData ?data ?filename name =
 
@@ -206,7 +206,7 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 
     let data =
       match data with
-	None -> db.create_data ~global name init_text
+	None -> db.create_data ~log ~global name init_text
       | Some d -> d
     in
     (match filename with
