@@ -97,7 +97,8 @@ let tabOfList l = draw_table defaultEnv (build_cols (List.map build_line_atom l)
 \begin{center}
 \tabOfList(
   [[<<représentation d'une clôture>>];
-   [<<pointeur sur f>>;<<$ x₁ $>> ; <<…>> ; <<$x₂$>>]])
+   [<<pointeur sur f>>;<<$ x₁ $>> ; <<…>> ; <<$x₂$>>];
+   [<<a²>>;<<$3 x$>> ; <<hello…>> ; <<$world$>>]])
 \end{center}
 
 \begin{center}
