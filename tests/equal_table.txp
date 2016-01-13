@@ -1,0 +1,89 @@
+\Caml(
+let rect (x0,y0) (x1,y1) =
+  let r = rectangle (x0,y0) (x1,y1) in
+  Path(default_path_param,[r])
+
+let line_path (x0,y0) (x1,y1) =
+  let b = line (x0,y0) (x1,y1) in
+  Path(default_path_param,[ [| b |] ])
+
+let content_size bs =
+ let (x0,y0,x1,y1) = bounding_box_kerning bs in (x1 -. x0, y1 -. y0)
+
+let render_content env tbl =
+  let hpad = 4. in
+  let vpad = 1. in
+
+  let n = Array.length tbl in
+  let m = Array.length tbl.(0) in
+  let res = Array.make_matrix m n [] in
+  let row_heights = Array.make n 0. in
+  let col_widths = Array.make m 0. in
+
+  for i = 0 to n-1 do
+    for j = 0 to m-1 do
+      res.(i).(j) <- draw env tbl.(i).(j);
+      let (w,h) = content_size res.(i).(j) in
+      let w = w +. 2. *. hpad
+      and h = h +. 2. *. vpad in
+      row_heights.(i) <- max row_heights.(i) h;
+      col_widths.(j)  <- max col_widths.(j) w
+    done
+  done;
+
+  let whole_width = Array.fold_left (+.) 0. col_widths
+  and whole_height = Array.fold_left (+.) 0. row_heights in
+
+  let bs = ref [] in
+
+  let yshift = ref whole_height in
+  for i = 0 to n-1 do
+    let xshift = ref 0. in
+    yshift := !yshift -. row_heights.(i);
+    for j = 0 to m-1 do
+      let (w,h) = content_size res.(i).(j) in
+      let tr = translate (!xshift +. (col_widths.(j) -. w) /. 2.)
+                         (!yshift +. vpad) in
+      bs := (List.map tr res.(i).(j)) @ !bs;
+      xshift := !xshift +. col_widths.(j)
+    done;
+  done;
+
+  let yshift = ref whole_height in
+  for i = 0 to n-1 do
+    bs := (line_path (0., !yshift) (whole_width, !yshift) ) :: !bs;
+    yshift := !yshift -. row_heights.(i)
+  done;
+
+  let bs = rect (0.,0.) (whole_width, whole_height) :: !bs in
+  let dr =
+    { drawing_min_width     = whole_width
+    ; drawing_nominal_width = whole_width
+    ; drawing_max_width     = whole_width
+    ; drawing_width_fixed   = true
+    ; drawing_adjust_before = false
+    ; drawing_y0            = 0.
+    ; drawing_y1            = whole_height
+    ; drawing_badness       = (fun _ -> 0.)
+    ; drawing_contents      = (fun _ -> bs)
+    ; drawing_break_badness = 0.0
+    ; drawing_states        = []}
+  in
+  [B ((fun _ -> [Drawing dr]), ref None)]
+
+let tab l = render_content defaultEnv l
+)
+
+Baz
+
+\begin{center}
+\tab(
+[|
+  [|<<a>>; <<hello>>; <<world>>|];
+  [|<<foo>>; <<hello>>; << $a_k$ >>|];
+  [|<<even longer>>; <<hello>>; << [$\sum_{k=1}^n a_k$] >>|];
+|]
+)
+\end{center}
+
+Baz
