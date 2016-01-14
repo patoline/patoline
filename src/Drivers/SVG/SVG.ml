@@ -74,10 +74,7 @@ g.dragable{z-index:10;unselectable:'on';onselectstart:'return false;'; -webkit-t
 g.editable:hover{opacity: 0.75;cursor:text;}
 g.editable{z-index:10;unselectable:'on';onselectstart:'return false;'; -webkit-touch-callout: none;-webkit-user-select: none;
   -khtml-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;user-select: none;}
-div.editor{position:fixed;border:2px solid blue;background:#000080;background:rgba(0,0,255,0.5);}
-div.editor {margin:0; }
-div.editor .textArea{padding:0px;  bottom:0; }
-div.editor textarea{padding:2px; resize:both;}
+div.editor{position:fixed;border:2px solid blue;background:#000080;background:rgba(0,0,255,0.5);margin:0;}
 svg text{pointer-events:none;}
 svg path{pointer-events:none;}
 svg rect{pointer-events:none;}

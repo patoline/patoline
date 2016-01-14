@@ -362,13 +362,16 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       var textArea = document.getElementById('edit_'+name);
       var editor = CodeMirror.fromTextArea(textArea,
          { lineNumbers: true, matchBrackets: true,
-           smartIndent: true, indentWithTabs: false});
+           smartIndent: true, indentWithTabs: false,
+           viewportMargin: Infinity
+         });
       var extension = name.split('_').pop();
       var info = CodeMirror.findModeByExtension(extension);
       if (!info) info = CodeMirror.findModeByExtension('ml');
       var mode = info.mode;
       var spec = info.mime;
       editor.setOption(\"mode\", spec);
+      editor.setSize(640, 400);
       CodeMirror.autoLoadMode(editor, mode);
       editor.textContent = spec;
       function finaliser()  { editor.save(); }
@@ -421,7 +424,7 @@ function start_edit(name,dest,ev) {
   div.className='editor';
   div.style.left = '50px';
   div.style.top = '50px';
-  div.innerHTML = \"<table><tr id='editorTitleBar'><td>Editor</td><td align='right'><button type='button' id='reset_button_\"+name+\"' >Reset</button><button type='button' id='cancel_button_\"+name+\"' >Cancel</button><button type='button' id='edit_button_\"+name+\"' >Save</button></td></tr><tr><td colspan='2'><textarea cols='100'; rows='40'; id='edit_\"+name+\"'>\"+contents+\"</textarea></td></tr></table>\";
+  div.innerHTML = \"<table><tr id='editorTitleBar'><td>Editor</td><td align='right'><button type='button' id='reset_button_\"+name+\"' >Reset</button><button type='button' id='cancel_button_\"+name+\"' >Cancel</button><button type='button' id='edit_button_\"+name+\"' >Save</button></td></tr><tr><td colspan='2'><textarea cols='80'; rows='40'; id='edit_\"+name+\"'>\"+contents+\"</textarea></td></tr></table>\";
   function restart_edit(name,dest) {
     return(function (e) { start_edit(name,dest,e); });
   }
