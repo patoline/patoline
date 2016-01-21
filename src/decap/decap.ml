@@ -710,26 +710,27 @@ let cache : 'a grammar -> 'a grammar
       def = None;
       parse =
         fun grouped str pos next g ->
-	try
-	  let lc = Hashtbl.find cache (line_num str, pos, fname str, grouped.stack, next) in
+	  let lc =
+	    try
+	      Hashtbl.find cache (line_num str, pos, fname str, grouped.stack, next)
 	  (*	  Printf.eprintf "use cache %d %d %a %a %d\n%!" (line_num str) pos print_next next print_info grouped (List.length lc);*)
-	  fn g lc
-	with Not_found ->
-	  let lc = ref [] in
-	  let set = Hashtbl.create 5 in
-	  try
-	    l.parse grouped str pos next
-		    (fun l c l' c' l'' c'' stack x ->
-		     let tuple = (l'', c'', stack, x, l', c', l, c) in
-		     let key = line_beginning l'' + c'' in
-		     let old = try Hashtbl.find set key with Not_found -> [] in
-		     if not (List.mem tuple old) then (
-		       Hashtbl.add set key (tuple::old); lc := tuple::!lc);
-		     raise Error)
-	  with Error ->
-	    let lc = List.rev !lc in
-	    Hashtbl.add cache (line_num str, pos, fname str, grouped.stack, next) lc;
-	    fn g lc
+	    with Not_found ->
+	      let lc = ref [] in
+	      let set = Hashtbl.create 5 in
+	      try
+		l.parse grouped str pos next
+		  (fun l c l' c' l'' c'' stack x ->
+		    let tuple = (l'', c'', stack, x, l', c', l, c) in
+		    let key = line_beginning l'' + c'' in
+		    let old = try Hashtbl.find set key with Not_found -> [] in
+		    if not (List.mem tuple old) then (
+		      Hashtbl.add set key (tuple::old); lc := tuple::!lc);
+		    raise Error)
+	      with Error ->
+		let lc = List.rev !lc in
+		Hashtbl.add cache (line_num str, pos, fname str, grouped.stack, next) lc;
+		lc
+	   in fn g lc
 
 
     }
