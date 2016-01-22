@@ -138,7 +138,7 @@ let freshUid () =
   (* Parse a caml "expr" wrapped with parentheses *)
   let wrapped_caml_expr =
     parser
-    | | '(' e:expression ')' -> e
+    | | '(' e:(change_layout expression blank2) ')' -> e
 
   (* Parse a list of caml "expr" *)
   let wrapped_caml_list =
@@ -1062,8 +1062,6 @@ let parser right_indices =
 		   | "_" -> Down
 		   | "^" -> Up
 
-let no_blank_list g = change_layout ( parser g+ ) no_blank
-
 let parser any_symbol =
   | sym:math_infix_symbol  -> sym.infix_value
   | sym:math_atom_symbol    -> sym.symbol_value
@@ -1154,6 +1152,8 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 	 end), s.infix_prio
 
 and math_atom =
+  (* Les règles commençant avec un { forment un conflict avec les arguments
+   des macros. Je pense que c'est l'origine de nos problèmes de complexité. *)
   | '{' (m,_):math_aux '}' -> (m,AtomM)
   | '{' s:any_symbol '}' ->
       if s = Invisible then give_up "...";
@@ -1184,7 +1184,8 @@ and math_atom =
      (fun indices ->
        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>), AtomM
 
-  | '\\' - id:mathlid - args:(no_blank_list (change_layout math_macro_argument blank1)) ->
+  | '\\' - id:mathlid - args:(change_layout math_macro_arguments no_blank)?[[]]
+     ''[ \t\n\r]*'' ->
      if PrefixTree.mem id state.reserved_symbols then give_up "not a macro";
      (fun indices ->
        let config =
@@ -1195,17 +1196,6 @@ and math_atom =
        let apply acc arg = <:expr<$acc$ $arg$>> in
        let e = List.fold_left apply <:expr<$m$>> args in
        print_math_deco _loc_id e indices
-     ), AtomM
-
-  | '\\' - id:mathlid ->
-     if PrefixTree.mem id state.reserved_symbols then give_up "not a macro";
-     (fun indices ->
-       let config =
-         try List.assoc id state.math_macros with Not_found -> []
-       in
-       let m = real_name id config in
-       (* TODO special macro properties to be handled. *)
-       print_math_deco _loc_id m indices
      ), AtomM
 
   | (m,mp):math_atom sym:math_combining_symbol  ->
@@ -1256,8 +1246,10 @@ and math_atom =
      (fun indices -> (if s = Left then r else m) (rd indices (s,h))), Ind
 
 and math_macro_argument =
-  | '{' (m,_):math_aux '}' -> m no_ind
-  | e:wrapped_caml_expr    -> e
+  | '{' (m,_):(change_layout math_aux blank1) '}' -> m no_ind
+  | wrapped_caml_expr
+
+and math_macro_arguments = math_macro_argument++
 
 and with_indices =
   | EMPTY -> no_ind
