@@ -188,9 +188,9 @@ let freshUid () =
              let w = String.concat "" cs in
              if String.length w >= 2 &&
                   List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<";">>";"$>";]
-             then give_up (w ^ "is not a word");
+             then give_up (w ^ " is not a word");
              w
-        | | c:special -> c
+        (* | | c:special -> c *)
       ) no_blank
 
   let rec rem_hyphen = function
