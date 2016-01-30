@@ -1702,6 +1702,13 @@ let flatten ?(initial_path=[]) env0 str=
                     []->List.rev (if cur<>[] then
                         (Paragraph { p with par_contents=List.rev cur })::nodes
                       else nodes)
+                | C(f)::s->(
+                  collect_nodes (f env_@s) cur nodes
+                )
+                (*| Scoped(f,e)::s->(
+                  (* TODO: support N here *)
+                  collect_nodes s (::cur) nodes
+                  )*)
                   | N n::s->collect_nodes s []
                     (n::
                        if cur<>[] then
