@@ -1417,7 +1417,7 @@ let parser math_toplevel =
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle $m$))]>>
 
-    | | l:word -> <:expr@_loc_l<[tT $string:l$]>>
+    | | ws:word+ -> <:expr@_loc<[tT $string:String.concat " " ws$]>>
 
 
   let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
