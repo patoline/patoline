@@ -111,7 +111,16 @@ val line_beginning : buffer -> int
 val line : buffer -> string
 
 (** [normalize buf pos] ensures that pos is less the the line length in str *)
-val normalize : buffer -> int -> buffer * int		       
+val normalize : buffer -> int -> buffer * int
 
 (** [fname buf] returns the file name associated to the buffer [buf]. *)
 val fname : buffer -> string
+
+(** .... *)
+type 'a buf_table
+
+val empty_buf : 'a buf_table
+
+val insert : buffer -> int -> 'a -> 'a buf_table -> 'a buf_table
+
+val pop_firsts : 'a buf_table -> buffer * int * 'a list * 'a buf_table

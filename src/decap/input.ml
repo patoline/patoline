@@ -305,3 +305,28 @@ let get_string_line (str, p) =
 let buffer_from_string ?(filename="") str =
   let data = (str, ref 0) in
   buffer_from_fun filename get_string_line data
+
+type 'a buf_table = (buffer_aux * int * 'a list) list
+
+let empty_buf = []
+
+let cmp_buf b1 i1 b2 i2 =
+  match (b1, b2) with
+    ({ name=name1; bol = bol1 }, { name=name2; bol = bol2 }) ->
+      name1 = name2 && ((bol1 = bol2 && i1 <= i2) || bol1 < bol2)
+
+let insert buf pos x tbl =
+  let buf = Lazy.force buf in
+  let rec fn = function
+  | [] -> [(buf, pos, [x])]
+  | (buf',pos', y as c) :: rest ->
+     if pos = pos' && buf == buf' then
+       (buf', pos', (x::y)) :: rest
+     else if cmp_buf buf pos buf' pos' then
+       (buf, pos, [x]) :: tbl
+     else c::fn tbl
+  in fn tbl
+
+let pop_firsts = function
+  | [] -> raise Not_found
+  | (buf,pos,l)::rest -> Lazy.from_val buf,pos,l,rest
