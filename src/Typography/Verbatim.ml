@@ -59,37 +59,44 @@ let handle_spaces : (string -> content list) -> string -> content list =
         w_to_c str @ l_to_a pos
     in l_to_a 0
 
-(* [symbol s] build a mathematical symbole from the string [s]. Its width
-   on the page will be a multiple of the width of one verbatim character. *)
-let symbol : string -> content = fun s ->
-  let open Mathematical in
+(* [fit_on_grid c] adds spacing on both sides of the content element [c] so
+   that its width becomes a multiple of the width of a single character. *)
+let fit_on_grid : content -> content = fun c ->
   let boxwidth env cs =
     let (x0,_,x1,_) = RawContent.bounding_box (draw env cs) in
     (x1 -. x0) /. env.size
   in
   let f env =
+    let charw = boxwidth env [tT "a"] in
+    let symw  = boxwidth env [c] in
+    let extra = (ceil (symw /. charw)) *. charw -. symw in
+    let sp = hspace (extra /. 2.0) in
+    sp @ (c :: sp)
+  in C f
+
+
+(* [symbol s] build a mathematical symbole from the string [s]. Its width
+   on the page will be a multiple of the width of one verbatim character. *)
+let symbol : string -> content = fun s ->
+  let f env =
+    let open Mathematical in
     let menv = Maths.env_style env.mathsEnvironment Display in
     let font = Lazy.force menv.mathsFont in
     let gl =
       { glyph_utf8  = s
       ; glyph_index = Fonts.glyph_of_uchar font (UTF8.look s 0) }
     in
-    let sym = bB (fun _ ->
-      [glyphCache font gl env.fontColor (menv.mathsSize *. env.size)])
-    in
-    let charw = boxwidth env [tT "a"] in
-    let symw = boxwidth env [sym] in
-    let extra = (ceil (symw /. charw)) *. charw -. symw in
-    let sp = hspace (extra /. 2.0) in
-    sp @ (sym :: sp)
-  in C f
+    [bB (fun _ ->
+      [glyphCache font gl env.fontColor (menv.mathsSize *. env.size)])]
+  in
+  fit_on_grid (C f)
 
 (* Parameter type for the word handler bellow. *)
 type param =
   { keywords : string list
-  ; symbols  : string list }
+  ; symbols  : (string * content) list }
 
-exception Found_symbol of int * string
+exception Found_symbol of int * string * content
 
 
 (* [handle_word par w] build the contents corresponding to the word [w]. The
@@ -100,9 +107,9 @@ let handle_word : param -> string -> content list = fun par w ->
   (*if List.mem w par.symbols then [symbol w] else*)
   let find_special str start =
     let test_special str i =
-      let test_eq s =
+      let test_eq (s,cs) =
         let t = try String.sub str i (String.length s) with _ -> "" in
-        if t = s then raise (Found_symbol (i, s))
+        if t = s then raise (Found_symbol (i, s, cs))
       in
       List.iter test_eq par.symbols
     in
@@ -111,15 +118,15 @@ let handle_word : param -> string -> content list = fun par w ->
         test_special str i
       done;
       None
-    with Found_symbol (i,s) -> Some (i,s)
+    with Found_symbol (i,s,cs) -> Some (i,s,cs)
   in
   let rec build_word str acc pos =
     match find_special str pos with
     | None      ->
         let last = String.sub str pos (String.length str - pos) in
         acc @ [tT last]
-    | Some(i,s) ->
-        [tT (String.sub str pos (i - pos)); symbol s] @
+    | Some(i,s,cs) ->
+        [tT (String.sub str pos (i - pos)); fit_on_grid cs] @
         let pos = i + String.length s in
         build_word str acc pos
   in build_word w [] 0
