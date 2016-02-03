@@ -21,7 +21,7 @@ endif
 
 TYPOGRAPHY_MODS:= TypoLanguage FontPattern $(FINDFONT) Config ConfigUtil Distance \
   Offset Box Badness Break Document Complete Maths \
-	OutputDrawing Geometry Proj3d Diagrams ProofTree
+	OutputDrawing Geometry Proj3d Diagrams ProofTree Verbatim
 
 TYPOGRAPHY_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(TYPOGRAPHY_MODS)))
 TYPOGRAPHY_CMO:=$(TYPOGRAPHY_ML:.ml=.cmo)

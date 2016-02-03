@@ -202,10 +202,59 @@ let freshUid () =
                         in rem_hyphen (w :: l)
                    else w1 :: rem_hyphen (w2::l)
 
-  (****************************************************************************
-   * Verbatim environment / macro                                             *
-   ****************************************************************************)
+(****************************************************************************
+ * Verbatim environment / macro                                             *
+ ****************************************************************************)
 
+let parser verbatim_line = ''\(^#?#?\([^#\t\n][^\t\n]*\)?\)''
+let parser mode_ident = ''[a-zA-Z0-9_']+''
+let parser filename = ''[a-zA-Z0-9-_.]*''
+
+let parser verbatim_environment =
+  ''^###''
+  mode:{_:''[ \t]+'' mode_ident}?
+  file:{_:''[ \t]+'' "\"" filename "\""}?
+  _:''[ \t]*'' "\n" 
+  lines:{l:verbatim_line "\n"}++
+  ''^###'' ->
+    if lines = [] then give_up "Empty verbatim environment.";
+
+    (* Uniformly remove head spaces. *)
+    let nb_hspaces l =
+      let len = String.length l in
+      let nb    = ref 0 in
+      let found = ref false in
+      while !nb < len && not !found do
+        if l.[!nb] = ' ' then incr nb
+        else found := true
+      done;
+      if !found then !nb else max_int
+    in
+    let f m l = min m (nb_hspaces l) in
+    let minhsp = List.fold_left f max_int lines in
+    let remhsp l =
+      let len = String.length l in
+      if len <= minhsp then ""
+      else String.sub l minhsp (len - minhsp)
+    in
+    let lines =
+      let f s tl = <:expr<$string:s$ :: $tl$>> in
+      List.fold_right f (List.map remhsp lines) <:expr<[]>>
+    in
+    let mode = "verb_" ^ match mode with None -> "default" | Some m -> m in
+    let file =
+      match file with
+      | None -> <:expr<None>>
+      | Some f -> <:expr<Some $string:f$>>
+    in
+    <:structure<
+      let _ = $lid:mode$ $file$ $lines$
+    >>
+
+let verbatim_environment = change_layout verbatim_environment no_blank
+
+
+(*
   let verbatim_line =
       "\\(^#?#?\\([^#\t\n][^\t\n]*\\)?\\)"
 
@@ -314,6 +363,7 @@ let freshUid () =
                      List.iter (fun line ->
                        newPar D.structure ~environment:verbEnv Complete.normal ragged_left $line_with_num$) ($lang$ $list:lines$)>>)
                   ) no_blank
+  *)
 
   let verbatim_generic st forbid nd =
     let line_re = "[^\n" ^ forbid ^ "]+" in
@@ -326,7 +376,7 @@ let freshUid () =
             let lines = ls @ [l] in
             let lines = rem_hyphen lines in
             let txt = String.concat " " lines in
-            <:expr@_loc< ($lid:"verb"$) [tT $string:txt$] >>
+            <:expr@_loc< ($lid:"verbatim"$) $string:txt$ >>
       ) no_blank
 
   let verbatim_macro = verbatim_generic "\\verb{" "{}" "}"

@@ -615,10 +615,18 @@ let defaultEnv:environment=
 		      "while";"for";"if";"else";"return";"try";"except";"break"] in
       lang_ML keywords specials s
 
+    (* New parser version of verbatim environment. *)
+    let verb_default fn lines = 
+      Verbatim.lines_to_file lines fn;
+      let build_line = Verbatim.handle_spaces (fun s -> [tT s]) in
+      Verbatim.line_per_line D.structure build_line lines
+
+    let verbatim = Verbatim.verb_text (fun s -> [tT s])
+
     let env_stack=ref []
 
     module Env_minipage=struct
-      let do_begin_env ()=
+      let do_begin_env () =
         D.structure:=newChildAfter !D.structure (Node empty);
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 

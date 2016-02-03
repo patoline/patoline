@@ -1,0 +1,135 @@
+open Document
+open FTypes
+open Box
+
+(* [lines_to_file lines fn] writes the lines [lines] to the optional file
+   [fn] if it is provided. Do nothing otherwise. *)
+let lines_to_file : string list -> string option -> unit = fun lines fn ->
+  match fn with
+  | None    -> ()
+  | Some fn ->
+      let oc = open_out fn in
+      List.iter (Printf.fprintf oc "%s\n") lines;
+      close_out oc
+
+(* [glue_space n] corresponds to [n] spaces from the font. *)
+let glue_space : int -> content = fun n ->
+  let f env =
+	  let font,_,_,_ = selectFont env.fontFamily Regular false in
+    let glyph_index = Fonts.glyph_of_char font ' ' in 
+    let sp = Fonts.loadGlyph font {empty_glyph with glyph_index} in
+    let spw = Fonts.glyphWidth sp in
+	  let w =  float_of_int n *. env.size *. spw /. 1000.0 in
+	  [glue w w w]
+  in bB f
+
+(* [line_per_line f lines] builds each line of [lines] using [f] and display
+   each of them using the verbatim font. *)
+let line_per_line : 'a -> (string -> content list) -> string list -> unit =
+  fun str f lines ->
+    let par = do_ragged_left parameters in
+    let len = List.length lines in
+    let draw_line i l =
+      let cs = f l in
+      let cs = if i = 0 then linesBefore 2 @ cs else cs in
+      let cs = if i = len - 1 then linesAfter 2 @ cs else cs in
+      newPar str ~environment:verbEnv Complete.normal par cs
+    in
+    List.iteri draw_line lines
+
+(* [handle_spaces w_to_c line] builds a line using the function [w_to_c] to
+   build words (i.e. sections without spaces) and takes care of the spaces
+   (one text space is as wide as any other character). *)
+let handle_spaces : (string -> content list) -> string -> content list =
+  fun w_to_c l ->
+    let len = String.length l in
+    let rec l_to_a pos =
+      if pos >= len then []
+      else if l.[pos] = ' ' then
+        let nbsp = ref 1 in
+        while pos + !nbsp < len && l.[pos + !nbsp] = ' ' do incr nbsp done;
+        let pos = pos + !nbsp in
+        if pos >= len then []
+        else glue_space !nbsp :: l_to_a pos
+      else
+        let nbnsp = ref 1 in
+        while pos + !nbnsp < len && l.[pos + !nbnsp] <> ' ' do incr nbnsp done;
+        let str = String.sub l pos !nbnsp in
+        let pos = pos + !nbnsp in
+        w_to_c str @ l_to_a pos
+    in l_to_a 0
+
+(* [symbol s] build a mathematical symbole from the string [s]. Its width
+   on the page will be a multiple of the width of one verbatim character. *)
+let symbol : string -> content = fun s ->
+  let open Mathematical in
+  let boxwidth env cs =
+    let (x0,_,x1,_) = RawContent.bounding_box (draw env cs) in
+    (x1 -. x0) /. env.size
+  in
+  let f env =
+    let menv = Maths.env_style env.mathsEnvironment Display in
+    let font = Lazy.force menv.mathsFont in
+    let gl =
+      { glyph_utf8  = s
+      ; glyph_index = Fonts.glyph_of_uchar font (UTF8.look s 0) }
+    in
+    let sym = bB (fun _ ->
+      [glyphCache font gl env.fontColor (menv.mathsSize *. env.size)])
+    in
+    let charw = boxwidth env [tT "a"] in
+    let symw = boxwidth env [sym] in
+    let extra = (ceil (symw /. charw)) *. charw -. symw in
+    let sp = hspace (extra /. 2.0) in
+    sp @ (sym :: sp)
+  in C f
+
+(* Parameter type for the word handler bellow. *)
+type param =
+  { keywords : string list
+  ; symbols  : string list }
+
+exception Found_symbol of int * string
+
+
+(* [handle_word par w] build the contents corresponding to the word [w]. The
+   [par] variable provides parameters for keywords to be put in bold and
+   special symbols to be displayed using the maths font. *)
+let handle_word : param -> string -> content list = fun par w ->
+  if List.mem w par.keywords then bold [tT w] else
+  (*if List.mem w par.symbols then [symbol w] else*)
+  let find_special str start =
+    let test_special str i =
+      let test_eq s =
+        let t = try String.sub str i (String.length s) with _ -> "" in
+        if t = s then raise (Found_symbol (i, s))
+      in
+      List.iter test_eq par.symbols
+    in
+    try
+      for i = start to String.length str - 1 do
+        test_special str i
+      done;
+      None
+    with Found_symbol (i,s) -> Some (i,s)
+  in
+  let rec build_word str acc pos =
+    match find_special str pos with
+    | None      ->
+        let last = String.sub str pos (String.length str - pos) in
+        acc @ [tT last]
+    | Some(i,s) ->
+        [tT (String.sub str pos (i - pos)); symbol s] @
+        let pos = i + String.length s in
+        build_word str acc pos
+  in build_word w [] 0
+
+(* [verb_text build s] builds verbatim contents from a string [s] and a
+   generation function [build]. *)
+let verb_text : (string -> content list) -> string -> content list =
+  fun build s ->
+    let f env =
+      let size = env.size *. env.fontMonoRatio in
+      {(envFamily env.fontMonoFamily env) with size}
+    in
+    [Scoped (f, build s)]
