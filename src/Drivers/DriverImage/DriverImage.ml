@@ -66,12 +66,12 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	    let g = Raw.get raw ((j * w + i) * 4 + 1) in
 	    let b = Raw.get raw ((j * w + i) * 4 + 2) in
 	    let a = Raw.get raw ((j * w + i) * 4 + 3) in
-	    Image.write_rgba_pixel image i (h - j - 1) r g b a
+	    Image.write_rgba image i (h - j - 1) r g b a
 	  done
 	done;
 	let fname = Filename.concat dirname (filename' fileName page state) in
 	Printf.fprintf stderr "Writing %s\n" fname;
-	ReadImg.writefile fname image) states) pages;
+	ImageLib.writefile fname image) states) pages;
     ()
   in
 

@@ -13,7 +13,6 @@ DB_DIR := $(d)/db
 DRIVERS_DIR := $(d)/Drivers
 FORMAT_DIR := $(d)/Format
 UTIL_DIR := $(d)/patutil
-IMAGELIB_DIR := $(d)/imagelib
 RBUFFER_DIR := $(d)/rbuffer
 LIBFONTS_DIR := $(d)/patfonts
 CESURE_DIR := $(d)/cesure
@@ -38,7 +37,7 @@ endif
 $(d)/Patoline/Rules.mk: $(UNICODELIB_CMX)
 
 # Visit subdirectories
-MODULES := unicodelib rbuffer patutil imagelib patfonts rawlib db \
+MODULES := unicodelib rbuffer patutil patfonts rawlib db \
   Typography Drivers Pdf cesure Format \
   $(OCAML_BIBI) plot proof plugins Patoline
 

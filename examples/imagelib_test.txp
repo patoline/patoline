@@ -22,7 +22,7 @@
 let my_new_page pageFormat t=
   let background=
     List.map (fun x-> in_order (-1) x)
-    (draw !D.defaultEnv (includeGraphics ~scale:(1.0) "labyrinthe_background.png"))
+    (draw defaultEnv (includeGraphics ~scale:(1.0) "labyrinthe_background.png"))
   in  
   
   let a,b=Box.make_page pageFormat (frame_top t) in
@@ -36,8 +36,7 @@ let my_new_page pageFormat t=
   let y1=((fst zip).frame_y1-.1.*.h/.6.) in
   frame x0 y0 x1 y1 zip
 
-let _ = D.defaultEnv:={ !D.defaultEnv with 
-  new_page=my_new_page a4}
+let defaultEnv  = { defaultEnv with new_page=my_new_page a4 }
 )
 
 ===================================

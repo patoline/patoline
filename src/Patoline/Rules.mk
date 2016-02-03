@@ -35,7 +35,7 @@ PATOLINE_DIR := $(d)
 
 SUBSUP_ML := $(d)/Subsup.ml
 
-$(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa
+$(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) \
 		-package patutil,imagelib,dynlink,str,decap \

@@ -595,24 +595,24 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
             if !pageImages<>[] then (
               List.iter Image.(fun (obj,_,i)->
-                let image=ReadImg.openfile i.image_file in
+                let image=ImageLib.openfile i.image_file in
                 let w=image.width and h=image.height in
 		let bits_per_component =
 		  if image.max_val <= 255 then 8 else 16 in
 		let device, nbc = match image.pixels with
-		    RGB _ -> "RGB", 3
-                  | GreyL _ -> "Gray", 1
+		    RGB _ | RGBA _ -> "RGB", 3
+                  | Grey _ | GreyA _ -> "Gray", 1
 		in
                 let img_buf=Rbuffer.create (w*h*nbc*(bits_per_component/8)) in		
 		let alpha_buf = 
-		  if image.alpha <> None then
-		    Some (Rbuffer.create (w*h*(bits_per_component/8)))
-		  else None
+      match image.pixels with
+      | RGB _  | Grey _  -> None
+      | RGBA _ | GreyA _ -> Some (Rbuffer.create (w*h*(bits_per_component/8)))
 		in 
 		if device = "RGB" then
                   for j=0 to h-1 do
                     for i=0 to w-1 do
-                      Image.read_rgba_pixel image i j (fun ~r ~g ~b ~a->
+                      Image.read_rgba image i j (fun r g b a ->
 			if image.max_val <= 255 then (
 			  let r = (r * 255 * 2 + 1) / (2 * image.max_val) in
 			  let g = (g * 255 * 2 + 1) / (2 * image.max_val) in
@@ -654,7 +654,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 		else
                   for j=0 to h-1 do
                     for i=0 to w-1 do
-                      Image.read_greya_pixel image i j (fun ~g ~a->
+                      Image.read_greya image i j (fun g a ->
 			if image.max_val <= 255 then (
 			  let g = (g * 255) / image.max_val in
 			  Rbuffer.add_char img_buf (char_of_int g))

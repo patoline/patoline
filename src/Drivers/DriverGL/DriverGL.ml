@@ -735,13 +735,13 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	try
 	  GlTex.bind_texture `texture_2d (Hashtbl.find win.imageCache i)
 	with Not_found ->
-	  let image = ReadImg.openfile i.image_file in
+	  let image = ImageLib.openfile i.image_file in
 	  let w =Image.(image.width) in
 	  let h =Image.(image.height) in
 	  let raw = Raw.create `ubyte ~len:(4*w*h) in
 	  for j=0 to h-1 do
             for i=0 to w-1 do
-	      Image.(read_rgba_pixel image i j (fun ~r ~g ~b ~a ->
+	      Image.(read_rgba image i j (fun r g b a ->
 		let r,g,b,a =
 		  if image.max_val <> 255 then
 		    (r * 255 * 2 + 1) / (2 * image.max_val),

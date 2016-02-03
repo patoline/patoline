@@ -103,17 +103,10 @@ let local_packages = [
     subdirs = [];
     has_meta = true;
   };
-  { package_name = "imagelib";
-    macro_suffix = "IMAGELIB";
-    local_deps = ["patutil"];
-    extern_deps = ["zip"; "bigarray"];
-    subdirs = [];
-    has_meta = true;
-  };
   { package_name = "rawlib";
     macro_suffix = "RAWLIB";
-    local_deps = ["patutil"; "imagelib"; "patfonts"];
-    extern_deps = ["dynlink"];
+    local_deps = ["patutil"; "patfonts"];
+    extern_deps = ["dynlink"; "imagelib"];
     subdirs = [];
     has_meta = true;
   };
@@ -161,8 +154,8 @@ let local_packages = [
   };
   { package_name = "Typography";
     macro_suffix = "TYPOGRAPHY";
-    local_deps = ["patutil";"patfonts";"imagelib";"unicodelib";"cesure";"rawlib";"db"];
-    extern_deps = ["zip";"fontconfig"];
+    local_deps = ["patutil";"patfonts";"unicodelib";"cesure";"rawlib";"db"];
+    extern_deps = ["zip";"fontconfig";"imagelib"];
     subdirs = ["DefaultFormat"];
     has_meta = true;
   };
@@ -614,7 +607,6 @@ let _=
   Printf.fprintf make "INSTALL_RBUFFER_DIR :=%s/rbuffer\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_PA_OCAML_DIR :=%s/decap\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_UTIL_DIR :=%s/patutil\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_IMGLIB_DIR :=%s/imagelib\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_RAWLIB_DIR :=%s/rawlib\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_DB_DIR :=%s/db\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_UNICODELIB_DIR :=%s/unicodelib\n" !ocaml_lib_dir;
@@ -673,18 +665,6 @@ let _=
         close_out f
     end
   in
-  let gen_imagelib () =
-    let meta_name = "src/imagelib/META" in
-    let f = open_out meta_name in
-    Printf.fprintf f "name=\"imagelib\"\n\nversion=\"1.0\"\ndescription=\"A pure OCaml library for reading / writing images\"\n";
-    let zip = if ocamlfind_has "zip" then snd (ocamlfind_query "zip") ^ "," else "" in
-    Printf.fprintf f "requires=\"%spatutil,bigarray\"\n" zip;
-    Printf.fprintf f "archive(byte)=\"imagelib.cma\"\n";
-    Printf.fprintf f "archive(native)=\"imagelib.cmxa\"\n";
-    close_out f
-  in
-
-  gen_imagelib ();
   List.iter gen_meta_driver !r_patoline_drivers;
 
   (* Generate the META file for Typography, which details package information
