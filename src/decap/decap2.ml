@@ -26,13 +26,14 @@ let blank_regexp r =
   fn
 
 (* type de la BNF d'un langage *)
-type 'a symbole =
+type 'a symbol =
   | Term of (buffer -> int -> 'a * buffer * int)
   | NonTerm of  'a grammar
 
 and _ regle =
   | Empty : 'a -> 'a regle
-  | Next : 'b symbole * ('b -> 'a) regle -> 'a regle
+  | Next : 'b symbol * ('b -> 'a) regle -> 'a regle
+  | Ref : 'a regle ref -> 'a regle
 
 and 'a grammar = 'a regle list
 
@@ -81,15 +82,22 @@ let (===) : type a b.a -> b -> (a,b) eq = fun r1 r2 ->
 
 let eq : 'a 'b.'a -> 'b -> bool = fun x y -> (x === y) <> Neq
 
-let memq : type a b.a -> b list -> (a, b) eq = fun x l ->
-  let rec fn : type b.b list -> (a, b) eq = function
-    | [] -> Neq
-    | y::l' -> match (x === y) with Eq -> Eq | _ -> fn l'
-  in fn l
+let idtEmpty = Empty(fun x -> x)
+
+let rec iter_regles : type a.(a regle -> unit) -> a grammar -> unit = fun fn l ->
+  let aux : a regle -> unit  = fun r ->
+    match r with
+      Ref r as g0 ->
+      (match !r with Next(NonTerm(g), e) ->
+	(match e === idtEmpty with Eq -> iter_regles fn g
+	| Neq -> fn g0)
+      | _ -> fn g0)
+    | g -> fn g
+  in List.iter aux l
 
 type _ dep_pair = P : 'a regle * ('a, 'b) element list ref * (('a, 'b) element -> unit) ref -> 'b dep_pair
 
-let rec memo_assq : type a b. a regle -> b dep_pair list ref -> ((a, b) element -> unit) -> unit =
+let memo_assq : type a b. a regle -> b dep_pair list ref -> ((a, b) element -> unit) -> unit =
   fun r l0 f ->
     let rec fn = function
       | [] -> l0 := P(r,ref [], ref f)::!l0
@@ -99,7 +107,7 @@ let rec memo_assq : type a b. a regle -> b dep_pair list ref -> ((a, b) element 
 	 | _ -> fn l
     in fn !l0
 
-let rec add_assq : type a b. a regle -> (a, b) element -> b dep_pair list ref -> (a, b) element list ref =
+let add_assq : type a b. a regle -> (a, b) element -> b dep_pair list ref -> (a, b) element list ref =
   fun r el l0 ->
     let rec fn = function
       | [] -> let res = ref [el] in l0 := P(r,res, ref (fun el -> ()))::!l0; res
@@ -109,7 +117,19 @@ let rec add_assq : type a b. a regle -> (a, b) element -> b dep_pair list ref ->
 	 | _ -> fn l
     in fn !l0
 
+let solo = fun s -> [Next(Term s,idtEmpty)]
+
+let next : type a b.a grammar -> (a -> b) regle -> b regle =
+  fun s r -> match s with
+   [Next(Term(s0),e)] ->
+      (match e === idtEmpty with Eq -> Next(Term(s0),r) | Neq -> Next(NonTerm s,r))
+  | s -> Next(NonTerm s,r)
+
+
 let debut = function D { debut } -> debut
+let fin   = function D { fin   } -> fin
+let is_term = function D { rest= Next(Term _, _) } -> true | _ -> false
+let is_ref  = function D { rest= Ref _ } -> true | _ -> false
 
 (* ajoute un élément dans la table et retourne true si il est nouveau *)
 let add : string -> 'a final -> (int, 'a final list) Hashtbl.t -> bool =
@@ -121,6 +141,7 @@ let add : string -> 'a final -> (int, 'a final list) Hashtbl.t -> bool =
       debut = d' && eq rest r' && eq full fu' in
     let absent = not (List.exists (eq element) oldl) in
     if absent then begin
+      if !debug_lvl > 0 then Printf.printf "add %s %d %d %b %b\n%!" info debut (fin element) (is_term element) (is_ref element);
       Hashtbl.replace old debut (element :: oldl);
     end;
     absent
@@ -189,23 +210,27 @@ let record_error err_info msg str col =
       err_info.err_msgs <- msg;
     end
 
+type rec_err = string_tree -> unit
+
 (* phase de lecture d'un caractère, qui ne dépend pas de la bnf *)
-let lecture : type a.err_info -> buffer -> int -> blank -> (int, a final list) Hashtbl.t ->
+let lecture : type a.rec_err -> buffer -> int -> blank -> (int, a final list) Hashtbl.t ->
 		  a final buf_table -> a final buf_table =
-  fun err_info buf pos blank elements tbl ->
+  fun rec_err buf pos blank elements tbl ->
     let buf, pos = blank buf pos in
     let tbl = ref tbl in
     Hashtbl.iter (fun _ l -> List.iter (function
-    | D {debut; fin; stack;acts; rest=Next(Term f,rest); full} ->
-       (try
-	 let a, buf, pos = f buf pos in
-	 let state =
-	   (D {debut; fin=line_beginning buf + pos; stack; shifts = Unit;
-	      acts = Something(Lazy.from_val a,acts); rest; full})
-	 in
-	 tbl := insert buf pos state !tbl
-       with Error msg -> record_error err_info msg buf pos)
-    | _ -> ()) l) elements;
+    | D {debut; fin; stack;acts; rest; full} ->
+       match rest with
+       | Next(Term f,rest) ->
+	  (try
+	      let a, buf, pos = f buf pos in
+	      let state =
+		(D {debut; fin=line_beginning buf + pos; stack; shifts = Unit;
+		    acts = Something(Lazy.from_val a,acts); rest; full})
+	      in
+	      tbl := insert buf pos state !tbl
+	    with Error msg -> rec_err msg)
+       | _ -> ()) l) elements;
     !tbl
 
 (* selectionnne les éléments commençant par un terminal
@@ -215,55 +240,63 @@ type 'b action = { a : 'a.'a regle -> ('a, 'b) element list ref -> unit }
 let pop_final : type a b. b dep_pair list ref -> b final -> b action -> unit =
   fun dlr element act ->
     match element with
-    | D {rest=Next(NonTerm(regles),rest); acts; full; debut; fin; stack} ->
-       (match rest, debut <> fin with
-       | Empty f, true ->
-	   List.iter (function C {rest; shifts; acts=acts'; full; debut; stack} ->
-	     let c = C {rest; shifts=Shift(f,acts,shifts); acts=acts'; full; debut; fin; stack} in
- 	 List.iter (fun r -> act.a r (add_assq r c dlr)) regles) !stack
-       | _ ->
-	  let c = C {rest; acts; shifts=Direct; full; debut; fin; stack} in
-	  List.iter (fun r -> act.a r (add_assq r c dlr)) regles)
-    | _ -> assert false
+    | D {rest=regle; acts; full; debut; fin; stack} ->
+       (match regle with
+       | Next(NonTerm(regles),rest) ->
+	  (match rest, debut <> fin with
+	  | Empty f as rest, true ->
+	     List.iter (function C {rest; shifts; acts=acts'; full; debut; stack} ->
+	       let c = C {rest; shifts=Shift(f,acts,shifts); acts=acts'; full; debut; fin; stack} in
+ 	       iter_regles (fun r -> act.a r (add_assq r c dlr)) regles) !stack
+	  | rest, _ ->
+	     let c = C {rest; acts; shifts=Direct; full; debut; fin; stack} in
+	     iter_regles (fun r -> act.a r (add_assq r c dlr)) regles)
+       | _ -> assert false)
 
 
 (* fait toutes les prédictions et productions pour un element donné et
    comme une prédiction ou une production peut en entraîner d'autres,
    c'est une fonction récursive *)
 let rec one_prediction_production
- : type a. a dep_pair list ref -> (int, a final list) Hashtbl.t -> a final -> unit
- = fun dlr elements element ->
-  match element with
+ : type a. rec_err -> a dep_pair list ref -> (int, a final list) Hashtbl.t -> a final -> unit
+ = fun rec_err dlr elements element ->
+   match element with
   (* prediction (pos, i, ... o NonTerm name::rest_regle) dans la table *)
-  | D {fin; acts; stack; rest=Next(NonTerm (regles),_)} ->
-     let acts =
-       { a = (fun regle stack ->
-	 let nouveau = D {shifts = Unit; debut =fin; fin; acts = Nothing; stack; rest  = regle; full = regle} in
-	 let b = add "P" nouveau elements in
-	 if b then one_prediction_production dlr elements nouveau) }
-     in pop_final dlr element acts
+  | D {debut=i; fin=j; acts; stack; rest; full} ->
+     match rest with
+     | Next(NonTerm (_),_) ->
+	let acts =
+	  { a = (fun regle stack ->
+	    let nouveau = D {shifts = Unit; debut=j; fin=j; acts = Nothing; stack; rest = regle; full = regle} in
+	    let b = add "P" nouveau elements in
+	    if b then one_prediction_production rec_err dlr elements nouveau) }
+	in pop_final dlr element acts
 
-  (* production	(pos, i, ... o ) dans la table *)
-  | D {debut=i; fin=j; acts; stack=els;rest=Empty a; full=regle} ->
-     let x = apply_actions acts a in
-     let complete element =
-       match element with
-       | C {debut=k; fin=i'; stack=els'; shifts; acts; rest; full} ->
-	  assert(i=i');
-	 let x = Lazy.from_fun (fun () -> apply_shifts shifts x) in
-	 let nouveau = D {shifts = Unit; debut=k; acts = Something(x,acts); fin=j; stack=els'; rest; full} in
-	 let b = add "C" nouveau elements in
-	 if b then one_prediction_production dlr elements nouveau
-     in
-     if i = j then memo_assq regle dlr complete;
-     List.iter complete !els
-  | _ -> ()
+     (* production	(pos, i, ... o ) dans la table *)
+     | Empty a ->
+	(try
+	   let x = apply_actions acts a in
+	  let complete element =
+	    match element with
+	    | C {debut=k; fin=i'; stack=els'; shifts; acts; rest; full} ->
+	       assert(i=i');
+	      let x = Lazy.from_fun (fun () -> apply_shifts shifts x) in
+	      let nouveau = D {shifts = Unit; debut=k; acts = Something(x,acts); fin=j; stack=els'; rest; full} in
+	      let b = add "C" nouveau elements in
+	      if b then one_prediction_production rec_err dlr elements nouveau
+	  in
+	  if i = j then memo_assq full dlr complete;
+	  List.iter complete !stack
+	 with Give_up msg -> rec_err (Message msg)
+	 | Error msg -> rec_err msg)
+     | _ -> ()
 
 (* fait toutes les prédictions productions pour les entrées de la
    table à la position indiquée *)
-let rec prediction_production : type a.(int, a final list) Hashtbl.t -> unit = fun elements ->
-  let dlr = ref [] in
-  Hashtbl.iter ((fun _ l -> List.iter (fun el -> one_prediction_production dlr elements el) l))
+let prediction_production : type a.rec_err -> (int, a final list) Hashtbl.t -> unit
+  = fun rec_err elements ->
+    let dlr = ref [] in
+    Hashtbl.iter ((fun _ l -> List.iter (fun el -> one_prediction_production rec_err dlr elements el) l))
     elements
 
 exception Parse_error of string * int * int * string list * string list
@@ -277,10 +310,13 @@ let parse_buffer : type a.a grammar -> blank -> buffer -> a =
     in
     let pos = ref 0 and buf = ref buf in
     let elements : (int, a final list) Hashtbl.t = Hashtbl.create 31 in
-    let r0 : a regle = Next(NonTerm main,Empty(fun x -> x)) in
+    let r0 : a regle = next main idtEmpty in
     let s0 : (a, a) element list ref = ref [] in
     let _ = add "I" (D {shifts = Unit; debut=0; fin=0; acts = Nothing; stack=s0; rest=r0; full=r0}) elements in
     let forward = ref empty_buf in
+    let rec_err msg =
+      record_error err_info msg !buf !pos
+    in
     let parse_error () =
       let buf = err_info.max_err_buf in
       let pos = err_info.max_err_col in
@@ -289,18 +325,25 @@ let parse_buffer : type a.a grammar -> blank -> buffer -> a =
       raise (Parse_error (fname buf, line_num buf, pos, msg, expected))
     in
     (* boucle principale *)
-    while not (is_empty !buf !pos) do
-      prediction_production elements;
-      forward := lecture err_info !buf !pos blank elements !forward;
-      let (buf', pos', l, forward') = pop_firsts !forward in
-      pos := pos';
-      buf := buf';
-      forward := forward';
+    let once_more = ref true in
+    while not (is_empty !buf !pos) || (let x = !once_more in once_more := false; x) do
+      if !debug_lvl > 1 then Printf.printf "pos = %d\n%!" !pos;
+      prediction_production rec_err elements;
+      forward := lecture rec_err !buf !pos blank elements !forward;
+      let l =
+	try
+	  let (buf', pos', l, forward') = pop_firsts !forward in
+	  pos := pos';
+	  buf := buf';
+	  forward := forward';
+	  l
+	with Not_found -> []
+      in
       Hashtbl.clear elements;
       List.iter (fun s -> ignore (add "L" s elements)) l;
       if Hashtbl.length elements = 0 then parse_error ()
     done;
-    prediction_production elements;
+    prediction_production rec_err elements;
   (* on regarde si on a parsé complètement la catégorie initiale *)
     let rec fn : type a.a final list -> a = function
       | [] -> parse_error ()
@@ -323,37 +366,60 @@ let parse_file grammar blank filename  =
   let str = buffer_from_file filename in
   parse_buffer grammar blank str
 
+let fail : string -> 'a grammar
+  = fun msg ->
+    let fn buf pos =
+      unexpected msg
+    in
+    solo fn
+
+let unset : string -> 'a grammar
+  = fun msg ->
+    let fn buf pos =
+      failwith msg
+    in
+    solo fn
+
+let declare_grammar name =
+  [Ref(ref (next (unset (name ^ " not set")) idtEmpty))]
+
+let set_grammar p1 p2 =
+  match p1 with
+  | [Ref(ptr)] ->
+     ptr := next p2 idtEmpty
+  | _ -> invalid_arg "set_grammar"
+
 let eof : 'a -> 'a grammar
   = fun a ->
     let fn buf pos =
       if is_empty buf pos then (a,buf,pos) else expected "EOF"
     in
-    [Next(Term(fn),Empty(fun x -> x))]
+    solo fn
 
 let char : char -> 'a -> 'a grammar
   = fun c a ->
     let msg = Printf.sprintf "%C" c in
     let fn buf pos =
-      let c', str', pos' = read buf pos in
-      if c = c' then (a,buf,pos) else expected msg
+      let c', buf', pos' = read buf pos in
+      if c = c' then (a,buf',pos') else expected msg
     in
-    [Next(Term(fn),Empty(fun x -> x))]
+    solo fn
 
 let in_charset : charset -> char grammar
   = fun cs ->
     let msg = Printf.sprintf "%s" (String.concat "|" (list_of_charset cs)) in
     let fn buf pos =
-      let c, str', pos' = read buf pos in
-      if mem cs c then (c,buf,pos) else expected msg
+      let c, buf', pos' = read buf pos in
+      if mem cs c then (c,buf',pos') else expected msg
     in
-    [Next(Term(fn),Empty(fun x -> x))]
+    solo fn
 
 let any : char grammar
   = let fn buf pos =
-      let c', str', pos' = read buf pos in
-      (c',buf,pos)
+      let c', buf', pos' = read buf pos in
+      (c',buf',pos')
     in
-    [Next(Term(fn),Empty(fun x -> x))]
+    solo fn
 
 let string : string -> 'a -> 'a grammar
   = fun s a ->
@@ -362,13 +428,13 @@ let string : string -> 'a -> 'a grammar
       let pos = ref pos in
       let len_s = String.length s in
       for i = 0 to len_s - 1 do
-        let c, _buf, _pos = read !buf !pos in
+        let c, buf', pos' = read !buf !pos in
         if c <> s.[i] then expected s;
-        buf := _buf; pos := _pos
+        buf := buf'; pos := pos'
       done;
       (a,!buf,!pos)
     in
-    [Next(Term(fn),Empty(fun x -> x))]
+    solo fn
 
 let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
   = fun r0 ?(name=String.escaped r0) a ->
@@ -379,36 +445,28 @@ let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
       if string_match r l pos then (
         let f n = matched_group n l in
         let pos' = match_end () in
-	if pos' = pos then expected name;
 	let res = try a f with Give_up msg -> unexpected msg in
-	(res,buf,pos))
+	(res,buf,pos'))
       else expected name
     in
-    [Next(Term(fn),Empty(fun x -> x))]
+    solo fn
 
 (* charset is now useless ... will be suppressed soon *)
 let black_box : (buffer -> int -> 'a * buffer * int) -> charset -> 'a option -> string -> 'a grammar
   = fun fn _ empty name ->
     match empty with
-    | None -> [Next(Term(fn),Empty(fun x -> x))]
-    | Some a -> [Next(Term(fn),Empty(fun x -> x)); Empty a]
-
-let fail : string -> 'a grammar
-  = fun msg ->
-    let fn buf pos =
-      unexpected msg
-    in
-    [Next(Term(fn),Empty(fun x -> x))]
+    | None -> solo fn
+    | Some a -> Empty a :: solo fn
 
 let empty : 'a -> 'a grammar = fun a -> [Empty a]
 
 let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
   = fun l1 l2 f ->
-    [Next(NonTerm l1, Next(NonTerm l2, Empty(fun b a -> f a b)))]
+    [next l1 (next l2 (Empty(fun b a -> f a b)))]
 
 let sequence3 : 'a grammar -> 'b grammar -> 'c grammar -> ('a -> 'b -> 'c -> 'd) -> 'd grammar
   = fun l1 l2 l3 f ->
-    [Next(NonTerm l1, Next(NonTerm l2, Next(NonTerm l3, Empty(fun c b a -> f a b c))))]
+    [next l1 (next l2 (next l3 (Empty(fun c b a -> f a b c))))]
 
 (* TODO *)
 let sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -> buffer -> int -> 'c) -> 'c grammar
@@ -428,8 +486,8 @@ let iter : 'a grammar grammar -> 'a grammar
 
 let conditional_sequence : 'a grammar -> ('a -> bool) -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
   = fun l1 cond l2 f ->
-    let l1 = [Next(NonTerm l1, Empty(fun a -> if cond a then a else raise (Error TEmpty)))] in
-    [Next(NonTerm l1, Next(NonTerm l2, Empty(fun b a -> f a b)))]
+    let l1 = [next l1 (Empty(fun a -> if cond a then a else raise (Error TEmpty)))] in
+    [next l1 (next l2 (Empty(fun b a -> f a b)))]
 
 let change_layout : ?new_blank_before:bool -> ?old_blank_after:bool -> 'a grammar -> blank -> 'a grammar
   = fun ?(new_blank_before=true) ?(old_blank_after=true) l1 blank1 ->
@@ -446,16 +504,20 @@ let option' = option
 
 let fixpoint :  'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
-    let rec res = [Empty a;
-		   Next(NonTerm res, Next(NonTerm f1, Empty(fun f a -> f a)))] in
+    let res = declare_grammar "fixpoint" in
+    let _ = set_grammar
+      [Empty a;
+       next res (next f1 (Empty(fun f a -> f a)))] in
     res
 
 let fixpoint' = fixpoint
 
 let fixpoint1 :  'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
-    let rec res = [Next(NonTerm f1, Empty(fun f -> f a));
-		   Next(NonTerm res, Next(NonTerm f1, Empty(fun f a -> f a)))] in
+    let res = declare_grammar "fixpoint" in
+    let _ = set_grammar
+      [next f1 (Empty(fun f -> f a));
+       next res (next f1 (Empty(fun f a -> f a)))] in
     res
 
 let fixpoint1' = fixpoint1
@@ -469,10 +531,6 @@ let alternatives' = alternatives
 let blank_grammar grammar blank str pos = failwith "blank_grammar unimplemented"
 
 let accept_empty grammar = failwith "accept_empty unimplemented"
-
-let declare_grammar name = failwith "declare_grammar unimplemented"
-
-let set_grammar p1 p2 = failwith "set_grammar unimplemented"
 
 let print_exception = function
   | Parse_error(fname,l,n,msg, expected) ->
@@ -489,16 +547,15 @@ let print_exception = function
 let handle_exception f a =
   try f a with Parse_error _ as e -> print_exception e; failwith "No parse."
 
-let handle_exception= failwith "handle_exception unimplemented"
-let grammar_family = failwith "grammar_family unimplemented"
-let merge = failwith "merge unimplemented"
-let lists = failwith "lists unimplemented"
-let position = failwith "position unimplemented"
-let cache = failwith "cache unimplemented"
-let apply = failwith "apply unimplemented"
-let internal_parse_buffer = failwith "internal_parse_buffer unimplemented"
-let active_debug = failwith "active_debug unimplemented"
-let debug = failwith "debug unimplemented"
-let partial_parse_string = failwith "partial_parse_string unimplemented"
-let partial_parse_buffer = failwith "partial_parse_buffer unimplemented"
-let apply_position = failwith "apply_position unimplemented"
+let grammar_family ?(param_to_string=fun _ -> "") _ = failwith "grammar_family unimplemented"
+let merge _ = failwith "merge unimplemented"
+let lists _ = failwith "lists unimplemented"
+let position _ = failwith "position unimplemented"
+let cache _ = failwith "cache unimplemented"
+let apply _ = failwith "apply unimplemented"
+let internal_parse_buffer _ = failwith "internal_parse_buffer unimplemented"
+let active_debug = ref true
+let debug _ = failwith "debug unimplemented"
+let partial_parse_string ?(filename="") _ = failwith "partial_parse_string unimplemented"
+let partial_parse_buffer _ = failwith "partial_parse_buffer unimplemented"
+let apply_position _ = failwith "apply_position unimplemented"

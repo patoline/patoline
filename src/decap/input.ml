@@ -317,15 +317,15 @@ let cmp_buf b1 i1 b2 i2 =
 
 let insert buf pos x tbl =
   let buf = Lazy.force buf in
-  let rec fn = function
-  | [] -> [(buf, pos, [x])]
-  | (buf',pos', y as c) :: rest ->
+  let rec fn acc = function
+  | [] -> List.rev_append acc [(buf, pos, [x])]
+  | ((buf',pos', y as c) :: rest) as tbl ->
      if pos = pos' && buf == buf' then
-       (buf', pos', (x::y)) :: rest
+       List.rev_append acc ((buf', pos', (x::y)) :: rest)
      else if cmp_buf buf pos buf' pos' then
-       (buf, pos, [x]) :: tbl
-     else c::fn tbl
-  in fn tbl
+       List.rev_append acc ((buf, pos, [x]) :: tbl)
+     else fn (c::acc) rest
+  in fn [] tbl
 
 let pop_firsts = function
   | [] -> raise Not_found

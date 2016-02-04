@@ -90,7 +90,19 @@ val blank_regexp : string -> blank
 (** {2 Core type} *)
 
 (** Type of a grammar returning a value of type ['a]. *)
-type 'a grammar
+(* type de la BNF d'un langage *)
+type 'a symbol =
+  | Term of (buffer -> int -> 'a * buffer * int)
+  | NonTerm of  'a grammar
+
+and _ regle =
+  | Empty : 'a -> 'a regle
+  | Next : 'b symbol * ('b -> 'a) regle -> 'a regle
+  | Ref : 'a regle ref -> 'a regle
+
+and 'a grammar = 'a regle list
+
+val next : 'b grammar -> ('b -> 'a) regle -> 'a regle
 
 (** {2 Parsing functions} *)
 
@@ -395,3 +407,4 @@ val blank_grammar : unit grammar -> blank -> buffer -> int -> buffer * int
 
 (* developper only *)
 val debug_lvl : int ref
+val expected : string -> 'a
