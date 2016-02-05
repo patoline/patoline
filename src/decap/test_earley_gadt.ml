@@ -1,6 +1,8 @@
 open Decap2
 open Input
 
+let _ = debug_lvl := 0
+
 let char0 : char -> 'a -> 'a symbol
   = fun c a ->
     let msg = Printf.sprintf "%C" c in
@@ -84,3 +86,28 @@ let _ = fn (parse_string top blank "123 + 456")
 let _ = fn (parse_string top blank "123 + 456 * 2")
 let _ = fn (parse_string top blank "(123 + 456) * 2")
 let _ = fn (parse_string top blank "2 ** 2 ** 2")
+let _ = Printf.printf "Test with parse error:\n%!"
+let _ = try handle_exception (fun () -> fn (parse_string top blank "2 ** 2a ** 2")) () with _ -> ()
+
+let rec bbcc n =
+  if n = 0 then empty 0
+    else sequence3 (char 'b' ()) (bbcc (n-1)) (char 'c' ()) (fun _ _ _ -> n)
+let aabbcc =
+  dependent_sequence bnf2 bbcc
+
+let _ = fn (parse_string aabbcc blank "aabbcc")
+let _ = fn (parse_string aabbcc blank "aaaaabbbbbccccc")
+
+let rec bb n =
+  if n = 0 then empty 0
+  else sequence (bb (n-1)) (char 'b' ()) (fun _ _ -> n)
+
+let rec cc n =
+  if n = 0 then empty 0
+  else sequence (cc (n-1)) (char 'c' ()) (fun _ _ -> n)
+
+let aabbcc2 =
+  dependent_sequence bnf2 (fun n -> sequence (bb n) (cc n) (fun _ n -> n))
+
+let _ = fn (parse_string aabbcc2 blank "aabbcc")
+let _ = fn (parse_string aabbcc2 blank "aaaaabbbbbccccc")
