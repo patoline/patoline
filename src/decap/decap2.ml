@@ -25,17 +25,28 @@ let blank_regexp r =
   in
   fn
 
-(* type de la BNF d'un langage *)
-type 'a symbol =
+(** A BNF grammar is a list of rules. The type parameter ['a] corresponds to
+    the type of the semantics of the grammar. For example, parsing using a
+    grammar of type [int grammar] will produce a value of type [int]. *)
+type 'a grammar = 'a rule list
+
+and 'a symbol =
   | Term of (buffer -> int -> 'a * buffer * int)
   | NonTerm of  'a grammar
 
-and _ regle =
-  | Empty : 'a -> 'a regle
-  | Next : 'b symbol * ('b -> 'a) regle -> 'a regle
-  | Ref : 'a regle ref -> 'a regle
-
-and 'a grammar = 'a regle list
+(** BNF rule. *)
+and _ rule =
+  | Empty : 'a -> 'a rule
+  (** Empty rule. *)
+  | EmptyPos : (buffer -> int -> buffer -> int -> 'a) -> 'a rule
+  (** Empty rule. recoreding positions *)
+  | Dep : ('b -> 'a rule) -> ('b -> 'a) rule
+  (** Dependant rule *)
+  | Next : 'b symbol * ('b -> 'a) rule -> 'a rule
+  (** Sequence of a symbol and a rule. *)
+  | Ref : 'a rule ref -> 'a rule
+  (** Mutable rule to allow the use of a grammar before its definition
+      not to use directly (you must use declare_grammar and set_grammar) *)
 
 type (_) actions =
   | Nothing : ('a -> 'a) actions
@@ -90,12 +101,12 @@ let eq : 'a 'b.'a -> 'b -> bool = fun x y -> (x === y) <> Neq
 
 let idtEmpty = Empty(fun x -> x)
 
-let rec iter_regles : type a.(a rule -> unit) -> a grammar -> unit = fun fn l ->
+let rec iter_rules : type a.(a rule -> unit) -> a grammar -> unit = fun fn l ->
   let aux : a rule -> unit  = fun r ->
     match r with
       Ref r as g0 ->
       (match !r with Next(NonTerm(g), e) ->
-	(match e === idtEmpty with Eq -> iter_regles fn g
+	(match e === idtEmpty with Eq -> iter_rules fn g
 	| Neq -> fn g0)
       | _ -> fn g0)
     | g -> fn g
@@ -254,21 +265,21 @@ type 'b action = { a : 'a.'a rule -> ('a, 'b) element list ref -> unit }
 let pop_final : type a b. b dep_pair list ref -> b final -> b action -> unit =
   fun dlr element act ->
     match element with
-    | D {rest=regle; acts; full; debut; fin; stack} ->
-       (match regle with
-       | Next(NonTerm(regles),rest) ->
+    | D {rest=rule; acts; full; debut; debut_after_blank; fin; stack} ->
+       (match rule with
+       | Next(NonTerm(rules),rest) ->
 	  (match rest, not (eq_pos debut fin) with
 	  | Empty f as rest, true ->
 	     List.iter (function C {rest; shifts; acts=acts'; full; debut; stack} ->
 	       let c = C {rest; shifts=Shift(f,acts,shifts); acts=acts'; full; debut; debut_after_blank; fin; stack} in
- 	       iter_regles (fun r -> act.a r (add_assq r c dlr)) regles) !stack
+ 	       iter_rules (fun r -> act.a r (add_assq r c dlr)) rules) !stack
 	  | EmptyPos f as rest, true ->
 	     List.iter (function C {rest; shifts; acts=acts'; full; debut; stack} ->
 	       let c = C {rest; shifts=ShiftPos(f,acts,shifts); acts=acts'; full; debut; debut_after_blank; fin; stack} in
- 	       iter_regles (fun r -> act.a r (add_assq r c dlr)) regles) !stack
+ 	       iter_rules (fun r -> act.a r (add_assq r c dlr)) rules) !stack
 	  | rest, _ ->
 	     let c = C {rest; acts; shifts=Direct; full; debut; debut_after_blank; fin; stack} in
-	     iter_regles (fun r -> act.a r (add_assq r c dlr)) regles)
+	     iter_rules (fun r -> act.a r (add_assq r c dlr)) rules)
        | _ -> assert false)
 
 
@@ -279,13 +290,13 @@ let rec one_prediction_production
  : type a. rec_err2 -> a dep_pair list ref -> a pos_tbl -> a final -> unit
  = fun rec_err dlr elements element ->
    match element with
-  (* prediction (pos, i, ... o NonTerm name::rest_regle) dans la table *)
+  (* prediction (pos, i, ... o NonTerm name::rest_rule) dans la table *)
   | D {debut=i; debut_after_blank=i'; fin=j; acts; stack; rest; full} ->
      match rest with
      | Next(NonTerm (_),_) ->
 	let acts =
-	  { a = (fun regle stack ->
-	    let nouveau = D {shifts = Unit; debut=j; fin=j; acts = Nothing; stack; rest = regle; full = regle} in
+	  { a = (fun rule stack ->
+	    let nouveau = D {shifts = Unit; debut=j; debut_after_blank = j; fin=j; acts = Nothing; stack; rest = rule; full = rule} in
 	    let b = add "P" nouveau elements in
 	    if b then one_prediction_production rec_err dlr elements nouveau) }
 	in pop_final dlr element acts

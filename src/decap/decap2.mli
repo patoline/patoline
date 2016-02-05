@@ -89,20 +89,30 @@ val blank_regexp : string -> blank
 
 (** {2 Core type} *)
 
-(** Type of a grammar returning a value of type ['a]. *)
-(* type de la BNF d'un langage *)
-type 'a symbol =
+(** A BNF grammar is a list of rules. The type parameter ['a] corresponds to
+    the type of the semantics of the grammar. For example, parsing using a
+    grammar of type [int grammar] will produce a value of type [int]. *)
+type 'a grammar = 'a rule list
+
+and 'a symbol =
   | Term of (buffer -> int -> 'a * buffer * int)
   | NonTerm of  'a grammar
 
-and _ regle =
-  | Empty : 'a -> 'a regle
-  | Next : 'b symbol * ('b -> 'a) regle -> 'a regle
-  | Ref : 'a regle ref -> 'a regle
+(** BNF rule. *)
+and _ rule =
+  | Empty : 'a -> 'a rule
+  (** Empty rule. *)
+  | EmptyPos : (buffer -> int -> buffer -> int -> 'a) -> 'a rule
+  (** Empty rule. recoreding positions *)
+  | Dep : ('b -> 'a rule) -> ('b -> 'a) rule
+  (** Dependant rule *)
+  | Next : 'b symbol * ('b -> 'a) rule -> 'a rule
+  (** Sequence of a symbol and a rule. *)
+  | Ref : 'a rule ref -> 'a rule
+  (** Mutable rule to allow the use of a grammar before its definition
+      not to use directly (you must use declare_grammar and set_grammar) *)
 
-and 'a grammar = 'a regle list
-
-val next : 'b grammar -> ('b -> 'a) regle -> 'a regle
+val next : 'b grammar -> ('b -> 'a) rule -> 'a rule
 
 (** {2 Parsing functions} *)
 
