@@ -95,14 +95,14 @@ type 'a symbol =
   | Term of (buffer -> int -> 'a * buffer * int)
   | NonTerm of  'a grammar
 
-and _ regle =
-  | Empty : 'a -> 'a regle
-  | Next : 'b symbol * ('b -> 'a) regle -> 'a regle
-  | Ref : 'a regle ref -> 'a regle
+and _ rule =
+  | Empty : 'a -> 'a rule
+  | Next : 'b symbol * ('b -> 'a) rule -> 'a rule
+  | Ref : 'a rule ref -> 'a rule
 
-and 'a grammar = 'a regle list
+and 'a grammar = 'a rule list
 
-val next : 'b grammar -> ('b -> 'a) regle -> 'a regle
+val next : 'b grammar -> ('b -> 'a) rule -> 'a rule
 
 (** {2 Parsing functions} *)
 

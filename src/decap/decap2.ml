@@ -25,17 +25,31 @@ let blank_regexp r =
   in
   fn
 
-(* type de la BNF d'un langage *)
-type 'a symbol =
-  | Term of (buffer -> int -> 'a * buffer * int)
-  | NonTerm of  'a grammar
+(** {1 Types for the BNF of a language} *)
 
-and _ regle =
-  | Empty : 'a -> 'a regle
-  | Next : 'b symbol * ('b -> 'a) regle -> 'a regle
-  | Ref : 'a regle ref -> 'a regle
+(** A BNF grammar is a list of rules. The type parameter ['a] corresponds to
+    the type of the semantics of the grammar. For example, parsing using a
+    grammar of type [int grammar] will produce a value of type [int]. *)
+type 'a grammar = 'a rule list
 
-and 'a grammar = 'a regle list
+(** BNF rule. *)
+and _ rule =
+  (** Empty rule. *)
+  | Empty : 'a -> 'a rule
+  (** Sequence of a symbol and a rule. *)
+  | Next : 'b symbol * ('b -> 'a) rule -> 'a rule
+  (** Mutable rule to allow the use of a grammar before its definition. *)
+  | Ref : 'a rule ref -> 'a rule
+  (* FIXME shouldn't this constructor be part of the ['a grammar] type? *)
+
+(** Symbol. *)
+and 'a symbol =
+  | Term    of 'a terminal (* Terminal symbol. *)
+  | NonTerm of 'a grammar  (* Non-terminal symbol (i.e. a BNF grammar). *)
+
+(** A terminal symbol corresponds to a function consuming input from a buffer
+    and producing a semantic value of type ['a]. *)
+and 'a terminal = buffer -> int -> 'a * buffer * int
 
 type (_) actions =
   | Nothing : ('a -> 'a) actions
@@ -66,8 +80,8 @@ type ('s,'a,'b,'c,'d,'r) cell = {
   stack : ('d, 'r) element list ref;
   acts  : 'a actions;
   shifts: 's shifts;
-  rest  : 'b regle;
-  full  : 'c regle }
+  rest  : 'b rule;
+  full  : 'c rule }
 and (_,_) element = C : ('a -> 's, 'b -> 'c, 's -> 'b, 'c, 'c, 'r) cell -> ('a,'r) element
 and _ final   = D : (unit, 'b -> 'c, 'b, 'c, 'c, 'r) cell -> 'r final
 (* si t : table et t.(j) = (i, R, R' R) cela veut dire qu'entre i et j on a parsé
@@ -84,8 +98,8 @@ let eq : 'a 'b.'a -> 'b -> bool = fun x y -> (x === y) <> Neq
 
 let idtEmpty = Empty(fun x -> x)
 
-let rec iter_regles : type a.(a regle -> unit) -> a grammar -> unit = fun fn l ->
-  let aux : a regle -> unit  = fun r ->
+let rec iter_regles : type a.(a rule -> unit) -> a grammar -> unit = fun fn l ->
+  let aux : a rule -> unit  = fun r ->
     match r with
       Ref r as g0 ->
       (match !r with Next(NonTerm(g), e) ->
@@ -95,9 +109,9 @@ let rec iter_regles : type a.(a regle -> unit) -> a grammar -> unit = fun fn l -
     | g -> fn g
   in List.iter aux l
 
-type _ dep_pair = P : 'a regle * ('a, 'b) element list ref * (('a, 'b) element -> unit) ref -> 'b dep_pair
+type _ dep_pair = P : 'a rule * ('a, 'b) element list ref * (('a, 'b) element -> unit) ref -> 'b dep_pair
 
-let memo_assq : type a b. a regle -> b dep_pair list ref -> ((a, b) element -> unit) -> unit =
+let memo_assq : type a b. a rule -> b dep_pair list ref -> ((a, b) element -> unit) -> unit =
   fun r l0 f ->
     let rec fn = function
       | [] -> l0 := P(r,ref [], ref f)::!l0
@@ -107,7 +121,7 @@ let memo_assq : type a b. a regle -> b dep_pair list ref -> ((a, b) element -> u
 	 | _ -> fn l
     in fn !l0
 
-let add_assq : type a b. a regle -> (a, b) element -> b dep_pair list ref -> (a, b) element list ref =
+let add_assq : type a b. a rule -> (a, b) element -> b dep_pair list ref -> (a, b) element list ref =
   fun r el l0 ->
     let rec fn = function
       | [] -> let res = ref [el] in l0 := P(r,res, ref (fun el -> ()))::!l0; res
@@ -119,7 +133,7 @@ let add_assq : type a b. a regle -> (a, b) element -> b dep_pair list ref -> (a,
 
 let solo = fun s -> [Next(Term s,idtEmpty)]
 
-let next : type a b.a grammar -> (a -> b) regle -> b regle =
+let next : type a b.a grammar -> (a -> b) rule -> b rule =
   fun s r -> match s with
    [Next(Term(s0),e)] ->
       (match e === idtEmpty with Eq -> Next(Term(s0),r) | Neq -> Next(NonTerm s,r))
@@ -235,13 +249,13 @@ let lecture : type a.rec_err -> buffer -> int -> blank -> (int, a final list) Ha
 
 (* selectionnne les éléments commençant par un terminal
    ayant la règle donnée *)
-type 'b action = { a : 'a.'a regle -> ('a, 'b) element list ref -> unit }
+type 'b action = { a : 'a.'a rule -> ('a, 'b) element list ref -> unit }
 
 let pop_final : type a b. b dep_pair list ref -> b final -> b action -> unit =
   fun dlr element act ->
     match element with
-    | D {rest=regle; acts; full; debut; fin; stack} ->
-       (match regle with
+    | D {rest=rule; acts; full; debut; fin; stack} ->
+       (match rule with
        | Next(NonTerm(regles),rest) ->
 	  (match rest, debut <> fin with
 	  | Empty f as rest, true ->
@@ -266,8 +280,8 @@ let rec one_prediction_production
      match rest with
      | Next(NonTerm (_),_) ->
 	let acts =
-	  { a = (fun regle stack ->
-	    let nouveau = D {shifts = Unit; debut=j; fin=j; acts = Nothing; stack; rest = regle; full = regle} in
+	  { a = (fun rule stack ->
+	    let nouveau = D {shifts = Unit; debut=j; fin=j; acts = Nothing; stack; rest = rule; full = rule} in
 	    let b = add "P" nouveau elements in
 	    if b then one_prediction_production rec_err dlr elements nouveau) }
 	in pop_final dlr element acts
@@ -310,7 +324,7 @@ let parse_buffer : type a.a grammar -> blank -> buffer -> a =
     in
     let pos = ref 0 and buf = ref buf in
     let elements : (int, a final list) Hashtbl.t = Hashtbl.create 31 in
-    let r0 : a regle = next main idtEmpty in
+    let r0 : a rule = next main idtEmpty in
     let s0 : (a, a) element list ref = ref [] in
     let _ = add "I" (D {shifts = Unit; debut=0; fin=0; acts = Nothing; stack=s0; rest=r0; full=r0}) elements in
     let forward = ref empty_buf in
