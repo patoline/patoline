@@ -118,9 +118,9 @@ let word = regexp "[a-z]+" (fun f n -> n+1)
 
 let blank1 = blank_regexp "[ \t]*"
 
-let paragraph = change_layout (fixpoint1 0 word) blank1
+let paragraph = change_layout (revfixpoint1 0 word) blank1
 
-let text = fixpoint [] (apply (fun a l -> a::l) paragraph)
+let text = revfixpoint [] (apply (fun a l -> a::l) paragraph)
 
 let gn l = List.iter (fun n -> Printf.printf "%d " n) l; Printf.printf "\n%!"
 
@@ -129,3 +129,15 @@ let _ = Printf.printf "One test with parse error:\n%!"
 let _ = try handle_exception (fun () -> fn (parse_string paragraph blank "aa aa\nabbbbb ccccc")) () with _ -> ()
 let _ = gn (parse_string text blank "aa aa abbbbb ccccc")
 let _ = gn (parse_string text blank "aa aa abbbbb ccccc\nzeg zeg  zge gzgz zeg zg z\n zfez\n\n zf  zgf ze")
+
+let long n =
+  let s = String.create (2*n*n) in
+  for i = 0 to n*n-1 do
+    s.[2*i] <- 'a';
+    s.[2*i+1] <- if (i+1) mod n = 0 then '\n' else ' '
+  done;
+  s
+
+let _ = gn (parse_string text blank (long 10))
+let _ = gn (parse_string text blank (long 100))
+let _ = gn (parse_string text blank (long 1000))

@@ -116,6 +116,10 @@ val normalize : buffer -> int -> buffer * int
 (** [fname buf] returns the file name associated to the buffer [buf]. *)
 val fname : buffer -> string
 
+(** equality test and comparison on buffers *)
+val eq_buf : buffer -> buffer -> bool
+val cmp_buf : buffer -> buffer -> int
+
 (** .... *)
 type 'a buf_table
 

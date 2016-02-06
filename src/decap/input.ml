@@ -52,7 +52,8 @@ type buffer = buffer_aux Lazy.t
                   ; bol          : int      (* Offset to current line. *)
                   ; length       : int      (* Length of the current line. *)
                   ; contents     : string   (* Contents of the line. *)
-                  ; mutable next : buffer } (* Rest of the buffer. *)
+                  ; mutable next : buffer   (* Rest of the buffer. *)
+		  ; ident        : int }    (* Unique identifier for compatison *)
 
 let rec read (lazy b as b0) i =
   if b.is_empty then ('\255', b0, 0) else
@@ -68,6 +69,10 @@ let rec get (lazy b) i =
   else
     get b.next (i - b.length)
 
+let gen_ident =
+  let c = ref 0 in
+  fun () -> let x = !c in c := x + 1; x
+
 let empty_buffer fn lnum bol =
   let rec res =
     lazy { is_empty = true
@@ -76,7 +81,9 @@ let empty_buffer fn lnum bol =
          ; bol      = bol
          ; length   = 0
          ; contents = ""
-         ; next     = res }
+         ; next     = res
+	 ; ident    = gen_ident ()
+	 }
   in res
 
 let rec is_empty (lazy b) pos =
@@ -228,11 +235,11 @@ let buffer_from_fun ?(finalise=(fun _ -> ())) fname get_line data =
                cont fname Endif num bol'
              else if active then (
                { is_empty = false; name = fname; lnum = num; bol; length = len ; contents = line ;
-                 next = lazy (fn fname active num bol' cont) })
+                 next = lazy (fn fname active num bol' cont); ident = gen_ident () })
              else fn fname active num  bol' cont
            else if active then (
                { is_empty = false; name = fname; lnum = num; bol; length = len ; contents = line ;
-                 next = lazy (fn fname active num bol' cont) })
+                 next = lazy (fn fname active num bol' cont); ident = gen_ident () })
            else fn fname active num bol' cont)
       with
         End_of_file -> fun () -> finalise data; cont fname EndOfFile num bol
@@ -310,19 +317,23 @@ type 'a buf_table = (buffer_aux * int * 'a list) list
 
 let empty_buf = []
 
-let cmp_buf b1 i1 b2 i2 =
+let eq_buf (lazy b1) (lazy b2) = b1.ident = b2.ident
+
+let cmp_buf (lazy b1) (lazy b2) = b1.ident - b2.ident
+
+let leq_buf b1 i1 b2 i2 =
   match (b1, b2) with
-    ({ name=name1; bol = bol1 }, { name=name2; bol = bol2 }) ->
-      name1 = name2 && ((bol1 = bol2 && i1 <= i2) || bol1 < bol2)
+    ({ ident=ident1; }, { ident=ident2; }) ->
+      (ident1 = ident2 && i1 <= i2) || ident1 < ident2
 
 let insert buf pos x tbl =
   let buf = Lazy.force buf in
   let rec fn acc = function
   | [] -> List.rev_append acc [(buf, pos, [x])]
   | ((buf',pos', y as c) :: rest) as tbl ->
-     if pos = pos' && buf == buf' then
+     if pos = pos' && buf.ident = buf'.ident then
        List.rev_append acc ((buf', pos', (x::y)) :: rest)
-     else if cmp_buf buf pos buf' pos' then
+     else if leq_buf buf pos buf' pos' then
        List.rev_append acc ((buf, pos, [x]) :: tbl)
      else fn (c::acc) rest
   in fn [] tbl

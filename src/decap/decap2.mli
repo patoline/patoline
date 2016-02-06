@@ -295,15 +295,32 @@ val iter : 'a grammar grammar -> 'a grammar
   failure. *)
 val option : 'a -> 'a grammar -> 'a grammar
 
-(** [fixpoint v g] parses a repetition of zero or more times the input parsed
-  by [g]. The value [v] is used as the initial value (i.e. to finish the
-  sequence). *)
 val fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
-
 (** [fixpoint v g] parses a repetition of one or more times the input parsed
   by [g]. The value [v] is used as the initial value (i.e. to finish the
-  sequence). *)
+  sequence).
+
+  if parsing X with g returns a function gX, parsing X Y Z with fixpoint a g
+  will return gX (gY (gZ a)).
+
+  This consumes stack proportinal to the input length ! use revfixpoint ...
+*)
+
+val revfixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
+(** [revfixpoint v g] parses a repetition of one or more times the input parsed
+  by [g]. The value [v] is used as the initial value (i.e. to finish the
+  sequence).
+
+  if parsing "X" with [g] returns a function gX, parsing "X Y Z" with [fixpoint a g]
+  will return gZ (gY (gX a)).
+*)
+
 val fixpoint1 : 'a -> ('a -> 'a) grammar -> 'a grammar
+(** as [fixpoint] but parses at leat once with the given grammar *)
+
+val revfixpoint1 : 'a -> ('a -> 'a) grammar -> 'a grammar
+(** as [revfixpoint] but parses at leat once with the given grammar *)
+
 
 (** [alternatives [g1;...;gn]] tries to parse using all the grammars
   [[g1;...;gn]] and keeps only the first success. *)

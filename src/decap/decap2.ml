@@ -157,7 +157,7 @@ type 'a pos_tbl = (int * int * string, 'a final list) Hashtbl.t
 let find_pos_tbl t (buf,pos) = Hashtbl.find t (line_beginning buf, pos, fname buf)
 let add_pos_tbl t (buf,pos) v = Hashtbl.add t (line_beginning buf, pos, fname buf) v
 let char_pos (buf,pos) = line_beginning buf + pos
-let eq_pos (buf,pos) (buf',pos') = buf == buf' && pos = pos'
+let eq_pos (buf,pos) (buf',pos') = eq_buf buf buf' && pos = pos'
 
 (* ajoute un élément dans la table et retourne true si il est nouveau *)
 let add : string -> 'a final -> 'a pos_tbl -> bool =
@@ -441,7 +441,7 @@ let parse_buffer_aux : type a.bool -> a grammar -> blank -> buffer -> int -> a *
     let rec fn : type a.a final list -> a = function
       | [] -> parse_error ()
       | D {debut=(b,i); stack=s1; rest=Empty f; acts = a; full=r1} :: els ->
-	 assert(b == buf0 &&  i = pos0);
+	 assert(eq_buf b buf0 &&  i = pos0);
 	 (match r1 === r0, s1 === s0 with
 	 | Eq, Eq -> apply_actions a f
 	 | _ -> fn els)
@@ -611,6 +611,8 @@ let conditional_sequence : 'a grammar -> ('a -> bool) -> 'b grammar -> ('a -> 'b
     let l1 = [next l1 (Empty(fun a -> if cond a then a else raise (Error TEmpty)))] in
     [next l1 (next l2 (Empty(fun b a -> f a b)))]
 
+let apply f g = [next g (Empty f)]
+
 let option : 'a -> 'a grammar -> 'a grammar
   = fun a l -> Empty a::l
 
@@ -620,9 +622,9 @@ let fixpoint :  'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
     let res = declare_grammar "fixpoint" in
     let _ = set_grammar res
-      [Empty a;
-       next res (next f1 (Empty(fun f a -> f a)))] in
-    res
+      [Empty (fun x -> x);
+       next res (next f1 (Empty(fun f g x -> g (f x))))] in
+    apply (fun f -> f a) res
 
 let fixpoint' = fixpoint
 
@@ -630,19 +632,33 @@ let fixpoint1 :  'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
     let res = declare_grammar "fixpoint" in
     let _ = set_grammar res
-      [next f1 (Empty(fun f -> f a));
+      [next f1 (Empty(fun f x -> f x));
+       next res (next f1 (Empty(fun f g x -> g (f x))))] in
+    apply (fun f -> f a) res
+
+let fixpoint1' = fixpoint1
+
+let revfixpoint :  'a -> ('a -> 'a) grammar -> 'a grammar
+  = fun a f1 ->
+    let res = declare_grammar "fixpoint" in
+    let _ = set_grammar res
+      [Empty a;
        next res (next f1 (Empty(fun f a -> f a)))] in
     res
 
-let fixpoint1' = fixpoint1
+let revfixpoint1 :  'a -> ('a -> 'a) grammar -> 'a grammar
+  = fun a f1 ->
+    let res = declare_grammar "fixpoint" in
+    let _ = set_grammar res
+      [next f1 (Empty(fun f -> f a));
+       next res (next f1 (Empty(fun f a -> f a)))] in
+    res
 
 let delim g = g
 
 let alternatives : 'a grammar list -> 'a grammar = List.flatten
 
 let alternatives' = alternatives
-
-let apply f g = [next g (Empty f)]
 
 (* FIXME: optimisation: modify g inside when possible *)
 let position g =
