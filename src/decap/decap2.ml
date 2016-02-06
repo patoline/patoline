@@ -155,29 +155,30 @@ let is_term = function D { rest= Next(Term _, _) } -> true | _ -> false
 type 'a pos_tbl = (int * int * string, 'a final list) Hashtbl.t
 
 let find_pos_tbl t (buf,pos) = Hashtbl.find t (line_beginning buf, pos, fname buf)
-let add_pos_tbl t (buf,pos) v = Hashtbl.add t (line_beginning buf, pos, fname buf) v
+let add_pos_tbl t (buf,pos) v = Hashtbl.replace t (line_beginning buf, pos, fname buf) v
 let char_pos (buf,pos) = line_beginning buf + pos
 let eq_pos (buf,pos) (buf',pos') = eq_buf buf buf' && pos = pos'
+
+let eq_D (D {debut; fin; rest; full; ignb}) (D {debut=d'; fin=f'; rest=r'; full=fu'; ignb=ignb'}) =
+  eq_pos debut d' && eq rest r' && eq full fu' && ignb=ignb'
 
 (* ajoute un élément dans la table et retourne true si il est nouveau *)
 let add : string -> 'a final -> 'a pos_tbl -> bool =
   fun info element old ->
     let debut = debut element in
     let oldl = try find_pos_tbl old debut with Not_found -> [] in
-    let eq (D {debut; fin; rest; full; ignb}) (D {debut=d'; fin=f'; rest=r'; full=fu'; ignb=ignb'}) =
-      eq_pos debut d' && eq rest r' && eq full fu' && ignb=ignb' in
-    let absent = not (List.exists (eq element) oldl) in
+    let absent = not (List.exists (eq_D element) oldl) in
     if absent then begin
-      if !debug_lvl > 0 then Printf.printf "add %s %d %d %b\n%!" info (char_pos debut)
+      if !debug_lvl > 1 then Printf.eprintf "add %s %d %d %b\n%!" info (char_pos debut)
 	(char_pos (fin element)) (is_term element) ;
       add_pos_tbl old debut (element :: oldl);
     end;
     absent
 
-let taille : 'a final list -> int = fun els ->
+let taille : 'a final -> int = fun el ->
   let cast_elements : type a b.(a,b) element list -> (Obj.t, Obj.t) element list = Obj.magic in
   let adone = ref [] in
-  let res = ref (List.length els) in
+  let res = ref 1 in
   let rec fn : (Obj.t, Obj.t) element list -> unit =
     fun els ->
       if List.exists (eq els) !adone then () else begin
@@ -186,8 +187,7 @@ let taille : 'a final list -> int = fun els ->
 	List.iter (function C {stack} -> fn (cast_elements !stack)) els
       end
   in
-  List.iter (function D {stack} -> fn (cast_elements !stack)) els;
-  !res
+  match el with D {stack} -> fn (cast_elements !stack); !res
 
 type string_tree =
     TEmpty | Message of string | Expected of string | Node of string_tree * string_tree
@@ -242,9 +242,11 @@ type rec_err = buffer -> int -> string_tree -> unit
 type rec_err2 = string_tree -> unit
 
 (* phase de lecture d'un caractère, qui ne dépend pas de la bnf *)
-let lecture : type a.rec_err -> buffer -> int -> blank -> a pos_tbl -> a final buf_table -> a final buf_table =
-  fun rec_err buf0 pos0 blank elements tbl ->
+let lecture : type a.int -> rec_err -> buffer -> int -> blank -> a pos_tbl -> a final buf_table -> a final buf_table =
+  fun id rec_err buf0 pos0 blank elements tbl ->
+    if !debug_lvl > 3 then Printf.eprintf "read at line = %d col = %d (%d)\n%!" (line_beginning buf0) pos0 id;
     let buf, pos = blank buf0 pos0 in
+    if !debug_lvl > 2 then Printf.eprintf "read after blank line = %d col = %d (%d)\n%!" (line_beginning buf) pos id;
     let tbl = ref tbl in
     Hashtbl.iter (fun _ l -> List.iter (function
     | D {debut; debut_after_blank; fin; stack;acts; rest; full;ignb} ->
@@ -252,23 +254,25 @@ let lecture : type a.rec_err -> buffer -> int -> blank -> a pos_tbl -> a final b
        | Next(Term f,rest) ->
 	  (try
 	     let a, buf, pos = if ignb then f buf0 pos0 else f buf pos in
+	     let n = line_beginning buf + pos - line_beginning buf0 - pos0 in
 	     let dab = if eq_pos debut fin then (buf,pos) else debut_after_blank in
 	      let state =
 		(D {debut; debut_after_blank = dab; fin=(buf, pos); stack; shifts = Unit;
 		    acts = Something(Lazy.from_val a,acts); rest; full;ignb=false})
 	      in
-	      tbl := insert buf pos state !tbl
+	      tbl := insert_buf buf pos state !tbl
 	   with Error msg -> rec_err buf pos msg
            | Give_up msg -> rec_err buf pos (Message msg))
        | IgnNext(Term f,rest) ->
 	  (try
 	     let a, buf, pos = if ignb then f buf0 pos0 else f buf pos in
+	     let n = line_beginning buf + pos - line_beginning buf0 - pos0 in
 	     let dab = if eq_pos debut fin then (buf,pos) else debut_after_blank in
 	      let state =
 		(D {debut; debut_after_blank = dab; fin=(buf, pos); stack; shifts = Unit;
 		    acts = Something(Lazy.from_val a,acts); rest; full;ignb=true})
 	      in
-	      tbl := insert buf pos state !tbl
+	      tbl := insert_buf buf pos state !tbl
 	   with Error msg -> rec_err buf pos msg
 	   | Give_up msg -> rec_err buf pos (Message msg))
 
@@ -318,6 +322,11 @@ let pop_final : type a b. b dep_pair list ref -> b final -> b action -> unit =
 	     iter_rules (fun r -> act.a r (add_assq r c dlr)) rules)
        | _ -> assert false)
 
+let taille_tables els forward =
+  let res = ref 0 in
+  Hashtbl.iter (fun _ els -> List.iter (fun el -> res := !res + taille el) els) els;
+  iter_buf forward (fun el -> res := !res + taille el);
+  !res
 
 (* fait toutes les prédictions et productions pour un element donné et
    comme une prédiction ou une production peut en entraîner d'autres,
@@ -392,8 +401,10 @@ let prediction_production : type a.rec_err2 -> a pos_tbl -> unit
 
 exception Parse_error of string * int * int * string list * string list
 
+let c = ref 0
 let parse_buffer_aux : type a.bool -> a grammar -> blank -> buffer -> int -> a * buffer * int =
   fun internal main blank buf0 pos0 ->
+    let parse_id = incr c; !c in
     (* construction de la table initiale *)
     let err_info =
       { max_err_pos = -1 ; max_err_buf = buf0
@@ -421,12 +432,13 @@ let parse_buffer_aux : type a.bool -> a grammar -> blank -> buffer -> int -> a *
     (* boucle principale *)
     let continue = ref true in
     while !continue do
-      if !debug_lvl > 1 then Printf.printf "pos = %d\n%!" !pos;
+      if !debug_lvl > 0 then Printf.eprintf "parse_id = %d, pos = %d, taille =%d\n%!"
+	parse_id !pos (taille_tables elements !forward);
       prediction_production (rec_err !buf !pos) elements;
-      forward := lecture rec_err !buf !pos blank elements !forward;
+      forward := lecture parse_id rec_err !buf !pos blank elements !forward;
       let l =
 	try
-	  let (buf', pos', l, forward') = pop_firsts !forward in
+	  let (buf', pos', l, forward') = pop_firsts_buf !forward in
 	  pos := pos';
 	  buf := buf';
 	  forward := forward';
@@ -621,7 +633,7 @@ let option : 'a -> 'a grammar -> 'a grammar
 
 let option' = option
 
-let fixpoint :  'a -> ('a -> 'a) grammar -> 'a grammar
+let revfixpoint :  'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
     let res = declare_grammar "fixpoint" in
     let _ = set_grammar res
@@ -629,9 +641,7 @@ let fixpoint :  'a -> ('a -> 'a) grammar -> 'a grammar
        next res (next f1 (Empty(fun f g x -> g (f x))))] in
     apply (fun f -> f a) res
 
-let fixpoint' = fixpoint
-
-let fixpoint1 :  'a -> ('a -> 'a) grammar -> 'a grammar
+let revfixpoint1 :  'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
     let res = declare_grammar "fixpoint" in
     let _ = set_grammar res
@@ -639,9 +649,7 @@ let fixpoint1 :  'a -> ('a -> 'a) grammar -> 'a grammar
        next res (next f1 (Empty(fun f g x -> g (f x))))] in
     apply (fun f -> f a) res
 
-let fixpoint1' = fixpoint1
-
-let revfixpoint :  'a -> ('a -> 'a) grammar -> 'a grammar
+let fixpoint :  'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
     let res = declare_grammar "fixpoint" in
     let _ = set_grammar res
@@ -649,13 +657,17 @@ let revfixpoint :  'a -> ('a -> 'a) grammar -> 'a grammar
        next res (next f1 (Empty(fun f a -> f a)))] in
     res
 
-let revfixpoint1 :  'a -> ('a -> 'a) grammar -> 'a grammar
+let fixpoint1 :  'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
     let res = declare_grammar "fixpoint" in
     let _ = set_grammar res
       [next f1 (Empty(fun f -> f a));
        next res (next f1 (Empty(fun f a -> f a)))] in
     res
+
+let fixpoint' = fixpoint
+let fixpoint1' = fixpoint1
+
 
 let delim g = g
 
@@ -697,9 +709,8 @@ let grammar_family ?(param_to_string=fun _ -> "X") name =
   (fun p ->
     try Hashtbl.find tbl p
     with Not_found ->
-      Printf.eprintf "declare fam %s\n%!" name;
       let g = declare_grammar (name^"_"^param_to_string p) in
-      Hashtbl.add tbl p g;
+      Hashtbl.replace tbl p g;
       (match !is_set with None -> ()
        | Some f -> set_grammar g (f p));
       g),
@@ -709,7 +720,10 @@ let grammar_family ?(param_to_string=fun _ -> "X") name =
     Hashtbl.iter (fun p r -> set_grammar r (f p)) tbl)
 
 let blank_grammar grammar blank buf pos =
-  let (a,buf,pos) = partial_parse_buffer grammar blank buf pos in
+  let save_debug = !debug_lvl in
+  debug_lvl := !debug_lvl / 10;
+  let (_,buf,pos) = partial_parse_buffer grammar blank buf pos in
+  debug_lvl := save_debug;
   (buf,pos)
 
 let accept_empty grammar =

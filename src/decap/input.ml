@@ -326,7 +326,7 @@ let leq_buf b1 i1 b2 i2 =
     ({ ident=ident1; }, { ident=ident2; }) ->
       (ident1 = ident2 && i1 <= i2) || ident1 < ident2
 
-let insert buf pos x tbl =
+let insert_buf buf pos x tbl =
   let buf = Lazy.force buf in
   let rec fn acc = function
   | [] -> List.rev_append acc [(buf, pos, [x])]
@@ -338,6 +338,9 @@ let insert buf pos x tbl =
      else fn (c::acc) rest
   in fn [] tbl
 
-let pop_firsts = function
+let pop_firsts_buf = function
   | [] -> raise Not_found
   | (buf,pos,l)::rest -> Lazy.from_val buf,pos,l,rest
+
+let iter_buf buf fn =
+  List.iter (fun (_,_,l) -> List.iter fn l) buf

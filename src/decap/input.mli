@@ -125,6 +125,8 @@ type 'a buf_table
 
 val empty_buf : 'a buf_table
 
-val insert : buffer -> int -> 'a -> 'a buf_table -> 'a buf_table
+val insert_buf : buffer -> int -> 'a -> 'a buf_table -> 'a buf_table
 
-val pop_firsts : 'a buf_table -> buffer * int * 'a list * 'a buf_table
+val pop_firsts_buf : 'a buf_table -> buffer * int * 'a list * 'a buf_table
+
+val iter_buf : 'a buf_table -> ('a -> unit) -> unit

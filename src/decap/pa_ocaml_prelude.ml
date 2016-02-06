@@ -100,6 +100,7 @@ let spec = ref [
   "--modern", Arg.Set modern, "enable \"modern\" extensions/restrictions of ocaml's grammar" ;
   "--unsafe", Arg.Set fast, "use unsafe function for arrays" ;
   "--ocamldep", Arg.Set in_ocamldep, "set a flag to inform parser that we are computing dependencies" ;
+  "--debug", Arg.Set_int Decap.debug_lvl, "set decap debug_lvl" ;
 ]
 
 let extend_cl_args l =

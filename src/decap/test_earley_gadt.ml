@@ -141,3 +141,13 @@ let long n =
 let _ = gn (parse_string text blank (long 10))
 let _ = gn (parse_string text blank (long 100))
 let _ = gn (parse_string text blank (long 1000))
+
+let file =
+  let name = "/tmp/large.txt" in
+  let ch = open_out name in
+  output_string ch (long 1000);
+  close_out ch;
+  let ch = open_in name in
+  gn (parse_channel text blank ch);
+  close_in ch;
+  Sys.remove name
