@@ -258,7 +258,8 @@ let lecture : type a.rec_err -> buffer -> int -> blank -> a pos_tbl -> a final b
 		    acts = Something(Lazy.from_val a,acts); rest; full;ignb=false})
 	      in
 	      tbl := insert buf pos state !tbl
-	    with Error msg -> rec_err buf pos msg)
+	   with Error msg -> rec_err buf pos msg
+           | Give_up msg -> rec_err buf pos (Message msg))
        | IgnNext(Term f,rest) ->
 	  (try
 	     let a, buf, pos = if ignb then f buf0 pos0 else f buf pos in
@@ -268,7 +269,9 @@ let lecture : type a.rec_err -> buffer -> int -> blank -> a pos_tbl -> a final b
 		    acts = Something(Lazy.from_val a,acts); rest; full;ignb=true})
 	      in
 	      tbl := insert buf pos state !tbl
-	    with Error msg -> rec_err buf pos msg)
+	   with Error msg -> rec_err buf pos msg
+	   | Give_up msg -> rec_err buf pos (Message msg))
+
        | _ -> ()) l) elements;
     !tbl
 
@@ -690,13 +693,19 @@ let active_debug = ref true
 
 let grammar_family ?(param_to_string=fun _ -> "X") name =
   let tbl = Hashtbl.create 31 in
+  let is_set = ref None in
   (fun p ->
     try Hashtbl.find tbl p
     with Not_found ->
+      Printf.eprintf "declare fam %s\n%!" name;
       let g = declare_grammar (name^"_"^param_to_string p) in
       Hashtbl.add tbl p g;
+      (match !is_set with None -> ()
+       | Some f -> set_grammar g (f p));
       g),
   (fun f ->
+    if !is_set <> None then invalid_arg ("grammar family "^name^" already set");
+    is_set := Some f;
     Hashtbl.iter (fun p r -> set_grammar r (f p)) tbl)
 
 let blank_grammar grammar blank buf pos =
