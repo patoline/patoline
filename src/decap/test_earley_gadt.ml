@@ -70,7 +70,7 @@ let rec ( ** ) a b =
 
 let _ = set_grammar bnfpow
   (alternatives [bnfatom;
-		 sequence (char '-' ()) bnfpow (fun _ x -> -x);
+		 sequence (ignore_next_blank (char '-' ())) bnfpow (fun _ x -> -x);
 		 sequence3 bnfatom (string "**" ()) bnfpow (fun x _ y -> x ** y)])
 
 let _ = set_grammar bnfatom
@@ -86,8 +86,10 @@ let _ = fn (parse_string top blank "123 + 456")
 let _ = fn (parse_string top blank "123 + 456 * 2")
 let _ = fn (parse_string top blank "(123 + 456) * 2")
 let _ = fn (parse_string top blank "2 ** 2 ** 2")
-let _ = Printf.printf "Test with parse error:\n%!"
+let _ = fn (parse_string top blank "2 ** 2 ** -2")
+let _ = Printf.printf "Two tests with parse error:\n%!"
 let _ = try handle_exception (fun () -> fn (parse_string top blank "2 ** 2a ** 2")) () with _ -> ()
+let _ = try handle_exception (fun () -> fn (parse_string top blank "2 ** 2 ** - 2")) () with _ -> ()
 
 let rec bbcc n =
   if n = 0 then empty 0
@@ -111,3 +113,19 @@ let aabbcc2 =
 
 let _ = fn (parse_string aabbcc2 blank "aabbcc")
 let _ = fn (parse_string aabbcc2 blank "aaaaabbbbbccccc")
+
+let word = regexp "[a-z]+" (fun f n -> n+1)
+
+let blank1 = blank_regexp "[ \t]*"
+
+let paragraph = change_layout (fixpoint1 0 word) blank1
+
+let text = fixpoint [] (apply (fun a l -> a::l) paragraph)
+
+let gn l = List.iter (fun n -> Printf.printf "%d " n) l; Printf.printf "\n%!"
+
+let _ = fn (parse_string paragraph blank "aa aa abbbbb ccccc")
+let _ = Printf.printf "One test with parse error:\n%!"
+let _ = try handle_exception (fun () -> fn (parse_string paragraph blank "aa aa\nabbbbb ccccc")) () with _ -> ()
+let _ = gn (parse_string text blank "aa aa abbbbb ccccc")
+let _ = gn (parse_string text blank "aa aa abbbbb ccccc\nzeg zeg  zge gzgz zeg zg z\n zfez\n\n zf  zgf ze")

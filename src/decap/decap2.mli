@@ -96,7 +96,11 @@ type 'a grammar = 'a rule list
 
 and 'a symbol =
   | Term of (buffer -> int -> 'a * buffer * int)
-  | NonTerm of  'a grammar
+  (** terminal symbol just read the input buffer *)
+  | NonTerm of 'a grammar
+  (** non terminal *)
+  | RefTerm of 'a grammar ref
+  (** non terminal trough a reference to define recursive grammars *)
 
 (** BNF rule. *)
 and _ rule =
@@ -108,9 +112,8 @@ and _ rule =
   (** Dependant rule *)
   | Next : 'b symbol * ('b -> 'a) rule -> 'a rule
   (** Sequence of a symbol and a rule. *)
-  | Ref : 'a rule ref -> 'a rule
-  (** Mutable rule to allow the use of a grammar before its definition
-      not to use directly (you must use declare_grammar and set_grammar) *)
+  | IgnNext : 'b symbol * ('b -> 'a) rule -> 'a rule
+  (** Sequence of a symbol and a rule, with no blank after the symbol. *)
 
 val next : 'b grammar -> ('b -> 'a) rule -> 'a rule
 
