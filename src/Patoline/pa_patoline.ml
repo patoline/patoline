@@ -1518,6 +1518,19 @@ let parser math_toplevel =
     parser
     | | verb:verbatim_environment -> (fun _ -> verb)
     | | "\\Caml" s:(change_layout wrapped_caml_structure blank2) -> (fun _ -> s)
+    | | "\\Title" t:macro_argument -> (fun _ ->
+         let m1 = freshUid () in
+         let m2 = freshUid () in
+         <:structure<
+           module $uid:m1$ =
+             struct
+               let arg1 = $t$
+             end ;;
+           module $uid:m2$ = Title($uid:m1$) ;;
+           let _ = $uid:m2$.do_begin_env () ;;
+           let _ = $uid:m2$.do_end_env () ;;
+         >>)
+
     | | "\\Include" '{' id:capitalized_ident '}' -> (fun _ ->
          incr nb_includes;
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
