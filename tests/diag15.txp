@@ -19,6 +19,43 @@
 *)
 \Caml(open Diagrams
 
+  module Edge' = struct
+    include Edge
+      open Transfo
+      open Style
+
+      let loopOf,loop_pet = Pet.register ~codepends:[clip_pet] "loop"
+	(fun pet angle ->
+	  { pet = pet ; transfo = (fun ?(angle=0.) ?(transfos edge_info ->
+	    let curve = edge_info.underlying_curve in
+	    let curve' = begin
+	      if Curve.nb_beziers curve = 1 then
+		begin match curve with | [] -> assert false | (xs,ys) :: _ ->
+		  if Array.length xs = 2 then
+		    let s = (xs.(0),ys.(0)) in
+		    let e = (xs.(1),ys.(1)) in
+		    let vec = Vector.scal_mul (0.5 /. (cos (to_rad angle))) (Vector.of_points s e) in
+		    let vec = Vector.rotate angle vec in
+		    let x,y = Vector.translate s vec in
+		    [ [| xs.(0) ; x ; xs.(1) |],
+		      [| ys.(0) ; y ; ys.(1) |] ]
+		  else
+		    curve
+		end
+	      else curve
+	    end
+	    in { edge_info with underlying_curve = curve' } ) } )
+
+      let loopLeft = loopOf
+      let loopRight angle = loopOf (-. angle)
+  end
+  module Edge = Edge'		  
+    
+module Env_Diagram (Arg : sig val env : environment end) = struct
+  include Env_Diagram (Arg) 
+
+
+  module Edge = Edge'
 
 )
 

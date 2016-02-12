@@ -34,10 +34,10 @@ let defaultPageMaster = PageLayout.(
     let w = default.paperWidth in
     let h = default.paperHeight in
 { default with
-    marginTop = h /. 7.5;
-    marginBottom = h /. 7.5;
-    marginLeft = w /. 7.5;
-    marginRight = w /. 7.5;
+    marginTop = h /. 6.;
+    marginBottom = h /. 6.;
+    marginLeft = w /. 6.;
+    marginRight = w /. 6.;
   })
 
 include FormatThese.Format(D)

@@ -1556,7 +1556,7 @@ Doing a rectangle.\n" ;
 	(float_of_int j *. distx), -. (float_of_int i *. disty)
 
       let default env = { mainNode = Node.default ; common = default_matrix_node_style env ; nodes = [||] ;
-			placement = (between_centers 20. 20.)}
+			placement = (between_centers 15. 15.)}
 
       (* let to_gentities { mainNode = main ; nodes = nodes } = (Node.to_gentity main, map Node.to_gentity nodes) *)
 
@@ -2078,7 +2078,7 @@ Doing a rectangle.\n" ;
 	    | []  -> (0,0.)
 	    | [xs,ys] when Array.length xs <= 1 -> (0,0.)
 	    | curve1 ->
-	      Curve.(app_default latest_intersection curve curve1 (0,0.))
+	      Curve.(app_default earliest_intersection curve curve1 (0,0.))
 	(* let _ = Printf.fprintf stderr "Points: \n"  in *)
 	(* let _ = List.iter (fun l ->   *)
 	(*   let _ = List.iter (fun (x,y) -> Printf.fprintf stderr "(%f,%f) ; " x y) l in *)
@@ -2099,7 +2099,7 @@ Doing a rectangle.\n" ;
 	    | [] -> ((Curve.nb_beziers curve) - 1,1.)
 	    | [xs,ys] when Array.length xs <= 1 -> ((Curve.nb_beziers curve) - 1,1.)
 	    | curve2 ->
-	      Curve.(app_default earliest_intersection curve curve2 ((Curve.nb_beziers curve) - 1,1.))
+	      Curve.(app_default latest_intersection curve curve2 ((Curve.nb_beziers curve) - 1,1.))
 	      (* match Curve.earliest_intersection curve curve2 with *)
 	      (* 	| None -> begin *)
 	      (* 	  (\* Printf.fprintf stderr *\) *)
@@ -2928,10 +2928,20 @@ let cliptip grad info tip curve0 =
 	    done ;
 	  in fun i j -> (widths.(j), heights.(i))
 
-	let array anchors ?vertical_padding:(vpad=fun _ -> 1.) ?horizontal_padding:(hpad=fun _ -> 1.)
-	    ?all_node_styles:(all_node_styles=[])
-	    ?matrix_anchor
-	    ?main_node_style:(mstyle=Node.([at (0.,0.);anchor `SouthWest]))
+
+	module Make (MkMatrix : sig
+			       type t
+			       val make_matrix: Matrix.T.Style.t list ->
+						(Node.Transfo.Style.t list * t list) list list ->
+						Node.info * Node.info Matrix.matrix
+			     end) = struct 
+
+	let array anchors
+		  ?vertical_padding:(vpad=fun _ -> 1.)
+		  ?horizontal_padding:(hpad=fun _ -> 1.)
+		  ?all_node_styles:(all_node_styles=[])
+		  ?matrix_anchor
+		  ?main_node_style:(mstyle=Node.([at (0.,0.);anchor `SouthWest]))
 	    (* Mettre la valeur par defaut en ex *)
 	    lines =
 	  let style i j = [Node.anchor (List.nth anchors j); Node.at(0.,0.)] in
@@ -2941,8 +2951,8 @@ let cliptip grad info tip curve0 =
 						  succ i,
 						  (let _,_,resline =
 						     (List.fold_left (
-						       fun (i,j,resline) math ->
-							 let cell = (style i j, math) in
+						       fun (i,j,resline) cell_content ->
+							 let cell = (style i j, cell_content) in
 							 (i, succ j, cell :: resline))
 							(i,0,[])
 							line)
@@ -2950,15 +2960,27 @@ let cliptip grad info tip curve0 =
 						(0, [])
 						lines))
 	  in
-	  math_matrix (Matrix.placement (between_borders vpad hpad anchors style) ::
+	  MkMatrix.make_matrix (Matrix.placement (between_borders vpad hpad anchors style) ::
 		       Matrix.mainNode ?matrix_anchor mstyle ::
 		       all_node_styles)
 	    lines_contents
-
+	end
 
       end
 
-      let array = Arr.array
+      module MakeMathMatrix = struct
+	type t = Document.environment Maths.math
+	let make_matrix = math_matrix
+      end
+      module MakeMatrix = struct
+	type t = Document.content
+	let make_matrix = matrix
+      end
+      module MakeArray = Arr.Make(MakeMathMatrix)
+      module MakeTabular = Arr.Make(MakeMatrix)
+
+      let array = MakeArray.array
+      let tabular = MakeTabular.array
 
     end
 

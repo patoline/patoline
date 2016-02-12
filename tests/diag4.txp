@@ -29,7 +29,7 @@
 
   let d = 5.
 
-  let e = edge Edge.([arrow;draw]) 
+  let e = edge Edge.([arrow env;draw]) 
     a 
     ~controls:[[(Vector.(+) asouth (0.,-. d));  
 		(Vector.(+) (Point.middle asouth bsouth) (0.,-. d))

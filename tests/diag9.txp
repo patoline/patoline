@@ -1,13 +1,16 @@
+(* #PACKAGES Typography.FormatArticle  *)
 \Caml(
+open Util
+open Typography
 open Diagrams
 
 let mathsOfDiagram =
 function
 | [] -> assert false
 | B (f,_) :: _ -> begin [Maths.Ordinary (Maths.noad (fun env style -> 
-  let env =         { env with size=env.size*.(Maths.env_style env.mathsEnvironment style).Mathematical.mathsSize }
-  in    	  
-  match f env with
+  let env = { env with Document.size=env.Document.size*.(Maths.env_style env.mathsEnvironment style).Mathematical.mathsSize }
+ in
+    match f env with
   | [] -> assert false
   | [Drawing d] as fig -> fig
   | (Drawing d) as fig :: _ -> [fig]
@@ -59,7 +62,7 @@ $\mathsText(<<HAHA>>)$
 	  let white_paths = List.map (fun (params, curve) -> 
 	    { params with 
 	      (* path_order = (-1) ; *)
-	      strokingColor = Some (RGB { red=1.;green=1.;blue=1.;alpha=1. }); 
+	      strokingColor = Some (Color.rgba 1. 1. 1. 1.); 
 	      lineWidth = margin },
 	    curve)
 	    info.curves

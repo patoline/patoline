@@ -32,7 +32,7 @@ module Env_Diagram (Arg : sig val env : environment end) = struct
 			  mainNode Node.([at (0.,ex env);anchor `Pdf])]) @ style) l
 
   let square ?matrix_style:(matrix_style=[Matrix.centers 20. 20.]) 
-      ?edges_style:(edges_style=Edge.([arrow;draw]))
+      ?edges_style:(edges_style=Edge.([arrow env;draw]))
       ?labels_style:(labels_style=[]) 
       a b c d above left right below = 
     let m,([|[|a;b|];[|c;d|]|] as ms) = my_matrix matrix_style [[

@@ -30,10 +30,10 @@
       ]])
 
 
-	     let _ = Edge.(edges [arrow;draw;foreground 1.] [
+	     let _ = Edge.(edges [arrow env;draw;foreground 1.] [
 	       ([], ms.(0).(0), [], ms.(1).(1));
 	     ])
-	     let _ = Edge.(edges [arrow;draw;foreground 1.] [
+	     let _ = Edge.(edges [arrow env;draw;foreground 1.] [
 	       ([], ms.(0).(1), [], ms.(1).(0));
 	     ])
 )
@@ -47,12 +47,12 @@
       ]])
 
 
-	     let _ = Edge.(edges [arrow;draw;foreground 1.] [
+	     let _ = Edge.(edges [arrow env;draw;foreground 1.] [
 	       ([], ms.(0).(0), [], ms.(1).(1));
 	       ([], ms.(0).(1), [], ms.(1).(0))
 	     ])
 
-	     let _ = Edge.(edge [arrow;draw;double 1.] ms.(0).(0) ms.(0).(1))
+	     let _ = Edge.(edge [arrow env;draw;double 1.] ms.(0).(0) ms.(0).(1))
 
  let a = Node.(node [anchor `Base;circle;fill white;draw;at (30.,30.)] <<a>>) 
  let b = Node.(node [anchor `Base;circle;fill white;draw;at (30.,30.)] <<b>>) 

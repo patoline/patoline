@@ -20,19 +20,19 @@ module Env_Diagram (Arg : sig val env : environment end) = struct
   let simple_math_matrix ?style:(style=[Matrix.centers 20. 20.]) l = 
     my_math_matrix style (List.map (fun line -> (List.map (fun contents -> ([],contents)) line)) l)
 
-  let simple_edges ?style:(style=Edge.([arrow;draw])) l = 
+  let simple_edges ?style:(style=Edge.([arrow env;draw])) l = 
     List.map fst
     (edges_anchor_mid
       (List.map (fun (a,b) -> (a,b,style,`South,[])) l))
 
-  let simple_edges_matrix ?style:(style=Edge.([arrow;draw])) ms l = 
+  let simple_edges_matrix ?style:(style=Edge.([arrow env;draw])) ms l = 
     List.map fst 
     (edges_anchor_mid
       (List.map (fun ((ai,aj),(bi,bj)) -> (ms.(ai).(aj),ms.(bi).(bj),style,`South,[])) l))
 
-  let edges ?style:(style=Edge.([arrow;draw])) = List.map (fun (st,s,e) -> edge (style @ st) s e) 
+  let edges ?style:(style=Edge.([arrow env;draw])) = List.map (fun (st,s,e) -> edge (style @ st) s e) 
 
-  let edges_matrix ?style:(style=Edge.([arrow;draw])) ms l = 
+  let edges_matrix ?style:(style=Edge.([arrow env;draw])) ms l = 
     edges ~style:style
       (List.map (fun (st,(ai,aj),(bi,bj)) -> (st,ms.(ai).(aj),ms.(bi).(bj))) l)
 

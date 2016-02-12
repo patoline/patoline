@@ -24,14 +24,14 @@
 (* let _ = path Edge.([draw;paramsOf {default_params with close=true}])  *)
     (* (0.,0.)  [[30.,0.];[15.,15.]] *)
 
-let _ = path Edge.([draw;arrow;paramsOf {default_params with close=true}]) 
+let _ = path Edge.([draw;arrow env;paramsOf {default_params with close=true}]) 
     (0.,0.)  [[0.,-. 90.;90.,0.;0.,0.]]
 
 
 let a = node Node.([at (-. 30., -.30.)]) <<$A$>>
 let b = node Node.([at (-. 30., -.60.)]) <<$B$>>
 
-let e = Edge.(edge [arrow;draw] a ~controls:[[(-. 30., -. 60.);(0.,-. 30.)]] a)
-let e' = Edge.(edge [arrow;draw] a ~controls:[[(-. 30., -. 60.);(0.,-. 30.)]] b)
+let e = Edge.(edge [arrow env;draw] a ~controls:[[(-. 30., -. 60.);(0.,-. 30.)]] a)
+let e' = Edge.(edge [arrow env;draw] a ~controls:[[(-. 30., -. 60.);(0.,-. 30.)]] b)
 
 )

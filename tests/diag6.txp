@@ -25,6 +25,7 @@ open Edge
 
     let kappa = 0.5522847498
 
+
     let quadrant center radius a b =
       let tangent_a = Vector.normalise ~norm:(radius *. kappa) (Vector.of_points center b) in
       let tangent_b = Vector.normalise ~norm:(radius *. kappa) (Vector.of_points center a) in
@@ -33,21 +34,65 @@ open Edge
        Vector.(+) b tangent_b ;
        b ]
 
-    let half_circle x y = 
+    let half_circle left x y = 
       let center = Point.middle x y in
       let v = Vector.of_points center y in
-      let vl = Vector.rotate 90. v in
+      let vl = Vector.rotate (if left then 90. else -. 90.) v in
       let a = Vector.(+) center vl in
       let radius = Vector.(norm v) in
       [ quadrant center radius y a ;
 	quadrant center radius a x ]
 
-      let base_into head_params transfos edge_info=
+    let hook_tail left width grad e0 = 
+	let lnormale = Vector.rotate (if left then 90. else -. 90.) (Vector.normalise ~norm:(width) grad) in
+	Curve.of_point_lists (half_circle left e0 (Vector.(+) e0 lnormale))
+
+    let bar_tail left width grad e0 = 
+	let lnormale = Vector.rotate 90. (Vector.normalise ~norm:(0.7 *. width) grad) in
+	Curve.of_point_lists [[(Vector.(+) e0 lnormale); (Vector.(-) e0 lnormale)]]
+
+      let head_moustache env info params =
+      	(* let _ = begin  *)
+      	(* 	 Printf.fprintf stderr "Entering head: lineWidth = %f, true lineWidth = %f \n" *)
+      	(* 	   params.lineWidth info.tip_line_width ; *)
+      	(* 	 flush stderr *)
+      	(* end in *)
+      	let scale = scale_env env in
+      	if info.is_double then
+      	  let short = max (info.tip_line_width *. 0.15) 0.06 in
+      	  let thickness = max (0.5 *. params.lineWidth) 0.06 in
+      	  let height = max (1.5 *. short) 0.22 in
+      	  let width = max (0.3 *. info.tip_line_width) 0.2 in
+      	  let _ = Printf.fprintf stderr "double tip_line_width=%f\n" info.tip_line_width ; flush stderr
+      	  in
+      	  (scale *. short, scale *. thickness, scale *. height, scale *. width, scale *. 0.01)
+
+      	else
+
+      	  let short = max (0.15 *. params.lineWidth) 0.06 in
+      	  let thickness = max (0.18 *. params.lineWidth) 0.04 in
+      	  let height = max (0.4 *. params.lineWidth) 0.23 in
+      	  let width = max (0.4 *. params.lineWidth) 0.23 in
+      	  (* let short = max (0.5 *. params.lineWidth) 0.2 in *)
+      	  (* let thickness = max (0.6 *. params.lineWidth) 0.2 in *)
+      	  (* let height = max (2. *. short) 0.6 in *)
+      	  (* let width = max (1.3 *. params.lineWidth) 0.4 in *)
+      	  let _ = Printf.fprintf stderr "tip_line_width=%f\n" params.lineWidth ; flush stderr
+      	  in
+      	  (scale *. short, scale *. thickness, scale *. height, scale *. width, scale *. 0.01)
+    let tail_bar env info params = 
+      let (_, th, h, w, lw) = head_moustache env info params in
+      (0., th,h,w,lw)
+
+      let arrow_tail 
+	  env
+	  ?left:(left=true)
+	  head_params mk_tail transfos edge_info =
 	let info = edge_info.tip_info in
 	let params = edge_info.params in
 	let underlying_curve = edge_info.underlying_curve in
 	let (da,db) as grad = Curve.eval (Curve.gradient underlying_curve) 0. in
-	let short, thickness, height, width, lw = head_params info params in
+	let short, thickness, height, width, lw = head_params env info params in
 	let thickness' = thickness -. thickness *. info.tip_line_width /. 2. /. width in
 
 	(* Control points on the curve *)
@@ -57,21 +102,20 @@ open Edge
 	let curve0 = edge_info'.underlying_curve in
 	(* let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in *)
 	let e0 = Curve.eval curve0 0. in
-	let lnormale = Vector.rotate 90. (Vector.normalise ~norm:(width) grad) in
+
 	(* let rnormale = Vector.rotate (-. 90.) (Vector.normalise grad) in *)
 
 	(* Put everything together *)
-	let tail = Curve.of_point_lists (half_circle e0 (Vector.(+) e0 lnormale))
-	in
+	let tail = mk_tail left width grad e0 in
 	{ edge_info with decorations = edge_info.decorations @
 	    [Curve (params, tail)]}
 
-      let intoOf, into_tail_pet = 
-        Edge.Transfo.(Pet.register ~depends:[double_pet;shorten_pet] "\"into\" arrow tail"
-          (fun pet tail_params -> 
-	     { Style.pet = pet ; Style.transfo = base_into tail_params }))
-      let into = intoOf head_moustache
-
+      let tailOf, arrow_tail_pet = 
+        Edge.Transfo.(Pet.register ~depends:[double_pet;shorten_pet] "arrow tail"
+          (fun pet env tail_params mk_tail -> 
+	     { Style.pet = pet ; Style.transfo = arrow_tail env tail_params mk_tail}))
+      let into env = tailOf env head_moustache hook_tail
+      let mapsto env = tailOf env tail_bar bar_tail
 
 )
 
@@ -86,7 +130,7 @@ open Edge
 
   let d = 5.
 
-  let e = edge Edge.([arrow;into;draw]) 
+  let e = edge Edge.([arrow env;into env;draw]) 
     a 
     ~controls:[[(Vector.(+) asouth (0.,-. d));  
 		(Vector.(+) (Point.middle asouth bsouth) (0.,-. d))

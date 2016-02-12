@@ -1,7 +1,7 @@
 \Caml(open Diagrams)
 
 \diagram(
-  let _ = compute_intersections := (Some (fun x -> Edge.put_forth ~color:OutputCommon.blue x))
+  let _ = compute_intersections := (Some (fun x -> Edge.put_forth ~color:Color.blue x))
 
       let m,ms = Matrix3d.(matrix_3d [placement (between_centers ~projection:Proj3d.cavaliere60bg 60. 60. 60.)] [
 	[[
@@ -18,7 +18,7 @@
 	  ([], <<$D'$>>) 
 	]]])
 
-      let _ = Edge.(edges_3d [arrow;draw] 
+      let _ = Edge.(edges_3d [arrow env;draw] 
 		      (List.map (fun (i,j,k,x,y,z) -> ([],ms.(i).(j).(k),[],[],ms.(x).(y).(z))) 
 			 (
 			   let map i j k list = List.map (fun (x,y,z) -> (i,j,k,x,y,z)) list in
@@ -98,7 +98,7 @@
 
 
 
-      let _ = Edge.(edges_3d [arrow;draw;double 1.;dashed [2.]] 
+      let _ = Edge.(edges_3d [arrow env;draw;double 1.;dashed [2.]] 
 		      (List.map (fun (i,j,k,x,y,z) -> ([],ms.(i).(j).(k),[],[],ms.(x).(y).(z))) 
 		      ([(0,0,1,1,0,0); (0,0,1,1,0,1);
 		      (0,1,1,0,0,1) ; (0,1,1,1,1,0) ; (0,1,1,1,1,1)

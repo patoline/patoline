@@ -21,53 +21,22 @@
 
 let _ = Sys.catch_break true; Printexc.record_backtrace true
 
-let xrightarrows ?margin:(marge=2.) ?width:(width=1.) ?translation:(translation=(-. 3000.)) a =
-  [Maths.Ordinary
-       (Maths.noad
-          (fun env st->
-	    let module Fig = Env_Diagram (struct let env = env end) in
-	    let open Entity in
-	    let open Fig in
-
-            let dr=Document.draw_boxes env (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
-
-	    let (x0,_,x1,_) = OutputCommon.bounding_box dr in
-	    let width' = max width (x1 -. x0 +. 2. *. marge) in
-	    let matrix = Matrix.(make env
-				 [
-				   centers 0. width';
-				   mainNode Node.([anchor `Pdf; at (0.,ex env);
-						  innerSep 0. ; outerSep 0. ])
-				 ] [[
-				   (Node.([innerSep 0.;outerSep 0.;draw]), []) ; 
-				   (Node.([innerSep 0.;outerSep 0.;draw]), [])
-				 ]])
-	    in
-	    let m,ms = Matrix.(matrix.mainNode,matrix.nodes) in
-
+let xrightarrows ?margin:(margin=2.) ?width:(width=1.) ?translation:(translation=(-. 3000.)) =
+  xarrow 
+    ~decoration:(fun env ms ->
 	    let translation = (if translation = -. 3000. then 2. *. ex env else translation) in
 	    let e = Edge.(make
-			    [draw;lineWidth 0.1;arrow (* Of head *)] 
+			    [draw;lineWidth 0.1;arrow env (* Of head *)] 
 			    (Node.coord (Vector.(+) (ms.(0).(0).Node.anchor (`Main)) (0., -. 0.33 *. translation)))
 			    (Node.coord (Vector.(+) (ms.(0).(1).Node.anchor (`Main)) (0.,-. 0.33 *. translation))))
 	    in
 	    let e' = Edge.(make
-			     [draw;lineWidth 0.1;arrow (* Of head *)] 
+			     [draw;lineWidth 0.1;arrow env (* Of head *)] 
 			     (Node.coord (Vector.(+) (ms.(0).(0).Node.anchor (`Main)) (0., 0.7 *. translation)))
 			     (Node.coord (Vector.(+) (ms.(0).(1).Node.anchor (`Main)) (0.,0.7 *. translation))))
 	    in
-	    let middle = e'.Edge.anchor (`Temporal 0.5) in
-	    (* let origin = Node.(make env [circle; innerSep 0.3;fill black;anchor `Center;at (0.,0.)] []) in *)
-	    let l = Node.(make_output
-			    [outerSep 0.2 ; innerSep 0.; default_shape env ;
-			     anchor `South; at middle] dr)
-	    in
-	    let drawn = 
-	      drawing_inline (to_contents
-		   [Node l ; Edge e ; Edge e' ; Matrix matrix])
-	    in 
-	    [Box.Drawing drawn] ))
-  ]
+	    let middle = e'.anchor (`Temporal 0.5) in
+	    ([Edge e; Edge e'], middle))
 
 )
 
