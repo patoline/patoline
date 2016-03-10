@@ -108,6 +108,7 @@
 \Add_relation{≝ \eqbydef}(MathFonts.asana "≝" 807)
 \Add_relation{\frown}(MathFonts.asana "frown" 986)
 \Add_relation{\smile}(MathFonts.asana "smile" 987)
+\Add_relation{\botrel}{⊥}
 
 \Add_relation{\pitchfork ⋔}(MathFonts.asana "pitchfork" 1609)
 
@@ -151,7 +152,6 @@
 \Add_addition_like{\vee ∨}(MathFonts.asana "∨" 754)
 \Add_addition_like{\setminus ∖}{∖}
 \Add_addition_like{\uplus ⊎}{⊎}
-\Add_addition_like{\parallel ∥}(MathFonts.asana "∥" 385)
 
 =<
 
@@ -408,6 +408,13 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_symbol{■ \bbox \bsquare}(MathFonts.asana "■" 1665)
 \Add_symbol{\nabla}(MathFonts.euler "nabla" 268)
 \Add_symbol{✓ \checkmark}(MathFonts.asana "✔" 1069)
+\Add_symbol{\restrsymbol}{|}
+\Add_symbol{\lparen (}{(}
+\Add_symbol{\rparen )}{)}
+(* Work around the bug of ⌜ and ⌝  *)	
+\Add_symbol{\uulcorner}( MathFonts.asana "uulcorner" 980 )
+\Add_symbol{\uurcorner}( MathFonts.asana "uurcorner" 981 )
+
 
 (* It seems Euler only has a glyph for alef, we'll use Asana-math instead
 \Add_symbol{\alef ℵ}{ℵ}
@@ -567,5 +574,55 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Configure_math_macro{\color}{ name = mcolor }
 
 =<
+
+\Add_symbol{\pitchforkrel}(MathFonts.asana "pitchfork" 1609)
+\Add_symbol{\scongrel}{≡}
+\Add_symbol{\congrel \isorel}{≅}
+\Add_symbol{\comma}{,}
+\Add_symbol{\plusfun}{+}
+\Add_symbol{\equal}{=}
+\Add_symbol{\leqrel}{≤}
+\Add_symbol{\geqrel}{≥}
+\Add_symbol{\gtrel}{>}
+\Add_symbol{\mapstorel}{↦}
+\Add_symbol{\starsymbol ★ ⋆}( MathFonts.asana "star" 912 (* 1072 *) )
+\Add_symbol{\langlsymbol}{〈}
+\Add_symbol{\ranglsymbol}{〉}
+\Add_symbol{\bang}{!}
+\Add_symbol{\restrsymbol}{|}
+\Add_symbol{\torel}{→}
+\Add_symbol{\colonrel}{:}
+\Add_symbol{\daimon}( MathFonts.asana "daimon" 1070 )
+\Add_symbol{\lparen (}{(}
+\Add_symbol{\rparen )}{)}
+
+\Add_relation{\bnfeq ::=}{::=}
+\Add_relation{\botrel}{⊥}
+\Add_product_like{\vcomp \vrond}{∙}
+\Add_product_like{\app @}{@}
+\Add_relation{\ttransition}{←}
+
+\Add_symbol{\veefun}{∨}
+\Add_symbol{\plusfun}{+}
+
+\Add_symbol{\trait --}{-}	
+
+\Add_product_like{\sslash //}(MathFonts.asana "//" 1643)
+
+\Add_symbol{\heartsuit ♥}( MathFonts.asana "white heartsuit" 1051 )
+
+
+
+\Add_symbol{\bf0}( MathFonts.euler "bf 0" 1404 )
+\Add_symbol{\bf1}( MathFonts.euler "bf 1" 1405 )
+\Add_symbol{\bf2}( MathFonts.euler "bf 2" 1406 )
+\Add_symbol{\bf3}( MathFonts.euler "bf 3" 1407 )
+\Add_symbol{\bf4}( MathFonts.euler "bf 4" 1408 )
+\Add_symbol{\bf5}( MathFonts.euler "bf 5" 1409 )
+\Add_symbol{\bf6}( MathFonts.euler "bf 6" 1410 )
+\Add_symbol{\bf7}( MathFonts.euler "bf 7" 1411 )
+\Add_symbol{\bf8}( MathFonts.euler "bf 8" 1412 )
+\Add_symbol{\bf9}( MathFonts.euler "bf 9" 1413 )
+
 
 \Save_Grammar
