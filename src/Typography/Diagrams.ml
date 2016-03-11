@@ -1128,7 +1128,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  let outer_sep = info.outerSep  in
 	  let south = Point.middle p1 p2 in
 	  let ex = ex env in
-	  let base = Vector.(+) south (0.,inner_sep +. outer_sep +. ex +. text_depth) in
+	  (* let base = Vector.(+) south (0.,inner_sep +. outer_sep +. ex +. text_depth) in *)
+	  let base = (fst south,ex) in
 	  let southBase = Vector.(+) south (0.,inner_sep +. outer_sep +. ex) in
 	  let southLine = Vector.(+) south (0.,inner_sep +. outer_sep) in
 	  (* let _ =  *)
@@ -1147,10 +1148,10 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    | `BaseWest -> (fst (Point.middle p1 p4),snd base)
 	    | `Line -> (fst base, (snd base -. ex))
 	    | `SouthLine -> southLine
-	    | `LineEast -> (fst (Point.middle p2 p3), snd base -. ex)
-	    | `LineWest -> (fst (Point.middle p1 p4), snd base -. ex)
-	    | `East -> (fst (Point.middle p2 p3), snd info.center)
-	    | `West -> (fst (Point.middle p1 p4), snd info.center)
+	    | `LineEast -> (fst p2, snd base -. ex)
+	    | `LineWest -> (fst p1, snd base -. ex)
+	    | `East -> (fst p2, snd info.center)
+	    | `West -> (fst p1, snd info.center)
 	    | `North -> Point.middle p3 p4
 	    | `South -> south
 	    | `SouthWest -> p1
@@ -1695,7 +1696,7 @@ Doing a rectangle.\n" ;
 	    let width = Array.length ms.(0) in
 	    Point.middle (ms.(height - 1).(0).Node.anchor `BaseWest)
 	    (ms.(height - 1).(width - 1).Node.anchor `BaseEast)	    
-
+	      
       let mainNode,main_node_pet =
       Pet.register "matrix main node" ~depends:[make_placement_pet]
 	(fun pet ?matrix_anchor node_transfos ->
