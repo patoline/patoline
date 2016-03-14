@@ -1,0 +1,52 @@
+(* #FORMAT FormatArticle *)
+\Caml(open Diagrams)
+
+\begin{lemma}
+For all $K: 𝒞^{op} → Set$, we have
+     $$K ≅ ∫^C K(C) × \mathrm{y}_C{.}$$
+\end{lemma}
+\begin{proof}
+Consider any presheaf $K$.	Using the previous results, we have:
+\begin{center}
+\diagram(
+	let matrixBase info =
+	    let ms = info.Matrix.nodes in
+	    let height = Array.length ms in
+	    let width = Array.length ms.(0) in
+	    Point.middle (ms.(height - 1).(0).Node.anchor `BaseWest)
+	    (ms.(height - 1).(width - 1).Node.anchor `BaseEast)	    
+
+	(* let _ = Node.(node [draw; at (10.,50.)] <<X>>) *)
+	(* let _ = Node.(node [draw; at (0.,0.)] <<O>>) *)
+
+	let m,ms = array ~matrix_anchor:Matrix.matrixLine [`Line ; `LineWest ; `LineWest]
+	(* ~main_node_style:Node.([at (10.,50.)]) *)
+	 [[
+	<$CAT(𝒞^{op},Set)({∫^C {K(C) × \mathrm{y}_C}}, X)$> ;
+	    <$≅$> ;
+	<$∫_{C'} {Set({∫^C {K(C) × 𝒞(C',C)}}, X (C'))}$>
+		 ];[
+			[] ; <$≅$> ;
+			<$∫_{C'} {∫_{C} {Set( K(C) × 𝒞(C',C), X (C'))}}$>
+			];[
+			[] ; <$≅$> ;
+			<$∫_{C'} ∫_{C} Set( 𝒞(C',C), Set(K (C), X (C')))$>
+			];[
+			[] ; <$≅$> ;
+			<$∫_{C'} CAT(𝒞,Set)( 𝒞(C',—), Set(K (—), X (C')))$>
+			];[
+			[] ; <$≅$> ;
+			<$∫_{C'} Set(K (C'), X (C'))$>
+			];[
+			[] ; <$≅$> ;
+			<$CAT(𝒞^{op},Set) (K,X) {,}$>
+]]
+	(* let _ = Node.(node [draw; at (Point.middle (ms.(5).(0).Node.anchor `BaseWest) *)
+(*     (ms.(5).(2).Node.anchor `BaseEast))] <<X>>) *)
+
+	 let (x,y) as p = ms.(5).(2).Node.anchor `LineWest;;
+	 let _ = Edge.(edge [draw] (Node.coord p) Node.(coord (x +. 80., y)))
+	 
+)
+\end{center}
+\end{proof}
