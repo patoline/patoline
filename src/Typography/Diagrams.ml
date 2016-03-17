@@ -57,6 +57,10 @@ let array_last xs =
 (* Helper function to update the last element of an array; should probably go elsewhere *)
 let array_update_last a x =
   a.(Array.length a - 1) <- x
+let array_update f arr = Array.iteri (fun i x -> arr.(i) <- f x) arr
+let acurve_update f g arr = Array.iteri
+  (fun i (xs,ys) -> (array_update f xs; array_update g ys))
+  arr
 
 let list_split_last_rev l =
   let rec list_split_last_rec res = function
@@ -2245,7 +2249,7 @@ Doing a rectangle.\n" ;
 	(* We start by extracting the arrow head from the whole arrow *)
 	(* In passing, we need to do a little surgery to compensate for the missing shaft *)
 	(* This is done differently depending on whether we have a "double" arrow or not *)
-	let arr, (x_tip,y_tip),totalWidth = begin
+	let arr, (x_tip,y_tip),wdtip,totalWidth = begin
 	    match arr with
 	      courbes :: _ -> begin
 			     match courbes with
@@ -2261,35 +2265,51 @@ Doing a rectangle.\n" ;
 			       let tipCurve = if info.is_double then
 						(* Compute the "co-tip" point by subtracting the 
                                               "linewidth" horizontally to the tip *)
-						let x = xt -. (array_last (fst c1) -. (fst c1).(0)) in
+						let x = xt -. wdtip in
 						let _ = (fst c0).(0) <- x in
 						let _ = (snd c0).(0) <- yt in
 						let _ = array_update_last (fst c5) x in
 						let _ = array_update_last (snd c5) yt in
-						c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: []
-					      else
-						(* For simple arrows we merely close the curve *)
-						c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: ([|x0;xn|],[|y0;yn|]) :: []
+						[|c0 ; c1 ; c2 ; c3 ; c4 ; c5|]
+				 else
+				   (* For simple arrows we merely close the curve *)
+				   [| c0 ; c1 ; c2 ; c3 ; c4 ; c5 ; ([|x0;xn|],[|y0;yn|]) |]
 			       in
 			       tipCurve,
 			       tip,
+			       wdtip,
 			       ((array_last (snd c3)) -. y0)
 			     | _ -> assert false
-			   end
+	      end
 	    | _ -> assert false
-	  end
+	end
 	in
 	(* Compute how much we should scale the arrow when the line width is modified *)
 	let widthFactor = if info.is_double then
-			    info.tip_line_width /. size /. totalWidth
-			  else params.lineWidth *. 10. in
+	    info.tip_line_width /. size /. totalWidth
+	  else params.lineWidth *. 10. in
 	(* Bring the tip of the arrow  *)
-	let arr'= Curve.map (fun x-> ((x -. x_tip)*.size *. widthFactor))
-			    (fun y-> ((y -. y_tip)*.size *. widthFactor)) arr in
+	let _ = acurve_update (fun x-> ((x -. x_tip)*.size))
+	  (fun y-> ((y -. y_tip)*.size)) arr in
+	let arr' = (if info.is_double then
+	    Curve.map (fun x-> (x *. widthFactor))
+	      (fun y-> (y *. widthFactor))  
+	      (Array.to_list arr)
+	  else
+	    let update i j f = (fst (arr.(i))).(j) <- f ((fst (arr.(i))).(j)) in
+	    let update_xs i f = Array.iteri (fun j x -> update i j f) (fst (arr.(i))) in
+	    let scale (i, j) = update i j (fun x -> x +. size *. wdtip -. params.lineWidth) in
+	    let scale_xs i = update_xs i (fun x -> x +. size *. wdtip -. params.lineWidth) in
+	    let _ = (List.iter scale_xs  [ 0 ; 5 ; 6 ]) in
+	    let _ = (List.iter scale [ (1, 0) ; (4, 1) ]) in 
+	    Array.to_list (arr)
+	) in
 	let arr''= Curve.rotate angle arr' in
 	let arr'''= Curve.map (fun x-> (x +. xe)) (fun y-> (y +. ye)) arr'' in
 	arr'''
 
+
+	
 (* Helper function to shorten the main curves of a path when an arrow head is added *)
 (* grad is the gradient of the curve at the point where the arrow head is added *)
 (* info is the current Edge.info *)

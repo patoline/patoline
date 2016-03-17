@@ -85,6 +85,21 @@
 let array_update_last a x =
   a.(Array.length a - 1) <- x
 			      
+let array_update f arr = Array.iteri (fun i x -> arr.(i) <- f x) arr
+let acurve_update f g arr = Array.iteri
+  (fun i (xs,ys) -> (array_update f xs; array_update g ys))
+  arr
+let print_acurve arr =
+  let _ = print_endline "--------------------------------------" in
+  Array.iter
+    (fun (xs,ys) ->
+      print_string "Courbe\n" ;
+      Array.iter (fun x -> Printf.fprintf stdout "  %f; " x) xs ;
+    print_newline ();
+    Array.iter (fun x -> Printf.fprintf stdout "  %f; " x) ys ;
+    print_newline ())
+    arr
+
 let fontArrowHead (xe,ye) angle env info params arr size  =
   let arr, (x_tip,y_tip),wdtip,wdshaft,totalWidth = begin
       match arr with
@@ -101,14 +116,14 @@ let fontArrowHead (xe,ye) angle env info params arr size  =
 			 let tipCurve = if info.is_double then
 					  (* Compute the "co-tip" point by subtracting the 
                                               "linewidth" horizontally to the tip *)
-					  let x = xt -. (array_last (fst c1) -. (fst c1).(0)) in
+					  let x = xt -. wdtip in
 					  let _ = (fst c0).(0) <- x in
 					  let _ = (snd c0).(0) <- yt in
 					  let _ = array_update_last (fst c5) x in
 					  let _ = array_update_last (snd c5) yt in
-					  c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: []
+					  [|c0 ; c1 ; c2 ; c3 ; c4 ; c5|]
 					else
-					  c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: ([|x0;xn|],[|y0;yn|]) :: []
+					  [| c0 ; c1 ; c2 ; c3 ; c4 ; c5 ; ([|x0;xn|],[|y0;yn|]) |]
 			 in
 			 tipCurve,
 			 tip,
@@ -123,6 +138,7 @@ let fontArrowHead (xe,ye) angle env info params arr size  =
   (* let _ = Printf.fprintf stderr "lineWidth = %f.\n" params.lineWidth in *)
   (* let _ = Printf.fprintf stderr "wd = %f.\n" wdshaft in *)
   (* let widthFactor = (scale_env env) *. wdtip *. params.lineWidth *. 10. /. wdshaft in *)
+  let _ = print_acurve arr in
   let widthFactor = if info.is_double then
 		      let _ = Printf.fprintf stderr "tiplineWidth = %f \n totalWidth = %f \n size = %f.\n"
 					     info.tip_line_width totalWidth size in
@@ -131,8 +147,25 @@ let fontArrowHead (xe,ye) angle env info params arr size  =
   (* let heightFactor = widthFactor *. 0.1 in *)
   (* let widthFactor = 1. in *)
   (* let _ = Printf.fprintf stderr "widthFact = %f.\n" widthFactor in *)
-  let arr'= Curve.map (fun x-> ((x -. x_tip)*.size *. widthFactor))
-		      (fun y-> ((y -. y_tip)*.size *. widthFactor)) arr in
+  let _ = acurve_update (fun x-> ((x -. x_tip)*.size))
+    (fun y-> ((y -. y_tip)*.size)) arr in
+  let _ = Printf.fprintf stdout "lineWidth: %f\n" (params.lineWidth) in
+  let _ = print_acurve arr in
+  let arr' = (if info.is_double then
+      Curve.map (fun x-> (x *. widthFactor))
+	(fun y-> (y *. widthFactor))  
+	(Array.to_list arr)
+    else
+      let update i j f = (fst (arr.(i))).(j) <- f ((fst (arr.(i))).(j)) in
+      let update_xs i f = Array.iteri (fun j x -> update i j f) (fst (arr.(i))) in
+      let scale (i, j) = update i j (fun x -> x +. size *. wdtip -. params.lineWidth) in
+      let scale_xs i = update_xs i (fun x -> x +. size *. wdtip -. params.lineWidth) in
+      let _ = (List.iter scale_xs  [ 0 ; 5 ; 6 ]) in
+      let _ = print_acurve arr in
+      let _ = (List.iter scale [ (1, 0) ; (4, 1) ]) in 
+      let _ = print_acurve arr in
+  Array.to_list (arr)
+  ) in
   let arr''= Curve.rotate angle arr' in
   let arr'''= Curve.map (fun x-> (x +. xe)) (fun y-> (y +. ye)) arr'' in
   arr'''
