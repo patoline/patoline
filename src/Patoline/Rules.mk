@@ -49,19 +49,19 @@ $(d)/prefixTree.cmx: $(d)/prefixTree.ml
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) -I $(<D) -I $(PA_OCAML_DIR) -I $(UTIL_DIR) -package patutil,decap $< > $@
+	$(Q)$(OCAMLDEP) -pp pa_ocaml -I $(<D) -I $(PA_OCAML_DIR) -I $(UTIL_DIR) -package patutil,decap $< > $@
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(d)/Subsup.cmx $(d)/prefixTree.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -rectypes -pp $(PA_OCAML) -I $(PATOLINE_DIR) -c -package patutil,decap $(COMPILER_INC) -o $@ $<
+	$(Q)$(OCAMLOPT_NOINTF) -rectypes -pp pa_ocaml -I $(PATOLINE_DIR) -c -package patutil,decap $(COMPILER_INC) -o $@ $<
 
 $(d)/Subsup.ml.depends: $(d)/Subsup.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) -I $(<D) -I $(PA_OCAML_DIR) -I $(UTIL_DIR) -package decap $< > $@
+	$(Q)$(OCAMLDEP) -pp pa_ocaml -I $(<D) -I $(PA_OCAML_DIR) -I $(UTIL_DIR) -package decap $< > $@
 
 $(d)/Subsup.cmx: $(d)/Subsup.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_OCAML) -I $(PATOLINE_DIR) -c -package decap $(COMPILER_INC) -o $@ $<
+	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -I $(PATOLINE_DIR) -c -package decap $(COMPILER_INC) -o $@ $<
 
 #$(d)/patolineGL: $(UTIL_DIR)/util.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
 #	$(ECHO) "[OPT]    $(lastword $^) -> $@"

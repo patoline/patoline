@@ -16,23 +16,7 @@ UTIL_DIR := $(d)/patutil
 RBUFFER_DIR := $(d)/rbuffer
 LIBFONTS_DIR := $(d)/patfonts
 CESURE_DIR := $(d)/cesure
-PA_OCAML_DIR := $(d)/decap
 UNICODE_DIR := $(d)/unicodelib
-PA_OCAML := $(PA_OCAML_DIR)/pa_ocaml
-
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(MAKECMDGOALS),distclean)
-DUMMY := $(shell if [ ! -x $(PA_OCAML_DIR)/pa_ocaml ]; then $(MAKE) -e -j 1 -C $(PA_OCAML_DIR) pa_ocaml; fi; $(MAKE) -e -j 1 -C $(PA_OCAML_DIR) decap.cmxa decap_ocaml.cmxa decap.cma decap_ocaml.cma pa_ocaml)
-endif
-endif
-
-ifeq ($(MAKECMDGOALS),clean)
-DUMMY := $(shell $(MAKE) -e -C $(PA_OCAML_DIR) clean)
-endif
-
-ifeq ($(MAKECMDGOALS),distclean)
-DUMMY := $(shell $(MAKE) -e -C $(PA_OCAML_DIR) distclean)
-endif
 
 $(d)/Patoline/Rules.mk: $(UNICODELIB_CMX)
 

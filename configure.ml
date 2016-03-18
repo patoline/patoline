@@ -138,13 +138,6 @@ let local_packages = [
     subdirs = [];
     has_meta = true;
   };
-  { package_name = "pa_ocaml";
-    macro_suffix = "PA_OCAML";
-    local_deps = [];
-    extern_deps = [];
-    subdirs = [];
-    has_meta = true;
-  };
   { package_name = "db";
     macro_suffix = "DB";
     local_deps = ["patutil"];
@@ -605,7 +598,6 @@ let _=
   Printf.fprintf make "INSTALL_DLLS_DIR :=%s\n" !ocaml_dlls_dir;
   Printf.fprintf make "INSTALL_EMACS_DIR :=%s\n" emacsdir;
   Printf.fprintf make "INSTALL_RBUFFER_DIR :=%s/rbuffer\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_PA_OCAML_DIR :=%s/decap\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_UTIL_DIR :=%s/patutil\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_RAWLIB_DIR :=%s/rawlib\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_DB_DIR :=%s/db\n" !ocaml_lib_dir;

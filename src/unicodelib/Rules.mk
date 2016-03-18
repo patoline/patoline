@@ -5,11 +5,11 @@ d := $(if $(d),$(d)/,)$(mod)
 UNICODELIB_INCLUDES := -I $(d) 
 UNICODELIB_DEPS_INCLUDES := -I $(d)
 
-$(d)/%.depends: OCAMLDEP:=ocamlfind ocamldep -pp $(PA_OCAML)
+$(d)/%.depends: OCAMLDEP:=ocamlfind ocamldep -pp pa_ocaml
 $(d)/%.depends: INCLUDES:=$(UNICODELIB_DEPS_INCLUDES) 
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES:=$(UNICODELIB_INCLUDES)
-$(d)/%.cmo $(d)/%.cmi: OCAMLC:=ocamlfind ocamlc -pp $(PA_OCAML) $(INCLUDES)
-$(d)/%.cmx: OCAMLOPT:=ocamlfind ocamlopt -pp $(PA_OCAML) $(INCLUDES)
+$(d)/%.cmo $(d)/%.cmi: OCAMLC:=ocamlfind ocamlc -pp pa_ocaml $(INCLUDES)
+$(d)/%.cmx: OCAMLOPT:=ocamlfind ocamlopt -pp pa_ocaml $(INCLUDES)
 
 # Compute ML files dependencies
 # Building
@@ -55,9 +55,9 @@ PA_CONV:=$(d)/pa_convert
 
 $(PA_CONV): $(d)/pa_convert.ml
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q) ocamlopt -pp $(PA_OCAML) -o $@ -I $(UNICODE_DIR) \
-		-I $(PA_OCAML_DIR) $(COMPILER_INC) $(COMPILER_LIBO) unix.cmxa str.cmxa \
-		$(PA_OCAML_DIR)/decap.cmxa $(PA_OCAML_DIR)/decap_ocaml.cmxa $<
+	$(Q) ocamlopt -pp pa_ocaml -o $@ -I $(UNICODE_DIR) \
+		-I +decap $(COMPILER_INC) $(COMPILER_LIBO) unix.cmxa str.cmxa \
+		decap.cmxa decap_ocaml.cmxa $<
 
 $(ENCODING_ML): %.ml: $(PA_CONV)
 	$(ECHO) "[PA_CNV] ... -> $@"
@@ -83,7 +83,7 @@ $(d)/PermanentMap.cmx: $(d)/PermanentMap.ml
 
 $(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml
 	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q) ocamlfind ocamlopt -package decap -pp $(PA_OCAML) $(COMPILER_INC) \
+	$(Q) ocamlfind ocamlopt -package decap -pp pa_ocaml $(COMPILER_INC) \
 		$(UNICODELIB_INCLUDES) -c $<
 
 $(d)/pa_UnicodeData: $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
