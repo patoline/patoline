@@ -267,9 +267,9 @@ let verbatim_environment = change_layout verbatim_environment no_blank
     change_layout (
         parser
           RE("^###")
-          lang:{_:RE("[ \t]+") id:RE(uid_coloring)}??
-          filename:{_:RE("[ \t]+") fn:RE(string_filename)[groupe 1]}??
-          RE("[ \t]*") '\n' lines:{l:RE(verbatim_line) '\n'}++
+          lang:{_:RE("[ \t]+") id:RE(uid_coloring)}?
+          filename:{_:RE("[ \t]+") fn:RE(string_filename)[groupe 1]}?
+          RE("[ \t]*") '\n' lines:{l:RE(verbatim_line) '\n'}+
           RE("^###") -> (
                     let lang = match lang with
                         None -> <:expr<lang_default>>
@@ -370,7 +370,7 @@ let verbatim_environment = change_layout verbatim_environment no_blank
     change_layout (
         parser
           STR(st)
-          ls:{l:RE(line_re) '\n'}**
+          ls:{l:RE(line_re) '\n'}*
           l:RE(line_re)
               STR(nd) ->
             let lines = ls @ [l] in
@@ -1299,7 +1299,7 @@ and math_macro_argument =
   | '{' (m,_):(change_layout math_aux blank1) '}' -> m no_ind
   | wrapped_caml_expr
 
-and math_macro_arguments = math_macro_argument++
+and math_macro_arguments = math_macro_argument+
 
 and with_indices =
   | EMPTY -> no_ind
@@ -1414,7 +1414,7 @@ let parser math_toplevel =
 
   let macro =
     parser
-    | m:macro_name args:macro_argument** ->
+    | m:macro_name args:macro_argument* ->
                         (let fn = fun acc r -> <:expr@_loc_args<$acc$ $r$>> in
                          List.fold_left fn <:expr@_loc_m<$lid:m$>> args)
     | m:verbatim_macro -> m
@@ -1434,40 +1434,40 @@ let parser math_toplevel =
 
   let text_paragraph_elt (tags:TagSet.t) =
     parser
-      m:macro -> m
+    | m:macro -> m
 
-    | | "//" - p:(paragraph_basic_text (addTag Italic tags)) - "//" when allowed Italic tags ->
+    | "//" - p:(paragraph_basic_text (addTag Italic tags)) - "//" when allowed Italic tags ->
          <:expr@_loc_p<toggleItalic $p$>>
-    | | "**" - p:(paragraph_basic_text (addTag Bold tags)) - "**" when allowed Bold tags ->
+    | "**" - p:(paragraph_basic_text (addTag Bold tags)) - "**" when allowed Bold tags ->
          <:expr@_loc_p<bold $p$>>
-    | | "||" - p:(paragraph_basic_text (addTag SmallCap tags)) - "||" when allowed SmallCap tags ->
+    | "||" - p:(paragraph_basic_text (addTag SmallCap tags)) - "||" when allowed SmallCap tags ->
          <:expr@_loc_p<sc $p$>>
-(*    | | "__" - p:(paragraph_basic_text (addTag Underline tags)) - "__" when allowed Underline tags ->
+(*    | "__" - p:(paragraph_basic_text (addTag Underline tags)) - "__" when allowed Underline tags ->
          <:expr@_loc_p<underline $p$>>
-    | | "--" - p:(paragraph_basic_text (addTag Strike tags)) - "--" when allowed Strike tags ->
+    | "--" - p:(paragraph_basic_text (addTag Strike tags)) - "--" when allowed Strike tags ->
       <:expr@_loc_p<strike $p$>>*)
 
-    | | v:verbatim_bquote -> <:expr@_loc_v<$v$>>
-    | | v:verbatim_sharp  -> <:expr@_loc_v<$v$>>
+    | v:verbatim_bquote -> <:expr@_loc_v<$v$>>
+    | v:verbatim_sharp  -> <:expr@_loc_v<$v$>>
 
-    | | '(' p:(paragraph_basic_text tags) ')' ->
+    | '(' p:(paragraph_basic_text tags) ')' ->
          <:expr@_loc_p<tT $string:"("$ :: $p$ @ [tT $string:")"$]>>
 
-    | | '"' p:(paragraph_basic_text (addTag Quote tags)) '"' when allowed Quote tags ->
+    | '"' p:(paragraph_basic_text (addTag Quote tags)) '"' when allowed Quote tags ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
          <:expr@_loc_p<tT($string:opening$) :: $p$ @ [tT($string:closing$)]>>)
 
-    | | '$' m:math_toplevel '$' ->
+    | '$' m:math_toplevel '$' ->
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                           $m$)]>>
-    | | "[$" m:math_toplevel "$]" ->
+    | "[$" m:math_toplevel "$]" ->
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle $m$))]>>
 
-    | | ws:word+ -> <:expr@_loc<[tT $string:String.concat " " ws$]>>
+    | ws:word+ -> <:expr@_loc<[tT $string:String.concat " " ws$]>>
 
 
   let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
@@ -1479,7 +1479,7 @@ let parser math_toplevel =
 
   let _ = set_paragraph_basic_text (fun tags ->
              parser
-               l:{p:(text_paragraph_elt tags) -> (_loc, p)}++ ->
+               l:{p:(text_paragraph_elt tags) -> (_loc, p)}+ ->
                  match List.rev l with
                  | []   -> assert false
                  | m::l ->
@@ -1516,9 +1516,9 @@ let parser math_toplevel =
 
   let paragraph_elt =
     parser
-    | | verb:verbatim_environment -> (fun _ -> verb)
-    | | "\\Caml" s:(change_layout wrapped_caml_structure blank2) -> (fun _ -> s)
-    | | "\\Title" t:macro_argument -> (fun _ ->
+    | verb:verbatim_environment -> (fun _ -> verb)
+    | "\\Caml" s:(change_layout wrapped_caml_structure blank2) -> (fun _ -> s)
+    | "\\Title" t:macro_argument -> (fun _ ->
          let m1 = freshUid () in
          let m2 = freshUid () in
          <:structure<
@@ -1531,19 +1531,19 @@ let parser math_toplevel =
            let _ = $uid:m2$.do_end_env () ;;
          >>)
 
-    | | "\\Include" '{' id:capitalized_ident '}' -> (fun _ ->
+    | "\\Include" '{' id:capitalized_ident '}' -> (fun _ ->
          incr nb_includes;
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
          <:structure< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output)(D)
                       open $uid:temp_id$>>)
-    | | "\\TableOfContents" -> (fun _ ->
+    | "\\TableOfContents" -> (fun _ ->
          let m = freshUid () in
          <:structure<
            module $uid:m$ = TableOfContents ;;
            let _ = $uid:m$.do_begin_env () ;;
            let _ = $uid:m$.do_end_env () ;;
          >>)
-    | | "\\item" -> (fun _ ->
+    | "\\item" -> (fun _ ->
          let m1 = freshUid () in
          let m2 = freshUid () in
          let _Item = "Item" in
@@ -1553,7 +1553,7 @@ let parser math_toplevel =
                        let _ = $uid:m2$.do_begin_env () ;;
                        let _ = $uid:m2$.do_end_env ()
                      end>>)
-    | | "\\begin{" idb:lid '}' args:macro_argument**
+    | "\\begin{" idb:lid '}' args:macro_argument*
        ps:(change_layout paragraphs blank2)
        "\\end{" ide:lid '}' ->
          (fun indent_first ->
@@ -1593,7 +1593,7 @@ let parser math_toplevel =
                          $(ps indent_first)$ ;;
                          let _ = $uid:m2$ . do_end_env ()
                         end>>)
-    | | "$$" m:math_toplevel "$$" ->
+    | "$$" m:math_toplevel "$$" ->
          (fun _ ->
            <:structure<let _ = newPar D.structure
                         ~environment:(fun x -> {x with par_indent = []})
@@ -1601,20 +1601,20 @@ let parser math_toplevel =
                         [bB (fun env0 -> Maths.kdraw
                           [ { env0 with mathStyle = Mathematical.Display } ]
                           $m$)];;>>)
-    | | l:paragraph_basic_text -> l
-    | | s:symbol_def -> fun _ -> s
+    | l:paragraph_basic_text -> l
+    | s:symbol_def -> fun _ -> s
 
   let _ = set_grammar paragraph (
                         change_layout (
                             parser
-                              e:paragraph_elt es:{es:paragraph_elt}** ->
+                              e:paragraph_elt es:{es:paragraph_elt}* ->
                                                  let es = List.flatten (List.map (fun r -> r false) es) in
                                                  fun indent -> e indent @ es
                           ) blank1)
 
   let _ = set_grammar paragraphs (
                         parser
-                          p:paragraph ps:paragraph** ->
+                          p:paragraph ps:paragraph* ->
                                                let ps = List.flatten (List.map (fun r -> r true) ps) in
                                          fun indent_first -> p indent_first @ ps
                       )
@@ -1642,7 +1642,7 @@ let parser math_toplevel =
                      $(txt false (lvl+1))$;;
                      let _ = go_up D.structure >>)
 
-    | | op:RE(section) title:text_only cl:RE(section) txt:text ->
+    | op:RE(section) title:text_only cl:RE(section) txt:text ->
         (fun _ lvl ->
          if String.length op <> String.length cl then
 	   give_up "Non-matching absolute section marker";
@@ -1660,12 +1660,12 @@ let parser math_toplevel =
          true, lvl, <:structure< $!res$ let _ = ($numbered$) D.structure $title$;;
                      $(txt false l)$>>)
 
-    | | ps:paragraphs ->
+    | ps:paragraphs ->
          (fun indent lvl -> indent, lvl, ps indent)
 
   let _ = set_grammar text (
      parser
-       l:text_item** ->
+       l:text_item* ->
          (fun indent lvl ->
           let fn = fun (indent, lvl, ast) txt ->
             let indent, lvl, ast' = txt indent lvl in
@@ -1692,14 +1692,14 @@ let patoline_config : unit grammar =
     | "#GRAMMAR " g:''[a-zA-Z]+''    -> add_patoline_grammar g
   ) no_blank
 
-let header = parser _:patoline_config**
+let header = parser _:patoline_config*
 
 let title =
   parser
   | RE("==========\\(=*\\)") title:text_only
-    auth:{_:RE("----------\\(-*\\)") t:text_only}??
-    inst:{_:RE("----------\\(-*\\)") t:text_only}??
-    date:{_:RE("----------\\(-*\\)") t:text_only}??
+    auth:{_:RE("----------\\(-*\\)") t:text_only}?
+    inst:{_:RE("----------\\(-*\\)") t:text_only}?
+    date:{_:RE("----------\\(-*\\)") t:text_only}?
     RE("==========\\(=*\\)") ->
 
       let date =
@@ -1765,7 +1765,7 @@ let full_text =
   parser
   | h:header basename:init ->>
     let basename = basename () in
-    tx1:text t:title?? tx2:text EOF ->
+    tx1:text t:title? tx2:text EOF ->
       begin
         let t = match t with
                 | None   -> <:structure<>>
