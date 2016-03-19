@@ -2,11 +2,11 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-UNICODELIB_INCLUDES := -I $(d) 
+UNICODELIB_INCLUDES := -I $(d)
 UNICODELIB_DEPS_INCLUDES := -I $(d)
 
 $(d)/%.depends: OCAMLDEP:=ocamlfind ocamldep -pp pa_ocaml
-$(d)/%.depends: INCLUDES:=$(UNICODELIB_DEPS_INCLUDES) 
+$(d)/%.depends: INCLUDES:=$(UNICODELIB_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES:=$(UNICODELIB_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi: OCAMLC:=ocamlfind ocamlc -pp pa_ocaml $(INCLUDES)
 $(d)/%.cmx: OCAMLOPT:=ocamlfind ocamlopt -pp pa_ocaml $(INCLUDES)
@@ -51,12 +51,12 @@ ENCODING_O    := $(ENCODING_ML:.ml=.o)
 
 $(ENCODING_CMX): %.cmx: %.cmo
 
-PA_CONV:=$(d)/pa_convert
+PA_CONV:=$(d)/pa_convert --ascii
 
 $(PA_CONV): $(d)/pa_convert.ml
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q) ocamlopt -pp pa_ocaml -o $@ -I $(UNICODE_DIR) \
-		-I +decap $(COMPILER_INC) $(COMPILER_LIBO) unix.cmxa str.cmxa \
+	$(Q) $(OCAMLOPT) -pp pa_ocaml -o $@ -I $(UNICODE_DIR) \
+		-package decap $(COMPILER_INC) $(COMPILER_LIBO) unix.cmxa str.cmxa \
 		decap.cmxa decap_ocaml.cmxa $<
 
 $(ENCODING_ML): %.ml: $(PA_CONV)
@@ -65,30 +65,30 @@ $(ENCODING_ML): %.ml: $(PA_CONV)
 
 $(ENCODING_CMO): %.cmo: %.ml
 	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q) ocamlc $(UNICODELIB_INCLUDES) -c $<
+	$(Q) $(OCAMLC) $(UNICODELIB_INCLUDES) -c $<
 
 $(ENCODING_CMX): %.cmx: %.ml
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q) ocamlopt $(UNICODELIB_INCLUDES) -c $<
+	$(Q) $(OCAMLOPT) $(UNICODELIB_INCLUDES) -c $<
 ###
 
 ### Parsing and data generation for UnicodeData.txt
 $(d)/PermanentMap.cmo: $(d)/PermanentMap.ml
 	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q) ocamlfind ocamlc -package sqlite3 $(UNICODELIB_INCLUDES) -c $<
+	$(Q) $(OCAMLC) -package sqlite3 $(UNICODELIB_INCLUDES) -c $<
 
 $(d)/PermanentMap.cmx: $(d)/PermanentMap.ml
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q) ocamlfind ocamlopt -package sqlite3 $(UNICODELIB_INCLUDES) -c $<
+	$(Q) $(OCAMLOPT) -package sqlite3 $(UNICODELIB_INCLUDES) -c $<
 
 $(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml
 	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q) ocamlfind ocamlopt -package decap -pp pa_ocaml $(COMPILER_INC) \
+	$(Q) $(OCAMLOPT) -package decap -pp pa_ocaml $(COMPILER_INC) \
 		$(UNICODELIB_INCLUDES) -c $<
 
 $(d)/pa_UnicodeData: $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q) ocamlfind ocamlopt -linkpkg -package sqlite3,decap $(COMPILER_INC)\
+	$(Q) $(OCAMLOPT) -linkpkg -package sqlite3,decap $(COMPILER_INC)\
 		$(UNICODELIB_INCLUDES) -o $@ $(COMPILER_LIBO) $^
 
 UNICODE_DATA_TXT := $(d)/data/UnicodeData.txt

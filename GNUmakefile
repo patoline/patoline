@@ -150,9 +150,9 @@ EDITORS_DIR := editors
 # and ignore duplicate definition due to previous installation
 OCAMLPATH_SAVE := $(OCAMLPATH)
 OCAMLPATH = $(SRC_DIR):$(OCAMLPATH_SAVE)
-OCAMLFIND_IGNORE_DUPS_IN=$(dir $(INSTALL_TYPOGRAPHY_DIR))
-export OCAMLPATH 
-export OCAMLFIND_IGNORE_DUPS_IN
+#OCAMLFIND_IGNORE_DUPS_IN=$(dir $(INSTALL_TYPOGRAPHY_DIR))
+export OCAMLPATH
+#export OCAMLFIND_IGNORE_DUPS_IN
 
 OCAMLVERSION=$(shell $(OCAMLC) -version)
 
@@ -200,11 +200,11 @@ distclean: clean
 	rm -f $(DISTCLEAN)
 	rm -f configure configure.cmi configure.cmx configure.o
 
-ifneq "$(wildcard ./configure)" "" 
+ifneq "$(wildcard ./configure)" ""
 ifneq "$(wildcard src/Makefile.config)" ""
 # Visit subdirectories if configure is ok (otherwise ocamldep is run too soon)
   MODULES := src Hyphenation editors Fonts Accessoires
-  d := 
+  d :=
   $(foreach mod,$(MODULES),$(eval include $$(mod)/Rules.mk))
 endif
 endif
