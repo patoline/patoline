@@ -102,7 +102,7 @@ let integer64 =
 
 let fraction =
   parser
-  | n:integer64 d:{'/' d:integer}??[1]
+  | n:integer64 d:{'/' d:integer}?[1]
  
 let category =
   parser
@@ -148,15 +148,15 @@ let single =
     c_cl:combining_class ';'
     bid_map:bidirectional_mapping ';'
     dec:decomposition ';'
-    decimal:integer?? ';'
-    digit:integer?? ';'
-    numeric:fraction?? ';'
+    decimal:integer? ';'
+    digit:integer? ';'
+    numeric:fraction? ';'
     mirrored:mirrored ';'
     oldName:old_name ';'
     comments:''[^;\n]*'' ';'
-    uppercase:code?? ';'
-    lowercase:code?? ';' 
-    titlecase:code?? '\n' ->
+    uppercase:code? ';'
+    lowercase:code? ';' 
+    titlecase:code? '\n' ->
       let desc =
         { code                  = code
         ; name                  = name
@@ -184,30 +184,30 @@ let range =
     c_cl:combining_class ';'
     bid_map:bidirectional_mapping ';'
     dec:decomposition ';'
-    decimal:integer?? ';'
-    digit:integer?? ';'
-    numeric:fraction?? ';'
+    decimal:integer? ';'
+    digit:integer? ';'
+    numeric:fraction? ';'
     mirrored:mirrored ';'
     oldName:old_name ';'
     comments:''[^;\n]*'' ';'
-    uppercase:code?? ';'
-    lowercase:code?? ';' 
-    titlecase:code?? '\n'
+    uppercase:code? ';'
+    lowercase:code? ';' 
+    titlecase:code? '\n'
     lastcode:code ';'
     '<' _:name+ ", Last>" ';'
     _:category ';'    
     _:combining_class ';'
     _:bidirectional_mapping ';'
     _:decomposition ';'
-    _:integer?? ';'
-    _:integer?? ';'
-    _:fraction?? ';'
+    _:integer? ';'
+    _:integer? ';'
+    _:fraction? ';'
     _:mirrored ';'
     _:old_name ';'
     _:''[^;\n]*'' ';'
-    _:code?? ';'
-    _:code?? ';' 
-    _:code?? '\n' ->
+    _:code? ';'
+    _:code? ';' 
+    _:code? '\n' ->
       let build_desc c =
         if c < firstcode || c > lastcode then assert false;
         { code                  = c

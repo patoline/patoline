@@ -21,16 +21,10 @@ let blank str pos =
   in fn `Ini (str, pos) (str, pos)
 
 (* Parser for hexadecimal integers *)
-let ex_int_re = ''0x[0-9a-fA-F]+''
-
-let ex_int =
-  parser i:RE(ex_int_re) -> int_of_string i
+let ex_int = parser i:''0x[0-9a-fA-F]+'' -> int_of_string i
 
 (* Single mapping parser *)
-let mapping =
-  change_layout (
-    parser i:ex_int _:''[ \t]*'' j:ex_int?[-1]
-  ) no_blank
+let mapping = parser i:ex_int - j:{_:''[ \t]*'' - j:ex_int}?[-1] _:''[ \t]*''
 
 let build_file _loc ms =
   let combine (i, j) e = <:expr<arr.($int:i$) <- $int:j$; $e$>> in

@@ -94,26 +94,26 @@ let any_not_closing =
 
 let comment_content =
   parser
-  | | _:patocomment
-  | | _:string_literal
-  | | _:any_not_closing
+  | _:patocomment
+  | _:string_literal
+  | _:any_not_closing
 
 let _ = set_grammar patocomment
   (change_layout (
     parser
       {"(*" -> Stack.push _loc cstack}
-      comment_content**
+      comment_content*
       {"*)" -> Stack.pop cstack}
   ) no_blank)
 
 let patocomments =
-  parser _:{patocomment}**
+  parser _:{patocomment}*
 
 let blank_grammar_sline =
-  parser _:''[ \t\r]''** _:{'\n' _:''[ \t\r]''**}??
+  parser _:''[ \t\r]''* _:{'\n' _:''[ \t\r]''*}?
 
 let blank_grammar_mline =
-  parser _:''[ \t\r]''** _:{'\n' _:''[ \t\r]''**}**
+  parser _:''[ \t\r]''* _:{'\n' _:''[ \t\r]''*}*
 
 let blank_sline = blank_grammar blank_grammar_sline no_blank
 let blank_mline = blank_grammar blank_grammar_mline no_blank
@@ -133,22 +133,22 @@ let freshUid () =
 
   let wrapped_caml_structure =
     parser
-    | | '(' l:structure ')' -> l
+    | '(' l:structure ')' -> l
 
   (* Parse a caml "expr" wrapped with parentheses *)
   let wrapped_caml_expr =
     parser
-    | | '(' e:(change_layout expression blank2) ')' -> e
+    | '(' e:(change_layout expression blank2) ')' -> e
 
   (* Parse a list of caml "expr" *)
   let wrapped_caml_list =
     parser
-    | | '[' l:{e:expression l:{ ';' e:expression }** ';'?? -> e::l}??[[]] ']' -> l
+    | '[' l:{e:expression l:{ ';' e:expression }* ';'? -> e::l}?[[]] ']' -> l
 
   (* Parse an array of caml "expr" *)
   let wrapped_caml_array =
     parser
-    | | "[|" l:{e:expression l:{ ';' e:expression }** ';'?? -> e::l}??[[]] "|]" -> l
+    | "[|" l:{e:expression l:{ ';' e:expression }* ';'? -> e::l}?[[]] "|]" -> l
 
 (****************************************************************************
  * Words.                                                                   *
@@ -173,10 +173,10 @@ let freshUid () =
 
   let character =
     parser
-    | | c:RE(char_re) -> c
-    | | s:RE(escaped_re) ->
-        String.escaped (String.sub s 1 (String.length s - 1))
-    | | c:char_alone -> String.make 1 c
+    | c:RE(char_re) -> c
+    | s:RE(escaped_re) ->
+      String.escaped (String.sub s 1 (String.length s - 1))
+    | c:char_alone -> String.make 1 c
 
   let special = parser
       s:RE(special_re) -> s
@@ -184,13 +184,13 @@ let freshUid () =
   let word =
     change_layout (
         parser
-        | | cs:character++ ->
+        | cs:character+ ->
              let w = String.concat "" cs in
              if String.length w >= 2 &&
                   List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<";">>";"$>";]
              then give_up (w ^ " is not a word");
              w
-        (* | | c:special -> c *)
+        (* | c:special -> c *)
       ) no_blank
 
   let rec rem_hyphen = function
@@ -215,7 +215,7 @@ let parser verbatim_environment =
   mode:{_:''[ \t]+'' mode_ident}?
   file:{_:''[ \t]+'' "\"" filename "\""}?
   _:''[ \t]*'' "\n" 
-  lines:{l:verbatim_line "\n"}++
+  lines:{l:verbatim_line "\n"}+
   ''^###'' ->
     if lines = [] then give_up "Empty verbatim environment.";
 

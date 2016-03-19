@@ -34,13 +34,13 @@ $(d)/cesure.cmxa: $(d)/hyphen.cmx $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[LINK]   $< -> $@"
 	$(Q)$(CESURE_OCAMLOPT) -package unicodelib -a -o $@ $<
 
-$(d)/cesure.cmx: $(d)/cesure.ml $(PA_OCAML_DIR)/decap.cmxa
+$(d)/cesure.cmx: $(d)/cesure.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(CESURE_OCAMLOPT) -pp pa_ocaml -package decap -c $<
 
-$(d)/cesure: $(PA_OCAML_DIR)/decap.cmxa $(UNICODE_DIR)/unicodelib.cmxa $(d)/hyphen.cmx $(d)/cesure.cmx
+$(d)/cesure: $(UNICODE_DIR)/unicodelib.cmxa $(d)/hyphen.cmx $(d)/cesure.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(CESURE_OCAMLOPT) $(INCLUDES) -o $@ -package unicodelib,decap unix.cmxa str.cmxa sqlite3.cmxa $^
+	$(Q)$(CESURE_OCAMLOPT) $(INCLUDES) -o $@ -package unicodelib,decap unix.cmxa str.cmxa sqlite3.cmxa decap.cmxa $^
 
 CLEAN += $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.a
 DISTCLEAN += $(d)/cesure.cma $(d)/cesure.cmxa $(d)/cesure
