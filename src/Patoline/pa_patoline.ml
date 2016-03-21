@@ -376,7 +376,7 @@ let verbatim_environment = change_layout verbatim_environment no_blank
             let lines = ls @ [l] in
             let lines = rem_hyphen lines in
             let txt = String.concat " " lines in
-            <:expr@_loc< ($lid:"verbatim"$) $string:txt$ >>
+            <:expr< ($lid:"verbatim"$) $string:txt$ >>
       ) no_blank
 
   let verbatim_macro = verbatim_generic "\\verb{" "{}" "}"
@@ -771,7 +771,9 @@ let print_math_deco_sym _loc elt ind =
 	  r:= <:record<Maths.subscript_left = $i$ >> @ !r
       | _ -> ());
 
+      (*
      <:expr< { (Maths.noad $print_math_symbol _loc elt$) with $(!r)$ } >>
+      *) assert false (* FIXME new parser, missing antiquotation *)
     end
 
 let print_math_deco _loc elt ind =
@@ -801,11 +803,13 @@ let print_math_deco _loc elt ind =
       (match ind.down_left with
        | Some i -> r:= <:record<Maths.subscript_left = $i$ >> @ !r
        | _ -> ());
+       (*
       <:expr<
         [Maths.Ordinary {
           (Maths.noad (fun env st -> Maths.draw [env] $elt$)) with $(!r)$
         }]
       >>
+      *) assert false (* FIXME new parser, missing antiquotation *)
     end
 
 let add_reserved sym_names =
@@ -1133,27 +1137,29 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 
   | sym:math_prefix_symbol ind:with_indices (m,mp):math_aux ->
      if mp > sym.prefix_prio then give_up "bad prefix priority";
-    (fun indices ->
-      let indices = merge_indices indices ind in
-	<:expr<[Maths.bin $int:sym.prefix_space$ (Maths.Normal(true,$print_math_deco_sym _loc_sym sym.prefix_value indices$,$bool:sym.prefix_no_space$)) [] $m no_ind$] >>), sym.prefix_prio
+     (fun indices ->
+       let indices = merge_indices indices ind in
+       let psp = sym.prefix_space in
+       let pnsp = sym.prefix_no_space in
+       let md = print_math_deco_sym _loc_sym sym.prefix_value indices in
+       <:expr<[Maths.bin $int:psp$ (Maths.Normal(true,$md$,$bool:pnsp$)) [] $m no_ind$]>>
+     ), sym.prefix_prio
 
   | sym:math_quantifier_symbol ind:with_indices d:math_declaration p:math_punctuation_symbol? (m,mp):math_aux ->
      if mp > Operator then give_up "bad prefix priority";
     (fun indices ->
       let indices = merge_indices indices ind in
-      let inter = match p with
-	  None -> <:expr<Maths.Invisible>>
-	| Some s ->
-	   let nsl = s.infix_no_left_space in
-	   let nsr = s.infix_no_right_space in
-                <:expr<
-                         Maths.Normal( $bool:nsl$,
-                           $print_math_deco_sym _loc_p s.infix_value no_ind$,
-                           $bool:nsr$) >>
+      let inter =
+        match p with
+        | None   -> <:expr<Maths.Invisible>>
+        | Some s ->
+            let nsl = s.infix_no_left_space in
+            let nsr = s.infix_no_right_space in
+            let md  = print_math_deco_sym _loc_p s.infix_value no_ind in
+            <:expr<Maths.Normal($bool:nsl$, $md$, $bool:nsr$)>>
       in
-	<:expr<[Maths.bin 3
-                    (Maths.Normal(true,$print_math_deco_sym _loc_sym sym.symbol_value indices$,true))
-                    []
+      let md = print_math_deco_sym _loc_sym sym.symbol_value indices in
+      <:expr<[Maths.bin 3 (Maths.Normal(true,$md$,true)) []
                     [Maths.bin 1 $inter$ $d$ $m no_ind$]]>>), Operator
 
   | op:math_operator ind:with_indices (m,mp):math_aux ->
@@ -1169,7 +1175,11 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
   | (m,mp):math_aux sym:math_postfix_symbol  ->
      if mp > sym.postfix_prio then give_up "bad post priority";
       (fun indices ->
-	<:expr<[Maths.bin $int:sym.postfix_space$ (Maths.Normal($bool:sym.postfix_no_space$,$print_math_deco_sym _loc_sym sym.postfix_value indices$,true)) $m no_ind$ []] >>), sym.postfix_prio
+        let psp = sym.postfix_space in
+        let nsp = sym.postfix_no_space in
+        let md  = print_math_deco_sym _loc_sym sym.postfix_value indices in
+        let m = m no_ind in
+        <:expr<[Maths.bin $int:psp$ (Maths.Normal($bool:nsp$,$md$,true)) $m$ []] >>), sym.postfix_prio
 
   | (l,lp):math_aux st:{s:math_infix_symbol i:with_indices -> (s,i)
 		      | s:(empty invisible_product) -> (s,no_ind) } (r,rp):math_aux ->
@@ -1188,34 +1198,30 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 	   let inter =
 
 	     if s.infix_value = Invisible then
-	       <:expr< Maths.Invisible >>
+	       <:expr<Maths.Invisible>>
 	     else
-	       <:expr<
-                         Maths.Normal( $bool:nsl$,
-                           $print_math_deco_sym _loc_st s.infix_value indices$,
-                           $bool:nsr$) >>
+         let v = print_math_deco_sym _loc_st s.infix_value indices in
+	       <:expr<Maths.Normal ($bool:nsl$, $v$, $bool:nsr$)>>
 	   in
-	   <:expr<[Maths.Binary { bin_priority= $int:sp$;
-                                bin_drawing = $inter$;
-                                bin_left= $l$;
-                                bin_right= $r$ } ] >>
+	   <:expr<[Maths.Binary { bin_priority= $int:sp$ ; in_drawing = $inter$
+                          ; bin_left = $l$ ; bin_right= $r$ }]>>
 	 end), s.infix_prio
 
 and math_atom =
   (* Les règles commençant avec un { forment un conflict avec les arguments
    des macros. Je pense que c'est l'origine de nos problèmes de complexité. *)
-  | '{' (m,_):math_aux '}' -> (m,AtomM)
-  | '{' s:any_symbol '}' ->
-      if s = Invisible then give_up "...";
-      (fun indices ->
-        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s indices$]>>
-      ), AtomM
+  | '{' (m,_):math_aux '}'                   -> (m,AtomM)
+  | '{' s:any_symbol '}' when s <> Invisible ->
+      let f indices =
+        let md = print_math_deco_sym _loc_s s indices in
+        <:expr<[Maths.Ordinary $md$]>>
+      in (f, AtomM)
 
   | l:math_left_delimiter (m,_):math_aux r:math_right_delimiter ->
      (fun indices ->
        let l = print_math_symbol _loc_l (MultiSym l.delimiter_values) in
        let r = print_math_symbol _loc_r (MultiSym r.delimiter_values) in
-       print_math_deco _loc <:expr<[Maths.Decoration (Maths.open_close $l$ $r$, $m no_ind$)]>> indices
+       print_math_deco _loc <:expr<[Maths.Decoration ((Maths.open_close $l$ $r$), $(m no_ind)$)]>> indices
      ),AtomM
 
   | name:''[a-zA-Z][a-zA-Z0-9]*'' ->
@@ -1347,7 +1353,7 @@ and math_punc_list =
     let inter =
       <:expr<
                          Maths.Normal( $bool:nsl$,
-                           $print_math_deco_sym _loc_s s.infix_value no_ind$,
+                           $(print_math_deco_sym _loc_s s.infix_value no_ind)$,
                            $bool:nsr$) >>
     in
     <:expr<[Maths.bin 3 $inter$ $l$ $r$]>>
@@ -1359,7 +1365,7 @@ and math_declaration =
     let nsr = s.infix_no_right_space in
     let inter =
       <:expr<Maths.Normal( $bool:nsl$,
-                           $print_math_deco_sym _loc_s s.infix_value ind$,
+                           $(print_math_deco_sym _loc_s s.infix_value ind)$,
                            $bool:nsr$) >>
     in
     <:expr<[Maths.bin 2 $inter$ $l$ $r$] >>
@@ -1400,8 +1406,10 @@ let parser math_toplevel =
   let parser macro_argument =
     | '{' l:(paragraph_basic_text TagSet.empty) '}' -> l
     | e:wrapped_caml_expr  -> e
+    (*
     | e:wrapped_caml_array -> <:expr<$array:e$>>
     | e:wrapped_caml_list  -> <:expr<$list:e$>>
+    *) (* FIXME new parser, missing antiquotation. *)
 
   let reserved_macro =
     [ "begin"; "end"; "item"; "verb"; "diagram" ]
@@ -1415,8 +1423,8 @@ let parser math_toplevel =
   let macro =
     parser
     | m:macro_name args:macro_argument* ->
-                        (let fn = fun acc r -> <:expr@_loc_args<$acc$ $r$>> in
-                         List.fold_left fn <:expr@_loc_m<$lid:m$>> args)
+                        (let fn = fun acc r -> <:expr<$acc$ $r$>> in
+                         List.fold_left fn <:expr<$lid:m$>> args)
     | m:verbatim_macro -> m
 
     | "\\diagram" s:(change_layout wrapped_caml_structure blank2) ->
@@ -1437,45 +1445,45 @@ let parser math_toplevel =
     | m:macro -> m
 
     | "//" - p:(paragraph_basic_text (addTag Italic tags)) - "//" when allowed Italic tags ->
-         <:expr@_loc_p<toggleItalic $p$>>
+         <:expr<toggleItalic $p$>>
     | "**" - p:(paragraph_basic_text (addTag Bold tags)) - "**" when allowed Bold tags ->
-         <:expr@_loc_p<bold $p$>>
+         <:expr<bold $p$>>
     | "||" - p:(paragraph_basic_text (addTag SmallCap tags)) - "||" when allowed SmallCap tags ->
-         <:expr@_loc_p<sc $p$>>
+         <:expr<sc $p$>>
 (*    | "__" - p:(paragraph_basic_text (addTag Underline tags)) - "__" when allowed Underline tags ->
          <:expr@_loc_p<underline $p$>>
     | "--" - p:(paragraph_basic_text (addTag Strike tags)) - "--" when allowed Strike tags ->
       <:expr@_loc_p<strike $p$>>*)
 
-    | v:verbatim_bquote -> <:expr@_loc_v<$v$>>
-    | v:verbatim_sharp  -> <:expr@_loc_v<$v$>>
+    | v:verbatim_bquote -> <:expr<$v$>>
+    | v:verbatim_sharp  -> <:expr<$v$>>
 
     | '(' p:(paragraph_basic_text tags) ')' ->
-         <:expr@_loc_p<tT $string:"("$ :: $p$ @ [tT $string:")"$]>>
+         <:expr<tT $string:"("$ :: $p$ @ [tT $string:")"$]>>
 
     | '"' p:(paragraph_basic_text (addTag Quote tags)) '"' when allowed Quote tags ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
-         <:expr@_loc_p<tT($string:opening$) :: $p$ @ [tT($string:closing$)]>>)
+         <:expr<tT($string:opening$) :: $p$ @ [tT($string:closing$)]>>)
 
     | '$' m:math_toplevel '$' ->
-        <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
+        <:expr<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                           $m$)]>>
     | "[$" m:math_toplevel "$]" ->
-        <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
+        <:expr<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle $m$))]>>
 
-    | ws:word+ -> <:expr@_loc<[tT $string:String.concat " " ws$]>>
+    | ws:word+ -> <:expr<[tT $string:(String.concat " " ws)$]>>
 
 
   let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
     let x,y = Lexing.((end_pos _loc_p1).pos_cnum, (start_pos _loc_p2).pos_cnum) in
     (*Printf.fprintf stderr "x: %d, y: %d\n%!" x y;*)
-    let bl e = if y - x >= 1 then <:expr@_loc_p1<tT" "::$e$>> else e in
+    let bl e = if y - x >= 1 then <:expr<tT" "::$e$>> else e in
     let _loc = merge2 _loc_p1 _loc_p2 in
-    <:expr@_loc<$p1$ @ $(bl p2)$>>
+    <:expr<$p1$ @ $(bl p2)$>>
 
   let _ = set_paragraph_basic_text (fun tags ->
              parser
@@ -1495,11 +1503,11 @@ let parser math_toplevel =
       p:(paragraph_basic_text TagSet.empty) ->
         (fun indented ->
          if indented then
-           <:structure@_loc_p<
+           <:structure<
              let _ = newPar D.structure
                             Complete.normal Patoline_Format.parameters $p$ >>
          else
-           <:structure@_loc_p<
+           <:structure<
              let _ = newPar D.structure
                             ~environment:(fun x -> { x with par_indent = [] })
                             Complete.normal Patoline_Format.parameters $p$>>
@@ -1521,6 +1529,7 @@ let parser math_toplevel =
     | "\\Title" t:macro_argument -> (fun _ ->
          let m1 = freshUid () in
          let m2 = freshUid () in
+         (*
          <:structure<
            module $uid:m1$ =
              struct
@@ -1530,29 +1539,36 @@ let parser math_toplevel =
            let _ = $uid:m2$.do_begin_env () ;;
            let _ = $uid:m2$.do_end_env () ;;
          >>)
+         *) assert false) (* FIXME missing antiquotation *)
 
     | "\\Include" '{' id:capitalized_ident '}' -> (fun _ ->
          incr nb_includes;
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
+         (*
          <:structure< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output)(D)
                       open $uid:temp_id$>>)
+         *) assert false) (* FIXME missing antiquotation *)
     | "\\TableOfContents" -> (fun _ ->
          let m = freshUid () in
+         (*
          <:structure<
            module $uid:m$ = TableOfContents ;;
            let _ = $uid:m$.do_begin_env () ;;
            let _ = $uid:m$.do_end_env () ;;
          >>)
+         *) assert false) (* FIXME missing antiquotation *)
     | "\\item" -> (fun _ ->
          let m1 = freshUid () in
          let m2 = freshUid () in
          let _Item = "Item" in
+         (*
          <:structure< module $uid:m1$ =
                      struct
                        module $uid:m2$ = $uid : _Item$ ;;
                        let _ = $uid:m2$.do_begin_env () ;;
                        let _ = $uid:m2$.do_end_env ()
                      end>>)
+         *) assert false) (* FIXME missing antiquotation *)
     | "\\begin{" idb:lid '}' args:macro_argument*
        ps:(change_layout paragraphs blank2)
        "\\end{" ide:lid '}' ->
@@ -1569,21 +1585,26 @@ let parser math_toplevel =
                let args = List.mapi gen args in
                let combine acc e = <:structure<$acc$ ;; $e$ ;;>> in
                let args = List.fold_left combine <:structure<>> args in
+               (*
                <:structure<
                  module $uid:("Arg_"^m2)$ =
                    struct
                      $args$ ;;
                    end
                >>
+               *) assert false (* FIXME missing antiquotation *)
            in
            let def =
              let name = "Env_" ^ idb in
              let argname = "Arg_" ^ m2 in
+             (*
              if args = [] then
                <:structure<module $uid:m2$ = $uid:name$ ;;>>
              else
                <:structure<module $uid:m2$ = $uid:name$($uid:argname$) ;;>>
+             *) assert false (* FIXME missing antiquotation *)
            in
+           (*
            <:structure< module $uid:m1$ =
                        struct
                          $arg$ ;;
@@ -1593,6 +1614,7 @@ let parser math_toplevel =
                          $(ps indent_first)$ ;;
                          let _ = $uid:m2$ . do_end_env ()
                         end>>)
+             *) assert false) (* FIXME missing antiquotation *)
     | "$$" m:math_toplevel "$$" ->
          (fun _ ->
            <:structure<let _ = newPar D.structure
@@ -1634,8 +1656,8 @@ let parser math_toplevel =
       op:RE(op_section) title:text_only txt:text cl:RE(cl_section) ->
         (fun _ lvl ->
          let numbered = match op.[0], cl.[0] with
-             '=', '=' -> <:expr@_loc_op<newStruct>>
-           | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
+             '=', '=' -> <:expr<newStruct>>
+           | '-', '-' -> <:expr<newStruct ~numbered:false>>
            | _ -> give_up "Non-matching relative section markers"
          in
          true, lvl, <:structure< let _ = $numbered$ D.structure $title$;;
@@ -1647,15 +1669,15 @@ let parser math_toplevel =
          if String.length op <> String.length cl then
 	   give_up "Non-matching absolute section marker";
          let numbered = match op.[0], cl.[0] with
-             '=', '=' -> <:expr@_loc_op<newStruct>>
-           | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
+             '=', '=' -> <:expr<newStruct>>
+           | '-', '-' -> <:expr<newStruct ~numbered:false>>
            | _ -> give_up "Non-mathing section marker"
          in
          let l = String.length op - 1 in
          if l > lvl + 1 then failwith "Illegal level skip";
          let res = ref [] in
          for i = 0 to lvl - l do
-           res := !res @ <:structure@_loc_op<let _ = go_up D.structure>>
+           res := !res @ <:structure<let _ = go_up D.structure>>
          done;
          true, lvl, <:structure< $!res$ let _ = ($numbered$) D.structure $title$;;
                      $(txt false l)$>>)
@@ -1704,25 +1726,26 @@ let title =
 
       let date =
         match date with
-        | None   -> <:expr@_loc_date<[]>>
-        | Some t -> <:expr@_loc_date<["Date", string_of_contents $t$]>>
+        | None   -> <:expr<[]>>
+        | Some t -> <:expr<["Date", string_of_contents $t$]>>
       in
       let inst =
         match inst with
-        | None   -> <:expr@_loc_inst<[]>>
-        | Some t -> <:expr@_loc_inst<["Institute", string_of_contents $t$]>>
+        | None   -> <:expr<[]>>
+        | Some t -> <:expr<["Institute", string_of_contents $t$]>>
       in
       let auth =
         match auth with
-        | None   -> <:expr@_loc_auth<[]>>
-        | Some t -> <:expr@_loc_auth<["Author", string_of_contents $t$]>>
+        | None   -> <:expr<[]>>
+        | Some t -> <:expr<["Author", string_of_contents $t$]>>
       in
-      <:structure@_loc<
+      <:structure<
         let _ = Patoline_Format.title D.structure
                   ~extra_tags:($auth$ @ $inst$ @ $date$) $title$
       >>
 
 let wrap basename _loc ast =
+  (*
   <:structure<
     open Typography
     open Util
@@ -1750,6 +1773,7 @@ let wrap basename _loc ast =
     let _ = $lid:("cache_"^basename)$  := $array:(List.rev !cache_buf)$;;
     let _ = $lid:("mcache_"^basename)$ := $array:(List.rev !mcache_buf)$;;
   >>
+  *) assert false (* FIXME missing antiquotation *)
 
 let init =
   parser EMPTY -> (fun () ->
