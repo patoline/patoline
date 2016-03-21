@@ -90,12 +90,12 @@ let any_not_closing =
                 else
                   ((), str', pos')
     | _      -> ((), str', pos')
-  ) Charset.full_charset None "ANY"
+  ) Charset.full_charset false "ANY"
 
 let comment_content =
   parser
   | _:patocomment
-  | _:string_literal
+  | _:string_litteral
   | _:any_not_closing
 
 let _ = set_grammar patocomment
@@ -168,7 +168,7 @@ let freshUid () =
          else c, str', pos'
        else
          give_up "") (* FIXME *)
-      (List.fold_left Charset.add Charset.empty_charset non_special) None
+      (List.fold_left Charset.add Charset.empty_charset non_special) false
       (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
 
   let character =
