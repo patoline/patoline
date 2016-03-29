@@ -214,7 +214,7 @@ let parser verbatim_environment =
   ''^###''
   mode:{_:''[ \t]+'' mode_ident}?
   file:{_:''[ \t]+'' "\"" filename "\""}?
-  _:''[ \t]*'' "\n" 
+  _:''[ \t]*'' "\n"
   lines:{l:verbatim_line "\n"}+
   ''^###'' ->
     if lines = [] then give_up "Empty verbatim environment.";
@@ -376,7 +376,8 @@ let verbatim_environment = change_layout verbatim_environment no_blank
             let lines = ls @ [l] in
             let lines = rem_hyphen lines in
             let txt = String.concat " " lines in
-            <:expr< ($lid:"verbatim"$) $string:txt$ >>
+            <:expr< ($lid:"verbatim"$)
+                     $string:txt$ >>
       ) no_blank
 
   let verbatim_macro = verbatim_generic "\\verb{" "{}" "}"
@@ -746,7 +747,7 @@ let print_math_symbol _loc sym=
 
 let print_math_deco_sym _loc elt ind =
   if ind = no_ind then (
-    <:expr< Maths.noad $print_math_symbol _loc elt$ >>
+    <:expr< Maths.noad $(print_math_symbol _loc elt)$ >>
   ) else
     begin
       let r = ref [] in
@@ -844,12 +845,12 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
-    let sym = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc infix_value$)]>> in
+    let sym = <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc infix_value)$)]>> in
     let showuname u =
       sym (* TODO *)
     in
     let showmname m =
-      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (SimpleSym m)$)]>>
+      <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc (SimpleSym m))$)]>>
     in
     let unames = List.map showuname infix_utf8_names in
     let mnames = List.map showmname infix_macro_names in
@@ -873,10 +874,10 @@ let new_symbol _loc sym_names symbol_value =
   local_state.atom_symbols <- List.fold_left insert local_state.atom_symbols sym_names;
   (* Displaying no the document. *)
   if state.verbose then
-    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
+    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc symbol_value)$)]>> in
     let sym s =
       let s = <:expr<Maths.glyphs $string:s$>> in
-      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+      <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc (CamlSym s))$)]>>
     in
     let names = List.map sym symbol_macro_names @ List.map (fun _ -> sym_val) symbol_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
@@ -891,10 +892,10 @@ let new_accent_symbol _loc sym_names symbol_value =
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
-    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
+    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc symbol_value)$)]>> in
     let sym s =
       let s = <:expr<Maths.glyphs $string:s$>> in
-      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+      <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc (CamlSym s))$)]>>
     in
     let names = List.map sym symbol_macro_names @ List.map (fun _ -> sym_val) symbol_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
@@ -909,10 +910,10 @@ let new_prefix_symbol _loc sym_names prefix_value =
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
-    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc prefix_value$)]>> in
+    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc prefix_value)$)]>> in
     let sym s =
       let s = <:expr<Maths.glyphs $string:s$>> in
-      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+      <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc (CamlSym s))$)]>>
     in
     let names = List.map sym prefix_macro_names @ List.map (fun _ -> sym_val) prefix_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
@@ -927,10 +928,10 @@ let new_postfix_symbol _loc sym_names postfix_value =
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
-    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc postfix_value$)]>> in
+    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc postfix_value)$)]>> in
     let sym s =
       let s = <:expr<Maths.glyphs $string:s$>> in
-      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+      <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc (CamlSym s))$)]>>
     in
     let names = List.map sym postfix_macro_names @ List.map (fun _ -> sym_val) postfix_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
@@ -945,10 +946,10 @@ let new_quantifier_symbol _loc sym_names symbol_value =
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
-    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
+    let sym_val = <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc symbol_value)$)]>> in
     let sym s =
       let s = <:expr<Maths.glyphs $string:s$>> in
-      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+      <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc (CamlSym s))$)]>>
     in
     let names = List.map sym symbol_macro_names @ List.map (fun _ -> sym_val) symbol_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
@@ -973,7 +974,7 @@ let new_left_delimiter _loc sym_names delimiter_values =
     in
     let sym s =
       let s = <:expr<Maths.glyphs $string:s$>> in
-      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+      <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc (CamlSym s))$)]>>
     in
     let names = List.map sym delimiter_macro_names @ List.map (fun _ -> sym_val) delimiter_utf8_names in
     symbol_paragraph _loc syms (math_list _loc names)
@@ -998,7 +999,7 @@ let new_right_delimiter _loc sym_names delimiter_values =
     in
     let sym s =
       let s = <:expr<Maths.glyphs $string:s$>> in
-      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+      <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc (CamlSym s))$)]>>
     in
     let names = List.map sym delimiter_macro_names @ List.map (fun _ -> sym_val) delimiter_utf8_names in
     symbol_paragraph _loc syms (math_list _loc names)
@@ -1024,7 +1025,7 @@ let new_operator_symbol _loc operator_kind sym_names operator_values =
     in
     let sym s =
       let s = <:expr<Maths.glyphs $string:s$>> in
-      <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc (CamlSym s)$)]>>
+      <:expr<[Maths.Ordinary (Maths.noad $(print_math_symbol _loc (CamlSym s))$)]>>
     in
     let names = List.map sym operator_macro_names @ List.map (fun _ -> sym_val) operator_utf8_names in
     symbol_paragraph _loc syms (math_list _loc names)
@@ -1142,7 +1143,7 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
        let psp = sym.prefix_space in
        let pnsp = sym.prefix_no_space in
        let md = print_math_deco_sym _loc_sym sym.prefix_value indices in
-       <:expr<[Maths.bin $int:psp$ (Maths.Normal(true,$md$,$bool:pnsp$)) [] $m no_ind$]>>
+       <:expr<[Maths.bin $int:psp$ (Maths.Normal(true,$md$,$bool:pnsp$)) [] $(m no_ind)$]>>
      ), sym.prefix_prio
 
   | sym:math_quantifier_symbol ind:with_indices d:math_declaration p:math_punctuation_symbol? (m,mp):math_aux ->
@@ -1160,7 +1161,7 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
       in
       let md = print_math_deco_sym _loc_sym sym.symbol_value indices in
       <:expr<[Maths.bin 3 (Maths.Normal(true,$md$,true)) []
-                    [Maths.bin 1 $inter$ $d$ $m no_ind$]]>>), Operator
+                    [Maths.bin 1 $inter$ $d$ $(m no_ind)$]]>>), Operator
 
   | op:math_operator ind:with_indices (m,mp):math_aux ->
      if mp > op.operator_prio then give_up "bad operator priority";
@@ -1168,9 +1169,9 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
        let ind = merge_indices indices ind in
       match op.operator_kind with
 	Limits ->
-	  <:expr<[Maths.op_limits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>
+	  <:expr<[Maths.op_limits [] $(print_math_deco_sym _loc_op (MultiSym op.operator_values) ind)$ $(m no_ind)$]>>
       | NoLimits ->
-	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>), op.operator_prio
+	 <:expr<[Maths.op_nolimits [] $(print_math_deco_sym _loc_op (MultiSym op.operator_values) ind)$ $(m no_ind)$]>>), op.operator_prio
 
   | (m,mp):math_aux sym:math_postfix_symbol  ->
      if mp > sym.postfix_prio then give_up "bad post priority";
@@ -1228,17 +1229,17 @@ and math_atom =
      (fun indices ->
        if String.length name > 1 then
 	 let elt = <:expr<fun env -> Maths.glyphs $string:name$ (Maths.change_fonts env env.font)>> in
-	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (CamlSym elt) indices$] >>
+	 <:expr<[Maths.Ordinary $(print_math_deco_sym _loc_name (CamlSym elt) indices)$] >>
        else
-	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (SimpleSym name) indices$] >>), AtomM
+	 <:expr<[Maths.Ordinary $(print_math_deco_sym _loc_name (SimpleSym name) indices)$] >>), AtomM
 
   | sym:math_atom_symbol ->
       (fun indices ->
-	<:expr<[Maths.Ordinary $print_math_deco_sym _loc_sym sym.symbol_value indices$] >>), AtomM
+	<:expr<[Maths.Ordinary $(print_math_deco_sym _loc_sym sym.symbol_value indices)$] >>), AtomM
 
   | num:''[0-9]+\([.][0-9]+\)?'' ->
      (fun indices ->
-       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>), AtomM
+       <:expr<[Maths.Ordinary $(print_math_deco_sym _loc_num (SimpleSym num) indices)$] >>), AtomM
 
   | '\\' - id:mathlid - args:(change_layout math_macro_arguments no_blank)?[[]]
      ''[ \t\n\r]*'' ->
@@ -1256,10 +1257,10 @@ and math_atom =
 
   | (m,mp):math_atom sym:math_combining_symbol  ->
     if mp > AtomM then give_up "bad post priority";
-    (fun indices -> <:expr<$lid:sym$ $m indices$>>),Accent
+    (fun indices -> <:expr<$lid:sym$ $(m indices)$>>),Accent
 
   | (m,mp):math_atom s:Subsup.subscript ->
-    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+    let s = <:expr<[Maths.Ordinary $(print_math_deco_sym _loc_s (SimpleSym s) no_ind)$] >> in
     let rd indices =
       if indices.down_right <> None then give_up "double indices";
       { indices with down_right = Some s }
@@ -1267,7 +1268,7 @@ and math_atom =
     (fun indices -> m (rd indices)), Ind
 
   | (m,mp):math_atom s:Subsup.superscript ->
-    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+    let s = <:expr<[Maths.Ordinary $(print_math_deco_sym _loc_s (SimpleSym s) no_ind)$] >> in
     let rd indices =
       if indices.up_right <> None then give_up "double indices";
       { indices with up_right = Some s }
@@ -1275,7 +1276,7 @@ and math_atom =
     (fun indices -> m (rd indices)), Ind
 
   | (m,mp):math_atom s:math_accent_symbol ->
-    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s.symbol_value no_ind$] >> in
+    let s = <:expr<[Maths.Ordinary $(print_math_deco_sym _loc_s s.symbol_value no_ind)$] >> in
     let rd indices =
       if indices.up_right <> None then give_up "double indices";
       { indices with up_right = Some s; up_right_same_script = true }
@@ -1320,12 +1321,12 @@ and with_indices =
      end
 
   | i:with_indices s:Subsup.superscript ->
-      let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+      let s = <:expr<[Maths.Ordinary $(print_math_deco_sym _loc_s (SimpleSym s) no_ind)$] >> in
       if i.up_right <> None then give_up "double indices";
       { i with up_right = Some s }
 
   | i:with_indices s:Subsup.subscript ->
-      let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+      let s = <:expr<[Maths.Ordinary $(print_math_deco_sym _loc_s (SimpleSym s) no_ind)$] >> in
       if i.down_right <> None then give_up "double indices";
       { i with down_right = Some s }
 
@@ -1375,7 +1376,7 @@ let parser math_toplevel =
   | (m,_):math_aux -> m no_ind
   | s:any_symbol i:with_indices ->
       if s = Invisible then give_up "...";
-      <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s i$]>>
+      <:expr<[Maths.Ordinary $(print_math_deco_sym _loc_s s i)$]>>
 
 
 
@@ -1787,17 +1788,16 @@ let init =
 
 let full_text =
   parser
-  | h:header basename:init ->>
-    let basename = basename () in
-    tx1:text t:title? tx2:text EOF ->
-      begin
-        let t = match t with
-                | None   -> <:structure<>>
-                | Some t -> t
-        in
-        let ast = <:structure<$t$;; $tx1$;; $tx2$>> in
-        wrap basename _loc ast
-      end
+  | h:header basename:init tx1:text t:title? tx2:text EOF ->
+     let basename = basename () in (* FIXME: to checks was a dependent rule *)
+     begin
+       let t = match t with
+         | None   -> <:structure<>>
+         | Some t -> t
+       in
+       let ast = <:structure<$t$;; $tx1$;; $tx2$>> in
+       wrap basename _loc ast
+     end
 
 (* Extension of Ocaml's grammar *********************************************)
 
