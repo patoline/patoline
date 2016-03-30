@@ -638,7 +638,7 @@ let tree_to_grammar : ?filter:('a -> bool) -> 'a PMap.tree -> 'a grammar = fun ?
     let f acc (c,_) = Charset.add acc c in
     List.fold_left f Charset.empty_charset l
   in
-  black_box fn charset None "symbol"
+  black_box fn charset false "symbol"
 
 let build_grammar () =
   set_grammar math_infix_symbol (tree_to_grammar state.infix_symbols);
@@ -1211,8 +1211,9 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 and math_atom =
   (* Les règles commençant avec un { forment un conflict avec les arguments
    des macros. Je pense que c'est l'origine de nos problèmes de complexité. *)
-  | '{' (m,_):math_aux '}'                   -> (m,AtomM)
-  | '{' s:any_symbol '}' when s <> Invisible ->
+  | '{' (m,_):math_aux '}' -> (m,AtomM)
+  | '{' s:any_symbol '}'   ->
+      if s = Invisible then give_up "";
       let f indices =
         let md = print_math_deco_sym _loc_s s indices in
         <:expr<[Maths.Ordinary $md$]>>

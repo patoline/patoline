@@ -39,7 +39,7 @@ $(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTI
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) \
 		-package patutil,imagelib,dynlink,str,decap \
-		-I $(PA_OCAML_DIR) -I $(PATOLINE_DIR) $(COMPILER_INC) -o $@ \
+		-I $(PATOLINE_DIR) $(COMPILER_INC) -o $@ \
 		bigarray.cmxa unicodelib.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa str.cmxa \
 		$(COMPILER_LIBO) decap.cmxa decap_ocaml.cmxa Config2.cmx Subsup.cmx prefixTree.cmx $<
 
@@ -49,7 +49,7 @@ $(d)/prefixTree.cmx: $(d)/prefixTree.ml
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLDEP) -pp pa_ocaml -I $(<D) -I $(PA_OCAML_DIR) -I $(UTIL_DIR) -package patutil,decap $< > $@
+	$(Q)$(OCAMLDEP) -pp pa_ocaml -I $(<D) -I $(UTIL_DIR) -package patutil,decap $< > $@
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(d)/Subsup.cmx $(d)/prefixTree.cmx
 	$(ECHO) "[OPT]    $< -> $@"
@@ -57,7 +57,7 @@ $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(d)/Subsup.cmx $(d)/prefixTree.cmx
 
 $(d)/Subsup.ml.depends: $(d)/Subsup.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLDEP) -pp pa_ocaml -I $(<D) -I $(PA_OCAML_DIR) -I $(UTIL_DIR) -package decap $< > $@
+	$(Q)$(OCAMLDEP) -pp pa_ocaml -I $(<D) -I $(UTIL_DIR) -package decap $< > $@
 
 $(d)/Subsup.cmx: $(d)/Subsup.ml
 	$(ECHO) "[OPT]    $< -> $@"
