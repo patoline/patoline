@@ -247,7 +247,7 @@ let parser verbatim_environment =
       | None -> <:expr<None>>
       | Some f -> <:expr<Some $string:f$>>
     in
-    <:structure<
+    <:struct<
       let _ = $lid:mode$ $file$ $lines$
     >>
 
@@ -359,7 +359,7 @@ let verbatim_environment = change_layout verbatim_environment no_blank
                       | Some name ->
                          <:expr<verb_counter $string:("verb_file_"^name)$ @ line >>
                     in
-                    <:structure<let _ =
+                    <:struct<let _ =
                      List.iter (fun line ->
                        newPar D.structure ~environment:verbEnv Complete.normal ragged_left $line_with_num$) ($lang$ $list:lines$)>>)
                   ) no_blank
@@ -672,7 +672,7 @@ let before_parse_hook () =
   build_grammar ()
 
 let symbol_paragraph _loc syms names =
-  <:structure<
+  <:struct<
     let _ = newPar D.structure
       ~environment:(fun x -> {x with par_indent = []})
 
@@ -681,7 +681,7 @@ let symbol_paragraph _loc syms names =
         [ { env0 with mathStyle = Mathematical.Display } ] [
         Maths.bin 0 (Maths.Normal(false,Maths.noad (Maths.glyphs "⇐"),false))
         $syms$ $names$
-      ])];;
+      ])]
   >>
 
 let math_list _loc l =
@@ -1436,7 +1436,7 @@ let parser math_toplevel =
               struct
                 module EnvDiagram = Env_Diagram (struct let env = env end) ;;
                 open EnvDiagram ;;
-                $s$ ;;
+                $struct:s$ ;;
               end
              in [ Drawing (Res.EnvDiagram.make ()) ])]>>
 
@@ -1466,7 +1466,7 @@ let parser math_toplevel =
     | '"' p:(paragraph_basic_text (addTag Quote tags)) '"' when allowed Quote tags ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
-         <:expr<tT($string:opening$) :: $p$ @ [tT($string:closing$)]>>)
+         <:expr<tT $string:opening$ :: $p$ @ [tT $string:closing$]>>)
 
     | '$' m:math_toplevel '$' ->
         <:expr<[bB (fun env0 -> Maths.kdraw
@@ -1505,11 +1505,11 @@ let parser math_toplevel =
       p:(paragraph_basic_text TagSet.empty) ->
         (fun indented ->
          if indented then
-           <:structure<
+           <:struct<
              let _ = newPar D.structure
                             Complete.normal Patoline_Format.parameters $p$ >>
          else
-           <:structure<
+           <:struct<
              let _ = newPar D.structure
                             ~environment:(fun x -> { x with par_indent = [] })
                             Complete.normal Patoline_Format.parameters $p$>>
@@ -1531,46 +1531,38 @@ let parser math_toplevel =
     | "\\Title" t:macro_argument -> (fun _ ->
          let m1 = freshUid () in
          let m2 = freshUid () in
-         (*
-         <:structure<
+         <:struct<
            module $uid:m1$ =
              struct
                let arg1 = $t$
-             end ;;
-           module $uid:m2$ = Title($uid:m1$) ;;
-           let _ = $uid:m2$.do_begin_env () ;;
-           let _ = $uid:m2$.do_end_env () ;;
+             end
+           module $uid:m2$ = Title($uid:m1$)
+           let _ = $uid:m2$.do_begin_env ()
+           let _ = $uid:m2$.do_end_env ()
          >>)
-         *) assert false) (* FIXME missing antiquotation *)
 
-    | "\\Include" '{' id:capitalized_ident '}' -> (fun _ ->
+    | "\\Include" '{' id:uid '}' -> (fun _ ->
          incr nb_includes;
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
-         (*
-         <:structure< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output)(D)
-                      open $uid:temp_id$>>)
-         *) assert false) (* FIXME missing antiquotation *)
+         <:struct< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output)(D)
+                   open $uid:temp_id$>>)
     | "\\TableOfContents" -> (fun _ ->
          let m = freshUid () in
-         (*
-         <:structure<
-           module $uid:m$ = TableOfContents ;;
-           let _ = $uid:m$.do_begin_env () ;;
-           let _ = $uid:m$.do_end_env () ;;
+         <:struct<
+           module $uid:m$ = TableOfContents
+           let _ = $uid:m$.do_begin_env ()
+           let _ = $uid:m$.do_end_env ()
          >>)
-         *) assert false) (* FIXME missing antiquotation *)
     | "\\item" -> (fun _ ->
          let m1 = freshUid () in
          let m2 = freshUid () in
          let _Item = "Item" in
-         (*
-         <:structure< module $uid:m1$ =
+         <:struct< module $uid:m1$ =
                      struct
-                       module $uid:m2$ = $uid : _Item$ ;;
-                       let _ = $uid:m2$.do_begin_env () ;;
+                       module $uid:m2$ = $uid:_Item$
+                       let _ = $uid:m2$.do_begin_env ()
                        let _ = $uid:m2$.do_end_env ()
                      end>>)
-         *) assert false) (* FIXME missing antiquotation *)
     | "\\begin{" idb:lid '}' args:macro_argument*
        ps:(change_layout paragraphs blank2)
        "\\end{" ide:lid '}' ->
@@ -1579,52 +1571,46 @@ let parser math_toplevel =
            let m1 = freshUid () in
            let m2 = freshUid () in
            let arg =
-             if args = [] then <:structure<>> else
+             if args = [] then <:struct<>> else
                let gen i e =
                  let id = Printf.sprintf "arg%i" (i+1) in
-                 <:structure<let $lid:id$ = $e$ ;;>>
+                 <:struct<let $lid:id$ = $e$>>
                in
                let args = List.mapi gen args in
-               let combine acc e = <:structure<$acc$ ;; $e$ ;;>> in
-               let args = List.fold_left combine <:structure<>> args in
-               (*
-               <:structure<
-                 module $uid:("Arg_"^m2)$ =
+               let combine acc e = <:struct<$struct:acc$ $struct:e$>> in
+               let args = List.fold_left combine <:struct<>> args in
+               <:struct<
+                 module $uid:"Arg_"^m2$ =
                    struct
-                     $args$ ;;
+                     $struct:args$
                    end
                >>
-               *) assert false (* FIXME missing antiquotation *)
            in
            let def =
              let name = "Env_" ^ idb in
              let argname = "Arg_" ^ m2 in
-             (*
              if args = [] then
-               <:structure<module $uid:m2$ = $uid:name$ ;;>>
+               <:struct<module $uid:m2$ = $uid:name$>>
              else
-               <:structure<module $uid:m2$ = $uid:name$ $uid:argname$ ;;>>
-             *) assert false (* FIXME missing antiquotation *)
+               <:struct<module $uid:m2$ = $uid:name$($uid:argname$)>>
            in
-           (*
-           <:structure< module $uid:m1$ =
+           <:struct< module $uid:m1$ =
                        struct
-                         $arg$ ;;
-                         $def$ ;;
-                         open $uid:m2$ ;;
-                         let _ = $uid:m2$ . do_begin_env () ;;
-                         $ps indent_first$ ;;
+                         $struct:arg$
+                         $struct:def$
+                         open $uid:m2$
+                         let _ = $uid:m2$ . do_begin_env ()
+                         $struct:ps indent_first$
                          let _ = $uid:m2$ . do_end_env ()
                         end>>)
-             *) assert false) (* FIXME missing antiquotation *)
     | "$$" m:math_toplevel "$$" ->
          (fun _ ->
-           <:structure<let _ = newPar D.structure
+           <:struct<let _ = newPar D.structure
                         ~environment:(fun x -> {x with par_indent = []})
                         Complete.normal displayedFormula
                         [bB (fun env0 -> Maths.kdraw
                           [ { env0 with mathStyle = Mathematical.Display } ]
-                          $m$)];;>>)
+                          $m$)]>>)
     | l:paragraph_basic_text -> l
     | s:symbol_def -> fun _ -> s
 
@@ -1662,9 +1648,9 @@ let parser math_toplevel =
            | '-', '-' -> <:expr<newStruct ~numbered:false>>
            | _ -> give_up "Non-matching relative section markers"
          in
-         true, lvl, <:structure< let _ = $numbered$ D.structure $title$;;
-                     $txt false (lvl+1)$;;
-                     let _ = go_up D.structure >>)
+         true, lvl, <:struct< let _ = $numbered$ D.structure $title$
+                              $struct:txt false (lvl+1)$
+                              let _ = go_up D.structure >>)
 
     | op:RE(section) title:text_only cl:RE(section) txt:text ->
         (fun _ lvl ->
@@ -1679,10 +1665,11 @@ let parser math_toplevel =
          if l > lvl + 1 then failwith "Illegal level skip";
          let res = ref [] in
          for i = 0 to lvl - l do
-           res := !res @ <:structure<let _ = go_up D.structure>>
+           res := !res @ <:struct<let _ = go_up D.structure>>
          done;
-         true, lvl, <:structure< $!res$ let _ = ($numbered$) D.structure $title$;;
-                     $txt false l$>>)
+         true, lvl, <:struct< $struct:!res$
+                              let _ = ($numbered$) D.structure $title$
+                              $struct:txt false l$>>)
 
     | ps:paragraphs ->
          (fun indent lvl -> indent, lvl, ps indent)
@@ -1693,7 +1680,7 @@ let parser math_toplevel =
          (fun indent lvl ->
           let fn = fun (indent, lvl, ast) txt ->
             let indent, lvl, ast' = txt indent lvl in
-            indent, lvl, <:structure<$ast$;; $ast'$>>
+            indent, lvl, <:struct<$struct:ast$ $struct:ast'$>>
           in
           let _,_,r = List.fold_left fn (indent, lvl, []) l in
           r)
@@ -1709,8 +1696,8 @@ let parser math_toplevel =
 let patoline_config : unit grammar =
   change_layout (
     parser
-    | "#FORMAT " f:capitalized_ident -> set_patoline_driver f
-    | "#DRIVER " d:capitalized_ident -> set_patoline_driver d
+    | "#FORMAT " f:uid -> set_patoline_driver f
+    | "#DRIVER " d:uid -> set_patoline_driver d
     | "#PACKAGES " ps:''[,a-zA-Z]+'' ->
         add_patoline_packages ps
     | "#GRAMMAR " g:''[a-zA-Z]+''    -> add_patoline_grammar g
@@ -1741,14 +1728,14 @@ let title =
         | None   -> <:expr<[]>>
         | Some t -> <:expr<["Author", string_of_contents $t$]>>
       in
-      <:structure<
+      <:struct<
         let _ = Patoline_Format.title D.structure
                   ~extra_tags:($auth$ @ $inst$ @ $date$) $title$
       >>
 
 let wrap basename _loc ast =
   (*
-  <:structure<
+  <:struct<
     open Typography
     open Util
     open Typography.Box
@@ -1793,10 +1780,10 @@ let full_text =
      let basename = basename () in (* FIXME: to checks was a dependent rule *)
      begin
        let t = match t with
-         | None   -> <:structure<>>
+         | None   -> <:struct<>>
          | Some t -> t
        in
-       let ast = <:structure<$t$;; $tx1$;; $tx2$>> in
+       let ast = <:struct<$struct:t$ $struct:tx1$ $struct:tx2$>> in
        wrap basename _loc ast
      end
 
@@ -1804,23 +1791,20 @@ let full_text =
 
 let directive =
   parser
-  | '#' n:capitalized_ident a:capitalized_ident ->
+  | '#' n:uid a:uid ->
     ((match n with
        | "FORMAT"  -> patoline_format := a
        | "DRIVER"  -> patoline_driver := a
        | "PACKAGE" -> patoline_packages := a :: !patoline_packages
        | _ -> give_up ("Unknown directive #"^n));
-    <:structure<>>)
+    <:struct<>>)
 let extra_structure = directive :: extra_structure
 
-let patoline_quotations _ =
-    parser
-    | "<<" par:text_only     ">>" -> Atom, par
-    | "<$" mat:math_toplevel "$>" -> Atom, mat
-let _ = add_reserved_symb "<<"
-let _ = add_reserved_symb ">>"
-let _ = add_reserved_symb "<$"
-let _ = add_reserved_symb "$>"
+let parser patoline_quotations _ =
+  | "<<" par:text_only     ">>" -> par
+  | "<$" mat:math_toplevel "$>" -> mat
+
+let _ = List.iter Pa_lexing.add_reserved_symb ["<<"; ">>"; "<$"; "$>"]
 let extra_expressions = patoline_quotations :: extra_expressions
 
 (* Entry points and extension creation **************************************)
@@ -1831,7 +1815,7 @@ let _ =
   entry_points :=
     (".txp", Implementation (full_text, blank2)) ::
     (".typ", Implementation (full_text, blank2)) ::
-    (".mlp", Implementation (structure, blank)) ::
+    (".mlp", Implementation (structure, Pa_lexing.ocaml_blank)) ::
     !entry_points
 
 end (* of the functor *)
