@@ -775,10 +775,7 @@ let print_math_deco_sym _loc elt ind =
 	Some i ->
 	  r:= <:record<Maths.subscript_left = $i$ >> @ !r
       | _ -> ());
-
-      (*
-     <:expr< { (Maths.noad $print_math_symbol _loc elt$) with $(!r)$ } >>
-      *) assert false (* FIXME new parser, missing antiquotation *)
+      loc_exp _loc (Pexp_record (Some <:expr<Maths.noad $print_math_symbol _loc elt$>>, !r))
     end
 
 let print_math_deco _loc elt ind =
@@ -808,13 +805,7 @@ let print_math_deco _loc elt ind =
       (match ind.down_left with
        | Some i -> r:= <:record<Maths.subscript_left = $i$ >> @ !r
        | _ -> ());
-       (*
-      <:expr<
-        [Maths.Ordinary {
-          (Maths.noad (fun env st -> Maths.draw [env] $elt$)) with $(!r)$
-        }]
-      >>
-      *) assert false (* FIXME new parser, missing antiquotation *)
+      loc_exp _loc (Pexp_record (Some <:expr< Maths.noad (fun env st -> Maths.draw [env] $elt$)>>,!r))
     end
 
 let add_reserved sym_names =
@@ -1412,10 +1403,8 @@ let parser math_toplevel =
   let parser macro_argument =
     | '{' l:(paragraph_basic_text TagSet.empty) '}' -> l
     | e:wrapped_caml_expr  -> e
-    (*
     | e:wrapped_caml_array -> <:expr<$array:e$>>
     | e:wrapped_caml_list  -> <:expr<$list:e$>>
-    *) (* FIXME new parser, missing antiquotation. *)
 
   let reserved_macro =
     [ "begin"; "end"; "item"; "verb"; "diagram" ]
@@ -1738,7 +1727,6 @@ let title =
       >>
 
 let wrap basename _loc ast =
-  (*
   <:struct<
     open Typography
     open Util
@@ -1759,14 +1747,13 @@ let wrap basename _loc ast =
     module Patoline_Format = $uid:!patoline_format$ .Format(D)
     open $uid:!patoline_format$
     open Patoline_Format
-    let temp1 = List.map fst (snd !D.structure);;
+    let temp1 = List.map fst (snd !D.structure)
     $ast$
     let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
-    end;;
-    let _ = $lid:("cache_"^basename)$  := $array:(List.rev !cache_buf)$;;
-    let _ = $lid:("mcache_"^basename)$ := $array:(List.rev !mcache_buf)$;;
+    end
+    let _ = $lid:("cache_"^basename)$  := $array:(List.rev !cache_buf)$
+    let _ = $lid:("mcache_"^basename)$ := $array:(List.rev !mcache_buf)$
   >>
-  *) assert false (* FIXME missing antiquotation *)
 
 let init =
   parser EMPTY -> (fun () ->
