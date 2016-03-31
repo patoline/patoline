@@ -34,7 +34,9 @@ let add_patoline_grammar g =
 
 let no_default_grammar = ref false
 
-let spec =
+let in_ocamldep = ref false
+
+let extra_spec =
   [ ("--driver",  Arg.String set_patoline_driver,
      "The driver against which to compile.")
   ; ("--format",  Arg.String set_patoline_format,
@@ -45,9 +47,9 @@ let spec =
      "do not load DefaultGrammar")
   ; ("--grammar", Arg.String add_patoline_grammar,
      "load the given grammar file.")
+  ; ("--ocamldep", (Arg.Set in_ocamldep),
+    "set a flag to inform parser that we are computing dependencies")
   ]
-
-let _ = extend_cl_args spec
 
 #define LOCATE locate
 
@@ -58,6 +60,8 @@ let _ = extend_cl_args spec
  *)
 module Ext = functor(In:Extension) -> struct
 include In
+
+let spec = extra_spec @ spec
 
 (* Blank functions for Patoline *********************************************)
 
@@ -1484,7 +1488,7 @@ let parser math_toplevel =
     let x,y = Lexing.((end_pos _loc_p1).pos_cnum, (start_pos _loc_p2).pos_cnum) in
     (*Printf.fprintf stderr "x: %d, y: %d\n%!" x y;*)
     let bl e = if y - x >= 1 then <:expr<tT" "::$e$>> else e in
-    let _loc = merge2 _loc_p1 _loc_p2 in
+    let _loc = Pa_ast.merge2 _loc_p1 _loc_p2 in
     <:expr<$p1$ @ $bl p2$>>
 
   let _ = set_paragraph_basic_text (fun tags ->
@@ -1494,7 +1498,7 @@ let parser math_toplevel =
                  | []   -> assert false
                  | m::l ->
                     let fn = fun (_loc_m, m) (_loc_p, p) ->
-                      (merge2 _loc_p _loc_m
+                      (Pa_ast.merge2 _loc_p _loc_m
                       , concat_paragraph p _loc_p m _loc_m)
                     in snd (List.fold_left fn m l))
 
