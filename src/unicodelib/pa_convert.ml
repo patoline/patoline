@@ -58,7 +58,7 @@ let build_file _loc ms =
 let mappings =
   parser ms:mapping* "\x0A\x1A"? EOF -> build_file _loc ms
 
-let _ = entry_points := (".TXT", Implementation (mappings, blank)) :: !entry_points
+let entry_points = (".TXT", Implementation (mappings, blank)) :: entry_points
 
 end
 
