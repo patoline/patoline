@@ -775,7 +775,7 @@ let print_math_deco_sym _loc elt ind =
 	Some i ->
 	  r:= <:record<Maths.subscript_left = $i$ >> @ !r
       | _ -> ());
-      loc_exp _loc (Pexp_record (Some <:expr<Maths.noad $print_math_symbol _loc elt$>>, !r))
+      Pa_ast.loc_expr _loc (Parsetree.Pexp_record (!r, Some <:expr<Maths.noad $print_math_symbol _loc elt$>>))
     end
 
 let print_math_deco _loc elt ind =
@@ -805,7 +805,7 @@ let print_math_deco _loc elt ind =
       (match ind.down_left with
        | Some i -> r:= <:record<Maths.subscript_left = $i$ >> @ !r
        | _ -> ());
-      loc_exp _loc (Pexp_record (Some <:expr< Maths.noad (fun env st -> Maths.draw [env] $elt$)>>,!r))
+      Pa_ast.loc_expr _loc (Parsetree.Pexp_record (!r, Some <:expr< Maths.noad (fun env st -> Maths.draw [env] $elt$)>>))
     end
 
 let add_reserved sym_names =
@@ -1748,7 +1748,7 @@ let wrap basename _loc ast =
     open $uid:!patoline_format$
     open Patoline_Format
     let temp1 = List.map fst (snd !D.structure)
-    $ast$
+    $struct:ast$
     let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
     end
     let _ = $lid:("cache_"^basename)$  := $array:(List.rev !cache_buf)$
@@ -1767,12 +1767,11 @@ let init =
 
 let full_text =
   parser
-  | h:header basename:init tx1:text t:title? tx2:text EOF ->
-     let basename = basename () in (* FIXME: to checks was a dependent rule *)
+  | h:header basename:{basename:init -> basename ()} tx1:text t:title? tx2:text EOF ->
      begin
        let t = match t with
          | None   -> <:struct<>>
-         | Some t -> t
+         | Some t -> (t:'a list)
        in
        let ast = <:struct<$struct:t$ $struct:tx1$ $struct:tx2$>> in
        wrap basename _loc ast

@@ -31,7 +31,7 @@ let mapping = change_layout (
 let build_file _loc ms =
   let combine (i, j) e = <:expr<arr.($int:i$) <- $int:j$; $e$>> in
   let e = List.fold_right combine ms <:expr<arr>> in
-  <:structure<
+  <:struct<
     exception Undefined
 
     let conversion_array : int array =
