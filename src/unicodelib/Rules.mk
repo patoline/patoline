@@ -25,8 +25,8 @@ UNICODELIB_CMX:=$(UNICODELIB_ML:.ml=.cmx)
 UNICODELIB_CMI:=$(UNICODELIB_ML:.ml=.cmi)
 
 #pb with ocamldep: undetected deps inside quotation
-pa_convert.cmo: $(UNICODELIB_CMO) $(UNICODELIB_CMI)
-pa_convert.cmx: $(UNICODELIB_CMX) $(UNICODELIB_CMI)
+$(d)/pa_convert.cmo: $(UNICODELIB_CMO) $(UNICODELIB_CMI)
+$(d)/pa_convert.cmx: $(UNICODELIB_CMX) $(UNICODELIB_CMI)
 
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -51,7 +51,7 @@ ENCODING_O    := $(ENCODING_ML:.ml=.o)
 
 $(ENCODING_CMX): %.cmx: %.cmo
 
-PA_CONV:=$(d)/pa_convert --ascii
+PA_CONV:=$(d)/pa_convert
 
 $(PA_CONV): $(d)/pa_convert.ml
 	$(ECHO) "[OPT]    ... -> $@"
@@ -61,7 +61,7 @@ $(PA_CONV): $(d)/pa_convert.ml
 
 $(ENCODING_ML): %.ml: $(PA_CONV)
 	$(ECHO) "[PA_CNV] ... -> $@"
-	$(Q) $(PA_CONV) $(@D)/encoding_data/$(basename $(@F)).TXT > $@
+	$(Q) $(PA_CONV) --ascii $(@D)/encoding_data/$(basename $(@F)).TXT > $@
 
 $(ENCODING_CMO): %.cmo: %.ml
 	$(ECHO) "[OCAMLC] ... -> $@"

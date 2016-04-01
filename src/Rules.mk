@@ -61,6 +61,8 @@ CLEAN += $(d)/DefaultGrammar.tgx $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.tt
 	 $(d)/DefaultGrammar_.cmi $(d)/DefaultGrammar_.cmx $(d)/DefaultGrammar_.o \
 	 $(d)/DefaultGrammar_.dep $(d)/DefaultGrammar.tdep $(d)/quail.el
 
+CLEANR += $(d)/_patobuild
+
 # Installing
 install: install-grammars
 .PHONY: install-grammars

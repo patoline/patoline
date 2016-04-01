@@ -190,14 +190,18 @@ check:
 # extend it with the "+=" operator, along with $(d) on the right-hand
 # side.
 CLEAN :=
+CLEANR :=
 DISTCLEAN :=
+DISTCLEANR :=
 
 -include Rules.clean
 clean:
 	rm -f $(CLEAN)
+	rm -rf $(CLEANR)
 
 distclean: clean
 	rm -f $(DISTCLEAN)
+	rm -rf $(DISTCLEANR)
 	rm -f configure configure.cmi configure.cmx configure.o
 
 ifneq "$(wildcard ./configure)" ""
