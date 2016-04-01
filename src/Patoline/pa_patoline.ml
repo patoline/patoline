@@ -420,10 +420,10 @@ let verbatim_environment = change_layout verbatim_environment no_blank
  ****************************************************************************)
 
 type math_prio =
-  | AtomM | Accent | Ind | Fun | Prod
+  | AtomM | Accent | LInd | Ind | Fun | Prod
   | Sum | Operator | Rel | Neg | Conj | Impl | Punc
 
-let math_prios = [ AtomM ; Accent ; Ind ; Fun ; Prod ; Sum
+let math_prios = [ AtomM ; Accent ; LInd ; Ind ; Fun ; Prod ; Sum
 		 ; Operator ; Rel ; Neg ; Conj ; Impl ; Punc ]
 
 let next_prio = function
@@ -436,7 +436,8 @@ let next_prio = function
   | Sum -> Prod
   | Prod -> Fun
   | Fun -> Ind
-  | Ind -> Accent
+  | Ind -> LInd
+  | LInd -> Accent
   | Accent -> AtomM
   | AtomM -> assert false
 
@@ -1325,7 +1326,7 @@ let parser math_aux prio =
 	m { indices with up_right = Some (r no_ind) }
      )
 
-  | m:(math_aux Accent) - h:left_indices - r:(math_aux Ind) when prio = Ind ->
+  | m:(math_aux Accent) - h:left_indices - r:(math_aux LInd) when prio = Ind ->
      (fun indices -> match h with
      | Down ->
 	if indices.down_left <> None then give_up "double indices";
