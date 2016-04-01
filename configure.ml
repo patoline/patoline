@@ -18,235 +18,259 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+(* Initialization. *)
 let _ = Findlib.init ~env_ocamlpath:"src"
-let prefix=ref "/usr/local/"
-let bin_dir=ref ""
-let fonts_dir=ref ""
-let grammars_dir=ref ""
-let hyphen_dir=ref ""
-let ocaml_lib_dir=ref (Findlib.default_location())
-let ocaml_dlls_dir=ref (Filename.concat !ocaml_lib_dir "stublibs")
-let fonts_dirs=ref []
-let grammars_dirs=ref []
-let plugins_dir=ref ""
-let plugins_dirs=ref []
-let hyphen_dirs=ref []
-let driver_dir=ref ""
-let lang=ref "EN"
-let ban_comic_sans=ref false
-let pdf_type3_only=ref false
-let int32=ref (Sys.word_size=32)
+let configure_environment = Unix.environment ()
 
-let avail_lang=
-  let f=open_in "src/Typography/TypoLanguage.ml" in
-  let buf=String.create (in_channel_length f) in
-    really_input f buf 0 (in_channel_length f);
-    close_in f;
-    let rec make_str i res=
-      if i>String.length buf-7 then res else
-        make_str (i+1)
-          (if String.sub buf i 5="LANG_" then
-             String.sub buf (i+5) 2::res
-           else res)
-    in
-      make_str 0 []
+(* Command-line arguments management and default configuration. *)
+let prefix         = ref "/usr/local/"
+let bindir         = ref (Filename.concat !prefix "bin/")
+let fonts_dir      = ref (Filename.concat !prefix "share/patoline/fonts")
+let grammars_dir   = ref (Filename.concat !prefix "lib/patoline/grammars")
+let hyphen_dir     = ref (Filename.concat !prefix "share/patoline/hyphen")
+let ocaml_lib_dir  = ref (Findlib.default_location ())
+let ocaml_dlls_dir = ref (Filename.concat !ocaml_lib_dir "stublibs")
+let fonts_dirs     = ref []
+let grammars_dirs  = ref []
+let plugins_dir    = ref (Filename.concat !prefix "lib/patoline/plugins")
+let plugins_dirs   = ref []
+let hyphen_dirs    = ref []
+let driver_dir     = ref (Filename.concat !ocaml_lib_dir "Typography")
+let lang           = ref "EN"
+let ban_comic_sans = ref false
+let pdf_type3_only = ref false
+let driver_blist   = ref []
 
-open Arg
-let rec escape s=
-  try
-    let i=String.index s ' ' in
-      String.sub s 0 i ^ "\\ " ^ (escape (String.sub s (i+1) (String.length s-i-1)))
-  with
-      Not_found -> s
+let add_font_dir     d = fonts_dirs    := d :: !fonts_dirs
+let add_grammar_dir  d = grammars_dirs := d :: !grammars_dirs
+let add_hyphen_dir   d = hyphen_dirs   := d :: !hyphen_dirs
+let blacklist_driver d = driver_blist  := d :: !driver_blist
 
-let is_substring s1 s0=
-  let rec sub i j=
-    if i>String.length s0-String.length s1 then false else
-      if j>=String.length s1 then true else
-        if s0.[i+j]=s1.[j] then sub i (j+1) else
-          sub (i+1) 0
-  in
-    sub 0 0
+let languages =
+  let f = open_in "src/Typography/TypoLanguage.ml" in
+  let buf = String.create (in_channel_length f) in
+  really_input f buf 0 (in_channel_length f);
+  close_in f;
+  let rec make_str i acc =
+    if i > String.length buf - 7 then acc
+    else if String.sub buf i 5 = "LANG_" then
+      make_str (i+7) (String.sub buf (i+5) 2 :: acc)
+    else make_str (i+1) acc
+  in make_str 0 []
 
-let configure_environment=Unix.environment ()
+let set_language l =
+  let l = String.uppercase l in
+  if List.mem l languages then lang := l else
+  Printf.eprintf "Unknown language %S... using default.\n" l
 
-(* Querying ocamlfind packages, and caching results.
- * Returns type is (bool * string) where the boolean indicates whether
- * ocamlfound the package, and string is its actual name (a package may have
- * different names depending on the system). *)
+let languages_string = String.concat ", " (List.rev languages)
 
-type findlib_package =
-  {
-    pack_name : string;
-    (* Some packages may have different names, which we try to find if
-     * the first package name yields no result. *)
-    known_aliases : string list;
-    additional_check : string -> string -> bool;
-    additional_check_string : string (* a message to report additional check failure *)
-  }
+let spec =
+  [ ("--prefix", Arg.Set_string prefix,
+       Printf.sprintf "Set prefix (default is %S)." !prefix)
+  ; ("--bindir", Arg.Set_string bindir,
+       Printf.sprintf "Set bindir (default is %S)." !bindir)
+  ; ("--ocaml-libs", Arg.Set_string ocaml_lib_dir,
+       Printf.sprintf "Set library directory (default is %S)." !ocaml_lib_dir)
+  ; ("--ocaml-dlls", Arg.Set_string ocaml_dlls_dir,
+       Printf.sprintf "Set stubs directory (default is %S)." !ocaml_dlls_dir)
+  ; ("--fonts-dir", Arg.Set_string fonts_dir,
+       Printf.sprintf "Set font directory (default is %S)." !fonts_dir)
+  ; ("--grammars-dir", Arg.Set_string grammars_dir,
+       Printf.sprintf "Set grammar directory (default is %S)." !grammars_dir)
+  ; ("--plugins-dir", Arg.Set_string plugins_dir,
+       Printf.sprintf "Set plugins directory (default is %S)." !plugins_dir)
+  ; ("--driver-dir", Arg.Set_string driver_dir,
+       Printf.sprintf "Set driver directory (default is %S)." !driver_dir)
+  ; ("--hyphen-dir", Arg.Set_string hyphen_dir,
+       Printf.sprintf "Set hypenation dictionaries directory (default is %S)."
+       !hyphen_dir)
+  ; ("--extra-fonts-dir", Arg.String add_font_dir,
+       "Add a dirrectory in which Patoline will look for fonts.")
+  ; ("--extra-grammars-dir", Arg.String add_grammar_dir,
+       "Add a dirrectory in which Patoline will look for grammars.")
+  ; ("--extra-hyphen-dir", Arg.String add_hyphen_dir,
+       "Add a dirrectory in which Patoline will look for hyphenation dicts.")
+  ; ("--ban-comic-sans", Arg.Set ban_comic_sans,
+       "Disallows ComicSans font.")
+  ; ("--pdf-type3-only", Arg.Set pdf_type3_only,
+       "Convert all fonts to vector graphics in PDFs.")
+      (* This option improves compatibility, but may worsen font rasterizing
+         in some readers. *)
+  ; ("--lang", Arg.String set_language,
+       Printf.sprintf "Set the language for error messages (available: %s)."
+       languages_string)
+  ; ("--without", Arg.String blacklist_driver,
+       "Blacklist a driver (will not be compiled / installed).") ]
 
-let package_no_check _ _ = true
+let _ =
+  Arg.parse spec ignore "Usage:";
+  fonts_dirs    := !fonts_dir    :: !fonts_dirs;
+  grammars_dirs := !grammars_dir :: !grammars_dirs;
+  hyphen_dirs   := !hyphen_dir   :: !hyphen_dirs;
+  plugins_dirs  := !plugins_dir  :: !plugins_dirs
 
-type local_packages = {
-  package_name : string;
-  macro_suffix : string;
-  local_deps : string list;
-  extern_deps : string list;
-  subdirs : string list;
-  has_meta : bool;
-}
-let local_packages = [
-  { package_name = "patutil";
-    macro_suffix = "UTIL";
-    local_deps = ["rbuffer"; "unicodelib"];
-    extern_deps = [];
-    subdirs = [];
-    has_meta = true;
-  };
-  { package_name = "rawlib";
-    macro_suffix = "RAWLIB";
-    local_deps = ["patutil"; "patfonts"];
-    extern_deps = ["dynlink"; "imagelib"];
-    subdirs = [];
-    has_meta = true;
-  };
-  { package_name = "unicodelib";
-    macro_suffix = "UNICODELIB";
-    local_deps = [];
-    extern_deps = [];
-    subdirs = [];
-    has_meta = true;
-  };
-  { package_name = "rbuffer";
-    macro_suffix = "RBUFFER";
-    local_deps = [];
-    extern_deps = [];
-    subdirs = [];
-    has_meta = true;
-  };
-  { package_name = "patfonts";
-    macro_suffix = "FONTS";
-    local_deps = ["patutil"; "unicodelib"];
-    extern_deps = [];
-    subdirs = ["CFF";"Opentype";"unicodeRanges"];
-    has_meta = true;
-  };
-  { package_name = "ocaml-bibi";
-    macro_suffix = "BIBI";
-    local_deps = ["Typography"; "patutil"; "unicodelib"];
-    extern_deps = ["sqlite3"];
-    subdirs = [];
-    has_meta = true;
-  };
-  { package_name = "db";
-    macro_suffix = "DB";
-    local_deps = ["patutil"];
-    extern_deps = ["mysql"];
-    subdirs = [];
-    has_meta = true;
-  };
-  { package_name = "Typography";
-    macro_suffix = "TYPOGRAPHY";
-    local_deps = ["patutil";"patfonts";"unicodelib";"cesure";"rawlib";"db"];
-    extern_deps = ["zip";"fontconfig";"imagelib"];
-    subdirs = ["DefaultFormat"];
-    has_meta = true;
-  };
-  { package_name = "plot";
-    macro_suffix = "PLOT";
-    local_deps = ["Typography"; "rawlib"];
-    extern_deps = [];
-    subdirs = [];
-    has_meta = true;
-  };
+(* Management of local packages. *)
+type local_packages =
+  { package_name : string
+  ; macro_suffix : string
+  ; local_deps   : string list
+  ; extern_deps  : string list
+  ; subdirs      : string list
+  ; has_meta     : bool }
+
+let local_packages =
+  [ { package_name = "patutil"
+    ; macro_suffix = "UTIL"
+    ; local_deps   = ["rbuffer"; "unicodelib"]
+    ; extern_deps  = []
+    ; subdirs      = []
+    ; has_meta     = true }
+
+  ; { package_name = "rawlib"
+    ; macro_suffix = "RAWLIB"
+    ; local_deps   = ["patutil"; "patfonts"]
+    ; extern_deps  = ["dynlink"; "imagelib"]
+    ; subdirs      = []
+    ; has_meta     = true }
+
+  ; { package_name = "unicodelib"
+    ; macro_suffix = "UNICODELIB"
+    ; local_deps   = []
+    ; extern_deps  = []
+    ; subdirs      = []
+    ; has_meta     = true }
+
+  ; { package_name = "rbuffer"
+    ; macro_suffix = "RBUFFER"
+    ; local_deps   = []
+    ; extern_deps  = []
+    ; subdirs      = []
+    ; has_meta     = true }
+
+  ; { package_name = "patfonts"
+    ; macro_suffix = "FONTS"
+    ; local_deps   = ["patutil"; "unicodelib"]
+    ; extern_deps  = []
+    ; subdirs      = ["CFF";"Opentype";"unicodeRanges"]
+    ; has_meta     = true }
+
+  ; { package_name = "ocaml-bibi"
+    ; macro_suffix = "BIBI"
+    ; local_deps   = ["Typography"; "patutil"; "unicodelib"]
+    ; extern_deps  = ["sqlite3"]
+    ; subdirs      = []
+    ; has_meta     = true }
+
+  ; { package_name = "db"
+    ; macro_suffix = "DB"
+    ; local_deps   = ["patutil"]
+    ; extern_deps  = ["mysql"]
+    ; subdirs      = []
+    ; has_meta     = true }
+
+  ; { package_name = "Typography"
+    ; macro_suffix = "TYPOGRAPHY"
+    ; local_deps = ["patutil";"patfonts";"unicodelib";"cesure";"rawlib";"db"]
+    ; extern_deps  = ["zip"; "fontconfig"; "imagelib"]
+    ; subdirs      = ["DefaultFormat"]
+    ; has_meta     = true }
+
+  ; { package_name = "plot"
+    ; macro_suffix = "PLOT"
+    ; local_deps   = ["Typography"; "rawlib"]
+    ; extern_deps  = []
+    ; subdirs      = []
+    ; has_meta     = true }
+
   (* FAKE: no META yet *)
-  { package_name = "Format";
-    macro_suffix = "FORMAT";
-    local_deps = ["Typography";"cesure";"rawlib";"db"];
-    extern_deps = [];
-    subdirs = [];
-    has_meta = false;
-  };
-  { package_name = "Patoline";
-    macro_suffix = "PATOLINE";
-    local_deps = ["Typography";"plugins"];
-    extern_deps = ["dyp"];
-    subdirs = [];
-    has_meta = false;
-  };
-  { package_name = "Drivers";
-    macro_suffix = "DRIVERS";
-    local_deps = ["rawlib";"db"];
-    extern_deps = [];
-    subdirs = [];
-    has_meta = false;
-  };
-  { package_name = "cesure";
-    macro_suffix = "CESURE";
-    local_deps = ["unicodelib"];
-    extern_deps = [];
-    subdirs = [];
-    has_meta = false;
-  };
-  { package_name = "proof";
-    macro_suffix = "PROOF";
-    local_deps = ["rawlib"]; (* Pdf Driver no yet managed, added by hand *)
-    extern_deps = [];
-    subdirs = [];
-    has_meta = false;
-  };
-  { package_name = "plugins";
-    macro_suffix = "PLUGINS";
-    local_deps = ["Format"];
-    extern_deps = ["unix"];
-    subdirs = [];
-    has_meta = false;
-  };
-]
+  ; { package_name = "Format"
+    ; macro_suffix = "FORMAT"
+    ; local_deps   = ["Typography";"cesure";"rawlib";"db"]
+    ; extern_deps  = []
+    ; subdirs      = []
+    ; has_meta     = false }
 
-let is_local name = List.exists (fun p -> name = p.package_name) local_packages
-let find_local name =
-  let rec fn = function
-  [] -> raise Not_found
-    | p::l -> if p.package_name = name then p else fn l
-  in
-  try fn local_packages with Not_found ->
+  ; { package_name = "Patoline"
+    ; macro_suffix = "PATOLINE"
+    ; local_deps   = ["Typography";"plugins"]
+    ; extern_deps  = ["decap"]
+    ; subdirs      = []
+    ; has_meta     = false }
+
+  ; { package_name = "Drivers"
+    ; macro_suffix = "DRIVERS"
+    ; local_deps   = ["rawlib";"db"]
+    ; extern_deps  = []
+    ; subdirs      = []
+    ; has_meta     = false }
+
+  ; { package_name = "cesure"
+    ; macro_suffix = "CESURE"
+    ; local_deps   = ["unicodelib"]
+    ; extern_deps  = []
+    ; subdirs      = []
+    ; has_meta     = false } 
+
+  ; { package_name = "proof"
+    ; macro_suffix = "PROOF"
+    ; local_deps   = ["rawlib"] (* Pdf Driver added by hand *)
+    ; extern_deps  = []
+    ; subdirs      = []
+    ; has_meta     = false }
+
+  ; { package_name = "plugins"
+    ; macro_suffix = "PLUGINS"
+    ; local_deps   = ["Format"]
+    ; extern_deps  = ["unix"]
+    ; subdirs      = []
+    ; has_meta     = false } ]
+
+let is_local_package name =
+  List.exists (fun p -> name = p.package_name) local_packages
+
+let find_local_package name =
+  try List.find (fun p -> name = p.package_name) local_packages
+  with Not_found ->
     Printf.printf "Did not find local package \"%s\"...\n%!" name;
-    assert false
+    raise Not_found
 
 let packages_local names =
-  let add d acc =
-    if List.mem d acc then acc else d::acc
-  in
+  let add acc d = if List.mem d acc then acc else d::acc in
   let rec fn acc name =
-    let p = find_local name in
-    let acc =
-      if p.has_meta then add p.package_name acc else
-	List.fold_left fn (List.fold_left (fun acc n -> add n acc) acc p.extern_deps)
-	  p.local_deps
-    in
-    acc
-  in
-  let l = List.fold_left fn [] names in
-  l
+    let p = find_local_package name in
+    if p.has_meta then add acc p.package_name
+    else List.fold_left fn (List.fold_left add acc p.extern_deps) p.local_deps
+  in List.fold_left fn [] names
 
 let includes_local ?(subdir_only=true) name =
-  let add d acc =
-    if List.mem d acc then acc else d::acc
-  in
+  let add d acc = if List.mem d acc then acc else d::acc in
   let rec fn acc name =
-    let p = find_local name in
+    let p = find_local_package name in
     let acc =
-      if subdir_only && p.has_meta then acc else
-	add ("-I "^(Filename.concat "src" p.package_name)) acc
+      if subdir_only && p.has_meta then acc
+      else add ("-I "^(Filename.concat "src" p.package_name)) acc
     in
     let acc = List.fold_left (fun acc s ->
       add ("-I "^(Filename.concat "src" (Filename.concat p.package_name s))) acc)
       acc p.subdirs
     in
-     List.fold_left fn acc p.local_deps
-  in
-  String.concat " " (fn [] name)
+    List.fold_left fn acc p.local_deps
+  in String.concat " " (fn [] name)
+
+(* Management of findlib packages. *)
+type findlib_package =
+  (* Name of the package. *)
+  { fl_package_name     : string
+  (* We try to guess package name using a list of known aliases. *)
+  ; fl_known_aliases    : string list
+  (* Additional checks function and the associated error message. *)
+  ; fl_additional_check : ((string -> string -> bool) * string) option }
+
+let fl_package name aliases =
+  { fl_package_name     = name
+  ; fl_known_aliases    = aliases
+  ; fl_additional_check = None }
 
 let package_min_version min_version package alias =
   (* parse_version splits a string representing a version number to a
@@ -310,145 +334,146 @@ let package_min_version min_version package alias =
 
 let patoline_uses_packages =
   let res = Hashtbl.create 10 in
-  List.iter (fun p -> Hashtbl.add res p.pack_name p)
-  [
-    {
-      pack_name = "zip";
-      known_aliases = ["camlzip"];
-      additional_check = package_no_check;
-      additional_check_string = "";
-    };
-    {
-      pack_name = "cairo";
-      known_aliases = ["ocaml-cairo"];
-      additional_check = package_no_check;
-      additional_check_string = "";
-    };
-    {
-      pack_name = "lablgl";
-      known_aliases = ["lablGL"];
-      additional_check = package_no_check;
-      additional_check_string = "";
-    };
-    {
-      pack_name = "lablgl.glut";
-      known_aliases = ["lablGL.glut"];
-      additional_check = package_no_check;
-      additional_check_string = "";
-    };
-    {
-      pack_name = "fontconfig";
-      known_aliases = [];
-      additional_check = (fun package alias ->
-        let fontconfig_min_version = "0~20131103" in
-        if Findlib.package_property [] alias "version" = "0.1" then
-          (
-            Printf.printf "Version 0.1 of fontconfig is outdated, update fontconfig to version %s\n"
-              fontconfig_min_version;
-            false
-          )
-        else package_min_version fontconfig_min_version package alias);
-      additional_check_string = "version >= 0~20131103";
-    };
-  ];
-  res
+  let packs =
+    [ fl_package "zip"         ["camlzip"]
+    ; fl_package "cairo"       ["ocaml-cairo"]
+    ; fl_package "lablgl"      ["lablGL"]
+    ; fl_package "lablgl.glut" ["lablGL.glut"]
+    ; { fl_package_name     = "fontconfig"
+      ; fl_known_aliases    = []
+      ; fl_additional_check =
+          let f package alias =
+            let fontconfig_min_version = "0~20131103" in
+            if Findlib.package_property [] alias "version" = "0.1" then
+              begin
+                Printf.printf "Update fontconfig to version %s\n"
+                fontconfig_min_version; false
+              end
+            else package_min_version fontconfig_min_version package alias
+          in
+          Some (f, "version >= 0~20131103") } ]
+  in
+  List.iter (fun p -> Hashtbl.add res p.fl_package_name p) packs; res
 
 let ocamlfind_query =
   let checked = Hashtbl.create 10 in
-  function pack ->
-    if is_local pack then (true, pack) else
-    try
-      (* Easy case, when package has already been looked up *)
-      Hashtbl.find checked pack
-    with
-      Not_found ->
-        Printf.printf "Looking for package %s..." pack;
-        let liste, additional_check =
-          (try
-            let p = Hashtbl.find patoline_uses_packages pack in
-            (p.pack_name :: p.known_aliases, p.additional_check)
-            with Not_found -> [pack], package_no_check
-          ) in
-        let res =
-          List.fold_left
-           (fun res pack_alias ->
-             if fst res then
-               res
-             else
-               try
-                 let _ = Findlib.package_directory pack_alias in
-                 if additional_check pack pack_alias
-                 then (true, pack_alias)
-                 else res
-               with
-               _ -> res
-           )
-           (false, "")
-           liste
-        in
-        Hashtbl.add checked pack res;
-        if (fst res) then
-          Printf.printf " found (%s)\n" (snd res)
-        else
-          Printf.printf " not found\n";
-        res
+  let query pack =
+    if is_local_package pack then (true, pack) else
+    try Hashtbl.find checked pack
+    with Not_found ->
+      Printf.printf "Looking for package %s..." pack;
+      let (names, opt_check) =
+        try
+          let p = Hashtbl.find patoline_uses_packages pack in
+          (p.fl_package_name :: p.fl_known_aliases, p.fl_additional_check)
+        with Not_found -> ([pack], None)
+      in
+      let f res alias =
+        if fst res then res else
+        try
+          let _ = Findlib.package_directory alias in
+          match opt_check with
+          | None       -> (true, alias)
+          | Some (c,m) -> if c pack alias then (true, alias) else res
+        with _ -> res
+      in
+      let res = List.fold_left f (false, "") names in
+      Hashtbl.add checked pack res;
+      if fst res then Printf.printf " found (%s)\n" (snd res)
+      else Printf.printf " not found\n";
+      res
+  in query
 
 (* Is a package ocamlfindable? *)
-let ocamlfind_has pack = is_local pack || fst (ocamlfind_query pack)
+let ocamlfind_has pack = is_local_package pack || fst (ocamlfind_query pack)
 
 (* Listing Patoline drivers with their corresponding dependancies.
  * A driver may depend on some package found using ocamlfind, or on some other
  * driver. *)
-type driver_needs =
-  | Package of string
-  | Driver of driver
+type driver_needs = Package of string | Driver of driver
+
 and driver =
-  {
-    (* Driver module name *)
-    name: string;
-    (* List of required packages to build the driver *)
-    needs: driver_needs list;
-    (* List of optional packages, which improve the driver when present *)
-    suggests: driver_needs list;
-    (* List of Patoline own packages (= not installed system-wide while building
-     * Patoline) needed to output a document using this driver. The code package
-     * does not need to be specified, as it is always added. *)
-    internals: driver_needs list;
-    (* Says whether configure.ml should generate the driver's META file from
-     * this record, or rely on a preexisting META in the source tree. *)
-  }
+  (* Driver module name. *)
+  { name      : string
+  (* List of required packages to build the driver. *)
+  ; needs     : driver_needs list
+  (* List of optional packages, which improve the driver when present. *)
+  ; suggests  : driver_needs list
+  (* List of local packages (not installed system-wide while building
+     Patoline) needed to output a document using this driver. The code
+     package does not need to be specified, as it is always added. *)
+  ; internals : driver_needs list }
 
 let patoline_driver_gl =
-  { name = "DriverGL";
-    needs =[Package "Typography"; Package "str"; Package "db"; Package "zip"; Package "imagelib"; Package "lablgl"; Package "lablgl.glut"];
-    suggests = [];
-    internals = []; (* [Package "Typography.GL"] *)
-  }
+  { name      = "DriverGL"
+  ; needs     =
+      [ Package "Typography" ; Package "str" ; Package "db" ; Package "zip"
+      ; Package "imagelib" ; Package "lablgl" ; Package "lablgl.glut"]
+  ; suggests  = []
+  ; internals = [] }
+
 let patoline_driver_image =
-  { name = "DriverImage";
-    needs = [Package "Typography"; Package "imagelib"; Package "lablgl"; Package "lablgl.glut"];
-    suggests = [];
-    internals = [Driver patoline_driver_gl];
-  }
+  { name      = "DriverImage"
+  ; needs     =
+      [ Package "Typography" ; Package "imagelib" ; Package "lablgl"
+      ; Package "lablgl.glut"]
+  ; suggests  = []
+  ; internals = [Driver patoline_driver_gl] }
 
 let svg_driver =
-    { name = "SVG"; needs = [Package "Typography"; Package "db"]; suggests = []; internals = [] }
+  { name      = "SVG"
+  ; needs     = [Package "Typography"; Package "db"]
+  ; suggests  = []
+  ; internals = [] }
 
-(* List of all Patoline drivers.
- * Add yours to this list in order to build it. *)
-let r_patoline_drivers = ref
-  [
-    { name = "None"; needs = []; suggests = []; internals = [] };
-    { name = "Pdf"; needs = []; suggests = [Package "zip"]; internals = [] };
-    { name = "Bin"; needs = []; suggests = []; internals = [] };
-    { name = "Html"; needs = [ Package "unicodelib"]; suggests = []; internals = [] };
-    { name = "Patonet"; needs = [ Package "cryptokit"]; suggests = []; internals = [Driver svg_driver] };
-    { name = "DriverCairo"; needs = [ Package "cairo"]; suggests = []; internals = []  };
-    svg_driver; patoline_driver_gl;
-    { name = "Net"; needs = []; suggests = []; internals = [Driver svg_driver] };
-    { name = "Web"; needs = []; suggests = []; internals = [Driver svg_driver] };
-    patoline_driver_image;
-  ]
+let all_patoline_drivers =
+  [ { name      = "None"
+    ; needs     = []
+    ; suggests  = []
+    ; internals = [] }
+
+  ; { name      = "Pdf"
+    ; needs     = []
+    ; suggests  = [Package "zip"]
+    ; internals = [] }
+
+  ; { name      = "Bin"
+    ; needs     = []
+    ; suggests  = []
+    ; internals = [] }
+
+  ; { name      = "Html"
+    ; needs     = [ Package "unicodelib"]
+    ; suggests  = []
+    ; internals = [] }
+
+  ; { name      = "Patonet"
+    ; needs     = [ Package "cryptokit"]
+    ; suggests  = []
+    ; internals = [Driver svg_driver] }
+
+  ; { name      = "DriverCairo"
+    ; needs     = [ Package "cairo"]
+    ; suggests  = []
+    ; internals = [] }
+
+  ; { name      = "Net"
+    ; needs     = []
+    ; suggests  = []
+    ; internals = [Driver svg_driver] }
+
+  ; { name      = "Web"
+    ; needs     = []
+    ; suggests  = []
+    ; internals = [Driver svg_driver] }
+
+  ; svg_driver
+  ; patoline_driver_gl
+  ; patoline_driver_image ]
+
+let patoline_drivers =
+  let pred d = not (List.mem d.name !driver_blist) in
+  List.filter pred all_patoline_drivers
 
 (* Checks whether we can build a given driver.
  * This certainly won't check that a driver doesn't somehow reference itself:
@@ -459,7 +484,7 @@ let rec can_build_driver d =
     | Driver d' -> can_build_driver d'
   in List.iter (fun a -> ignore (check_need a)) d.suggests;
   let found, missing = List.partition check_need d.needs in
-  if List.exists (fun x->x.name==d.name) !r_patoline_drivers && missing = []
+  if List.exists (fun x->x.name==d.name) patoline_drivers && missing = []
   then true
   else (
     Printf.eprintf "Warning: driver %s not build because %s are missing\n"
@@ -468,7 +493,8 @@ let rec can_build_driver d =
       | Package pack  ->
         (try
            let n = Hashtbl.find patoline_uses_packages pack in
-           n.pack_name ^ " " ^ n.additional_check_string
+           n.fl_package_name ^ " " ^ (match n.fl_additional_check with None ->
+             "" | Some (_,m) -> m)
          with
            _ -> pack)
       | Driver d -> d.name ^ " driver") missing)));
@@ -490,93 +516,38 @@ let gen_pack_line ?(query=true) needs =
   in (List.filter ((<>) "") (aux_gen needs))
 
 let _=
-  parse [
-    ("--prefix", Set_string prefix, "  prefix (/usr/local/ by default)");
-    ("--bin-prefix", Set_string bin_dir, "  directory for the binaries ($PREFIX/bin/ by default)");
-    ("--ocaml-libs", Set_string ocaml_lib_dir, "  directory for the caml libraries (`ocamlfind printconf destdir` by default; `ocamlc -where` is another sensible choice)");
-    ("--ocaml-dlls", Set_string ocaml_dlls_dir, "  directory for the dll.so caml file (`ocamlfind printconf destdir`/stublibs by default; the distination should be liste in ocaml's ld.conf usually in /usr/lib/ocaml/ld.conf)");
-    ("--fonts-dir", Set_string fonts_dir, "  directory for the fonts ($PREFIX/share/patoline/fonts/ by default)");
-    ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/lib/patoline/grammars/ by default)");
-    ("--plugins-dir", Set_string plugins_dir, "  directory for the plugins ($PREFIX/lib/patoline/plugins/ by default)");
-    ("--driver-dir", Set_string hyphen_dir, "  directory for the drivers ($PREFIX/lib/Typography/ by default)");
-    ("--hyphen-dir", Set_string hyphen_dir, "  directory for the hyphenation dictionnaries ($PREFIX/share/patoline/hyphen/ by default)");
-    ("--extra-fonts-dir", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories patoline should scan for fonts");
-    ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories patoline should scan for grammars");
-    ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories patoline should scan for hyphenation dictionaries");
-    ("--ban-comic-sans", Set ban_comic_sans, " disallows the use of a font with name '*comic*sans*'. Robust to filename changes.");
-    ("--pdf-type3-only", Set pdf_type3_only, " converts all fonts to vector graphics in PDFs. Improves compatibility, does not change the file size significatively. May worsen font rasterizing in some readers.");
-    ("--lang", Set_string lang, Printf.sprintf "  language of the error messages (english by default), available : %s"
-       (String.concat ", " (List.rev avail_lang)));
-    ("--without", String (fun str->
-      r_patoline_drivers:=List.filter (fun x->
-        x.name<>str
-      ) !r_patoline_drivers
-     )," remove a driver from the list")
-  ] ignore "Usage:";
-  if !bin_dir="" then bin_dir:=Filename.concat !prefix "bin/";
-  if !ocaml_lib_dir="" then ocaml_lib_dir:=Filename.concat !prefix "lib/ocaml";
-  if !fonts_dir="" then fonts_dir:=Filename.concat !prefix "share/patoline/fonts";
-  if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "lib/patoline/grammars";
-  if !hyphen_dir="" then hyphen_dir:=Filename.concat !prefix "share/patoline/hyphen";
-  if !plugins_dir="" then plugins_dir:=Filename.concat !prefix "lib/patoline/plugins";
-  if !driver_dir="" then driver_dir:=Filename.concat !ocaml_lib_dir "Typography";
-
-  fonts_dirs:= !fonts_dir ::(!fonts_dirs);
-  grammars_dirs:= !grammars_dir ::(!grammars_dirs);
-  hyphen_dirs:= !hyphen_dir ::(!hyphen_dirs);
-  plugins_dirs:= !plugins_dir ::(!plugins_dirs);
-  let patoline_drivers= !r_patoline_drivers in
-  let has_dypgen=
-    let ci,ci'=Unix.pipe () in
-    let co,co'=Unix.pipe () in
-    let ce,ce'=Unix.pipe () in
-    let i=Unix.create_process "dypgen" [|"dypgen"|] ci' co ce in
-    Unix.close co;
-    Unix.close ce;
-    Unix.close ci';
-    let _,st=Unix.waitpid [] i in
-    (ocamlfind_has "dyp") && st = (Unix.WEXITED 0)
-  in
-
-  let has_mysql = ocamlfind_has "mysql" in
-  if not has_mysql then (
-    Printf.eprintf "Warning: package mysql missing, Patonet will not support Mysql storage\n";
-  );
-
-
-  let has_sqlite3=ocamlfind_has "sqlite3" in
-  if not has_sqlite3 then (
-    Printf.eprintf "Warning: package sqlite3 missing, Patonet and Bibi will not support sqlite storage\n";
-  );
-
+  let has_mysql      = ocamlfind_has "mysql" in
+  let has_sqlite3    = ocamlfind_has "sqlite3" in
   let has_fontconfig = ocamlfind_has "fontconfig" in
+
+  if not has_mysql then
+    Printf.eprintf "Warning: package mysql missing, \
+                    Patonet will not support Mysql storage\n";
+
+  if not has_sqlite3 then
+    Printf.eprintf "Warning: package sqlite3 missing, \
+                    Patonet and Bibi will not support sqlite storage\n";
+
   if not has_fontconfig then
-    Printf.eprintf "Warning: fontconfig is missing, patoline will not use it to search for fonts\n";
+    Printf.eprintf "Warning: fontconfig is missing, \
+                    patoline will not use it to search for fonts\n";
 
   let emacsdir = Filename.concat !prefix "share/emacs/site-lisp/patoline" in
 
-  let make=open_out "src/Makefile.config" in
-  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s%s%s%s\n"
-    (if Sys.os_type="Win32" then "-D__WINDOWS__ " else "")
-    (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
+  (* Generation of src/Makefile.config *)
+  let make = open_out "src/Makefile.config" in
+
+  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s%s%s\n"
+    (if Sys.word_size = 32  then "-DINT32 " else "")
     (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
     (if has_mysql then "-DMYSQL " else "")
     (if has_sqlite3 then "-DSQLITE3 " else "")
     (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
     (if !pdf_type3_only then "-DPDF_TYPE3_ONLY " else "")
-    (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
-  (if has_dypgen then
-      (Printf.fprintf make "PATOLINE := src/Patoline/patoline\n";
-      Printf.fprintf make "DYPGEN := dyp\n")
-   else
-      (Printf.fprintf make "PATOLINE :=\n";
-      Printf.fprintf make "DYPGEN :=\n")
-  );
-  (if ocamlfind_has "zip" then
-      Printf.fprintf make "CAMLZIP := %s\n" (snd (ocamlfind_query "zip"))
-   else
-      Printf.fprintf make "CAMLZIP :=\n"
-  );
+    (if !lang <> "EN" then ("-DLANG_" ^ (!lang)) else "");
+  
+  Printf.fprintf make "CAMLZIP :=%s\n"
+    (if ocamlfind_has "zip" then " " ^ (snd (ocamlfind_query "zip")) else "");
 
   List.iter (function { package_name = name; macro_suffix = macro; local_deps = local; extern_deps = extern } ->
     let f = List.map (fun x->Package x) in
@@ -608,7 +579,7 @@ let _=
   Printf.fprintf make "INSTALL_PLUGINS_DIR :=%s\n" !plugins_dir;
   Printf.fprintf make "INSTALL_CESURE_DIR :=%s/cesure\n" !ocaml_lib_dir;
 
-  Printf.fprintf make "INSTALL_BIN_DIR :=%s\n" !bin_dir;
+  Printf.fprintf make "INSTALL_BIN_DIR :=%s\n" !bindir;
 
   Printf.fprintf make "PREFIX :=%s\n" !prefix;
 
@@ -657,7 +628,7 @@ let _=
         close_out f
     end
   in
-  List.iter gen_meta_driver !r_patoline_drivers;
+  List.iter gen_meta_driver patoline_drivers;
 
   (* Generate the META file for Typography, which details package information
    * for Typography.cmxa/Typography.cma as well as subpackages for each format.
@@ -706,13 +677,21 @@ let _=
           base_file (base_file^".cmxa") (base_file^".cma")
     )
   in
+  let is_substring s1 s0 =
+    let rec sub i j=
+      if i>String.length s0-String.length s1 then false else
+        if j>=String.length s1 then true else
+          if s0.[i+j]=s1.[j] then sub i (j+1) else
+            sub (i+1) 0
+    in sub 0 0
+  in
   Array.iter
     (fun file ->
       if (is_substring "Format" file || file = "Interactive.ml") (*&& file <> "DefaultFormat.ml"*)
       then make_meta_part "src/Format" file) (Sys.readdir "src/Format");
   List.iter (fun drv ->
     make_meta_part (Filename.concat "src/Drivers" drv.name) (drv.name ^ ".ml")
-  ) !r_patoline_drivers;
+  ) patoline_drivers;
   close_out meta;
 
   let config0 = open_out "src/rawlib/Config0.ml" in
@@ -729,7 +708,7 @@ let _=
           path_var
           !fonts_dir
           (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !fonts_dirs)))
-          !bin_dir
+          !bindir
           !grammars_dir
           (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !grammars_dirs)))
           !hyphen_dir
@@ -741,7 +720,7 @@ let _=
         Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n(** Chemin des polices de caractères *)\nlet fontsdir=%S\nlet fontspath=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=%S\nlet grammarspath=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=%S\nlet hyphenpath=ref [%s]\n(** Chemin des plugins de compilation *)\nlet driverdir=ref [%S]\nlet pluginsdir=%S\nlet pluginspath=ref [%s]\nlet local_path:string list ref=ref []\nlet user_dir=Filename.concat (try Sys.getenv \"XDG_DATA_HOME\" with Not_found -> Filename.concat (Sys.getenv \"HOME\") \".local/share\" ) \"patoline\"\n"
           !fonts_dir
           (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !fonts_dirs)))
-          !bin_dir
+          !bindir
           !grammars_dir
           (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !grammars_dirs)))
           !hyphen_dir

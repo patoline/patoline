@@ -7,16 +7,15 @@ PATOLINE_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PATOLINE)
 $(d)/%.depends: INCLUDES += $(PATOLINE_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATOLINE_INCLUDES)
 
-PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx $(d)/Config2.cmx \
-  $(d)/Parser.cmx $(d)/Generateur.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx
+PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx \
+	$(d)/Config2.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx
 
 # $(PAT_CMX): OCAMLOPT := $(OCAMLOPT_NOINTF)
 $(PAT_CMX): %.cmx: %.cmo
 
 # Compute ML dependencies
 SRC_$(d) := $(filter-out UnicodeScripts.ml.depends, $(addsuffix .depends,$(wildcard $(d)/*.ml)))
-$(d)/Parser.ml.depends: $(d)/Parser.ml
-$(d)/Generateur.ml.depends: $(d)/Parser.ml.depends
+
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
 -include $(SRC_$(d))
@@ -25,7 +24,7 @@ endif
 
 $(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -o $@ $(PATOLINE_INCLUDES),threads -thread dyp.cmxa \
+	$(Q)$(OCAMLOPT) -o $@ $(PATOLINE_INCLUDES),threads -thread \
 		dynlink.cmxa patutil.cmxa str.cmxa unix.cmxa rbuffer.cmxa \
 		unicodelib.cmxa threads.cmxa $(PAT_CMX)
 
@@ -77,33 +76,15 @@ $(d)/Main.cmo: $(d)/Main.ml
 
 PATOLINE_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 
-$(EDITORS_DIR)/emacs/SubSuper.el: $(d)/SubSuper.dyp ;
-$(d)/SubSuper.dyp: $(d)/UnicodeData.txt $(PATOLINE_UNICODE_SCRIPTS)
-	$(ECHO) "[UNIC]   $< -> $@"
-	$(Q)$(PATOLINE_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/SubSuper.el $(SUBSUP_ML)
-$(SUBSUP_ML):$(d)/SubSuper.dyp
-
 $(d)/UnicodeScripts.cmx: $(UNICODELIB_CMX) $(UNICODELIB_DEPS) $(UNICODELIB_ML)
 
 $(d)/UnicodeScripts: $(d)/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[OCAMLOPT] $< -> $@"
 	$(Q)$(OCAMLOPT) -o $@ -package bigarray,unicodelib -linkpkg $<
 
-$(d)/tmp.dyp: $(d)/Parser.dyp $(d)/SubSuper.dyp
-	$(ECHO) "[CAT]    $^ -> $@"
-	$(Q)cat $^ > $@
-
-$(d)/Parser.ml: $(d)/tmp.dyp
-	$(ECHO) "[DYP]    $< -> $@"
-	$(Q)$(DYPGEN) --no-mli --merge-warning $< > /dev/null
-	$(Q)mv $(basename $<).ml $@
-
-$(d)/Parser.cmx $(d)/Generateur.cmx: OFLAGS += -rectypes
-$(d)/Parser.cmo $(d)/Generateur.cmo: OFLAGS += -rectypes
-
 $(d)/Build.cmo $(d)/Build.cmx: OFLAGS += -thread
 
-CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/Parser.ml $(d)/SubSuper.dyp $(d)/patoline $(d)/tmp.dyp $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts $(d)/pa_patoline
+CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/patoline $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts $(d)/pa_patoline
 DISTCLEAN += $(d)/*.depends
 
 # Installing

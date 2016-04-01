@@ -1782,7 +1782,7 @@ let parser init =
                  | None -> ""
                  | Some f -> f
     in
-    let basename = chop_extension' file in
+    let basename = chop_extension' (Filename.basename file) in
     cache := "cache_" ^ basename;
     basename)
 

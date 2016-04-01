@@ -1,4 +1,4 @@
 name="Patoline"
 version="1.0"
-description="Typography library - Parser dynlinkable environment"
+description="Patoline parser and compiler."
 requires=""
