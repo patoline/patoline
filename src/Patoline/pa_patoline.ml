@@ -1204,10 +1204,12 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
         let m = m no_ind in
         <:expr<[Maths.bin $int:psp$ (Maths.Normal($bool:nsp$,$md$,true)) $m$ []] >>), sym.postfix_prio
 
-  | (l,lp):math_aux st:{s:math_infix_symbol i:with_indices -> (s,i)
-		      | s:(empty invisible_product) -> (s,no_ind) } (r,rp):math_aux ->
-     let s,ind = st in
-     if lp > s.infix_prio || rp >= s.infix_prio then give_up "bad infix priority";
+  | (l,lp,s,ind as st):{(l,lp):math_aux
+		     (s,ind):{s:math_infix_symbol i:with_indices -> (s,i)
+		        | s:(empty invisible_product) -> (s,no_ind)} ->
+	      if lp > s.infix_prio then give_up "bad infix priority";
+	      (l,lp,s,ind) } (r,rp):math_aux ->
+     if rp >= s.infix_prio then give_up "bad infix priority";
     (fun indices ->
          let indices = merge_indices indices ind in
 	 let nsl = s.infix_no_left_space in
@@ -1226,7 +1228,7 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
          let v = print_math_deco_sym _loc_st s.infix_value indices in
 	       <:expr<Maths.Normal ($bool:nsl$, $v$, $bool:nsr$)>>
 	   in
-	   <:expr<[Maths.Binary { bin_priority= $int:sp$ ; in_drawing = $inter$
+	   <:expr<[Maths.Binary { bin_priority= $int:sp$ ; bin_drawing = $inter$
                           ; bin_left = $l$ ; bin_right= $r$ }]>>
 	 end), s.infix_prio
 
@@ -1442,8 +1444,7 @@ let parser math_toplevel =
         give_up (m ^ " is a reserved macro"); m
     ) no_blank
 
-  let macro =
-    parser
+  let parser macro =
     | m:macro_name args:macro_argument* ->
                         (let fn = fun acc r -> <:expr<$acc$ $r$>> in
                          List.fold_left fn <:expr<$lid:m$>> args)
@@ -1462,8 +1463,9 @@ let parser math_toplevel =
 
 (****************************)
 
-  let text_paragraph_elt (tags:TagSet.t) =
-    parser
+  let dollar        = Pa_lexing.single_char '$'
+
+  let parser text_paragraph_elt (tags:TagSet.t) =
     | m:macro -> m
 
     | "//" - p:(paragraph_basic_text (addTag Italic tags)) - "//" when allowed Italic tags ->
@@ -1488,7 +1490,7 @@ let parser math_toplevel =
          let closing = "''" in (* TODO addapt with the current language*)
          <:expr<tT $string:opening$ :: $p$ @ [tT $string:closing$]>>)
 
-    | '$' m:math_toplevel '$' ->
+    | dollar m:math_toplevel dollar ->
         <:expr<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                           $m$)]>>
@@ -1497,7 +1499,7 @@ let parser math_toplevel =
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle $m$))]>>
 
-    | ws:word+ -> <:expr<[tT $string:(String.concat " " ws)$]>>
+    | ws:word -> <:expr<[tT $string:ws$]>>
 
 
   let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
@@ -1520,9 +1522,9 @@ let parser math_toplevel =
 
   let text_only = change_layout (paragraph_basic_text TagSet.empty) blank1
 
-  let paragraph_basic_text =
-    parser
-      p:(paragraph_basic_text TagSet.empty) ->
+  let oparagraph_basic_text = paragraph_basic_text
+  let parser paragraph_basic_text =
+      p:(oparagraph_basic_text TagSet.empty) ->
         (fun indented ->
          if indented then
            <:struct<
@@ -1544,8 +1546,7 @@ let parser math_toplevel =
 
   let nb_includes = ref 0
 
-  let paragraph_elt =
-    parser
+  let parser paragraph_elt =
     | verb:verbatim_environment -> (fun _ -> verb)
     | "\\Caml" s:(change_layout wrapped_caml_structure blank2) -> (fun _ -> s)
     | "\\Title" t:macro_argument -> (fun _ ->
@@ -1634,13 +1635,7 @@ let parser math_toplevel =
     | l:paragraph_basic_text -> l
     | s:symbol_def -> fun _ -> s
 
-  let _ = set_grammar paragraph (
-                        change_layout (
-                            parser
-                              e:paragraph_elt es:{es:paragraph_elt}* ->
-                                                 let es = List.flatten (List.map (fun r -> r false) es) in
-                                                 fun indent -> e indent @ es
-                          ) blank1)
+  let _ = set_grammar paragraph (change_layout paragraph_elt blank1)
 
   let _ = set_grammar paragraphs (
                         parser
@@ -1659,8 +1654,7 @@ let parser math_toplevel =
   let op_section = "[-=]>"
   let cl_section = "[-=]<"
 
-  let text_item =
-    parser
+  let parser text_item =
       op:RE(op_section) title:text_only txt:text cl:RE(cl_section) ->
         (fun _ lvl ->
          let numbered = match op.[0], cl.[0] with
@@ -1691,7 +1685,7 @@ let parser math_toplevel =
                               let _ = ($numbered$) D.structure $title$
                               $struct:txt false l$>>)
 
-    | ps:paragraphs ->
+    | ps:paragraph ->
          (fun indent lvl -> indent, lvl, ps indent)
 
   let _ = set_grammar text (
@@ -1706,7 +1700,8 @@ let parser math_toplevel =
           r)
       )
 
-  let text = parser txt:text -> txt true 0
+  let otext = text
+  let parser text = txt:otext -> txt true 0
 
 
 
@@ -1723,10 +1718,9 @@ let patoline_config : unit grammar =
     | "#GRAMMAR " g:''[a-zA-Z]+''    -> add_patoline_grammar g
   ) no_blank
 
-let header = parser _:patoline_config*
+let parser header = _:patoline_config*
 
-let title =
-  parser
+let parser title =
   | RE("==========\\(=*\\)") title:text_only
     auth:{_:RE("----------\\(-*\\)") t:text_only}?
     inst:{_:RE("----------\\(-*\\)") t:text_only}?
@@ -1782,8 +1776,8 @@ let wrap basename _loc ast =
     let _ = $lid:("mcache_"^basename)$ := $array:(List.rev !mcache_buf)$
   >>
 
-let init =
-  parser EMPTY -> (fun () ->
+let parser init =
+  EMPTY -> (fun () ->
     let file = match !file with
                  | None -> ""
                  | Some f -> f
@@ -1792,22 +1786,20 @@ let init =
     cache := "cache_" ^ basename;
     basename)
 
-let full_text =
-  parser
-  | h:header basename:{basename:init -> basename ()} tx1:text t:title? tx2:text EOF ->
+let parser full_text =
+  | h:header basename:{basename:init -> basename ()} t:{tx1:text t:title}? tx2:text EOF ->
      begin
        let t = match t with
          | None   -> <:struct<>>
-         | Some t -> (t:'a list)
+         | Some (tx1,t) -> <:struct<$struct:t$ $struct:tx1$>>
        in
-       let ast = <:struct<$struct:t$ $struct:tx1$ $struct:tx2$>> in
+       let ast = <:struct<$struct:t$ $struct:tx2$>> in
        wrap basename _loc ast
      end
 
 (* Extension of Ocaml's grammar *********************************************)
 
-let directive =
-  parser
+let parser directive =
   | '#' n:uid a:uid ->
     ((match n with
        | "FORMAT"  -> patoline_format := a
