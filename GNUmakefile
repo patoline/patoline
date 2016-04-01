@@ -150,8 +150,8 @@ EDITORS_DIR := editors
 # and ignore duplicate definition due to previous installation
 OCAMLPATH_SAVE := $(OCAMLPATH)
 OCAMLPATH = $(SRC_DIR):$(OCAMLPATH_SAVE)
-#OCAMLFIND_IGNORE_DUPS_IN=$(dir $(INSTALL_TYPOGRAPHY_DIR))
 export OCAMLPATH
+#OCAMLFIND_IGNORE_DUPS_IN=`ocamlfind printconf destdir`
 #export OCAMLFIND_IGNORE_DUPS_IN
 
 OCAMLVERSION=$(shell $(OCAMLC) -version)

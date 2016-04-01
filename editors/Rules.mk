@@ -21,11 +21,11 @@ $(d)/emacs/SubstKey: $(d)/emacs/SubstKey.cmx
 	$(Q)$(OCAMLOPT) -package str,unicodelib $< -linkpkg -o $@
 
 # $(d)/emacs/SubSuper.el is built by src/Patoline/Rules.mk
-$(d)/emacs/SubSuper2.el: $(d)/emacs/SubSuper.el $(SRC_DIR)/quail.el $(d)/emacs/SubstKey
+$(d)/emacs/SubSuper2.el: $(d)/emacs/SubSuper.el $(d)/emacs/quail.el $(d)/emacs/SubstKey
 	$(ECHO) "[SUBST]  ... -> $@"
-	$(Q)$(lastword $^) $(SRC_DIR)/quail.el $< > $@
+	$(Q)$(lastword $^) $(EDITORS_DIR)/emacs/quail.el $< > $@
 
-$(d)/emacs/patoline-input.el: $(d)/emacs/patoline-input.pre $(SRC_DIR)/quail.el \
+$(d)/emacs/patoline-input.el: $(d)/emacs/patoline-input.pre $(d)/emacs/quail.el \
   $(d)/emacs/SubSuper2.el $(d)/emacs/patoline-input.post
 	$(ECHO) "[CAT]    ... -> $@"
 	$(Q)cat $^ > $@

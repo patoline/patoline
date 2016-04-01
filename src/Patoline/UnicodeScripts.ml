@@ -19,12 +19,12 @@
 *)
 
 (* First command-line argument: UnicodeData.txt input.
- * Second command-line argument: SubSuper.dyp output.
+ * Second command-line argument: SubSuper.ml output.
  * Third command-line argument: SubSuper.el output in emacs directory.
  *)
 
 let unicodedata_file = Sys.argv.(1)
-and subsuperdyp_file = Sys.argv.(2)
+and subsuperml_file = Sys.argv.(2)
 and subsuperel_file = Sys.argv.(3)
 and subsupeml_file = Sys.argv.(4)
 
@@ -117,17 +117,17 @@ let esc_int_to_bytes n =
   String.escaped (int_to_bytes n)
 
 
-let ch = open_out subsuperdyp_file
+let ch = open_out subsuperml_file
 
 let _ =
-(*  Printf.fprintf ch "%%parser\n";*)
-  Printf.fprintf ch "subscript:\n";
+  Printf.fprintf ch "open Decap\n";
+  Printf.fprintf ch "let parser subscript =\n";
   List.iter (fun (c,h,h') ->
-    Printf.fprintf ch "|\"%s\" { \"%s\" }\n" (esc_int_to_bytes h) (esc_int_to_bytes h')) subscripts;
+    Printf.fprintf ch "|\"%s\" -> \"%s\"\n" (esc_int_to_bytes h) (esc_int_to_bytes h')) subscripts;
   Printf.fprintf ch "\n";
-  Printf.fprintf ch "superscript:\n";
+  Printf.fprintf ch "let parser superscript =\n";
   List.iter (fun (c,h,h') ->
-    Printf.fprintf ch "|\"%s\" { \"%s\" }\n" (esc_int_to_bytes h) (esc_int_to_bytes h')) superscripts;
+    Printf.fprintf ch "|\"%s\" -> \"%s\"\n" (esc_int_to_bytes h) (esc_int_to_bytes h')) superscripts;
   close_out ch
 
 

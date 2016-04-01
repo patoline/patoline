@@ -26,7 +26,6 @@ let files=ref []
 let compile = ref true
 let run = ref true
 let no_grammar=ref false
-let new_parser=ref false
 let deps_only=ref false
 let extras = ref []
 let extras_top = ref []
@@ -102,8 +101,6 @@ let spec =
     message (Cli Dirs));
    ("--recompile",Arg.Set recompile,message (Cli Recompile));
    ("--no-grammar",Arg.Unit (fun ()-> extras_pp := ["--no-default-grammar"] :: !extras_pp), message (Cli No_grammar));
-   ("--new-parser",Arg.Set new_parser, "");
-   ("--old-parser",Arg.Clear new_parser, "");
    ("--format",Arg.String
      (fun f ->formats := Filename.basename f:: !formats), message (Cli Format));
    ("--dynlink",Arg.Unit(fun () -> dynlink:=true),message (Cli Dynlink));
@@ -565,7 +562,7 @@ and patoline_rule objects (builddir:string) (hs:string list) =
               assert (not is_main); chg_ext ~compile:true pref ".mli", [])
             else if Sys.file_exists (chg_ext ~compile:true pref ".ml") then
               (assert (not is_main); chg_ext ~compile:true pref ".ml", [])
-            else if not is_main && !new_parser && Sys.file_exists (chg_ext pref ".txp") then (
+            else if not is_main && Sys.file_exists (chg_ext pref ".txp") then (
               let source = chg_ext pref ".txp" in
               let ch = open_in source in
               let opts= add_format (read_options_from_source_file hs ch) in

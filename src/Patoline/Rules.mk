@@ -76,6 +76,12 @@ $(d)/Main.cmo: $(d)/Main.ml
 
 PATOLINE_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 
+$(EDITORS_DIR)/emacs/SubSuper.el: $(d)/SubSuper.ml ;
+$(d)/SubSuper.ml: $(d)/UnicodeData.txt $(PATOLINE_UNICODE_SCRIPTS)
+	$(ECHO) "[UNIC]   $< -> $@"
+	$(Q)$(PATOLINE_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/SubSuper.el $(SUBSUP_ML)
+$(SUBSUP_ML):$(d)/SubSuper.ml
+
 $(d)/UnicodeScripts.cmx: $(UNICODELIB_CMX) $(UNICODELIB_DEPS) $(UNICODELIB_ML)
 
 $(d)/UnicodeScripts: $(d)/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
@@ -84,7 +90,8 @@ $(d)/UnicodeScripts: $(d)/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
 
 $(d)/Build.cmo $(d)/Build.cmx: OFLAGS += -thread
 
-CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/patoline $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts $(d)/pa_patoline
+CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/patoline $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts $(d)/pa_patoline $(d)/emacs/SubSuper.ml
+
 DISTCLEAN += $(d)/*.depends
 
 # Installing

@@ -30,9 +30,9 @@ $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 all: $(d)/DefaultGrammar.pdf $(d)/_patobuild/DefaultGrammar.tgy
 
 $(d)/_patobuild/DefaultGrammar.tgy: $(d)/DefaultGrammar.ttml
-$(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
+$(SRC_DIR)/../editors/emacs/quail.el $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
 	$(ECHO) "[PAPAT]  $< -> $@"
-	$(Q)$(PA_PATOLINE_IN_SRC) --ascii --driver Pdf --no-default-grammar $< > $@
+	$(Q)$(PA_PATOLINE_IN_SRC) --ascii --quail-out $(SRC_DIR)/../editors/emacs/quail.el --driver Pdf --no-default-grammar $< > $@
 
 $(d)/DefaultGrammar_.tml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
 	$(ECHO) "[PAT]    $< -> $@"

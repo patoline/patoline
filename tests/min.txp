@@ -44,10 +44,10 @@ $$V^{2i},{2i}^^V,a,⊤,⊤,{+},⊤ $$
 $$a^i + A^i + (A)^i$$
 The next on should parse $b$ left indice without brace ?
 
-$$(∫ₐᵇ {2 t cos(t) \mathrm{d} t}),(b^^{∫ₐ {2 t cos(t) dt}})$$
+$$(∫ₐᵇ {2 t cos(t) d t}),(b^^{∫ₐ {2 t cos(t) dt}})$$
 $$f(x,y) = \prod_{i=0}^n (\sum_{j=0}^n (i + x)(j + y))$$
 
 $$α⃗ (x⃗ + y⃗) = α⃗ x⃗ + α⃗ y⃗$$
-(*$$[a, b\right[, (a \over b\right., (a\}$$*)
+$$[a, b\right[, (a \over b\right., (a\}$$
 $$1 \over 2$$
 $$A ∧ V$$
