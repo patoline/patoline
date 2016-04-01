@@ -64,66 +64,98 @@ include In
 let spec = extra_spec @ spec
 
 (* Blank functions for Patoline *********************************************)
+let blank_sline buf pos =
+  let open Pa_lexing in
+  let ocamldoc = ref false in
+  let ocamldoc_buf = Buffer.create 1024 in
+  let rec fn state stack prev curr nl =
+    let (buf, pos) = curr in
+    let (c, buf', pos') = Input.read buf pos in
+    if !ocamldoc then Buffer.add_char ocamldoc_buf c;
+    let next = (buf', pos') in
+    match (state, stack, c) with
+    (* Basic blancs. *)
+    | (`Ini      , []  , ' '     )
+    | (`Ini      , []  , '\t'    )
+    | (`Ini      , []  , '\r'    ) -> fn `Ini stack curr next nl
+    | (`Ini      , []  , '\n'    ) -> if not nl then curr else
+                                      fn `Ini stack curr next false
+    (* Comment opening. *)
+    | (`Ini      , _   , '('     ) -> fn (`Opn(curr)) stack curr next nl
+    | (`Ini      , []  , _       ) -> curr
+    | (`Opn(p)   , _   , '*'     ) ->
+        begin
+          let nl = true in
+          if stack = [] then
+            let (c, buf', pos') = Input.read buf' pos' in
+            let (c',_,_) = Input.read buf' pos' in
+            if c = '*' && c' <> '*' then
+              begin
+                ocamldoc := true;
+                fn `Ini (p::stack) curr (buf',pos') nl
+              end
+            else fn `Ini (p::stack) curr next nl
+          else fn `Ini (p::stack) curr next nl
+        end
+    | (`Opn(_)   , _::_, '"'     ) -> fn (`Str(curr)) stack curr next nl (*#*)
+    | (`Opn(_)   , _::_, '{'     ) -> fn (`SOp([],curr)) stack curr next nl (*#*)
+    | (`Opn(_)   , []  , _       ) -> prev
+    | (`Opn(_)   , _   , _       ) -> fn `Ini stack curr next nl
+    (* String litteral in a comment (including the # rules). *)
+    | (`Ini      , _::_, '"'     ) -> fn (`Str(curr)) stack curr next nl
+    | (`Str(_)   , _::_, '"'     ) -> fn `Ini stack curr next nl
+    | (`Str(p)   , _::_, '\\'    ) -> fn (`Esc(p)) stack curr next nl
+    | (`Esc(p)   , _::_, _       ) -> fn (`Str(p)) stack curr next nl
+    | (`Str(p)   , _::_, '\255'  ) -> unclosed_comment_string p
+    | (`Str(_)   , _::_, _       ) -> fn state stack curr next nl
+    | (`Str(_)   , []  , _       ) -> assert false (* Impossible. *)
+    | (`Esc(_)   , []  , _       ) -> assert false (* Impossible. *)
+    (* Delimited string litteral in a comment. *)
+    | (`Ini      , _::_, '{'     ) -> fn (`SOp([],curr)) stack curr next nl
+    | (`SOp(l,p) , _::_, 'a'..'z')
+    | (`SOp(l,p) , _::_, '_'     ) -> fn (`SOp(c::l,p)) stack curr next nl
+    | (`SOp(_,_) , p::_, '\255'  ) -> unclosed_comment p
+    | (`SOp(l,p) , _::_, '|'     ) -> fn (`SIn(List.rev l,p)) stack curr next nl
+    | (`SOp(_,_) , _::_, _       ) -> fn `Ini stack curr next nl
+    | (`SIn(l,p) , _::_, '|'     ) -> fn (`SCl(l,(l,p))) stack curr next nl
+    | (`SIn(_,p) , _::_, '\255'  ) -> unclosed_comment_string p
+    | (`SIn(_,_) , _::_, _       ) -> fn state stack curr next nl
+    | (`SCl([],b), _::_, '}'     ) -> fn `Ini stack curr next nl
+    | (`SCl([],b), _::_, '\255'  ) -> unclosed_comment_string (snd b)
+    | (`SCl([],b), _::_, _       ) -> fn (`SIn(b)) stack curr next nl
+    | (`SCl(l,b) , _::_, c       ) -> if c = List.hd l then
+                                        let l = List.tl l in
+                                        fn (`SCl(l, b)) stack curr next nl
+                                      else
+                                        fn (`SIn(b)) stack curr next nl
+    | (`SOp(_,_) , []  , _       ) -> assert false (* Impossible. *)
+    | (`SIn(_,_) , []  , _       ) -> assert false (* Impossible. *)
+    | (`SCl(_,_) , []  , _       ) -> assert false (* Impossible. *)
+    (* Comment closing. *)
+    | (`Ini      , _::_, '*'     ) -> fn `Cls stack curr next nl
+    | (`Cls      , _::_, '*'     ) -> fn `Cls stack curr next nl
+    | (`Cls      , p::s, ')'     ) ->
+       if !ocamldoc && s = [] then
+         begin
+           let comment = Buffer.sub ocamldoc_buf 0 (Buffer.length ocamldoc_buf - 2) in
+           Buffer.clear ocamldoc_buf;
+           ocamldoc_comments := (p,next,comment)::!ocamldoc_comments;
+           ocamldoc := false
+         end;
+       fn `Ini s curr next nl
+    | (`Cls      , _::_, _       ) -> fn `Ini stack curr next nl
+    | (`Cls      , []  , _       ) -> assert false (* Impossible. *)
+    (* Comment contents (excluding string litterals). *)
+    | (`Ini     , p::_, '\255'  ) -> unclosed_comment p
+    | (`Ini     , _::_, _       ) -> fn `Ini stack curr next nl
+  in
+  fn `Ini [] (buf, pos) (buf, pos) true
 
-exception Unclosed_comments of Location.t list
+(* Intra-paragraph blanks. *)
+let blank1 = blank_sline
 
-(*
- * The position of comment openings is stored in a stack.
- * When a closing is reached we pop this stack so that in the end it contains
- * comments that have not been closed. There might be several, but there is at
- * least one.
- *)
-let cstack = Stack.create ()
-let get_unclosed () =
-  let rec f l =
-    if Stack.is_empty cstack then l
-    else f (Stack.pop cstack :: l)
-  in f [];
-
-let patocomment = declare_grammar "patocomment"
-
-let any_not_closing =
-  black_box (fun str pos ->
-    let (c, str', pos') = Input.read str pos in
-    match c with
-    | '\255' -> let locs = get_unclosed () in
-                raise (Unclosed_comments locs)
-    | '*'    -> let (c', _, _) = Input.read str' pos' in
-                if c' = ')' then
-                  give_up "Not the place to close a comment"
-                else
-                  ((), str', pos')
-    | _      -> ((), str', pos')
-  ) Charset.full_charset false "ANY"
-
-let comment_content =
-  parser
-  | _:patocomment
-  | _:string_litteral
-  | _:any_not_closing
-
-let _ = set_grammar patocomment
-  (change_layout (
-    parser
-      {"(*" -> Stack.push _loc cstack}
-      comment_content*
-      {"*)" -> Stack.pop cstack}
-  ) no_blank)
-
-let patocomments =
-  parser _:{patocomment}*
-
-let blank_grammar_sline =
-  parser _:''[ \t\r]''* _:{'\n' _:''[ \t\r]''*}?
-
-let blank_grammar_mline =
-  parser _:''[ \t\r]''* _:{'\n' _:''[ \t\r]''*}*
-
-let blank_sline = blank_grammar blank_grammar_sline no_blank
-let blank_mline = blank_grammar blank_grammar_mline no_blank
-
-let blank1 = blank_grammar patocomments blank_sline
-let blank2 = blank_grammar patocomments blank_mline
+(* Inter-paragraph blanks. *)
+let blank2 = Pa_lexing.ocaml_blank
 
 (* Code generation helpers **************************************************)
 
@@ -135,19 +167,14 @@ let freshUid () =
   incr counter;
   "MOD" ^ (string_of_int current)
 
-  let wrapped_caml_structure =
-    parser
-    | '(' l:structure ')' -> l
+  let parser wrapped_caml_structure = '(' structure ')'
 
   (* Parse a caml "expr" wrapped with parentheses *)
-  let wrapped_caml_expr =
-    parser
-    | '(' e:(change_layout expression blank2) ')' -> e
+  let parser wrapped_caml_expr = '(' (change_layout expression blank2) ')'
 
   (* Parse a list of caml "expr" *)
-  let wrapped_caml_list =
-    parser
-    | '[' l:{e:expression l:{ ';' e:expression }* ';'? -> e::l}?[[]] ']' -> l
+  let parser wrapped_caml_list =
+    '[' {e:expression l:{ ';' e:expression }* ';'? -> e::l}?[[]] ']'
 
   (* Parse an array of caml "expr" *)
   let wrapped_caml_array =
