@@ -17,30 +17,37 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+=========================================
+	Test des maths
+-----------------------------------------
+	Patoline
+=========================================
 
 \Caml(
 open Document.Mathematical
 open Maths
 
-let defaultEnv = { defaultEnv with 
+let defaultEnv = { defaultEnv with
   (*show_boxes = true;*)
 
   mathsEnvironment = Array.map (fun e -> {
     e with
-    precise_kerning = 1e-2;
+    precise_kerning = 1.0e-2;
   }) defaultEnv.mathsEnvironment;}
 )
 
-$$a^2 + 2 a b + b^2 = (a+b)^2$$
+$$a² + 2 a b + b² = (a+b)^2$$
 $$||a||, |a|, [a], \{a\}, (a)$$
 $$||ν_i||,|ν_i|, [ν_i], \{ν_i\}, (ν_i)$$
 $$i__A_i^t, t^^i__A_i, t^^i__A_i^t, i__V_i^t, t^^i__V_i, t^^i__V_i^t$$
 $$V^{2i},{2i}^^V,a,⊤,⊤,{+},⊤ $$
 $$a^i + A^i + (A)^i$$
-    cos, cos, cos
-$$(∫_a^b {2 t cos(t) \mathrm{d}t}), (b^^∫_a {2 cos(t) \mathrm{d}t})$$
+The next on should parse $b$ left indice without brace ?
+
+$$(∫ₐᵇ {2 t cos(t) \mathrm{d} t}),(b^^{∫ₐ {2 t cos(t) dt}})$$
 $$f(x,y) = \prod_{i=0}^n (\sum_{j=0}^n (i + x)(j + y))$$
+
 $$α⃗ (x⃗ + y⃗) = α⃗ x⃗ + α⃗ y⃗$$
-$$[a, b\right[, (a \over b\right., (a\}$$ 
+(*$$[a, b\right[, (a \over b\right., (a\}$$*)
 $$1 \over 2$$
 $$A ∧ V$$

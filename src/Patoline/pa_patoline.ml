@@ -420,8 +420,25 @@ let verbatim_environment = change_layout verbatim_environment no_blank
  ****************************************************************************)
 
 type math_prio =
-  | Macro | AtomM | Accent | Ind | Fun | Prod
+  | AtomM | Accent | Ind | Fun | Prod
   | Sum | Operator | Rel | Neg | Conj | Impl | Punc
+
+let math_prios = [ AtomM ; Accent ; Ind ; Fun ; Prod ; Sum
+		 ; Operator ; Rel ; Neg ; Conj ; Impl ; Punc ]
+
+let next_prio = function
+  | Punc -> Impl
+  | Impl -> Conj
+  | Conj -> Neg
+  | Neg -> Rel
+  | Rel -> Operator
+  | Operator -> Sum
+  | Sum -> Prod
+  | Prod -> Fun
+  | Fun -> Ind
+  | Ind -> Accent
+  | Accent -> AtomM
+  | AtomM -> assert false
 
 type symbol =
   | Invisible
@@ -642,16 +659,16 @@ let merge_states : grammar_state -> grammar_state -> unit = fun s1 s2 ->
   s1.paragraph_macros        <- s2.paragraph_macros @ s1.paragraph_macros;
   s1.environment             <- s2.environment @ s1.environment
 
+let math_prefix_symbol, set_math_prefix_symbol  = grammar_family "prefix"
+let math_postfix_symbol, set_math_postfix_symbol = grammar_family "postfix"
+let math_operator, set_math_operator = grammar_family "operator"
+let math_infix_symbol, set_math_infix_symbol = grammar_family "infix"
 let math_atom_symbol = new_grammar "atom_symbol"
-let math_prefix_symbol = new_grammar "prefix"
-let math_postfix_symbol = new_grammar "postfix"
-let math_quantifier_symbol = new_grammar "postfix"
+let math_quantifier_symbol = new_grammar "quantifier"
 let math_accent_symbol = new_grammar "accent"
 let math_left_delimiter = new_grammar "left delimiter"
 let math_right_delimiter = new_grammar "right delimiter"
-let math_operator = new_grammar "operator"
 let math_combining_symbol = new_grammar "combining"
-let math_infix_symbol = new_grammar "infix"
 let math_punctuation_symbol = new_grammar "punctuation"
 let math_relation_symbol = new_grammar "relation"
 
@@ -672,17 +689,23 @@ let tree_to_grammar : ?filter:('a -> bool) -> 'a PMap.tree -> 'a grammar = fun ?
   black_box fn charset false "symbol"
 
 let build_grammar () =
-  set_grammar math_infix_symbol (tree_to_grammar state.infix_symbols);
-  set_grammar math_punctuation_symbol (tree_to_grammar ~filter:(fun s -> s.infix_prio = Punc) state.infix_symbols);
-  set_grammar math_relation_symbol (tree_to_grammar ~filter:(fun s -> s.infix_prio = Rel) state.infix_symbols);
-  set_grammar math_prefix_symbol (tree_to_grammar state.prefix_symbols);
-  set_grammar math_postfix_symbol (tree_to_grammar state.postfix_symbols);
+  set_math_infix_symbol (fun p ->
+    tree_to_grammar ~filter:(fun s -> s.infix_prio = p) state.infix_symbols);
+  set_grammar math_punctuation_symbol
+    (tree_to_grammar ~filter:(fun s -> s.infix_prio = Punc) state.infix_symbols);
+  set_grammar math_relation_symbol
+    (tree_to_grammar ~filter:(fun s -> s.infix_prio = Rel) state.infix_symbols);
+  set_math_prefix_symbol
+    (fun p -> tree_to_grammar ~filter:(fun s -> s.prefix_prio = p) state.prefix_symbols);
+  set_math_postfix_symbol
+    (fun p -> tree_to_grammar ~filter:(fun s -> s.postfix_prio = p) state.postfix_symbols);
+  set_math_operator (fun p ->
+    tree_to_grammar ~filter:(fun s -> s.operator_prio = p) state.operator_symbols);
   set_grammar math_quantifier_symbol (tree_to_grammar state.quantifier_symbols);
   set_grammar math_atom_symbol (tree_to_grammar state.atom_symbols);
   set_grammar math_accent_symbol (tree_to_grammar state.accent_symbols);
   set_grammar math_left_delimiter (tree_to_grammar state.left_delimiter_symbols);
   set_grammar math_right_delimiter (tree_to_grammar state.right_delimiter_symbols);
-  set_grammar math_operator (tree_to_grammar state.operator_symbols);
   set_grammar math_combining_symbol (tree_to_grammar state.combining_symbols)
 
 
@@ -832,7 +855,8 @@ let print_math_deco _loc elt ind =
       (match ind.down_left with
        | Some i -> r:= <:record<Maths.subscript_left = $i$ >> @ !r
        | _ -> ());
-      Pa_ast.loc_expr _loc (Parsetree.Pexp_record (!r, Some <:expr< Maths.noad (fun env st -> Maths.draw [env] $elt$)>>))
+      <:expr<
+       [Maths.Ordinary $Pa_ast.loc_expr _loc (Parsetree.Pexp_record (!r, Some <:expr< Maths.noad (fun env st -> Maths.draw [env] $elt$)>>))$]>>
     end
 
 let add_reserved sym_names =
@@ -1122,29 +1146,22 @@ let parser symbol_def =
   | "\\Add_combining" "{" c:uchar "}" "{" "\\" - m:lid "}" ->
      new_combining_symbol _loc       c m
 
-let pred : math_prio -> math_prio = function
-  | Macro -> Macro
-  | p -> Obj.magic (Obj.magic p - 1)
-
 type indice_height = Up | Down
-type indice_side = Left | Right
 
-let parser indices =
-		   | "_" -> Right,Down
-		   | "__"-> Left,Down
-		   | "^" -> Right,Up
-		   | "^^"-> Left,Up
+let parser left_indices =
+		   | "__"-> Down
+		   | "^^"-> Up
 
 let parser right_indices =
 		   | "_" -> Down
 		   | "^" -> Up
 
 let parser any_symbol =
-  | sym:math_infix_symbol  -> sym.infix_value
-  | sym:math_atom_symbol    -> sym.symbol_value
-  | sym:math_prefix_symbol  -> sym.prefix_value
-  | sym:math_postfix_symbol -> sym.postfix_value
-  | sym:math_quantifier_symbol -> sym.symbol_value
+  | sym:                        math_atom_symbol                    -> sym.symbol_value
+  | sym:                        math_quantifier_symbol              -> sym.symbol_value
+  | sym:(alternatives (List.map math_infix_symbol      math_prios)) -> sym.infix_value
+  | sym:(alternatives (List.map math_prefix_symbol     math_prios)) -> sym.prefix_value
+  | sym:(alternatives (List.map math_postfix_symbol    math_prios)) -> sym.postfix_value
 
 let merge_indices indices ind =
   assert(ind.down_left = None);
@@ -1155,21 +1172,19 @@ let merge_indices indices ind =
     down_right = if ind.down_right <> None then ind.down_right else indices.down_right;
     up_right = if ind.up_right <> None then ind.up_right else indices.up_right}
 
-let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * math_prio) Decap.grammar =
-  | m:math_atom -> m
+let parser math_aux prio =
+  | m:(math_aux (next_prio prio)) when prio <> AtomM -> m
 
-  | sym:math_prefix_symbol ind:with_indices (m,mp):math_aux ->
-     if mp > sym.prefix_prio then give_up "bad prefix priority";
+  | sym:(math_prefix_symbol prio) ind:with_indices m:(math_aux prio) ->
      (fun indices ->
        let indices = merge_indices indices ind in
        let psp = sym.prefix_space in
        let pnsp = sym.prefix_no_space in
        let md = print_math_deco_sym _loc_sym sym.prefix_value indices in
        <:expr<[Maths.bin $int:psp$ (Maths.Normal(true,$md$,$bool:pnsp$)) [] $m no_ind$]>>
-     ), sym.prefix_prio
+     )
 
-  | sym:math_quantifier_symbol ind:with_indices d:math_declaration p:math_punctuation_symbol? (m,mp):math_aux ->
-     if mp > Operator then give_up "bad prefix priority";
+  | sym:math_quantifier_symbol ind:with_indices d:math_declaration p:math_punctuation_symbol? m:(math_aux prio) when prio = Impl ->
     (fun indices ->
       let indices = merge_indices indices ind in
       let inter =
@@ -1183,34 +1198,30 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
       in
       let md = print_math_deco_sym _loc_sym sym.symbol_value indices in
       <:expr<[Maths.bin 3 (Maths.Normal(true,$md$,true)) []
-                    [Maths.bin 1 $inter$ $d$ $m no_ind$]]>>), Operator
+                    [Maths.bin 1 $inter$ $d$ $m no_ind$]]>>)
 
-  | op:math_operator ind:with_indices (m,mp):math_aux ->
-     if mp > op.operator_prio then give_up "bad operator priority";
+  | op:(math_operator prio) ind:with_indices m:(math_aux prio) ->
      (fun indices ->
        let ind = merge_indices indices ind in
       match op.operator_kind with
 	Limits ->
 	  <:expr<[Maths.op_limits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>
       | NoLimits ->
-	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>), op.operator_prio
+	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>)
 
-  | (m,mp):math_aux sym:math_postfix_symbol  ->
-     if mp > sym.postfix_prio then give_up "bad post priority";
+  | m:(math_aux prio) sym:(math_postfix_symbol prio) ->
       (fun indices ->
         let psp = sym.postfix_space in
         let nsp = sym.postfix_no_space in
         let md  = print_math_deco_sym _loc_sym sym.postfix_value indices in
         let m = m no_ind in
-        <:expr<[Maths.bin $int:psp$ (Maths.Normal($bool:nsp$,$md$,true)) $m$ []] >>), sym.postfix_prio
+        <:expr<[Maths.bin $int:psp$ (Maths.Normal($bool:nsp$,$md$,true)) $m$ []] >>)
 
-  | (l,lp,s,ind as st):{(l,lp):math_aux
-		     (s,ind):{s:math_infix_symbol i:with_indices -> (s,i)
-		        | s:(empty invisible_product) -> (s,no_ind)} ->
-	      if lp > s.infix_prio then give_up "bad infix priority";
-	      (l,lp,s,ind) } (r,rp):math_aux ->
-     if rp >= s.infix_prio then give_up "bad infix priority";
-    (fun indices ->
+  | l:(math_aux prio) st:{ s:(math_infix_symbol prio) i:with_indices -> (s,i)
+			 | s:(empty invisible_product) when prio = Prod -> (s,no_ind) }
+    r:(math_aux (next_prio prio)) when prio <> AtomM ->
+     let s,ind = st in
+     (fun indices ->
          let indices = merge_indices indices ind in
 	 let nsl = s.infix_no_left_space in
 	 let nsr = s.infix_no_right_space in
@@ -1230,44 +1241,42 @@ let parser math_aux : ((Parsetree.expression indices -> Parsetree.expression) * 
 	   in
 	   <:expr<[Maths.Binary { bin_priority= $int:sp$ ; bin_drawing = $inter$
                           ; bin_left = $l$ ; bin_right= $r$ }]>>
-	 end), s.infix_prio
+	 end)
 
-and math_atom =
   (* Les règles commençant avec un { forment un conflict avec les arguments
    des macros. Je pense que c'est l'origine de nos problèmes de complexité. *)
-  | '{' (m,_):math_aux '}' -> (m,AtomM)
-  | '{' s:any_symbol '}'   ->
+  | '{' m:(math_aux Punc) '}' when prio = AtomM -> m
+  | '{' s:any_symbol '}' when prio = AtomM ->
       if s = Invisible then give_up "";
       let f indices =
         let md = print_math_deco_sym _loc_s s indices in
         <:expr<[Maths.Ordinary $md$]>>
-      in (f, AtomM)
+      in f
 
-  | l:math_left_delimiter (m,_):math_aux r:math_right_delimiter ->
+  | l:math_left_delimiter m:(math_aux Punc) r:math_right_delimiter  when prio = AtomM ->
      (fun indices ->
        let l = print_math_symbol _loc_l (MultiSym l.delimiter_values) in
        let r = print_math_symbol _loc_r (MultiSym r.delimiter_values) in
-       print_math_deco _loc <:expr<[Maths.Decoration ((Maths.open_close $l$ $r$), $m no_ind$)]>> indices
-     ),AtomM
+       print_math_deco _loc <:expr<[Maths.Decoration ((Maths.open_close $l$ $r$), $m no_ind$)]>> indices)
 
-  | name:''[a-zA-Z][a-zA-Z0-9]*'' ->
+  | name:''[a-zA-Z][a-zA-Z0-9]*'' when prio = AtomM ->
      (fun indices ->
        if String.length name > 1 then
 	 let elt = <:expr<fun env -> Maths.glyphs $string:name$ (Maths.change_fonts env env.font)>> in
 	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (CamlSym elt) indices$] >>
        else
-	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (SimpleSym name) indices$] >>), AtomM
+	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (SimpleSym name) indices$] >>)
 
-  | sym:math_atom_symbol ->
+  | sym:math_atom_symbol  when prio = AtomM ->
       (fun indices ->
-	<:expr<[Maths.Ordinary $print_math_deco_sym _loc_sym sym.symbol_value indices$] >>), AtomM
+	<:expr<[Maths.Ordinary $print_math_deco_sym _loc_sym sym.symbol_value indices$] >>)
 
-  | num:''[0-9]+\([.][0-9]+\)?'' ->
+  | num:''[0-9]+\([.][0-9]+\)?''  when prio = AtomM ->
      (fun indices ->
-       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>), AtomM
+       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>)
 
-  | '\\' - id:mathlid - args:(change_layout math_macro_arguments no_blank)?[[]]
-     ''[ \t\n\r]*'' ->
+  | '\\' - id:mathlid - args:math_macro_arguments?[[]] relax
+     ''[ \t\n\r]*''  when prio = AtomM ->
      if PrefixTree.mem id state.reserved_symbols then give_up "not a macro";
      (fun indices ->
        let config =
@@ -1278,65 +1287,64 @@ and math_atom =
        let apply acc arg = <:expr<$acc$ $arg$>> in
        let e = List.fold_left apply <:expr<$m$>> args in
        print_math_deco _loc_id e indices
-     ), AtomM
+     )
+  | m:(math_aux Accent) sym:math_combining_symbol when prio = Accent ->
+    (fun indices -> <:expr<$lid:sym$ $m indices$>>)
 
-  | (m,mp):math_atom sym:math_combining_symbol  ->
-    if mp > AtomM then give_up "bad post priority";
-    (fun indices -> <:expr<$lid:sym$ $m indices$>>),Accent
-
-  | (m,mp):math_atom s:Subsup.subscript ->
-    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
-    let rd indices =
-      if indices.down_right <> None then give_up "double indices";
-      { indices with down_right = Some s }
-    in
-    (fun indices -> m (rd indices)), Ind
-
-  | (m,mp):math_atom s:Subsup.superscript ->
-    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
-    let rd indices =
-      if indices.up_right <> None then give_up "double indices";
-      { indices with up_right = Some s }
-    in
-    (fun indices -> m (rd indices)), Ind
-
-  | (m,mp):math_atom s:math_accent_symbol ->
+  | m:(math_aux Accent) s:math_accent_symbol when prio = Accent ->
     let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s.symbol_value no_ind$] >> in
     let rd indices =
       if indices.up_right <> None then give_up "double indices";
       { indices with up_right = Some s; up_right_same_script = true }
     in
-    (fun indices -> m (rd indices)), Ind
+    (fun indices -> m (rd indices))
 
-  | (m,mp):math_atom - (s,h):indices - (r,rp):math_atom ->
-     if (mp >= Ind && s = Left) then give_up "can not be used as indice";
-     if (rp >= Ind && s = Right) then give_up "can not be used as indice";
-     let rd indices = function
-       | Left,Down ->
-	  if indices.down_left <> None then give_up "double indices";
-	 { indices with down_left = Some (m no_ind) }
-       | Right,Down ->
-	  if indices.down_right <> None then give_up "double indices";
-	 { indices with down_right = Some (r no_ind) }
-       | Left,Up ->
-	  if indices.up_left <> None then give_up "double indices";
-	 { indices with up_left = Some (m no_ind) }
-       | Right,Up ->
-	  if indices.up_right <> None then give_up "double indices";
-	 { indices with up_right = Some (r no_ind) }
-     in
-     (fun indices -> (if s = Left then r else m) (rd indices (s,h))), Ind
+  | m:(math_aux Ind) s:Subsup.subscript when prio = Ind ->
+    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+    let rd indices =
+      if indices.down_right <> None then give_up "double indices";
+      { indices with down_right = Some s }
+    in
+    (fun indices -> m (rd indices))
+
+  | m:(math_aux Ind) s:Subsup.superscript when prio = Ind ->
+    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+    let rd indices =
+      if indices.up_right <> None then give_up "double indices";
+      { indices with up_right = Some s }
+    in
+    (fun indices -> m (rd indices))
+
+  | m:(math_aux Ind) - h:right_indices - r:(math_aux Accent) when prio = Ind ->
+     (fun indices -> match h with
+     | Down ->
+ 	if indices.down_right <> None then give_up "double indices";
+        m { indices with down_right = Some (r no_ind) }
+     | Up ->
+	if indices.up_right <> None then give_up "double indices";
+	m { indices with up_right = Some (r no_ind) }
+     )
+
+  | m:(math_aux Accent) - h:left_indices - r:(math_aux Ind) when prio = Ind ->
+     (fun indices -> match h with
+     | Down ->
+	if indices.down_left <> None then give_up "double indices";
+        r { indices with down_left = Some (m no_ind) }
+     | Up ->
+	if indices.up_left <> None then give_up "double indices";
+        r { indices with up_left = Some (m no_ind) }
+     )
 
 and math_macro_argument =
-  | '{' (m,_):(change_layout math_aux blank1) '}' -> m no_ind
+  | '{' m:(math_aux Punc) '}' -> m no_ind
   | wrapped_caml_expr
 
-and math_macro_arguments = math_macro_argument+
+and math_macro_arguments = ms:{math_macro_argument -}* m:math_macro_argument -> ms @ [m]
 
 and with_indices =
   | EMPTY -> no_ind
 
-  | i:with_indices h:right_indices - (r,rp):math_aux ->
+  | i:with_indices h:right_indices - r:(math_aux Accent) ->
      begin
        match h with
        | Down -> if i.down_right <> None then give_up "double indices";
@@ -1371,8 +1379,8 @@ and with_indices =
     (o, i)*)
 
 and math_punc_list =
-  | (m,_):math_atom -> m no_ind
-  | l:math_punc_list s:math_punctuation_symbol (m,_):math_atom ->
+  | m:(math_aux Punc) -> m no_ind
+  | l:math_punc_list s:math_punctuation_symbol m:(math_aux Impl) ->
     let nsl = s.infix_no_left_space in
     let nsr = s.infix_no_right_space in
     let r = m no_ind in
@@ -1398,7 +1406,7 @@ and math_declaration =
 
 
 let parser math_toplevel =
-  | (m,_):math_aux -> m no_ind
+  | m:(math_aux Punc) -> m no_ind
   | s:any_symbol i:with_indices ->
       if s = Invisible then give_up "...";
       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s i$]>>
@@ -1721,10 +1729,15 @@ let patoline_config : unit grammar =
 let parser header = _:patoline_config*
 
 let parser title =
-  | RE("==========\\(=*\\)") title:text_only
-    auth:{_:RE("----------\\(-*\\)") t:text_only}?
-    inst:{_:RE("----------\\(-*\\)") t:text_only}?
-    date:{_:RE("----------\\(-*\\)") t:text_only}?
+  | RE("==========\\(=*\\)")
+      title:text_only
+      (auth,inst,date):{
+	auth:{_:RE("----------\\(-*\\)") text_only}
+	(inst,date):{
+	  inst:{_:RE("----------\\(-*\\)") text_only}
+	  date:{_:RE("----------\\(-*\\)") text_only}? -> (Some inst, date)
+	}?[None,None] -> (Some auth, inst, date)
+      }?[None,None,None]
     RE("==========\\(=*\\)") ->
 
       let date =
