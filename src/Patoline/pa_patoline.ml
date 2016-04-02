@@ -485,7 +485,6 @@ let parser symbol_values =
   | e:wrapped_caml_expr -> e
 
 let parser lid = id:''[_a-z][_a-zA-Z0-9']*'' -> id
-let parser mathlid = id:''[a-z][a-zA-Z0-9']*'' -> id
 let parser uid = id:''[A-Z][_a-zA-Z0-9']*''  -> id
 let parser num = n:''[0-9]+'' -> int_of_string n
 
@@ -647,6 +646,10 @@ let state =
   ; paragraph_macros = []
   ; environment      = [] }
 
+let parser mathlid = id:''[a-z][a-zA-Z0-9']*'' ->
+  if PMap.mem id state.reserved_symbols then give_up "symbol";
+  id
+
 let local_state =
   { verbose          = false
   ; infix_symbols    = PrefixTree.empty
@@ -711,6 +714,7 @@ let tree_to_grammar : ?filter:('a -> bool) -> 'a PMap.tree -> 'a grammar = fun ?
     List.fold_left f Charset.empty_charset l
   in
   black_box fn charset false "symbol"
+
 
 let build_grammar () =
   set_math_infix_symbol (fun p ->
@@ -953,6 +957,7 @@ let new_symbol _loc sym_names symbol_value =
   let insert map name = PrefixTree.add name sym map in
   state.atom_symbols <- List.fold_left insert state.atom_symbols sym_names;
   local_state.atom_symbols <- List.fold_left insert local_state.atom_symbols sym_names;
+  add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
     let sym_val = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc symbol_value$)]>> in
@@ -1226,7 +1231,7 @@ let parser math_aux prio =
        <:expr<[Maths.bin $int:psp$ (Maths.Normal(true,$md$,$bool:pnsp$)) [] $m no_ind$]>>
      )
 
-  | sym:math_quantifier_symbol ind:with_indices d:math_declaration p:math_punctuation_symbol? m:(math_aux prio) when prio = Impl ->
+  | sym:math_quantifier_symbol ind:with_indices d:math_declaration p:math_punctuation_symbol? m:(math_aux prio) when prio = Operator ->
     (fun indices ->
       let indices = merge_indices indices ind in
       let inter =
@@ -1421,8 +1426,8 @@ and with_indices =
     (o, i)*)
 
 and math_punc_list =
-  | m:(math_aux Punc) -> m no_ind
-  | l:math_punc_list s:math_punctuation_symbol m:(math_aux Impl) ->
+  | m:(math_aux Ind) -> m no_ind
+  | l:math_punc_list s:math_punctuation_symbol m:(math_aux Ind) ->
     let nsl = s.infix_no_left_space in
     let nsr = s.infix_no_right_space in
     let r = m no_ind in
