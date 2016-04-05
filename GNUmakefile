@@ -151,8 +151,8 @@ EDITORS_DIR := editors
 OCAMLPATH_SAVE := $(OCAMLPATH)
 OCAMLPATH = $(SRC_DIR):$(OCAMLPATH_SAVE)
 export OCAMLPATH
-#OCAMLFIND_IGNORE_DUPS_IN=`ocamlfind printconf destdir`
-#export OCAMLFIND_IGNORE_DUPS_IN
+OCAMLFIND_IGNORE_DUPS_IN=$(shell ocamlfind printconf destdir)
+export OCAMLFIND_IGNORE_DUPS_IN
 
 OCAMLVERSION=$(shell $(OCAMLC) -version)
 
