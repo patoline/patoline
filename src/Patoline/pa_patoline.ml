@@ -44,13 +44,16 @@ let quail_ch =
     ch)
 
 let quail_out mnames unames =
-  match unames with
-  | [] -> ()
-  | u::_ ->
-     if !quail_out_name <> "" then
+  if !quail_out_name <> "" then
+    begin
+      let unames = List.filter (fun s -> UTF8.validate s && UTF8.length s = 1) unames in
+      match unames with
+      | [] -> ()
+      | u::_ ->
        List.iter (fun name ->
 	 Printf.fprintf (Lazy.force quail_ch) "(\"%s\" ?%s)\n" (String.escaped name) u) mnames
-
+    end
+      
 let extra_spec =
   [ ("--driver",  Arg.String set_patoline_driver,
      "The driver against which to compile.")
@@ -699,42 +702,43 @@ let math_combining_symbol = new_grammar "combining"
 let math_punctuation_symbol = new_grammar "punctuation"
 let math_relation_symbol = new_grammar "relation"
 
-let tree_to_grammar : ?filter:('a -> bool) -> 'a PMap.tree -> 'a grammar = fun ?(filter=fun x -> true) t ->
-  let PMap.Node(_,l) = t in
-  let fn buf pos =
-    let line = Input.line buf in
-    let line = String.sub line pos (String.length line - pos) in
-    try
-      let (n,v) = PMap.longest_prefix ~filter line t in
-      (v, buf, pos+n)
-    with Not_found -> give_up "Not a valid symbol."
-  in
-  let charset =
-    let f acc (c,_) = Charset.add acc c in
-    List.fold_left f Charset.empty_charset l
-  in
-  black_box fn charset false "symbol"
+let tree_to_grammar : ?filter:('a -> bool) -> string -> 'a PMap.tree -> 'a grammar =
+  fun ?(filter=fun x -> true) name t ->
+    let PMap.Node(_,l) = t in
+    let fn buf pos =
+      let line = Input.line buf in
+      let line = String.sub line pos (String.length line - pos) in
+      try
+	let (n,v) = PMap.longest_prefix ~filter line t in
+	(v, buf, pos+n)
+      with Not_found -> give_up "Not a valid symbol."
+    in
+    let charset =
+      let f acc (c,_) = Charset.add acc c in
+      List.fold_left f Charset.empty_charset l
+    in
+    black_box fn charset false name
 
 
 let build_grammar () =
   set_math_infix_symbol (fun p ->
-    tree_to_grammar ~filter:(fun s -> s.infix_prio = p) state.infix_symbols);
+    tree_to_grammar ~filter:(fun s -> s.infix_prio = p) "infix_symbol" state.infix_symbols);
   set_grammar math_punctuation_symbol
-    (tree_to_grammar ~filter:(fun s -> s.infix_prio = Punc) state.infix_symbols);
+    (tree_to_grammar ~filter:(fun s -> s.infix_prio = Punc) "punctuation_symbol" state.infix_symbols);
   set_grammar math_relation_symbol
-    (tree_to_grammar ~filter:(fun s -> s.infix_prio = Rel) state.infix_symbols);
+    (tree_to_grammar ~filter:(fun s -> s.infix_prio = Rel) "relation_symbol" state.infix_symbols);
   set_math_prefix_symbol
-    (fun p -> tree_to_grammar ~filter:(fun s -> s.prefix_prio = p) state.prefix_symbols);
+    (fun p -> tree_to_grammar ~filter:(fun s -> s.prefix_prio = p) "prefix_symbol" state.prefix_symbols);
   set_math_postfix_symbol
-    (fun p -> tree_to_grammar ~filter:(fun s -> s.postfix_prio = p) state.postfix_symbols);
+    (fun p -> tree_to_grammar ~filter:(fun s -> s.postfix_prio = p) "postfix_symbol" state.postfix_symbols);
   set_math_operator (fun p ->
-    tree_to_grammar ~filter:(fun s -> s.operator_prio = p) state.operator_symbols);
-  set_grammar math_quantifier_symbol (tree_to_grammar state.quantifier_symbols);
-  set_grammar math_atom_symbol (tree_to_grammar state.atom_symbols);
-  set_grammar math_accent_symbol (tree_to_grammar state.accent_symbols);
-  set_grammar math_left_delimiter (tree_to_grammar state.left_delimiter_symbols);
-  set_grammar math_right_delimiter (tree_to_grammar state.right_delimiter_symbols);
-  set_grammar math_combining_symbol (tree_to_grammar state.combining_symbols)
+    tree_to_grammar ~filter:(fun s -> s.operator_prio = p) "operator_symbol" state.operator_symbols);
+  set_grammar math_quantifier_symbol (tree_to_grammar "quantifier_symbol" state.quantifier_symbols);
+  set_grammar math_atom_symbol (tree_to_grammar "atom_symbol" state.atom_symbols);
+  set_grammar math_accent_symbol (tree_to_grammar "accent_symbol" state.accent_symbols);
+  set_grammar math_left_delimiter (tree_to_grammar "left_delimiter_symbol" state.left_delimiter_symbols);
+  set_grammar math_right_delimiter (tree_to_grammar "rigt_delimiter_symbol" state.right_delimiter_symbols);
+  set_grammar math_combining_symbol (tree_to_grammar "combining_symbol" state.combining_symbols)
 
 let parser all_left_delimiter =
   | math_left_delimiter
