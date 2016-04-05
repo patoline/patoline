@@ -32,6 +32,7 @@
 
 => Delimiters
 
+
 (* From Asana font *)
 \Add_left{ ( }(MathFonts.adjusted_asana_delimiters "(" [10;3346;3347;3348])
 \Add_right{ ) }(MathFonts.adjusted_asana_delimiters ")" [11;3349;3350;3351])
@@ -571,7 +572,10 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Configure_word_macro{\hfill}{ eat_right
                                eat_left }
 
-\Configure_math_macro{\color}{ name = mcolor }
+\Configure_math_macro{\color}{ name = mcolor syntax = (c) }
+\Configure_math_macro{\sqrt}{ syntax = (m) }
+\Configure_math_macro{\mathSpace}{ syntax = (c) }
+\Configure_math_macro{\mathsText}{ syntax = (t) }
 
 =<
 

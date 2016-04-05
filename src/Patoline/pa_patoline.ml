@@ -53,7 +53,7 @@ let quail_out mnames unames =
        List.iter (fun name ->
 	 Printf.fprintf (Lazy.force quail_ch) "(\"%s\" ?%s)\n" (String.escaped name) u) mnames
     end
-      
+
 let extra_spec =
   [ ("--driver",  Arg.String set_patoline_driver,
      "The driver against which to compile.")
@@ -190,7 +190,8 @@ let freshUid () =
   let parser wrapped_caml_structure = '(' structure ')'
 
   (* Parse a caml "expr" wrapped with parentheses *)
-  let parser wrapped_caml_expr = '(' (change_layout expression blank2) ')'
+  let caml_expr         = change_layout expression blank2
+  let parser wrapped_caml_expr = '(' caml_expr ')'
 
   (* Parse a list of caml "expr" *)
   let parser wrapped_caml_list =
@@ -435,15 +436,31 @@ let verbatim_environment = change_layout verbatim_environment no_blank
   let verbatim_sharp = verbatim_generic "##" "#" "##"
   let verbatim_bquote = verbatim_generic "``" "`" "``"
 
+(*************************************************************
+ *   Type to control which t2t like tags are forbidden       *
+ *************************************************************)
+  type tag_syntax =
+    Italic | Bold | SmallCap | Underline | Strike | Quote
+
+  module Tag_syntax = struct
+    type t = tag_syntax
+    let compare = compare
+  end
+
+  module TagSet = Set.Make(Tag_syntax)
+
+  let addTag = TagSet.add
+  let allowed t f = not (TagSet.mem t f)
+
 (****************************************************************************
  * Symbol definitions.                                                      *
  ****************************************************************************)
 
 type math_prio =
-  | AtomM | Accent | LInd | Ind | Fun | Prod
+  | AtomM | Accent | LInd | Ind | IProd | Prod
   | Sum | Operator | Rel | Neg | Conj | Impl | Punc
 
-let math_prios = [ AtomM ; Accent ; LInd ; Ind ; Fun ; Prod ; Sum
+let math_prios = [ AtomM ; Accent ; LInd ; Ind ; IProd ; Prod ; Sum
 		 ; Operator ; Rel ; Neg ; Conj ; Impl ; Punc ]
 
 let next_prio = function
@@ -454,8 +471,8 @@ let next_prio = function
   | Rel -> Operator
   | Operator -> Sum
   | Sum -> Prod
-  | Prod -> Fun
-  | Fun -> Ind
+  | Prod -> IProd
+  | IProd -> Ind
   | Ind -> LInd
   | LInd -> Accent
   | Accent -> AtomM
@@ -512,8 +529,12 @@ let symbol ss =
     assert (String.length s > 0);
     s.[0] = '\\') ss
 
+(* FIXME: more entry are possible : paragraphs, ...*)
+type entry = Caml | Math | Text
+
 type config = EatR | EatL | Name of string list * string | Arity of int
-  | GivePos | Arg of int * string | ArgNoPar of int | IsIdentity
+  | GivePos | Arg of int * string | ArgNoPar of int | IsIdentity | Syntax of entry list
+
 
 let real_name id cs =
   let rec find_name : config list -> string list * string = function
@@ -523,11 +544,21 @@ let real_name id cs =
   in
   let (mp, mid) = try find_name cs with Not_found -> ([], id) in
   let _loc = Location.none in
-  if mp = [] then
-    <:expr<$lid:mid$>>
-  else
-    (* FIXME module path *)
-    <:expr<$lid:mid$>>
+  (* FIXME: this is not exactly what we want *)
+  List.fold_left (fun acc m -> <:expr<$uid:m$.($acc$)>>) <:expr<$lid:mid$>> mp
+
+let macro_args id cs =
+  let rec find_args : config list -> entry list option = function
+    | []               -> None
+    | Syntax l  :: _   -> Some l
+    | _ :: cs          -> find_args cs
+  in
+  find_args cs
+
+let parser arg_type =
+  | "m" -> Math
+  | "t" -> Text
+  | "c" -> Caml
 
 let parser config =
   | "eat_right"                           -> EatR
@@ -538,6 +569,7 @@ let parser config =
   | "arg_" - n:num "=" id:lid             -> Arg (n,id)
   | "arg_" - n:num "no_parenthesis"       -> ArgNoPar n
   | "is_identity"                         -> IsIdentity
+  | "syntax" "=" "(" l:arg_type* ")"      -> Syntax l
 let parser configs = "{" cs:config* "}" -> cs
 
 type infix =
@@ -786,6 +818,13 @@ let math_list _loc l =
       $x$ $y$]>>
   in
   List.fold_left merge (List.hd l) (List.tl l)
+
+let dollar        = Pa_lexing.single_char '$'
+
+let no_brace =
+  Decap.test ~name:"no_brace" Charset.full_charset (fun buf pos ->
+    let c,buf,pos = Input.read buf pos in
+    if c <> '{' then ((), true) else ((), false))
 
 (****************************************************************************
  * Maths.                                                                   *
@@ -1208,11 +1247,14 @@ let parser right_indices =
 		   | "^" -> Up
 
 let parser any_symbol =
-  | sym:                        math_atom_symbol                    -> sym.symbol_value
   | sym:                        math_quantifier_symbol              -> sym.symbol_value
   | sym:(alternatives (List.map math_infix_symbol      math_prios)) -> sym.infix_value
   | sym:(alternatives (List.map math_prefix_symbol     math_prios)) -> sym.prefix_value
   | sym:(alternatives (List.map math_postfix_symbol    math_prios)) -> sym.postfix_value
+
+(* bool param -> can contain special text environments //...// **...** ... *)
+let paragraph_basic_text, set_paragraph_basic_text = grammar_family "paragraph_basic_text"
+
 
 let merge_indices indices ind =
   assert(ind.down_left = None);
@@ -1269,7 +1311,7 @@ let parser math_aux prio =
         <:expr<[Maths.bin $int:psp$ (Maths.Normal($bool:nsp$,$md$,true)) $m$ []] >>)
 
   | l:(math_aux prio) st:{ s:(math_infix_symbol prio) i:with_indices -> (s,i)
-			 | s:(empty invisible_product) when prio = Prod -> (s,no_ind) }
+			 | s:(empty invisible_product) when prio = IProd -> (s,no_ind) }
     r:(math_aux (next_prio prio)) when prio <> AtomM ->
      let s,ind = st in
      (fun indices ->
@@ -1326,13 +1368,13 @@ let parser math_aux prio =
      (fun indices ->
        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>)
 
-  | '\\' - id:mathlid - args:math_macro_arguments?[[]] relax
-     ''[ \t\n\r]*''  when prio = AtomM ->
-     if PrefixTree.mem id state.reserved_symbols then give_up "not a macro";
+  (* macro non déclarée *)
+  | '\\' id:mathlid when prio = Prod || prio = AtomM ->>
+     let config = try List.assoc id state.math_macros with Not_found -> [] in
+	 args:(match macro_args id config with
+               | None   -> (parser math_macro_argument* when prio = Prod)
+               | Some l -> (parser (math_macro_arguments l) when prio = AtomM)) ->
      (fun indices ->
-       let config =
-         try List.assoc id state.math_macros with Not_found -> []
-       in
        let m = real_name id config in
        (* TODO special macro properties to be handled. *)
        let apply acc arg = <:expr<$acc$ $arg$>> in
@@ -1390,7 +1432,12 @@ and math_macro_argument =
   | '{' m:(math_aux Punc) '}' -> m no_ind
   | wrapped_caml_expr
 
-and math_macro_arguments = ms:{math_macro_argument -}* m:math_macro_argument -> ms @ [m]
+and math_macro_arguments l =
+    | EMPTY when l = [] -> []
+    | arg:wrapped_caml_expr args:(math_macro_arguments (List.tl l)) when l <> [] -> arg::args
+    | '{' arg:(math_aux Punc) '}' args:(math_macro_arguments (List.tl l)) when l <> [] && List.hd l = Math -> arg no_ind :: args
+    | '{' arg:(change_layout (paragraph_basic_text TagSet.empty) blank1) '}' args:(math_macro_arguments (List.tl l)) when l <> [] && List.hd l = Text -> arg :: args
+    | '{' arg:caml_expr '}' args:(math_macro_arguments (List.tl l)) when l <> [] && List.hd l = Caml -> arg :: args
 
 and with_indices =
   | EMPTY -> no_ind
@@ -1443,9 +1490,9 @@ and math_punc_list =
     in
     <:expr<[Maths.bin 3 $inter$ $l$ $r$]>>
 
-and math_declaration =
+and long_math_declaration =
   | m:math_punc_list -> m
-  | l:math_declaration s:math_relation_symbol ind:with_indices r:math_punc_list ->
+  | l:long_math_declaration s:math_relation_symbol ind:with_indices r:math_punc_list ->
     let nsl = s.infix_no_left_space in
     let nsr = s.infix_no_right_space in
     let inter =
@@ -1455,6 +1502,19 @@ and math_declaration =
     in
     <:expr<[Maths.bin 2 $inter$ $l$ $r$] >>
 
+and math_declaration =
+    | '{' m:long_math_declaration '}' -> m
+    | no_brace m:(math_aux Ind) -> m no_ind
+    | no_brace m:(math_aux Ind) s:math_relation_symbol ind:with_indices r:math_punc_list ->
+       let nsl = s.infix_no_left_space in
+       let nsr = s.infix_no_right_space in
+       let inter =
+	 <:expr<Maths.Normal( $bool:nsl$,
+                              $print_math_deco_sym _loc_s s.infix_value ind$,
+                              $bool:nsr$) >>
+       in
+       <:expr<[Maths.bin 2 $inter$ $m no_ind$ $r$] >>
+
 
 let parser math_toplevel =
   | m:(math_aux Punc) -> m no_ind
@@ -1463,29 +1523,9 @@ let parser math_toplevel =
       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s i$]>>
 
 
-
-(*************************************************************
- *   Type to control which t2t like tags are forbidden       *
- *************************************************************)
-  type tag_syntax =
-    Italic | Bold | SmallCap | Underline | Strike | Quote
-
-  module Tag_syntax = struct
-    type t = tag_syntax
-    let compare = compare
-  end
-
-  module TagSet = Set.Make(Tag_syntax)
-
-  let addTag = TagSet.add
-  let allowed t f = not (TagSet.mem t f)
-
 (****************************************************************************
  * Text content of paragraphs and macros (mutually recursive).              *
  ****************************************************************************)
-
-(* bool param -> can contain special text environments //...// **...** ... *)
-  let paragraph_basic_text, set_paragraph_basic_text = grammar_family "paragraph_basic_text"
 
 (***** Patoline macros  *****)
   let parser macro_argument =
@@ -1521,8 +1561,6 @@ let parser math_toplevel =
              in [ Drawing (Res.EnvDiagram.make ()) ])]>>
 
 (****************************)
-
-  let dollar        = Pa_lexing.single_char '$'
 
   let parser text_paragraph_elt (tags:TagSet.t) =
     | m:macro -> m
