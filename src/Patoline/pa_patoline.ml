@@ -826,6 +826,11 @@ let no_brace =
     let c,buf,pos = Input.read buf pos in
     if c <> '{' then ((), true) else ((), false))
 
+let no_brace_par =
+  Decap.test ~name:"no_brace" Charset.full_charset (fun buf pos ->
+    let c,buf,pos = Input.read buf pos in
+    if c <> '{' && c <> '(' then ((), true) else ((), false))
+
 (****************************************************************************
  * Maths.                                                                   *
  ****************************************************************************)
@@ -858,6 +863,7 @@ let print_math_symbol _loc sym=
     | _ -> failwith "a faire ds Pa_patoline.print_math_symbol.\n"
   in
   if b then
+    if !cache = "" then s else (* FIXME: not very clean *)
     try
       let nom = "m" ^ (!cache) in
       let index = Hashtbl.find hash_msym s in
@@ -869,6 +875,7 @@ let print_math_symbol _loc sym=
       let _ = incr count_msym in
       res
   else
+    if !cache = "" then s else (* FIXME: not very clean *)
     try
       let r = Hashtbl.find hash_sym s in
       <:expr< ! $lid:(!cache)$.($int:r$) >>
@@ -1544,7 +1551,7 @@ let parser math_toplevel =
     ) no_blank
 
   let parser macro =
-    | m:macro_name args:macro_argument* ->
+    | m:macro_name args:macro_argument* no_brace_par ->
                         (let fn = fun acc r -> <:expr<$acc$ $r$>> in
                          List.fold_left fn <:expr<$lid:m$>> args)
     | m:verbatim_macro -> m
@@ -1959,4 +1966,5 @@ let _ =
 
   with e ->
     Printf.eprintf "Exception: %s\nTrace:\n%!" (Printexc.to_string e);
-    Printexc.print_backtrace stderr
+    Printexc.print_backtrace stderr;
+    exit 1
