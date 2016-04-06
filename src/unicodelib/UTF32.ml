@@ -13,11 +13,11 @@ include UTF.Make(
       if u < 0 || u > 0x10FFFF || (u >= 0xD800 && u <= 0xDFFF) then
         raise (invalid_arg "UF16.encode")
       else
-        let s = String.create 4 in
-        s.[0] <- char_of_int ((u lsr 24) land 0xFF);
-        s.[1] <- char_of_int ((u lsr 16) land 0xFF);
-        s.[2] <- char_of_int ((u lsr 8) land 0xFF);
-        s.[3] <- char_of_int (u land 0xFF);
+        let s = Bytes.create 4 in
+        Bytes.set s 0 (char_of_int ((u lsr 24) land 0xFF));
+        Bytes.set s 1 (char_of_int ((u lsr 16) land 0xFF));
+        Bytes.set s 2 (char_of_int ((u lsr 8) land 0xFF));
+        Bytes.set s 3 (char_of_int (u land 0xFF));
         s
 
     (*

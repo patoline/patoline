@@ -48,8 +48,8 @@ let sreadInt2 f=
   if d>=0x8000 then d-0x10000 else d
 
 let strInt2 s i x=
-  s.[i]<-char_of_int ((x lsr 8) land 0xff);
-  s.[i+1]<-char_of_int (x land 0xff)
+  Bytes.set s i (char_of_int ((x lsr 8) land 0xff));
+  Bytes.set s (i+1) (char_of_int (x land 0xff))
 
 #ifdef INT32
 
@@ -57,29 +57,29 @@ let strInt4 s i x=
   let a=Int32.shift_right x 8 in
   let b=Int32.shift_right a 8 in
   let c=Int32.shift_right b 8 in
-  s.[i]<-char_of_int (Int32.to_int (Int32.logand c 0xffl));
-  s.[i+1]<-char_of_int (Int32.to_int (Int32.logand b 0xffl));
-  s.[i+2]<-char_of_int (Int32.to_int (Int32.logand a 0xffl));
-  s.[i+3]<-char_of_int (Int32.to_int (Int32.logand x 0xffl))
+  Bytes.set s i     (char_of_int (Int32.to_int (Int32.logand c 0xffl)));
+  Bytes.set s (i+1) (char_of_int (Int32.to_int (Int32.logand b 0xffl)));
+  Bytes.set s (i+2) (char_of_int (Int32.to_int (Int32.logand a 0xffl)));
+  Bytes.set s (i+3) (char_of_int (Int32.to_int (Int32.logand x 0xffl)))
 
 let strInt4_int s i x=
   let a=x lsr 8 in
   let b=a lsr 8 in
   let c=b lsr 8 in
-  s.[i]<-char_of_int (c land 0xff);
-  s.[i+1]<-char_of_int (b land 0xff);
-  s.[i+2]<-char_of_int (a land 0xff);
-  s.[i+3]<-char_of_int (x land 0xff)
+  Bytes.set s (i)   (char_of_int (c land 0xff));
+  Bytes.set s (i+1) (char_of_int (b land 0xff));
+  Bytes.set s (i+2) (char_of_int (a land 0xff));
+  Bytes.set s (i+3) (char_of_int (x land 0xff))
 #else
 
 let strInt4 s i x=
   let a=x lsr 8 in
   let b=a lsr 8 in
   let c=b lsr 8 in
-  s.[i]<-char_of_int (c land 0xff);
-  s.[i+1]<-char_of_int (b land 0xff);
-  s.[i+2]<-char_of_int (a land 0xff);
-  s.[i+3]<-char_of_int (x land 0xff)
+  Bytes.set s (i)   (char_of_int (c land 0xff));
+  Bytes.set s (i+1) (char_of_int (b land 0xff));
+  Bytes.set s (i+2) (char_of_int (a land 0xff));
+  Bytes.set s (i+3) (char_of_int (x land 0xff))
 let strInt4_int=strInt4
 
 #endif
@@ -291,7 +291,7 @@ let open_in_cached f=
 let copy_file a b=
   let fa=open_in a in
   let fb=open_out b in
-  let s=String.create 1000 in
+  let s=Bytes.create 1000 in
   let rec copy ()=
     let x=input fa s 0 (String.length s) in
     if x>0 then (
@@ -411,6 +411,6 @@ let base64_encode s0=
   in
   encode 0;
   let str=Buffer.contents buf in
-  if m>=1 then str.[String.length str-1]<-'=';
-  if m=1 then str.[String.length str-2]<-'=';
+  if m>=1 then Bytes.set str (String.length str-1) '=';
+  if m=1  then Bytes.set str (String.length str-2) '=';
   str

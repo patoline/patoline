@@ -33,140 +33,140 @@ let unit = []
 
 \begin{genumerate}{ \bold{Ex &I} –\hspace(0.2)}
 
-\item On considère la suite réelle $(u_n)_{n≥1}$ définie par 
-$\displayStyle{u_{n} :=  (1 + {1}\over{n})^{n}}$ pour tout entier $n ≥ 1$. 
+\item On considère la suite réelle $(u_n)_{n≥1}$ définie par
+$\displayStyle{u_{n} :=  (1 + {1}\over{n})^{n}}$ pour tout entier $n ≥ 1$.
 
-\begin{genumerate}{ &a)\hspace(0.2)}
-   \item Montrer que $(u_n)$ converge et déterminer sa limite. 
+\begin{genumerate}{ &a) \hspace(0.2)}
+   \item Montrer que $(u_n)$ converge et déterminer sa limite.
 
-   \item Établir que pour tout réel $x > -1$ on a $\displayStyle{{x}\over{x + 1} ≤ ln(1 + x) ≤ x}$. 
-  
-   \item En déduire que la suite $(u_n)$ est croissante. 
+   \item Établir que pour tout réel $x > -1$ on a $\displayStyle{{x}\over{x + 1} ≤ ln(1 + x) ≤ x}$.
+
+   \item En déduire que la suite $(u_n)$ est croissante.
 
 \end{genumerate}
 
 
-\item Soit $(u_n)_{n \in \bbN}$ la suite réelle définie par $u_0 := 2$ 
-et $\displayStyle{u_{n + 1} := {1 \over 2} (u_n + {2 \over u_n})}$ pour tout $n \in \bbN$. 
+\item Soit $(u_n)_{n \in \bbN}$ la suite réelle définie par $u_0 := 2$
+et $\displayStyle{u_{n + 1} := {1 \over 2} (u_n + {2 \over u_n})}$ pour tout $n \in \bbN$.
 
 \begin{genumerate}{ &a)\hspace(0.2)}
-   \item Montrer que $(u_n)_{n \in \bbN}$ est bien définie et qu'elle est décroissante. 
+   \item Montrer que $(u_n)_{n \in \bbN}$ est bien définie et qu'elle est décroissante.
 
-   _Indication_ : on montrera au préalable que $\sqrt{2} \leq u_{n}$ pour tout $n \in \bbN$. 
-   
-   \item En déduire que la suite $(u_n)_{n \in \bbN}$ converge vers $\sqrt{2}$. 
-   
+   //Indication// : on montrera au préalable que $\sqrt{2} \leq u_{n}$ pour tout $n \in \bbN$.
+
+   \item En déduire que la suite $(u_n)_{n \in \bbN}$ converge vers $\sqrt{2}$.
+
    \item Calculer $\displayStyle{ {u_{n + 1} - \sqrt{2}} \over
-     {u_{n + 1} + \sqrt{2}}}$ en fonction de $u_{n}$ pour tout $n \in \bbN$, puis retrouver le résultat précédent. 
+     {u_{n + 1} + \sqrt{2}}}$ en fonction de $u_{n}$ pour tout $n \in \bbN$, puis retrouver le résultat précédent.
 \end{genumerate}
 
 \item
-Soit $(u_n)_{n \in \bbN}$ la suite réelle définie par $u_{0} := 1$ 
-et $\displayStyle{ u_{n + 1} = {3 u_{n}}\over{1 + u_{n}^{2}}}$ pour tout $n \in \bbN$. 
+Soit $(u_n)_{n \in \bbN}$ la suite réelle définie par $u_{0} := 1$
+et $\displayStyle{ u_{n + 1} = {3 u_{n}}\over{1 + u_{n}^{2}}}$ pour tout $n \in \bbN$.
 
 \begin{genumerate}{ &a)\hspace(0.2)}
-   \item Montrer que pour tout entier $n \geq 0$ on a $1 \leq u_{n} \leq 2$. 
-   
-   \item Dans l'hypothèse où la suite $(u_n)$ converge, que peut valoir sa limite $a$ ? 
-   
-   \item En considérant la suite $(v_n)_{n ∈ \bbN}$ définie par $v_{n} := u_{n} - a$, 
-établir qu'on a [$|v_{n + 1}| \leq {1}\over{2} |v_{n}|$] pour tout $n \in \bbN$. 
-   
-   \item En déduire que $(u_n)$ converge vers $a$. 
+   \item Montrer que pour tout entier $n \geq 0$ on a $1 \leq u_{n} \leq 2$.
+
+   \item Dans l'hypothèse où la suite $(u_n)$ converge, que peut valoir sa limite $a$ ?
+
+   \item En considérant la suite $(v_n)_{n ∈ \bbN}$ définie par $v_{n} := u_{n} - a$,
+établir qu'on a $$|v_{n + 1}| \leq {1}\over{2} |v_{n}|$$ pour tout $n \in \bbN$.
+
+   \item En déduire que $(u_n)$ converge vers $a$.
 \end{genumerate}
 
 
 \item
-_Moyenne arithmético-géométrique_ :
-Étant donné des réels $0 < a ≤ b$, on considère les suites réelles $(a_n)_{n ∈ \bbN}$ et $(b_n)_{n ∈ \bbN}$ 
-définies par $a_{0} := a$, $b_{0} := b$ ainsi que $a_{n + 1} := \sqrt{a_{n} b_{n}}$ et 
-$\displayStyle{b_{n + 1} := {1}\over{2} (a_{n} + b_{n})}$ pour tout $n \in \bbN$. 
+//Moyenne arithmético-géométrique// :
+Étant donné des réels $0 < a ≤ b$, on considère les suites réelles $(a_n)_{n ∈ \bbN}$ et $(b_n)_{n ∈ \bbN}$
+définies par $a_{0} := a$, $b_{0} := b$ ainsi que $a_{n + 1} := \sqrt{a_{n} b_{n}}$ et
+$\displayStyle{b_{n + 1} := {1}\over{2} (a_{n} + b_{n})}$ pour tout $n \in \bbN$.
 
 \begin{genumerate}{ &a)\hspace(0.2)}
    \item Montrer que pour tout $n \in \bbN$ on a $0 < a_{n} \leq b_{n}$.
 
-   _Indication_ : on pourra regarder $b_{n + 1}^{2} - a_{n + 1}^{2}$ pour tout $n \in \bbN$. 
-   
-   \item Établir que $(a_n)$ est croissante et que $(b_n)$ est décroissante. 
-   
-   \item En déduire que ces deux suites sont convergentes. 
-   
+   //Indication// : on pourra regarder $b_{n + 1}^{2} - a_{n + 1}^{2}$ pour tout $n \in \bbN$.
+
+   \item Établir que $(a_n)$ est croissante et que $(b_n)$ est décroissante.
+
+   \item En déduire que ces deux suites sont convergentes.
+
    \item Prouver enfin que les limites de $(a_n)$ et $(b_n)$ sont égales.
 
-   _Indication_ : on pourra comparer $|b_{n + 1} - a_{n + 1}|$ à $|b_{n} - a_{n}|$ 
+   //Indication// : on pourra comparer $|b_{n + 1} - a_{n + 1}|$ à $|b_{n} - a_{n}|$
 pour tout $n \in \bbN$.
 
-   _Remarque_ : cette valeur commune est appelée la moyenne arithmético-géométrique 
-des nombres $a$ et $b$, notée $M(a , b)$. 
+   //Remarque// : cette valeur commune est appelée la moyenne arithmético-géométrique
+des nombres $a$ et $b$, notée $M(a , b)$.
 \end{genumerate}
 
 \item
-Déterminer la nature des séries numériques suivantes~: 
+Déterminer la nature des séries numériques suivantes~:
 
 \vspaceBefore(3.0)
 \begin{center}
-[$ \ser{\frac{n}{n+1}}{n}{0} $] ,  
-[$\ser{\sqrt{n+1} - \sqrt{n}}{n}{0} $] , 
-[$\ser{(-1 / 4)^{n} + (3 / 4)^{n}}{n}{0} $] , 
-[$\ser{\frac{1}{{n!}^{1 \over n}}}{n}{1} $] , 
-[$\ser{\frac{ln{(1 + 1 / n)}}{n}}{n}{1} $] ,
+$$ \ser{\frac{n}{n+1}}{n}{0} $$ ,
+$$\ser{\sqrt{n+1} - \sqrt{n}}{n}{0} $$ ,
+$$\ser{(-1 / 4)^{n} + (3 / 4)^{n}}{n}{0} $$ ,
+$$\ser{\frac{1}{{n!}^{1 \over n}}}{n}{1} $$ ,
+$$\ser{\frac{ln{(1 + 1 / n)}}{n}}{n}{1} $$ ,
 
-[$\ser{\frac{ln(n)}{n 2^n}}{n}{1}$] ,
-[$\ser{\frac{ln(1 + n)}{n^3}}{n}{1}$] , 
-[$\ser{sin(\frac{1}{n})}{n}{1}$] , 
-[$\ser{\frac{1}{n} - \frac{1}{n + \mathrm{a}}}{n}{1}$] ,
-[$\ser{\frac{1}{n + \mathrm{a}^{n}}}{n}{0}$] avec [$\mathrm{a} > 0$].
+$$\ser{\frac{ln(n)}{n 2^n}}{n}{1}$$ ,
+$$\ser{\frac{ln(1 + n)}{n^3}}{n}{1}$$ ,
+$$\ser{sin(\frac{1}{n})}{n}{1}$$ ,
+$$\ser{\frac{1}{n} - \frac{1}{n + \mathrm{a}}}{n}{1}$$ ,
+$$\ser{\frac{1}{n + \mathrm{a}^{n}}}{n}{0}$$ avec $$\mathrm{a} > 0$$.
 \end{center}
 
 
 \item
-Déterminer la nature des séries numériques suivantes~: 
+Déterminer la nature des séries numériques suivantes~:
 
 \vspaceBefore(3.0)
 \begin{center}
-[$ \ser{ (  \frac{2 n}{3 n + 2}  )^{ n}}{n}{0}$] , 
-[$ \ser{\frac{1}{n^{n}}}{n}{0} $] , 
-[$ \ser{\frac{n!}{n^{n}}}{n}{0} $] , 
-[$ \ser{\frac{(n!)^{2}}{(2 n)!}}{n}{0} $] ,
+$$ \ser{ (  \frac{2 n}{3 n + 2}  )^{ n}}{n}{0}$$ ,
+$$ \ser{\frac{1}{n^{n}}}{n}{0} $$ ,
+$$ \ser{\frac{n!}{n^{n}}}{n}{0} $$ ,
+$$ \ser{\frac{(n!)^{2}}{(2 n)!}}{n}{0} $$ ,
 
-[$ \ser{\frac{(n + 1)2^{n}}{n!}}{n}{0} $] , 
-[$ \ser{\frac{(2 n)!}{n^{2 n}}}{n}{0} $] et
-[$ \ser{\frac{n^{n}}{(n!)^{2}}}{n}{0}$] .
+$$ \ser{\frac{(n + 1)2^{n}}{n!}}{n}{0} $$ ,
+$$ \ser{\frac{(2 n)!}{n^{2 n}}}{n}{0} $$ et
+$$ \ser{\frac{n^{n}}{(n!)^{2}}}{n}{0}$$ .
 \end{center}
 
 \item
-Calculer les sommes des séries numériques suivantes après avoir montré qu'elles convergent: 
+Calculer les sommes des séries numériques suivantes après avoir montré qu'elles convergent:
 
 \vspaceBefore(3.0)
 \begin{center}
-[$ \ser{\frac{1}{n (n + 2)}}{n}{1} $] , 
-[$ \ser{\frac{(-1)^{n}}{n^{2} - 1}}{n}{2} $] , 
-[$ \ser{\frac{1}{n (n + 1) (n + 2)}}{n}{1} $] , 
-[$ \ser{n a^{n}}{n}{1} $] et
-[$\ser{\frac{a^{n}}{n}}{n}{1}$] avec  [$a \in [0 , 1\right[$].
+$$ \ser{\frac{1}{n (n + 2)}}{n}{1} $$ ,
+$$ \ser{\frac{(-1)^{n}}{n^{2} - 1}}{n}{2} $$ ,
+$$ \ser{\frac{1}{n (n + 1) (n + 2)}}{n}{1} $$ ,
+$$ \ser{n a^{n}}{n}{1} $$ et
+$$\ser{\frac{a^{n}}{n}}{n}{1}$$ avec  $$a \in [0 , 1\right[$$.
 \end{center}
 
 \item
-Déterminer la nature des séries numériques suivantes: 
+Déterminer la nature des séries numériques suivantes:
 
 \vspaceBefore(3.0)
 \begin{center}
-[$ \ser{(-1)^{n} \frac{2 n}{4 n^{2} - 3}}{n}{0} $] , 
-[$ \ser{\frac{sin(\sqrt{n})}{n \sqrt{n}}}{n}{1} $] , 
-[$ \ser{\frac{(-1)^{n}}{n - ln{n}}}{n}{1} $] , 
-[$ \ser{\frac{cos(n) + (-1)^{n} n^{2}}{n^{3}}}{n}{1} $] et
-[$ \ser{\frac{sin(n)}{n}}{n}{1} $] .
+$$ \ser{(-1)^{n} \frac{2 n}{4 n^{2} - 3}}{n}{0} $$ ,
+$$ \ser{\frac{sin(\sqrt{n})}{n \sqrt{n}}}{n}{1} $$ ,
+$$ \ser{\frac{(-1)^{n}}{n - ln{n}}}{n}{1} $$ ,
+$$ \ser{\frac{cos(n) + (-1)^{n} n^{2}}{n^{3}}}{n}{1} $$ et
+$$ \ser{\frac{sin(n)}{n}}{n}{1} $$ .
 \end{center}
 
 \item
-Déterminer la nature des séries numériques suivantes: 
+Déterminer la nature des séries numériques suivantes:
 
 \vspaceBefore(3.0)
 \begin{center}
-[$ \ser{\frac{1}{n ln(n)}}{n}{2} $] , 
-[$ \ser{\frac{1}{n^{1 \over 3} * ln(n)}}{n}{2} $] ,
-[$ \ser{\frac{ln(n)}{n \sqrt{n}}}{n}{1} $] et
-[$ \ser{ln( 1 + \frac{(-1)^{n}}{\sqrt{n}}  )}{n}{2}$] .
+$$ \ser{\frac{1}{n ln(n)}}{n}{2} $$ ,
+$$ \ser{\frac{1}{n^{1 \over 3}  ln(n)}}{n}{2} $$ ,
+$$ \ser{\frac{ln(n)}{n \sqrt{n}}}{n}{1} $$ et
+$$ \ser{ln( 1 + \frac{(-1)^{n}}{\sqrt{n}}  )}{n}{2}$$ .
 \end{center}
 
 

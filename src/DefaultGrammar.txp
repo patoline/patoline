@@ -542,40 +542,36 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_combining{ ˙ }{\od}
 \Add_combining{ ¨ }{\odd}
 
-\Configure_math_macro{\sqrt}{ arity = 1 name = Maths.sqrt }
-\Configure_math_macro{\cal}{ arity = 1 name = mathcal }
-\Configure_math_macro{\bold}{ arity = 1 name = mathbold }
+\Configure_math_macro{\sqrt}{ syntax = math; name = Maths.sqrt; }
+\Configure_math_macro{\cal}{ syntax = math; name = mathcal; }
+\Configure_math_macro{\bold}{ syntax = math; name = mathbold; }
 
-\Configure_word_macro{\hspace}{ arity = 1 eat_right eat_left}
-\Configure_math_macro{\hspace}{ arity = 1 name = mathSpace }
+\Configure_word_macro{\hspace}{ syntax = caml; eat_right; eat_left; }
+\Configure_math_macro{\hspace}{ syntax = caml; name = mathSpace; }
+\Configure_math_macro{\mathSpace}{ syntax = caml; }
+\Configure_math_macro{\mathsText}{ syntax = text; }
 
-\Configure_word_macro{\vspaceBefore}{ arity = 1 eat_right eat_left }
-\Configure_word_macro{\vspaceAfter}{ arity = 1 eat_right eat_left }
+\Configure_word_macro{\vspaceBefore}{ syntax = caml; eat_right; eat_left; }
+\Configure_word_macro{\vspaceAfter}{ syntax = caml; eat_right; eat_left; }
 
-\Configure_word_macro{\linesBefore}{ arity = 1 eat_right eat_left }
-\Configure_word_macro{\linesAfter}{ arity = 1 eat_right eat_left }
+\Configure_word_macro{\linesBefore}{ syntax = caml; eat_right; eat_left; }
+\Configure_word_macro{\linesAfter}{ syntax = caml; eat_right; eat_left; }
 
-\Configure_paragraph_macro{\item}{ eat_right }
-\Configure_paragraph_macro{\tableOfContents}{}
+(*\Configure_word_macro{\item}{ syntax =; eat_right; }
+\Configure_word_macro{\tableOfContents}{ syntax =;}*)
 
-\Configure_word_macro{\break}{ eat_right eat_left }
-\Configure_word_macro{\label}{ eat_right eat_left }
-\Configure_word_macro{\hand}{ eat_right eat_left }
-\Configure_word_macro{\sourcePosition}{ arity = 1 give_position }
+\Configure_word_macro{\break}{ syntax =; eat_right; eat_left; }
+\Configure_word_macro{\label}{ syntax =; eat_right; eat_left; }
+\Configure_word_macro{\hand}{  syntax =; eat_right; eat_left; }
 
-\Configure_environment{genumerate}{ arg_1 = genumerate_item }
+\Configure_environment{genumerate}{ syntax = string genumerate; }
 
-\Configure_word_macro{\diagram}{ is_identity
-                                 arg_1 = diagram
-                                 arg_1 no_parenthesis }
+\Configure_word_macro{\diagram}{ syntax = struct diagram; }
 
-\Configure_word_macro{\hfill}{ eat_right
-                               eat_left }
+\Configure_word_macro{\hfill}{ syntax =; eat_right; eat_left; }
 
-\Configure_math_macro{\color}{ name = mcolor syntax = (c) }
-\Configure_math_macro{\sqrt}{ syntax = (m) }
-\Configure_math_macro{\mathSpace}{ syntax = (c) }
-\Configure_math_macro{\mathsText}{ syntax = (t) }
+\Configure_math_macro{\color}{ name = mcolor; syntax = caml; }
+
 
 =<
 

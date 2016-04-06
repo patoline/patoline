@@ -187,7 +187,8 @@ let freshUid () =
   incr counter;
   "MOD" ^ (string_of_int current)
 
-  let parser wrapped_caml_structure = '(' structure ')'
+  let caml_structure    = change_layout structure blank2
+  let parser wrapped_caml_structure = '(' caml_structure ')'
 
   (* Parse a caml "expr" wrapped with parentheses *)
   let caml_expr         = change_layout expression blank2
@@ -206,9 +207,9 @@ let freshUid () =
  * Words.                                                                   *
  ****************************************************************************)
 
-  let char_re    = "[^ \"\t\r\n\\{}()#*/|_$>-]"
-  let escaped_re =     "\\\\[\\{}()#*/|_$>-]"
-  let special_re =             "[()#]"
+  let char_re    = "[^ \"\t\r\n\\#*/|_$>{}-]"
+  let escaped_re =     "\\\\[\\#*/|_$>{}-]"
+
   let non_special = ['>';'*';'/';'|';'-';'_']
   let char_alone =
     black_box
@@ -216,10 +217,10 @@ let freshUid () =
        let c,str',pos' = Input.read str pos in
        if List.mem c non_special then
          let c',_,_ = Input.read str' pos' in
-         if c' = c then give_up "" (* FIXME *)
+         if c' = c then give_up ""
          else c, str', pos'
        else
-         give_up "") (* FIXME *)
+         give_up "")
       (List.fold_left Charset.add Charset.empty_charset non_special) false
       (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
 
@@ -230,9 +231,6 @@ let freshUid () =
       String.escaped (String.sub s 1 (String.length s - 1))
     | c:char_alone -> String.make 1 c
 
-  let special = parser
-      s:RE(special_re) -> s
-
   let word =
     change_layout (
         parser
@@ -242,7 +240,6 @@ let freshUid () =
                   List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<";">>";"$>";]
              then give_up (w ^ " is not a word");
              w
-        (* | c:special -> c *)
       ) no_blank
 
   let rec rem_hyphen = function
@@ -530,10 +527,19 @@ let symbol ss =
     s.[0] = '\\') ss
 
 (* FIXME: more entry are possible : paragraphs, ...*)
-type entry = Caml | Math | Text
+type entry = Caml | CamlStruct | String | Math | Text | Current
 
-type config = EatR | EatL | Name of string list * string | Arity of int
-  | GivePos | Arg of int * string | ArgNoPar of int | IsIdentity | Syntax of entry list
+type arg_config =
+  { entry : entry;
+    filter_name : string;
+  }
+
+let default_config =
+  { entry = Current;
+    filter_name = "";
+  }
+
+type config = EatR | EatL | Name of string list * string | Syntax of arg_config list
 
 
 let real_name id cs =
@@ -548,7 +554,7 @@ let real_name id cs =
   List.fold_left (fun acc m -> <:expr<$uid:m$.($acc$)>>) <:expr<$lid:mid$>> mp
 
 let macro_args id cs =
-  let rec find_args : config list -> entry list option = function
+  let rec find_args : config list -> arg_config list option = function
     | []               -> None
     | Syntax l  :: _   -> Some l
     | _ :: cs          -> find_args cs
@@ -556,21 +562,108 @@ let macro_args id cs =
   find_args cs
 
 let parser arg_type =
-  | "m" -> Math
-  | "t" -> Text
-  | "c" -> Caml
+  | "math" -> Math
+  | "text" -> Text
+  | "caml" -> Caml
+  | "struct" -> CamlStruct
+  | "string" -> String
+  | "current" -> Current
+
+let parser arg_description =
+  | entry:arg_type filter_name:lid?[""] -> { entry; filter_name }
+
+let parser arg_descriptions =
+  | EMPTY -> []
+  | a:arg_description l:{ _:"," arg_description }* -> a::l
+
+let expr_filter : (string, Parsetree.expression -> Parsetree.expression) Hashtbl.t =
+  Hashtbl.create 31
+
+let struct_filter : (string, Parsetree.structure -> Parsetree.expression) Hashtbl.t =
+  Hashtbl.create 31
+
+let string_filter : (string, string -> Parsetree.expression) Hashtbl.t =
+  Hashtbl.create 31
+
+let apply_string_filter config s =
+  try Hashtbl.find string_filter config.filter_name s with Not_found ->
+    Printf.eprintf "Unknown string filter: %S\n%!" config.filter_name; exit 1
+
+let apply_expr_filter config s =
+  try Hashtbl.find expr_filter config.filter_name s with Not_found ->
+    Printf.eprintf "Unknown expression filter: %S\n%!" config.filter_name; exit 1
+
+let apply_struct_filter config s =
+  try Hashtbl.find struct_filter config.filter_name s with Not_found ->
+    Printf.eprintf "Unknown structure filter: %S\n%!" config.filter_name; exit 1
+
+let _ =
+  Hashtbl.add string_filter "" (fun s -> <:expr< $string:s$ >>)
+
+let _ =
+  Hashtbl.add expr_filter "" (fun e -> e)
+
+let _ =
+  Hashtbl.add struct_filter "" (fun s ->
+    <:expr<
+          [bB (fun env ->
+            let module Res =
+              struct
+                $struct:s$ ;;
+              end
+             in [ Drawing (Res.drawing ()) ])]>>)
+
+let _ =
+  Hashtbl.add string_filter "genumerate" (fun s->
+      let pos = Str.search_forward (Str.regexp "&\\([1iIaA]\\)") s 0 in
+    (* let c = String.make 1 s.[pos+1] in *)
+      let c = s.[pos+1] in
+    let prefix = String.sub s 0 pos in
+    let suffix = String.sub s (pos+2) (String.length s - pos - 2) in
+    let nb_kind = begin
+      match c with
+      | '1' -> "Arabic"
+      | 'i' -> "RomanLower"
+      | 'I' -> "RomanUpper"
+      | 'a' -> "AlphaLower"
+      | 'A' -> "AlphaUpper"
+      | _ ->   (Printf.eprintf "Invalid argument to genumerate: %c. Falling back to arabic.\n" c ;
+		flush stderr ; "Arabic")
+    end in
+    let caml = "("^nb_kind^",(fun num_sec -> <<" ^ prefix ^ "\\caml( [tT num_sec] )" ^ suffix ^ ">>))" in
+    Decap.parse_string Pa_ocaml_prelude.expression blank2 caml)
+
+let _ =
+  Hashtbl.add struct_filter "diagram" (fun s->
+    <:expr<
+          [bB (fun env ->
+            let module Res =
+              struct
+                module EnvDiagram = Env_Diagram (struct let env = env end) ;;
+                open EnvDiagram ;;
+                $struct:s$ ;;
+              end
+             in [ Drawing (Res.EnvDiagram.make ()) ])]>>)
 
 let parser config =
   | "eat_right"                           -> EatR
   | "eat_left"                            -> EatL
   | "name" "=" ms:{u:uid - "."}* - id:lid -> Name (ms,id)
-  | "arity" "=" n:num                     -> Arity n
-  | "give_position"                       -> GivePos
-  | "arg_" - n:num "=" id:lid             -> Arg (n,id)
-  | "arg_" - n:num "no_parenthesis"       -> ArgNoPar n
-  | "is_identity"                         -> IsIdentity
-  | "syntax" "=" "(" l:arg_type* ")"      -> Syntax l
-let parser configs = "{" cs:config* "}" -> cs
+  | "syntax" "=" l:arg_descriptions       -> Syntax l
+
+let parser configs = "{" cs:{config ';'} * "}"   -> cs
+
+(****************************************************************************
+ * Maths datum                                                              *
+ ****************************************************************************)
+
+type 'a indices = { up_right : 'a option; up_right_same_script: bool;
+		      down_right : 'a option; up_left_same_script: bool;
+		      up_left : 'a option;
+		      down_left : 'a option }
+
+let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None;
+		 up_right_same_script = false; up_left_same_script = false }
 
 type infix =
   { infix_prio : math_prio;
@@ -657,7 +750,6 @@ type grammar_state =
   ; mutable reserved_symbols: unit PrefixTree.t
   ; mutable word_macros      : (string * config list) list
   ; mutable math_macros      : (string * config list) list
-  ; mutable paragraph_macros : (string * config list) list
   ; mutable environment      : (string * config list) list }
 
 let new_grammar str =
@@ -678,12 +770,28 @@ let state =
   ; reserved_symbols = PrefixTree.empty
   ; word_macros      = []
   ; math_macros      = []
-  ; paragraph_macros = []
   ; environment      = [] }
 
 let parser mathlid = id:''[a-z][a-zA-Z0-9']*'' ->
   if PMap.mem id state.reserved_symbols then give_up "symbol";
   id
+
+let empty_state =
+  { verbose          = false
+  ; infix_symbols    = PrefixTree.empty
+  ; prefix_symbols    = PrefixTree.empty
+  ; postfix_symbols    = PrefixTree.empty
+  ; quantifier_symbols    = PrefixTree.empty
+  ; atom_symbols     = PrefixTree.empty
+  ; accent_symbols     = PrefixTree.empty
+  ; left_delimiter_symbols= PrefixTree.empty
+  ; right_delimiter_symbols= PrefixTree.empty
+  ; operator_symbols= PrefixTree.empty
+  ; combining_symbols= PrefixTree.empty
+  ; reserved_symbols = PrefixTree.empty
+  ; word_macros      = []
+  ; math_macros      = []
+  ; environment      = [] }
 
 let local_state =
   { verbose          = false
@@ -700,7 +808,6 @@ let local_state =
   ; reserved_symbols = PrefixTree.empty
   ; word_macros      = []
   ; math_macros      = []
-  ; paragraph_macros = []
   ; environment      = [] }
 
 let merge_states : grammar_state -> grammar_state -> unit = fun s1 s2 ->
@@ -718,7 +825,6 @@ let merge_states : grammar_state -> grammar_state -> unit = fun s1 s2 ->
   s1.reserved_symbols        <- PrefixTree.union s1.reserved_symbols s2.reserved_symbols;
   s1.word_macros             <- s2.word_macros @ s1.word_macros;
   s1.math_macros             <- s2.math_macros @ s1.math_macros;
-  s1.paragraph_macros        <- s2.paragraph_macros @ s1.paragraph_macros;
   s1.environment             <- s2.environment @ s1.environment
 
 let math_prefix_symbol, set_math_prefix_symbol  = grammar_family "prefix"
@@ -826,22 +932,64 @@ let no_brace =
     let c,buf,pos = Input.read buf pos in
     if c <> '{' then ((), true) else ((), false))
 
-let no_brace_par =
-  Decap.test ~name:"no_brace" Charset.full_charset (fun buf pos ->
-    let c,buf,pos = Input.read buf pos in
-    if c <> '{' && c <> '(' then ((), true) else ((), false))
-
 (****************************************************************************
- * Maths.                                                                   *
+ * Parsing of macro arguments.                                              *
  ****************************************************************************)
 
-type 'a indices = { up_right : 'a option; up_right_same_script: bool;
-		      down_right : 'a option; up_left_same_script: bool;
-		      up_left : 'a option;
-		      down_left : 'a option }
+let parser br_string =
+  | EMPTY -> ""
+  | s1:br_string s2:''[^{}]*'' -> s1^s2
+  | s1:br_string '{' s2:br_string '}' -> s1 ^ "{" ^ s2 ^ "}"
+  | s1:br_string '\n' -> s1 ^ "\n"
 
-let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None;
-		 up_right_same_script = false; up_left_same_script = false }
+(* bool param -> can contain special text environments //...// **...** ... *)
+let paragraph_basic_text, set_paragraph_basic_text = grammar_family "paragraph_basic_text"
+let math_toplevel = declare_grammar "math_toplevel"
+
+let parser macro_argument config =
+  | '{' m:(math_toplevel) '}' when config.entry = Math
+			      -> apply_expr_filter config m
+  | '{' e:(change_layout (paragraph_basic_text TagSet.empty) blank1) '}' when config.entry = Text
+			      -> apply_expr_filter config e
+  | e:wrapped_caml_expr when config.entry <> CamlStruct
+			      -> apply_expr_filter config e
+  | e:wrapped_caml_array when config.entry <> CamlStruct
+                              -> apply_expr_filter config <:expr<$array:e$>>
+  | e:wrapped_caml_list when config.entry <> CamlStruct
+                              -> apply_expr_filter config <:expr<$list:e$>>
+  | s:wrapped_caml_structure when config.entry = CamlStruct
+			      -> apply_struct_filter config s
+  | '{' e:caml_expr '}' when config.entry = Caml
+			      -> apply_expr_filter config e
+  | '{' s:caml_structure '}' when config.entry = CamlStruct
+			      -> apply_struct_filter config s
+  | '{' s:(change_layout br_string no_blank) '}' when config.entry = String
+			      -> apply_string_filter config s
+
+let parser simple_text_macro_argument =
+  | '{' l:(change_layout (paragraph_basic_text TagSet.empty) blank1) '}' -> l
+  | e:wrapped_caml_expr  -> e
+  | e:wrapped_caml_array -> <:expr<$array:e$>>
+  | e:wrapped_caml_list  -> <:expr<$list:e$>>
+
+let parser simple_math_macro_argument =
+  | '{' m:(change_layout math_toplevel blank2) '}' -> m
+  | e:wrapped_caml_expr  -> e
+  | e:wrapped_caml_array -> <:expr<$array:e$>>
+  | e:wrapped_caml_list  -> <:expr<$list:e$>>
+
+let parser macro_arguments_aux l =
+  | EMPTY when l = [] -> []
+  | arg:(macro_argument (List.hd l)) args:(macro_arguments_aux (List.tl l)) when l <> [] -> arg::args
+
+let macro_arguments id current config =
+  match macro_args id config, current with
+  | None, Math   -> (parser simple_math_macro_argument*#)
+  | None, Text   -> (parser simple_text_macro_argument*#)
+  | None, _      -> assert false
+  | Some l, _    ->
+     let l = List.map (fun s -> if s.entry = Current then { s with entry = current } else s) l in
+     macro_arguments_aux l
 
 
 let hash_sym = Hashtbl.create 1001
@@ -1038,9 +1186,10 @@ let new_accent_symbol _loc sym_names symbol_value =
     symbol_paragraph _loc sym_val (math_list _loc names)
   else []
 
+(* FIXME: |- A and -x should have distinct priority and spacing *)
 let new_prefix_symbol _loc sym_names prefix_value =
   let prefix_macro_names, prefix_utf8_names = symbol sym_names in
-  let sym = { prefix_prio = Prod; prefix_space = 3; prefix_no_space = false; prefix_macro_names; prefix_utf8_names; prefix_value } in
+  let sym = { prefix_prio = IProd; prefix_space = 3; prefix_no_space = false; prefix_macro_names; prefix_utf8_names; prefix_value } in
   quail_out prefix_macro_names prefix_utf8_names;
   let insert map name = PrefixTree.add name sym map in
   state.prefix_symbols <- List.fold_left insert state.prefix_symbols sym_names;
@@ -1199,9 +1348,6 @@ let parser symbol_def =
   | "\\Configure_word_macro" "{" "\\"? - id:lid "}" cs:configs ->
       state.word_macros <- (id, cs) :: state.word_macros;
       local_state.word_macros <- (id, cs) :: local_state.word_macros; []
-  | "\\Configure_paragraph_macro" "{" "\\"? - id:lid "}" cs:configs ->
-      state.paragraph_macros <- (id, cs) :: state.paragraph_macros;
-      local_state.paragraph_macros <- (id, cs) :: local_state.paragraph_macros; []
   | "\\Configure_environment" "{" id:lid "}" cs:configs ->
       state.environment <- (id, cs) :: state.environment;
       local_state.environment <- (id, cs) :: local_state.environment; []
@@ -1258,10 +1404,6 @@ let parser any_symbol =
   | sym:(alternatives (List.map math_infix_symbol      math_prios)) -> sym.infix_value
   | sym:(alternatives (List.map math_prefix_symbol     math_prios)) -> sym.prefix_value
   | sym:(alternatives (List.map math_postfix_symbol    math_prios)) -> sym.postfix_value
-
-(* bool param -> can contain special text environments //...// **...** ... *)
-let paragraph_basic_text, set_paragraph_basic_text = grammar_family "paragraph_basic_text"
-
 
 let merge_indices indices ind =
   assert(ind.down_left = None);
@@ -1332,7 +1474,6 @@ let parser math_aux prio =
 	   <:expr< [Maths.fraction $l$ $r$] >>
 	 end else begin
 	   let inter =
-
 	     if s.infix_value = Invisible then
 	       <:expr<Maths.Invisible>>
 	     else
@@ -1376,11 +1517,9 @@ let parser math_aux prio =
        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>)
 
   (* macro non déclarée *)
-  | '\\' id:mathlid when prio = Prod || prio = AtomM ->>
+  | '\\' id:mathlid when prio = AtomM ->>
      let config = try List.assoc id state.math_macros with Not_found -> [] in
-	 args:(match macro_args id config with
-               | None   -> (parser math_macro_argument* when prio = Prod)
-               | Some l -> (parser (math_macro_arguments l) when prio = AtomM)) ->
+     args:(macro_arguments id Math config) ->
      (fun indices ->
        let m = real_name id config in
        (* TODO special macro properties to be handled. *)
@@ -1434,17 +1573,6 @@ let parser math_aux prio =
 	if indices.up_left <> None then give_up "double indices";
         r { indices with up_left = Some (m no_ind) }
      )
-
-and math_macro_argument =
-  | '{' m:(math_aux Punc) '}' -> m no_ind
-  | wrapped_caml_expr
-
-and math_macro_arguments l =
-    | EMPTY when l = [] -> []
-    | arg:wrapped_caml_expr args:(math_macro_arguments (List.tl l)) when l <> [] -> arg::args
-    | '{' arg:(math_aux Punc) '}' args:(math_macro_arguments (List.tl l)) when l <> [] && List.hd l = Math -> arg no_ind :: args
-    | '{' arg:(change_layout (paragraph_basic_text TagSet.empty) blank1) '}' args:(math_macro_arguments (List.tl l)) when l <> [] && List.hd l = Text -> arg :: args
-    | '{' arg:caml_expr '}' args:(math_macro_arguments (List.tl l)) when l <> [] && List.hd l = Caml -> arg :: args
 
 and with_indices =
   | EMPTY -> no_ind
@@ -1523,23 +1651,19 @@ and math_declaration =
        <:expr<[Maths.bin 2 $inter$ $m no_ind$ $r$] >>
 
 
-let parser math_toplevel =
+let _ = set_grammar math_toplevel (parser
   | m:(math_aux Punc) -> m no_ind
   | s:any_symbol i:with_indices ->
       if s = Invisible then give_up "...";
-      <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s i$]>>
+      <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s i$]>>)
 
 
 (****************************************************************************
  * Text content of paragraphs and macros (mutually recursive).              *
  ****************************************************************************)
 
+
 (***** Patoline macros  *****)
-  let parser macro_argument =
-    | '{' l:(paragraph_basic_text TagSet.empty) '}' -> l
-    | e:wrapped_caml_expr  -> e
-    | e:wrapped_caml_array -> <:expr<$array:e$>>
-    | e:wrapped_caml_list  -> <:expr<$list:e$>>
 
   let reserved_macro =
     [ "begin"; "end"; "item"; "verb"; "diagram" ]
@@ -1551,21 +1675,12 @@ let parser math_toplevel =
     ) no_blank
 
   let parser macro =
-    | m:macro_name args:macro_argument* no_brace_par ->
-                        (let fn = fun acc r -> <:expr<$acc$ $r$>> in
-                         List.fold_left fn <:expr<$lid:m$>> args)
+    | id:macro_name ->>
+       let config = try List.assoc id state.word_macros with Not_found -> [] in
+       args:(macro_arguments id Text config) ->
+       (let fn = fun acc r -> <:expr<$acc$ $r$>> in
+        List.fold_left fn <:expr<$lid:id$>> args)
     | m:verbatim_macro -> m
-
-    | "\\diagram" s:(change_layout wrapped_caml_structure blank2) ->
-        <:expr<
-          [bB (fun env ->
-            let module Res =
-              struct
-                module EnvDiagram = Env_Diagram (struct let env = env end) ;;
-                open EnvDiagram ;;
-                $struct:s$ ;;
-              end
-             in [ Drawing (Res.EnvDiagram.make ()) ])]>>
 
 (****************************)
 
@@ -1586,9 +1701,6 @@ let parser math_toplevel =
     | v:verbatim_bquote -> <:expr<$v$>>
     | v:verbatim_sharp  -> <:expr<$v$>>
 
-    | '(' p:(paragraph_basic_text tags) ')' ->
-         <:expr<tT $string:"("$ :: $p$ @ [tT $string:")"$]>>
-
     | '"' p:(paragraph_basic_text (addTag Quote tags)) '"' when allowed Quote tags ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
@@ -1598,12 +1710,13 @@ let parser math_toplevel =
         <:expr<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                           $m$)]>>
-    | "[$" m:math_toplevel "$]" ->
+    | "$$" m:math_toplevel "$$" ->
         <:expr<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle $m$))]>>
 
-    | ws:word -> <:expr<[tT $string:ws$]>>
+    | ws:word+# ->
+       <:expr<[tT $string:String.concat " " ws$]>>
 
 
   let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
@@ -1652,8 +1765,9 @@ let parser math_toplevel =
 
   let parser paragraph_elt =
     | verb:verbatim_environment -> (fun _ -> verb)
+    (* FIXME some of the macro below could be defined using the new configure_word_macro *)
     | "\\Caml" s:(change_layout wrapped_caml_structure blank2) -> (fun _ -> s)
-    | "\\Title" t:macro_argument -> (fun _ ->
+    | "\\Title" t:simple_text_macro_argument -> (fun _ ->
          let m1 = freshUid () in
          let m2 = freshUid () in
          <:struct<
@@ -1688,8 +1802,10 @@ let parser math_toplevel =
                        let _ = $uid:m2$.do_begin_env ()
                        let _ = $uid:m2$.do_end_env ()
                      end>>)
-    | "\\begin{" idb:lid '}' args:macro_argument*
-       ps:(change_layout paragraphs blank2)
+    | "\\begin{" idb:lid '}' ->>
+       let config = try List.assoc idb state.environment with Not_found -> [] in
+        args:(macro_arguments idb Text config)
+        ps:(change_layout paragraphs blank2)
        "\\end{" ide:lid '}' ->
          (fun indent_first ->
            if idb <> ide then give_up "Non-matching begin / end";
@@ -1702,8 +1818,7 @@ let parser math_toplevel =
                  <:struct<let $lid:id$ = $e$>>
                in
                let args = List.mapi gen args in
-               let combine acc e = <:struct<$struct:acc$ $struct:e$>> in
-               let args = List.fold_left combine <:struct<>> args in
+               let args = List.fold_left (@) [] args in
                <:struct<
                  module $uid:"Arg_"^m2$ =
                    struct
@@ -1728,7 +1843,7 @@ let parser math_toplevel =
                          $struct:ps indent_first$
                          let _ = $uid:m2$ . do_end_env ()
                         end>>)
-    | "$$" m:math_toplevel "$$" ->
+    | "\\[" m:math_toplevel "\\]" ->
          (fun _ ->
            <:struct<let _ = newPar D.structure
                         ~environment:(fun x -> {x with par_indent = []})
@@ -1798,7 +1913,7 @@ let parser math_toplevel =
          (fun indent lvl ->
           let fn = fun (indent, lvl, ast) txt ->
             let indent, lvl, ast' = txt indent lvl in
-            indent, lvl, <:struct<$struct:ast$ $struct:ast'$>>
+            indent, lvl, (ast @ ast')
           in
           let _,_,r = List.fold_left fn (indent, lvl, []) l in
           r)
@@ -1899,10 +2014,10 @@ let parser full_text =
   | h:header basename:{basename:init -> basename ()} t:{tx1:text t:title}? tx2:text EOF ->
      begin
        let t = match t with
-         | None   -> <:struct<>>
-         | Some (tx1,t) -> <:struct<$struct:t$ $struct:tx1$>>
+         | None   -> []
+         | Some (tx1,t) -> t @ tx1
        in
-       let ast = <:struct<$struct:t$ $struct:tx2$>> in
+       let ast = t @ tx2 in
        wrap basename _loc ast
      end
 
@@ -1915,7 +2030,7 @@ let parser directive =
        | "DRIVER"  -> patoline_driver := a
        | "PACKAGE" -> patoline_packages := a :: !patoline_packages
        | _ -> give_up ("Unknown directive #"^n));
-    <:struct<>>)
+    [])
 let extra_structure = directive :: extra_structure
 
 let parser patoline_quotations _ =
@@ -1945,8 +2060,9 @@ let _ =
     let module PaExt = Ext(ParserExt) in
     let module PatolineDefault = Pa_ocaml.Make(PaExt) in
     let module M = Pa_main.Start(PatolineDefault) in
-    match !Pa_ocaml_prelude.file, !in_ocamldep with
-    | Some s, false ->
+    let open PaExt in
+    match !Pa_ocaml_prelude.file, !in_ocamldep, local_state = empty_state with
+    | Some s, false, false ->
        let dir = Filename.dirname s in
        let name = Filename.basename s in
        let name = chop_extension' name ^ ".tgy" in
@@ -1958,11 +2074,10 @@ let _ =
        then Unix.mkdir patobuild_dir 0o700;
        (* Now write the grammar *)
        let ch = open_out_bin name in
-       let open PaExt in
        output_value ch local_state;
        close_out ch;
        Printf.eprintf "Written grammar %s\n%!" name
-    | _ -> Printf.eprintf "Not writing default grammar, no filename\n%!";
+    | _ -> ()
 
   with e ->
     Printf.eprintf "Exception: %s\nTrace:\n%!" (Printexc.to_string e);

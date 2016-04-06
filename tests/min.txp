@@ -36,18 +36,18 @@ let defaultEnv = { defaultEnv with
   }) defaultEnv.mathsEnvironment;}
 )
 
-$$a² + 2 a b + b² = (a+b)^2$$
-$$||a||, |a|, [a], \{a\}, (a)$$
-$$||ν_i||,|ν_i|, [ν_i], \{ν_i\}, (ν_i)$$
-$$i__A_i^t, t^^i__A_i, t^^i__A_i^t, i__V_i^t, t^^i__V_i, t^^i__V_i^t$$
-$$V^{2i},{2i}^^V,a,⊤,⊤,{+},⊤ $$
-$$a^i + A^i + (A)^i$$
+\[a² + 2 a b + b² = (a+b)^2\]
+\[||a||, |a|, [a], \{a\}, (a)\]
+\[||ν_i||,|ν_i|, [ν_i], \{ν_i\}, (ν_i)\]
+\[i__A_i^t, t^^i__A_i, t^^i__A_i^t, i__V_i^t, t^^i__V_i, t^^i__V_i^t\]
+\[V^{2i},{2i}^^V,a,⊤,⊤,{+},⊤ \]
+\[a^i + A^i + (A)^i\]
 The next on should parse $b$ left indice without brace ?
 
-$$(∫ₐᵇ {2 t cos(t) d t}),(b^^{∫ₐ {2 t cos(t) dt}})$$
-$$f(x,y) = \prod_{i=0}^n (\sum_{j=0}^n (i + x)(j + y))$$
+\[(∫ₐᵇ {2 t cos(t) d t}),(b^^{∫ₐ {2 t cos(t) dt}})\]
+\[f(x,y) = \prod_{i=0}^n (\sum_{j=0}^n (i + x)(j + y))\]
 
-$$α⃗ (x⃗ + y⃗) = α⃗ x⃗ + α⃗ y⃗$$
-$$[a, b\right[, (a \over b\right., (a\}$$
-$$1 \over 2$$
-$$A ∧ V$$
+\[α⃗ (x⃗ + y⃗) = α⃗ x⃗ + α⃗ y⃗\]
+\[[a, b\right[, (a \over b\right., (a\}\]
+\[1 \over 2\]
+\[A ∧ V\]

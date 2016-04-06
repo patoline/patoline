@@ -88,7 +88,7 @@ let hyphenate_dict dict=
 
 let alegreya=
   [ Regular,
-    (Lazy.lazy_from_fun
+    (Lazy.from_fun
        (fun ()->
           (Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Regular}))
@@ -101,7 +101,7 @@ let alegreya=
               make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
              ]),
           (fun x->x)),
-     Lazy.lazy_from_fun
+     Lazy.from_fun
        (fun ()->
           (Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Regular}))
@@ -115,7 +115,7 @@ let alegreya=
              ]),
           (fun x->x)));
     Bold,
-    (Lazy.lazy_from_fun
+    (Lazy.from_fun
        (fun ()->
           (Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Bold}))
@@ -128,7 +128,7 @@ let alegreya=
               make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
              ]),
           (fun x->x)),
-     Lazy.lazy_from_fun
+     Lazy.from_fun
        (fun ()->
           (Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Bold}))
@@ -616,7 +616,7 @@ let defaultEnv:environment=
       lang_ML keywords specials s
 
     (* New parser version of verbatim environment. *)
-    let verb_default fn lines = 
+    let verb_default fn lines =
       Verbatim.lines_to_file lines fn;
       let build_line = Verbatim.handle_spaces (fun s -> [tT s]) in
       Verbatim.line_per_line D.structure build_line lines
@@ -1714,7 +1714,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
     end)
 
 module MathFonts = struct
-  let asana_font=Lazy.lazy_from_fun (fun ()->Fonts.loadFont
+  let asana_font=Lazy.from_fun (fun ()->Fonts.loadFont
     (findFont FontPattern.({family = "Asana Math"; slant = Roman; weight = Regular})))
 
   let asana name code = Maths.symbol ~name (Lazy.force asana_font) [code]
@@ -1744,7 +1744,7 @@ module MathFonts = struct
 	(asana "[" g'))
       ls [61;3340;3341;3342])
 
-  let euler_font=Lazy.lazy_from_fun (fun ()->Fonts.loadFont
+  let euler_font=Lazy.from_fun (fun ()->Fonts.loadFont
     (findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})))
   let euler name code = Maths.symbol ~name (Lazy.force euler_font) [code]
 
@@ -1760,7 +1760,7 @@ module MathFonts = struct
 	(asana "[" g'))
       ls [61;3340;3341;3342])
 
-  let ams_font=Lazy.lazy_from_fun (fun ()->Fonts.loadFont
+  let ams_font=Lazy.from_fun (fun ()->Fonts.loadFont
     (findFont FontPattern.({family = "Euler"; slant = Roman; weight = Regular})))
   let ams name code = Maths.symbol ~name (Lazy.force ams_font) [code]
 end
@@ -1787,7 +1787,7 @@ module MathsFormat=struct
                        a
                   )]
 
-    let bbFont=Lazy.lazy_from_fun (fun ()->Fonts.loadFont
+    let bbFont=Lazy.from_fun (fun ()->Fonts.loadFont
       (findFont FontPattern.({family = "Euler"; slant = Roman; weight = Regular})))
 
     let mathbb a=[Maths.Scope (fun _ _->Maths.Env (fun env->Maths.change_fonts

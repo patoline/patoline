@@ -102,7 +102,7 @@ module LMMath = struct
       else x.glyph_index})
 
   let default_env = { Euler.default_env with
-    mathsFont = Lazy.lazy_from_fun (fun () -> Fonts.loadFont (findFont
+    mathsFont = Lazy.from_fun (fun () -> Fonts.loadFont (findFont
     FontPattern.({family = "Latin Modern Math"; slant=Roman; weight=Regular})));
     mathsSubst = italicsubst }
 
@@ -112,7 +112,7 @@ module LMMath = struct
     op_tolerance = 0.95;
     op_limits_tolerance = 0.5;
   }
-    
+
   let default=[|
     { default_env with mathsSubst=msubst (Lazy.force displaySubst) };
     { default_env with mathsSubst=msubst (Lazy.force displaySubst) };

@@ -27,7 +27,7 @@ let strip s =
 let read_file file =
   let ch = open_in file in
   let len = in_channel_length ch in
-  let str = String.create len in
+  let str = Bytes.create len in
   let _ = input ch str 0 len in
   let res = strip str in
   close_in ch;
@@ -172,7 +172,7 @@ let dataRadioButtons ?(global=false) ?(scale=0.5) ?(destinations=[]) name values
 let ascii =
   let str = String.make (2*(128-32)) ' ' in
   for i = 32 to 127 do
-    str.[2*(i-32)] <- Char.chr i
+    Bytes.set str (2*(i-32)) (Char.chr i)
   done;
   [Scoped(verbEnv, [tT str] @ bold [tT str])]
 

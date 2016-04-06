@@ -73,7 +73,7 @@ let skip x=bB (fun env->let w=env.size*.x in [glue w w w])
 (*     match caps with *)
 (*         _::_->fam Caps caps *)
 (*       | []-> *)
-(*           let c=Lazy.lazy_from_fun ( *)
+(*           let c=Lazy.from_fun ( *)
 (*             fun () -> *)
 (*               let f=Fonts.loadFont (findFont "PalatinoLTStd-Roman.otf") in *)
 (*               let subst=Fonts.select_features f [Opentype.smallCapitals] in *)
@@ -294,7 +294,7 @@ end
 
   let alegreya=
     [ Regular,
-      (Lazy.lazy_from_fun
+      (Lazy.from_fun
          (fun ()->
             (Fonts.loadFont
               (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Regular}))
@@ -307,7 +307,7 @@ end
                 make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
                ]),
             (fun x->x)),
-       Lazy.lazy_from_fun
+       Lazy.from_fun
          (fun ()->
             (Fonts.loadFont
               (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Regular}))
@@ -321,7 +321,7 @@ end
                ]),
             (fun x->x)));
       Bold,
-      (Lazy.lazy_from_fun
+      (Lazy.from_fun
          (fun ()->
             (Fonts.loadFont
               (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Bold}))
@@ -334,7 +334,7 @@ end
                 make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
                ]),
             (fun x->x)),
-       Lazy.lazy_from_fun
+       Lazy.from_fun
          (fun ()->
             (Fonts.loadFont
               (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Bold}))
