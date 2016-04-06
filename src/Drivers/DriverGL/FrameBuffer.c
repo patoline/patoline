@@ -17,15 +17,14 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 */
+#define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
-#define GL_GLEXT_PROTOTYPES
 #include <OpenGL/glext.h>
 #else
 #include <GL/gl.h>
 #include <GL/glu.h>
-#define GL_GLEXT_PROTOTYPES
 #include <GL/glext.h>
 #endif
 
@@ -35,6 +34,9 @@
 #include <caml/mlvalues.h>
 #include <caml/custom.h>
 #include <caml/memory.h>
+#include <caml/misc.h>
+#include <caml/config.h>
+#include <caml/fail.h>
 
 #define Base_raw(raw) (Field(raw,1))
 #define Offset_raw(raw) (Field(raw,2))
@@ -57,7 +59,7 @@ void testGL(char* msg) {
   while((errCode = glGetError()) != GL_NO_ERROR)
     {
       errString = gluErrorString(errCode);
-      fprintf(stderr,"GL_ERROR: %s in %s\n", errString, msg); 
+      fprintf(stderr,"GL_ERROR: %s in %s\n", errString, msg);
     }
 
 }
@@ -66,7 +68,7 @@ void delete_fbo(value fbo) {
   fbo_texture cfbo = Data_custom_val(fbo);
   if (cfbo->is_texture)
     glDeleteTextures(1,&(cfbo->textureId));
-  else 
+  else
     glDeleteRenderbuffers(1,&(cfbo->textureId));
   glDeleteRenderbuffers(1,&(cfbo->rboId));
   glDeleteFramebuffers(1,&(cfbo->fboId));
@@ -82,7 +84,7 @@ static struct custom_operations objst_custom_ops = {
     deserialize: custom_deserialize_default
 };
 
-CAMLprim gl_create_fbo_texture(value ml_width, value ml_height, value ml_texture)
+CAMLprim value gl_create_fbo_texture(value ml_width, value ml_height, value ml_texture)
 { CAMLparam0();
   int height = Int_val(ml_height);
   int width = Int_val(ml_width);
@@ -92,7 +94,7 @@ CAMLprim gl_create_fbo_texture(value ml_width, value ml_height, value ml_texture
   fbo = caml_alloc_custom( &objst_custom_ops, sizeof(struct _fbo_texture), 0, 1);
   fbo_texture cfbo = Data_custom_val(fbo);
   cfbo->is_texture = texture;
-  
+
   if (texture) {
     glGenTextures(1, &(cfbo->textureId));
     testGL("glGenTextures");
@@ -151,7 +153,7 @@ CAMLprim gl_create_fbo_texture(value ml_width, value ml_height, value ml_texture
 
   // check FBO status
   GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-  if(status != GL_FRAMEBUFFER_COMPLETE)    
+  if(status != GL_FRAMEBUFFER_COMPLETE)
     caml_failwith("Createing FBO texture failed");
 
   // switch back to window-system-provided framebuffer
@@ -161,7 +163,7 @@ CAMLprim gl_create_fbo_texture(value ml_width, value ml_height, value ml_texture
   CAMLreturn(fbo);
 }
 
-CAMLprim gl_bind_fbo(value fbo)
+CAMLprim value gl_bind_fbo(value fbo)
 { CAMLparam0();
   fbo_texture cfbo = Data_custom_val(fbo);
   glBindFramebuffer(GL_FRAMEBUFFER,cfbo-> fboId);
@@ -173,14 +175,14 @@ CAMLprim gl_bind_fbo(value fbo)
   CAMLreturn(Val_unit);
 }
 
-CAMLprim gl_bind_texture(value fbo)
+CAMLprim value gl_bind_texture(value fbo)
 { CAMLparam0();
   fbo_texture cfbo = Data_custom_val(fbo);
   glBindTexture(GL_TEXTURE_2D, cfbo->textureId);
   CAMLreturn(Val_unit);
 }
 
-CAMLprim gl_unbind_fbo(value fbo)
+CAMLprim value gl_unbind_fbo(value fbo)
 { CAMLparam0();
   fbo_texture cfbo = Data_custom_val(fbo);
   if (cfbo->is_texture) {
@@ -192,13 +194,13 @@ CAMLprim gl_unbind_fbo(value fbo)
   CAMLreturn(Val_unit);
 }
 
-CAMLprim gl_merge_blend(value u)
+CAMLprim value gl_merge_blend(value u)
 { CAMLparam0();
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
   /*  glBlendEquation(GL_MAX);*/
   CAMLreturn(Val_unit);
 }
-CAMLprim gl_merge_blend2(value u)
+CAMLprim value gl_merge_blend2(value u)
 { CAMLparam0();
   glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
   /*  glBlendEquation(GL_FUNC_ADD);*/
@@ -240,19 +242,19 @@ GLuint program_shader = 0;
 #define MSGSIZE 10000
 static char msg[MSGSIZE];
 
-void compile_shader(GLenum type, GLuint *id, const char* source) { 
+void compile_shader(GLenum type, GLuint *id, const char* source) {
   GLint result;
 
   *id = glCreateShader(type);
   glShaderSource(*id, 1, &source, NULL);
   glCompileShader(*id);
   glGetShaderiv(*id, GL_COMPILE_STATUS, &result);
-  glGetShaderInfoLog(*id, MSGSIZE, 0, msg); 
+  glGetShaderInfoLog(*id, MSGSIZE, 0, msg);
   if (!result) printf("shader compilation: %s\n", msg);
   if (!result) exit(1);
 }
 
-CAMLprim gl_init_shader(value u) {
+CAMLprim value gl_init_shader(value u) {
   CAMLparam0();
   GLint result;
 
@@ -265,20 +267,20 @@ CAMLprim gl_init_shader(value u) {
   glAttachShader(program_shader, pixel_shader);
   glLinkProgram(program_shader);
   glGetProgramiv(program_shader, GL_LINK_STATUS, &result);
-  glGetProgramInfoLog(program_shader, MSGSIZE, 0, msg); 
+  glGetProgramInfoLog(program_shader, MSGSIZE, 0, msg);
   if (!result) printf("link: %s\n", msg);
   if (!result) exit(1);
 
-  CAMLreturn(Val_unit);  
+  CAMLreturn(Val_unit);
 }
 
-CAMLprim gl_use_shader(value u) {
+CAMLprim value gl_use_shader(value u) {
   CAMLparam0();
   glUseProgram(program_shader);
   CAMLreturn(Val_unit);
 }
 
-CAMLprim gl_no_shader(value u) {
+CAMLprim value gl_no_shader(value u) {
   CAMLparam0();
   glUseProgram(0);
   CAMLreturn(Val_unit);
