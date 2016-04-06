@@ -447,7 +447,7 @@ and make_deps pre source=
       open_in dep_filename, false
   in
   let buf=Buffer.create 1000 in
-  let s=String.create 1000 in
+  let s=Bytes.create 1000 in
   let rec read_all ()=
     let i=input in_deps s 0 (String.length s) in
     if i>0 then (

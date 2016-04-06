@@ -48,7 +48,7 @@ module type CustomT = sig
     val draw : Document.environment -> Mathematical.style -> box list t -> box list
   end
 
-(* Ce module contient juste une valeur de type u C.t pour un module C:Custom qui sera par 
+(* Ce module contient juste une valeur de type u C.t pour un module C:Custom qui sera par
    contrainte en fait de type 'a math list C.t dans la pratique, cf la definition
    du constructeur Custom ci-dessous *)
 module type Custom = sig
@@ -72,7 +72,7 @@ and 'a binary= { bin_priority:int; bin_drawing:'a binary_type; bin_left:'a math 
 and 'a fraction= { numerator:'a math list; denominator:'a math list; line:Document.environment->style->RawContent.path_param }
 and 'a operator= { op_noad:('a,nucleuses) noad ; op_limits:bool; op_left_contents:'a math list; op_right_contents:'a math list }
 and 'a math=
-    Ordinary of ('a,nucleus) noad 
+    Ordinary of ('a,nucleus) noad
   | Glue of drawingBox
   | Env of (Document.environment->Document.environment)
   | Scope of (Document.environment->Mathematical.style->'a math list)
@@ -107,7 +107,7 @@ let op_nolimits a b c=
 
 (* petit functeur bien utile pour utiliser Custom *)
 module Mk_Custom = functor (C : CustomT) -> struct
-  let custom x = 
+  let custom x =
     let module M = struct
       type u = Document.environment math list
       module C = C
@@ -151,7 +151,7 @@ let apply_head f envs = match envs with
   | env :: rest -> (f env) :: rest
 let superStyle x = apply_head (fun env -> { env with mathStyle = scriptStyle x })
 let subStyle x = apply_head (fun env -> { env with mathStyle = cramp (scriptStyle x) })
-let numeratorStyle x = apply_head (fun env -> { env with mathStyle = 
+let numeratorStyle x = apply_head (fun env -> { env with mathStyle =
 					      (match x with
                                                       Display -> Text | Display' -> Text'
                                                     | _ -> scriptStyle x) })
@@ -185,7 +185,7 @@ let rec bezier_of_boxes=function
 
 let adjust_space ?(absolute=false) env target minimum box_left box_right =
   if not env.kerning then target else
-  
+
   let epsilon = env.precise_kerning in
   let alpha = env.optical_alpha in
   let dsup,dinf as dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
@@ -208,8 +208,8 @@ let adjust_space ?(absolute=false) env target minimum box_left box_right =
     let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning box_left in
     x1_l -. x0_l
   in
-  
-  let d space = 
+
+  let d space =
     let pr = List.map (fun (x,y) -> (x+.space+.delta,y)) profile_right in
     let r = Distance.distance beta dir profile_left pr in
 (*    Printf.printf "s = %f => d = %f\n" space r; *)
@@ -222,14 +222,14 @@ let adjust_space ?(absolute=false) env target minimum box_left box_right =
 
   if !debug_kerning then Printf.fprintf stderr "start Adjust: min = %f => %f, target = %f => %f\n" minimum da target db;
 
-  let r = 
+  let r =
     if da > target then minimum else if db < target then target else
 
 	let rec fn sa da sb db  =
 	  let sc = (sa +. sb) /. 2.0 in
 	  let dc = d sc in
 	  if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
-	  else if dc < target then fn sc dc sb db 
+	  else if dc < target then fn sc dc sb db
 	  else fn sa da sc dc
 	in
 	fn minimum da target db
@@ -252,7 +252,7 @@ type draw_env = {
 }
 
 let dincr e = { depth = e.depth + 1; prio = 0 }
-  
+
 let rec draw draw_env env_stack mlist =
   let env=match env_stack with []->assert false | h::s->h in
   let style = env.mathStyle in
@@ -354,10 +354,10 @@ let rec draw draw_env env_stack mlist =
                   let xb0,yb0,xb1,yb1=bb.(sup) in
 		  let delta = if same_script then -. yb0 else 0. in
                   let u,v= match is_letter with
-		      true -> 
+		      true ->
 			delta +. xc_height*.mathsEnv.mathsSize*.env.size -. mathsEnv.sup_drop*.mathsEnv.mathsSize*.env.size,
 			mathsEnv.sub_drop*.mathsEnv.mathsSize*.env.size
-		    | false -> 
+		    | false ->
                       delta +. y1-. mathsEnv.sup_drop*.mathsEnv.mathsSize*.env.size,
                       -.y0 +. mathsEnv.sub_drop*.mathsEnv.mathsSize*.env.size
                   in
@@ -393,14 +393,14 @@ let rec draw draw_env env_stack mlist =
                   [| x1 -. xa0 +. mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
 		       -. xb1 +. x0 -. mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
 		       x1 -. xc0 +. mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance;
-		       -. xd1 +. x0 -. mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance 
+		       -. xd1 +. x0 -. mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance
 		  |]
                 in
 		let xoff =
                   [| mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
 		     mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
 		     mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance;
-		     mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance 
+		     mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance
 		  |]
                 in
                 let yoff=[| off_ya;off_yb; -.off_yc; -.off_yd |] in
@@ -410,7 +410,7 @@ let rec draw draw_env env_stack mlist =
 		    let ll = List.map (RawContent.translate 0.0 yoff.(i)) l in
 		    let x0', _, x1', _ = bb.(i) in
 		    let m = max ((x0 -. x1) *. 4. /. 9.) (x0' -. x1') in
-                    if i mod 2 = 0 then 
+                    if i mod 2 = 0 then
 		      adjust_space ~absolute:true mathsEnv xoff.(i) m box_nucleus ll
 		    else
 		      -. (adjust_space ~absolute:true mathsEnv xoff.(i) m ll box_nucleus)
@@ -456,8 +456,8 @@ let rec draw draw_env env_stack mlist =
           in
           let priorities=mathsEnv.priorities in
           let prio=find_priority (Binary b) in
-	  let draw_env = 
-	    if b.bin_priority > draw_env.prio then 
+	  let draw_env =
+	    if b.bin_priority > draw_env.prio then
 	      { depth = draw_env.depth + 1; prio = b.bin_priority; }
 	    else draw_env
 	  in
@@ -505,7 +505,7 @@ let rec draw draw_env env_stack mlist =
 		assert (x0 <= x1);
 		let dist0 =
 		  if bin_left = [] then 0.0 else
-		  let space = if no_sp_left then 
+		  let space = if no_sp_left then
 		      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
 			(mathsEnv.punctuation_factor *. space)
 		    else space in
@@ -520,13 +520,13 @@ let rec draw draw_env env_stack mlist =
 		  adjust_space mathsEnv space  (x0' -. x1) box_op box_right
 		in
 		(* computes distance left - right to avoid collisions above binary symbols *)
-		let dist2 = 
+		let dist2 =
 		  if bin_left = [] || bin_right = [] then -. infinity else
 		    let m_l = (x0_l -. x1_l)/.2.0 in
 		    let m_r = (x0_r -. x1_r)/.2.0 in
 		    adjust_space mathsEnv space (max m_r m_l) box_left box_right
 		in
-		let dist0, dist1 = 
+		let dist0, dist1 =
 		  let delta = (dist2 -. dist0 -. dist1 -. (x1 -. x0)) in
 		  if delta > 0.0 then
 		    let l = if no_sp_left then 0.0 (*mathsEnv.punctuation_factor*) else 1.0 in
@@ -655,7 +655,7 @@ let rec draw draw_env env_stack mlist =
 	      mathsEnv.op_limits_tolerance else
 	      mathsEnv.op_tolerance
 	  in
-	  let op_noad_choice = 
+	  let op_noad_choice =
 	    let ll = op.op_noad.nucleus in
 	    let lc = List.map (fun left ->
 	      let left' = left env style in
@@ -667,7 +667,7 @@ let rec draw draw_env env_stack mlist =
 	      | [c] -> c
 	      | (left, (x0,y0,x1,y1)) as c :: l ->
 		if (y1 -. y0) >= factor *. (y1_l -. y0_l) &&  (y1 -. y0) >= factor *. (y1_r -. y0_r) then c	else
-		  fn  l	      
+		  fn  l
 	    in
 	    fst (fn lc)
 	  in
@@ -764,7 +764,7 @@ let rec draw draw_env env_stack mlist =
 	  let half = (x0 -. x1)/.2. in
 	  let dist_l = if left=[] then 0. else
 	      adjust_space mathsEnv (mathsEnv.mathsSize*.env.size*.mathsEnv.left_op_dist) half
-	    left box_op 
+	    left box_op
 	  in
 
 	  let dist_r = if right=[] then 0. else
@@ -817,8 +817,8 @@ let rec draw draw_env env_stack mlist =
       | (Custom m) :: s ->
 	(* syntaxe lourde pour OCaml 3.12 ... 4.00 serait mieux ici *)
 	let module M = (val (m) : Custom with type u = Document.environment math list) in
-	M.C.draw env style 
-	  (M.C.map (fun env style -> draw (dincr draw_env) ({env with mathStyle = style} :: env_stack)) env style M.content)  
+	M.C.draw env style
+	  (M.C.map (fun env style -> draw (dincr draw_env) ({env with mathStyle = style} :: env_stack)) env style M.content)
 	@ (draw draw_env env_stack s)
 
 let draw = draw { prio = 0; depth = 0 }
@@ -828,7 +828,7 @@ let kdraw env_stack mlist =
    let l =draw env_stack mlist in
    let gl = match glue 0.0 0.0 0.0 with
        Box.Glue x -> Box.Drawing { x with drawing_width_fixed = false;}
-     | _ -> assert false 
+     | _ -> assert false
    in gl::l@[gl]
 
 let dist_boxes env precise a b=
@@ -865,7 +865,7 @@ let multi_glyphs cs envs st =
 
 let change_fonts env font=
     { env with
-        mathsEnvironment=Array.map (fun x->{x with mathsSubst=(fun x->x); mathsFont=Lazy.lazy_from_val font}) env.mathsEnvironment }
+        mathsEnvironment=Array.map (fun x->{x with mathsSubst=(fun x->x); mathsFont=Lazy.from_val font}) env.mathsEnvironment }
 
 let symbol ?name:(name="") font n envs st=
   let env=env_style envs.mathsEnvironment st in
@@ -918,9 +918,9 @@ let open_close left right env_ style box=
   let (x0,y0,x1,y1)=bounding_box_kerning mid in
   let (x0',y0',x1',y1')=bounding_box_full mid in
 
-  let (left',left, (x0_l',y0_l',x1_l',y1_l')), 
+  let (left',left, (x0_l',y0_l',x1_l',y1_l')),
       (right',right, (x0_r',y0_r',x1_r',y1_r')) =
-    let ll = List.map (fun l -> l env_ style) left 
+    let ll = List.map (fun l -> l env_ style) left
     and lr = List.map (fun r -> r env_ style) right in
     let boxes = List.map (fun d ->
       let d'=draw_boxes env_ d in
@@ -938,19 +938,19 @@ let open_close left right env_ style box=
 	else if l = [] then
 	  let alpha = (y1' -. y0') /. (dy1 -. dy0) in
 	  let delta = y1' -. alpha *. dy1 in
-	  (List.map (fun x -> Box.translate 0. delta (Box.resize alpha x)) d, 
-	   List.map (fun x -> RawContent.translate 0. delta (RawContent.resize alpha x)) d', 
+	  (List.map (fun x -> Box.translate 0. delta (Box.resize alpha x)) d,
+	   List.map (fun x -> RawContent.translate 0. delta (RawContent.resize alpha x)) d',
 	   (alpha *. dx0, alpha *. dy0, alpha *. dx1, alpha *. dy1))
 
 	else select_size l
     in
     select_size ll, select_size lr
   in
-  
+
   let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning left in
   let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
 
-  let dist0 = if left = [] then 0.0 else 
+  let dist0 = if left = [] then 0.0 else
       adjust_space env (s*.env.open_dist) (-.x1_l+.x0_l) left mid in
   let dist1 = if right = [] then 0.0 else
       adjust_space env (s*.env.close_dist) (-.x1_r+.x0_r) mid right in
@@ -1187,7 +1187,7 @@ module CustomSqrt = struct
   let draw = make_sqrt
 end
 
-let sqrt x = 
+let sqrt x =
   let module M = Mk_Custom(CustomSqrt) in
   [M.custom x]
 

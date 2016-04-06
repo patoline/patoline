@@ -48,7 +48,7 @@ let blacklist_driver d = driver_blist  := d :: !driver_blist
 
 let languages =
   let f = open_in "src/Typography/TypoLanguage.ml" in
-  let buf = String.create (in_channel_length f) in
+  let buf = Bytes.create (in_channel_length f) in
   really_input f buf 0 (in_channel_length f);
   close_in f;
   let rec make_str i acc =
@@ -123,7 +123,7 @@ let local_packages =
   [ { package_name = "patutil"
     ; macro_suffix = "UTIL"
     ; local_deps   = ["rbuffer"; "unicodelib"]
-    ; extern_deps  = []
+    ; extern_deps  = ["bytes"]
     ; subdirs      = []
     ; has_meta     = true }
 
@@ -137,7 +137,7 @@ let local_packages =
   ; { package_name = "unicodelib"
     ; macro_suffix = "UNICODELIB"
     ; local_deps   = []
-    ; extern_deps  = []
+    ; extern_deps  = ["bytes"]
     ; subdirs      = []
     ; has_meta     = true }
 
@@ -172,7 +172,7 @@ let local_packages =
   ; { package_name = "Typography"
     ; macro_suffix = "TYPOGRAPHY"
     ; local_deps = ["patutil";"patfonts";"unicodelib";"cesure";"rawlib";"db"]
-    ; extern_deps  = ["zip"; "fontconfig"; "imagelib"]
+    ; extern_deps  = ["zip"; "fontconfig"; "imagelib"; "bytes"]
     ; subdirs      = ["DefaultFormat"]
     ; has_meta     = true }
 
@@ -187,14 +187,14 @@ let local_packages =
   ; { package_name = "Format"
     ; macro_suffix = "FORMAT"
     ; local_deps   = ["Typography";"cesure";"rawlib";"db"]
-    ; extern_deps  = []
+    ; extern_deps  = ["bytes"]
     ; subdirs      = []
     ; has_meta     = false }
 
   ; { package_name = "Patoline"
     ; macro_suffix = "PATOLINE"
     ; local_deps   = ["Typography";"plugins"]
-    ; extern_deps  = ["decap"]
+    ; extern_deps  = ["decap";"bytes"]
     ; subdirs      = []
     ; has_meta     = false }
 
@@ -210,7 +210,7 @@ let local_packages =
     ; local_deps   = ["unicodelib"]
     ; extern_deps  = []
     ; subdirs      = []
-    ; has_meta     = false } 
+    ; has_meta     = false }
 
   ; { package_name = "proof"
     ; macro_suffix = "PROOF"
@@ -224,7 +224,9 @@ let local_packages =
     ; local_deps   = ["Format"]
     ; extern_deps  = ["unix"]
     ; subdirs      = []
-    ; has_meta     = false } ]
+    ; has_meta     = false }
+
+  ]
 
 let is_local_package name =
   List.exists (fun p -> name = p.package_name) local_packages
@@ -545,7 +547,7 @@ let _=
     (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
     (if !pdf_type3_only then "-DPDF_TYPE3_ONLY " else "")
     (if !lang <> "EN" then ("-DLANG_" ^ (!lang)) else "");
-  
+
   Printf.fprintf make "CAMLZIP :=%s\n"
     (if ocamlfind_has "zip" then " " ^ (snd (ocamlfind_query "zip")) else "");
 
@@ -667,7 +669,7 @@ let _=
       try
         let custom_meta_fd = open_in custom_meta in
         let custom_meta_len = in_channel_length custom_meta_fd in
-        let buf = String.create custom_meta_len in
+        let buf = Bytes.create custom_meta_len in
         really_input custom_meta_fd buf 0 custom_meta_len;
         close_in custom_meta_fd;
         Printf.fprintf meta "%s\n" buf

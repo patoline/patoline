@@ -32,7 +32,7 @@ type fontAlternative = Regular | Bold | Caps | Demi
 (* font, substitutions, positioning *)
 
 let simpleFamilyMember:(unit->font)->(font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t =
-  fun a->Lazy.lazy_from_fun (fun ()->(a (),(fun x->x),(fun x->x),(fun x->x)))
+  fun a->Lazy.from_fun (fun ()->(a (),(fun x->x),(fun x->x),(fun x->x)))
 
 let make_ligature l gl x=
   let rec match_lig l x=match (l,x) with
@@ -1326,9 +1326,9 @@ let boxify buf nbuf env0 l=
               let rec count i n=if i>=String.length t then n else
                   count (i+1) (if t.[i]>char_of_int 0x7f then n else (n+1))
               in
-              let tt=String.create (count 0 0) in
+              let tt=Bytes.create (count 0 0) in
               let rec filter i n=if i<String.length t then (
-                if t.[i]>char_of_int 0x7f then (tt.[n]<-t.[i]; filter (i+1) (n+1))
+                if t.[i]>char_of_int 0x7f then (Bytes.set tt n t.[i]; filter (i+1) (n+1))
                 else filter (i+1) n
               )
               in
@@ -1360,7 +1360,7 @@ let boxify buf nbuf env0 l=
 	  StrMap.find file !sources
         with _-> (let i=open_in_bin file in sources:= StrMap.add file i !sources; i)
         in
-        let buffer=String.create size in
+        let buffer=Bytes.create size in
         let _=seek_in i off; really_input i buffer 0 size in
         boxify keep_cache env (tT buffer::s)
       )
