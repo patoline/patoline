@@ -23,6 +23,7 @@ open RawContent
 open Proj3d
 open Geometry
 
+let diagram x = x (* to make pa_patoline happy *)
 let swap (x,y) = (y,x)
 let pi = 4. *. atan 1.
 let one_third = 1. /. 3.

@@ -739,9 +739,6 @@ module Env_dynamic(X : sig val arg1 : string val arg2 : RawContent.event -> RawC
 
 end
 
-
-
-
 let figure_drawing ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing env=
   let dr=drawing env in
   let dr=resize_drawing scale dr in
@@ -2136,7 +2133,6 @@ module MathsFormat=struct
 
     let hat = oHat
         (*******************************************************)
-
 
 
 

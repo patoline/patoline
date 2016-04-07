@@ -1666,7 +1666,7 @@ let _ = set_grammar math_toplevel (parser
 (***** Patoline macros  *****)
 
   let reserved_macro =
-    [ "begin"; "end"; "item"; "verb"; "diagram" ]
+    [ "begin"; "end"; "item"; "verb" ]
 
   let macro_name = change_layout (
     parser "\\" - m:lid ->
