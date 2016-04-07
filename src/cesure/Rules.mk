@@ -2,46 +2,31 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-$(d)/%.depends: INCLUDES += $(DEPS_PACK_UNICODELIB)
-CESURE_OCAMLDEP := ocamlfind ocamldep -I $(d)
-CESURE_OCAMLC   := ocamlfind ocamlc -I $(d)
-CESURE_OCAMLOPT := ocamlfind ocamlopt -I $(d)
+CESURE_INCLUDES := -I $(d) $(PACK_CESURE) -pp pa_ocaml
+CESURE_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_CESURE) -pp pa_ocaml
+
+$(d)/%.ml.depends: INCLUDES += $(CESURE_DEPS_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/cesure: INCLUDES:=$(CESURE_INCLUDES)
+
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
+-include $(d)/cesure.ml.depends $(d)/hyphen.ml.depends
+endif
+endif
 
 all: $(d)/cesure $(d)/cesure.cmxa $(d)/cesure.cma
 
-$(d)/hyphen.ml.depend: $(d)/hyphen.ml
-	$(ECHO) "[DEP] $< -> $@"
-	$(Q)$(CESURE_OCAMLDEP) -package unicodelib $<
-
-$(d)/cesure.ml.depend: $(d)/cesure.ml
-	$(ECHO) "[DEP] $< -> $@"
-	$(Q)$(CESURE_OCAMLDEP) -package unicodelib $<
-
-$(d)/hyphen.cmx: $(d)/hyphen.cmo
-
-$(d)/hyphen.cmo: $(d)/hyphen.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(CESURE_OCAMLC) -package unicodelib -c $<
-
-$(d)/hyphen.cmx: $(d)/hyphen.ml
-	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(CESURE_OCAMLOPT) -package unicodelib -c $<
-
 $(d)/cesure.cma: $(d)/hyphen.cmo $(UNICODE_DIR)/unicodelib.cma
 	$(ECHO) "[LINK]   $< -> $@"
-	$(Q)$(CESURE_OCAMLC) -package unicodelib,decap -a -o $@ decap.cma $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -a -o $@ decap.cma $<
 
 $(d)/cesure.cmxa: $(d)/hyphen.cmx $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[LINK]   $< -> $@"
-	$(Q)$(CESURE_OCAMLOPT) -package unicodelib -a -o $@ $<
-
-$(d)/cesure.cmx: $(d)/cesure.ml
-	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(CESURE_OCAMLOPT) -pp pa_ocaml -package decap -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -a -o $@ $<
 
 $(d)/cesure: $(UNICODE_DIR)/unicodelib.cmxa $(d)/hyphen.cmx $(d)/cesure.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(CESURE_OCAMLOPT) $(INCLUDES) -o $@ -package unicodelib,decap unix.cmxa str.cmxa sqlite3.cmxa decap.cmxa $^
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ unix.cmxa str.cmxa sqlite3.cmxa decap.cmxa $^
 
 CLEAN += $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.a
 DISTCLEAN += $(d)/cesure.cma $(d)/cesure.cmxa $(d)/cesure

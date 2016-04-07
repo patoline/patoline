@@ -3,10 +3,11 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 SVG_DRIVER_INCLUDES := -I $(d) $(PACK_DRIVER_SVG)
-$(d)/%.depends : INCLUDES += $(SVG_DRIVER_INCLUDES)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(SVG_DRIVER_INCLUDES)
+SVG_DRIVER_DEPS_INCLUDES:=-I $(d) $(DEPS_PACK_DRIVER_SVG)
+$(d)/%.depends : INCLUDES:=$(SVG_DRIVER_DEPS_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/%.cmxs: INCLUDES += $(SVG_DRIVER_INCLUDES)
 
-SVG_DRIVER_ML:=$(d)/HtmlFonts.ml $(d)/SVG.ml
+SVG_DRIVER_ML:=$(wildcard $(d)/*.ml)
 SVG_DRIVER_CMO:=$(SVG_DRIVER_ML:.ml=.cmo)
 SVG_DRIVER_CMX:=$(SVG_DRIVER_ML:.ml=.cmx)
 

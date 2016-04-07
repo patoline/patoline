@@ -3,8 +3,9 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 PATONET_DRIVER_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(PACK_DRIVER_Patonet)
+PATONET_DRIVER_DEPS_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(DEPS_PACK_DRIVER_Patonet)
 
-$(d)/%.ml.depends: INCLUDES += $(PATONET_DRIVER_INCLUDES) 
+$(d)/%.ml.depends: INCLUDES += $(PATONET_DRIVER_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATONET_DRIVER_INCLUDES)
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
@@ -43,4 +44,3 @@ Hammer.ml.depends: Hammer.ml
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
-

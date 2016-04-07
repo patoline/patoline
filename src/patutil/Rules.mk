@@ -6,7 +6,7 @@ UTIL_INCLUDES := -I $(d) $(PACK_UTIL)
 UTIL_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_UTIL)
 
 $(d)/%.depends: INCLUDES:=$(UTIL_DEPS_INCLUDES)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(UTIL_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa : INCLUDES:=$(UTIL_INCLUDES)
 
 # Compute ML files dependencies
 SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
@@ -33,15 +33,15 @@ $(UTIL_CMX): %.cmx: %.cmo
 
 $(d)/patutil.cma: $(UTIL_CMO)
 	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLC) -a -o $@ $^
+	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -a -o $@ $^
 
 $(d)/patutil.cmxa: $(UTIL_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLOPT) -a -o $@ $^
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -a -o $@ $^
 
 $(d)/patutil.cmxs: $(UTIL_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLOPT) -shared -o $@ $^
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -shared -o $@ $^
 
 # Building everything
 all: $(d)/patutil.cmxa $(d)/patutil.cma $(d)/patutil.cmxs

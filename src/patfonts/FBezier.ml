@@ -1,5 +1,5 @@
 let derivee a=
-  let b=Array.create (Array.length a-1) 0. in
+  let b=Array.make (Array.length a-1) 0. in
     for i=0 to Array.length b-1 do
       b.(i)<-(a.(i+1)-.a.(i)) *. (float_of_int (Array.length a-1))
     done;
@@ -48,7 +48,7 @@ let length' nb_div t (xa,ya) =
 	s := !s +. 2. *. sqrt (xd1*.xd1 +. yd1*.yd1) +. 4. *. sqrt (xd2*.xd2 +. yd2*.yd2)
   done;
   !s /. 6. *. n
-    
+
 let length = length' 10 1.
 
 let descartes x0 x1 epsilon a=

@@ -3,9 +3,10 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 GL_DRIVER_INCLUDES:=-I $(d) $(PACK_DRIVER_DriverGL)
-$(d)/%.depends : INCLUDES += $(GL_DRIVER_INCLUDES)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(GL_DRIVER_INCLUDES)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: OFLAGS += -thread
+GL_DRIVER_DEPS_INCLUDES:=-I $(d) $(DEPS_PACK_DRIVER_DriverGL)
+$(d)/%.depends : INCLUDES:= $(GL_DRIVER_DEPS_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/%.cmxs: INCLUDES += $(GL_DRIVER_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/%.cmxs: OFLAGS += -thread
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
@@ -40,17 +41,20 @@ $(d)/FrameBuffer.o: $(d)/FrameBuffer.c
 	$(ECHO) "[CC]     $<"
 	$(Q)$(CC) $(FPIC_FLAGS) $(CFLAGS) -c $< -o $@
 
-$(d)/DriverGL.cma: $(d)/FrameBuffer.o $(d)/GlFBO.cmo $(d)/Vec3.cmo $(d)/DriverGL.cmo
+DRIVERGL_DIR:= $(d)
+
+$(d)/DriverGL.cma: $(d)/FrameBuffer.o $(d)/GlFBO.cmo $(d)/Vec3.cmo $(d)/DriverGL.cmo $(TYPOGRAPHY_DIR)/DefaultFormat.cma
 	$(ECHO) "[MKLIB] ... -> $@"
-	$(Q)$(OCAMLMKLIB) $(INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
+	$(Q)$(OCAMLMKLIB) $(INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $(DRIVERGL_DIR)/FrameBuffer.o $(DRIVERGL_DIR)/GlFBO.cmo $(DRIVERGL_DIR)/Vec3.cmo $(DRIVERGL_DIR)/DriverGL.cmo
 
-$(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx
+$(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa
 	$(ECHO) "[OMKLIB] ... -> $@"
-	$(Q)$(OCAMLMKLIB) $(INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
+	$(Q)$(OCAMLMKLIB) $(INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $(DRIVERGL_DIR)/FrameBuffer.o $(DRIVERGL_DIR)/GlFBO.cmx $(DRIVERGL_DIR)/Vec3.cmx $(DRIVERGL_DIR)/DriverGL.cmx
 
-$(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx
+$(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx $(TYPOGRAPHY_DIR)/DefaultFormat.cmxs
 	$(ECHO) "[SHARE] ... -> $@"
-	$(Q)$(OCAMLOPT) $(INCLUDES) -shared -linkpkg -o $@ $^
+	$(Q)$(OCAMLOPT) $(INCLUDES) -shared -linkpkg -o $@ $(DRIVERGL_DIR)/FrameBuffer.o $(DRIVERGL_DIR)/GlFBO.cmx $(DRIVERGL_DIR)/Vec3.cmx $(DRIVERGL_DIR)/DriverGL.cmx
+
 
 CLEAN += $(d)/DriverGL.cma
 

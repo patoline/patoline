@@ -2,9 +2,10 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-IMAGE_DRIVER_INCLUDES:=-I $(d) -I $(DRIVERS_DIR)/DriverGL $(PACK_DRIVER_DriverImage) -I $(PATOLINE_DIR)
+IMAGE_DRIVER_INCLUDES:=-I $(d) $(PACK_DRIVER_DriverImage) -I $(PATOLINE_DIR)
+IMAGE_DRIVER_DEPS_INCLUDES:=-I $(d) $(DEPS_PACK_DRIVER_DriverImage) -I $(PATOLINE_DIR)
 
-$(d)/%.ml.depends: INCLUDES += $(IMAGE_DRIVER_INCLUDES)
+$(d)/%.ml.depends: INCLUDES += $(IMAGE_DRIVER_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(IMAGE_DRIVER_INCLUDES)
 
 SRC_$(d):=$(wildcard $(d)/*.ml)

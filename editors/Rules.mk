@@ -16,7 +16,7 @@ endif
 
 $(d)/emacs/SubstKey.cmx: INCLUDES += -I $(UNICODE_DIR)
 
-$(d)/emacs/SubstKey: $(d)/emacs/SubstKey.cmx
+$(d)/emacs/SubstKey: $(d)/emacs/SubstKey.cmx $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) -package str,unicodelib $< -linkpkg -o $@
 

@@ -2,8 +2,8 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-BIBI_INCLUDES := -I $(d) $(PACK_BIBI) 
-BIBI_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_BIBI) 
+BIBI_INCLUDES := -I $(d) $(PACK_BIBI)
+BIBI_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_BIBI)
 
 # Finding dependencies
 $(d)/%.ml.depends: INCLUDES += $(BIBI_DEPS_INCLUDES)

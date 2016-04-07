@@ -2,32 +2,31 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-UNICODELIB_INCLUDES := -I $(d)
-UNICODELIB_DEPS_INCLUDES := -I $(d)
+UNICODELIB_INCLUDES := -I $(d) $(PACK_UNICODELIB)
+UNICODELIB_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_UNICODELIB)
+
+PA_CONV:=$(d)/pa_convert
 
 $(d)/%.depends: OCAMLDEP:=ocamlfind ocamldep -pp pa_ocaml
 $(d)/%.depends: INCLUDES:=$(UNICODELIB_DEPS_INCLUDES)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES:=$(UNICODELIB_INCLUDES)
-$(d)/%.cmo $(d)/%.cmi: OCAMLC:=ocamlfind ocamlc -pp pa_ocaml $(INCLUDES)
-$(d)/%.cmx: OCAMLOPT:=ocamlfind ocamlopt -pp pa_ocaml $(INCLUDES)
+$(d)/pa_%.depends: OCAMLDEP:=ocamlfind ocamldep -pp pa_ocaml $(OFLAGS) $(INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa: INCLUDES:=$(UNICODELIB_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cma: OCAMLC:=ocamlfind ocamlc -pp pa_ocaml $(OFLAGS) $(INCLUDES)
+$(d)/%.cmx $(d)/%.cmxa: OCAMLOPT:=ocamlfind ocamlopt -pp pa_ocaml $(OFLAGS) $(INCLUDES)
+$(PA_CONV): INCLUDES:=$(UNICODELIB_INCLUDES)
 
 # Compute ML files dependencies
 # Building
 UNICODELIB_MODS:= UChar UTF UTF8 UTF16 UTF32 UTFConvert PermanentMap UnicodeLibConfig UCharInfo
 
-UNICODELIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UNICODELIB_MODS)))
-UNICODELIB_DEPS:=$(addsuffix .depends,$(UNICODELIB_ML)) $(d)/pa_convert.ml.depends
+UNICODELIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UNICODELIB_MODS))) $(wildcard $(d)/*.ml)
+UNICODELIB_DEPS:=$(addsuffix .depends,$(UNICODELIB_ML))
 
 $(UNICODELIB_DEPS): $(d)/UnicodeLibConfig.ml
 
 UNICODELIB_CMO:=$(UNICODELIB_ML:.ml=.cmo)
 UNICODELIB_CMX:=$(UNICODELIB_ML:.ml=.cmx)
 UNICODELIB_CMI:=$(UNICODELIB_ML:.ml=.cmi)
-
-#pb with ocamldep: undetected deps inside quotation
-$(d)/pa_convert.cmo: $(UNICODELIB_CMO) $(UNICODELIB_CMI)
-$(d)/pa_convert.cmx: $(UNICODELIB_CMX) $(UNICODELIB_CMI)
-
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
@@ -51,44 +50,26 @@ ENCODING_O    := $(ENCODING_ML:.ml=.o)
 
 $(ENCODING_CMX): %.cmx: %.cmo
 
-PA_CONV:=$(d)/pa_convert
-
 $(PA_CONV): $(d)/pa_convert.ml
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q) $(OCAMLOPT) -pp pa_ocaml -o $@ -I $(UNICODE_DIR) \
-		-package decap $(COMPILER_INC) $(COMPILER_LIBO) unix.cmxa str.cmxa \
+	$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml -o $@ \
+		$(COMPILER_INC) $(COMPILER_LIBO) unix.cmxa str.cmxa \
 		decap.cmxa decap_ocaml.cmxa $<
 
 $(ENCODING_ML): %.ml: $(PA_CONV)
 	$(ECHO) "[PA_CNV] ... -> $@"
-	$(Q) $(PA_CONV) --ascii $(@D)/encoding_data/$(basename $(@F)).TXT > $@
+	$(Q)$(PA_CONV) --ascii $(@D)/encoding_data/$(basename $(@F)).TXT > $@
 
-$(ENCODING_CMO): %.cmo: %.ml
-	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q) $(OCAMLC) $(UNICODELIB_INCLUDES) -c $<
-
-$(ENCODING_CMX): %.cmx: %.ml
-	$(ECHO) "[OPT]    ... -> $@"
-	$(Q) $(OCAMLOPT) $(UNICODELIB_INCLUDES) -c $<
 ###
 
 ### Parsing and data generation for UnicodeData.txt
-$(d)/PermanentMap.cmo: $(d)/PermanentMap.ml
-	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q) $(OCAMLC) -package sqlite3 $(UNICODELIB_INCLUDES) -c $<
-
-$(d)/PermanentMap.cmx: $(d)/PermanentMap.ml
-	$(ECHO) "[OPT]    ... -> $@"
-	$(Q) $(OCAMLOPT) -package sqlite3 $(UNICODELIB_INCLUDES) -c $<
-
 $(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml
 	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q) $(OCAMLOPT) -package decap -pp pa_ocaml $(COMPILER_INC) \
-		$(UNICODELIB_INCLUDES) -c $<
+	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml $(COMPILER_INC)  -c $<
 
 $(d)/pa_UnicodeData: $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q) $(OCAMLOPT) -linkpkg -package sqlite3,decap $(COMPILER_INC)\
+	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -linkpkg $(COMPILER_INC)\
 		$(UNICODELIB_INCLUDES) -o $@ $(COMPILER_LIBO) $^
 
 UNICODE_DATA_TXT := $(d)/data/UnicodeData.txt

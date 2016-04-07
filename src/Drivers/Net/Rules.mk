@@ -3,8 +3,9 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 NET_DRIVER_INCLUDES:=-I $(d) $(PACK_DRIVER_Net) -I $(DRIVERS_DIR)/SVG
+NET_DRIVER_DEPS_INCLUDES:=-I $(d) $(DEPS_PACK_DRIVER_Net) -I $(DRIVERS_DIR)/SVG
 
-$(d)/%.ml.depends: INCLUDES += $(NET_DRIVER_INCLUDES)
+$(d)/%.ml.depends: INCLUDES += $(NET_DRIVER_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(NET_DRIVER_INCLUDES)
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
@@ -41,4 +42,3 @@ install-patonetml: install-plugins
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
-

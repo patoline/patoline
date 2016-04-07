@@ -137,7 +137,7 @@ let local_packages =
   ; { package_name = "unicodelib"
     ; macro_suffix = "UNICODELIB"
     ; local_deps   = []
-    ; extern_deps  = ["bytes"]
+    ; extern_deps  = ["bytes"; "decap"; "sqlite3"; "compiler-libs" ]
     ; subdirs      = []
     ; has_meta     = true }
 
@@ -194,7 +194,7 @@ let local_packages =
   ; { package_name = "Patoline"
     ; macro_suffix = "PATOLINE"
     ; local_deps   = ["Typography";"plugins"]
-    ; extern_deps  = ["decap";"bytes"]
+    ; extern_deps  = ["decap";"bytes";"compiler-libs"]
     ; subdirs      = []
     ; has_meta     = false }
 
@@ -208,7 +208,7 @@ let local_packages =
   ; { package_name = "cesure"
     ; macro_suffix = "CESURE"
     ; local_deps   = ["unicodelib"]
-    ; extern_deps  = []
+    ; extern_deps  = ["decap"]
     ; subdirs      = []
     ; has_meta     = false }
 
@@ -245,7 +245,7 @@ let packages_local names =
     else List.fold_left fn (List.fold_left add acc p.extern_deps) p.local_deps
   in List.fold_left fn [] names
 
-let includes_local ?(subdir_only=true) name =
+let includes_local_list ?(subdir_only=true) name =
   let add d acc = if List.mem d acc then acc else d::acc in
   let rec fn acc name =
     let p = find_local_package name in
@@ -258,7 +258,10 @@ let includes_local ?(subdir_only=true) name =
       acc p.subdirs
     in
     List.fold_left fn acc p.local_deps
-  in String.concat " " (fn [] name)
+  in fn [] name
+
+let includes_local ?(subdir_only=true) name =
+  String.concat " " (includes_local_list ~subdir_only name)
 
 (* Management of findlib packages. *)
 type findlib_package =
@@ -408,25 +411,22 @@ and driver =
 
 let patoline_driver_gl =
   { name      = "DriverGL"
-  ; needs     =
-      [ Package "Typography" ; Package "str" ; Package "db" ; Package "zip"
-      ; Package "imagelib" ; Package "lablgl" ; Package "lablgl.glut"]
+  ; needs     = [ Package "str" ; Package "imagelib"; Package "zip";
+		  Package "lablgl" ; Package "lablgl.glut"]
   ; suggests  = []
-  ; internals = [] }
+  ; internals = [Package "Typography" ; Package "db" ] }
 
 let patoline_driver_image =
   { name      = "DriverImage"
-  ; needs     =
-      [ Package "Typography" ; Package "imagelib" ; Package "lablgl"
-      ; Package "lablgl.glut"]
+  ; needs     = [ Package "lablgl" ; Package "lablgl.glut" ; Package "imagelib" ]
   ; suggests  = []
-  ; internals = [Driver patoline_driver_gl] }
+  ; internals = [Driver patoline_driver_gl; Package "Typography" ] }
 
 let svg_driver =
   { name      = "SVG"
-  ; needs     = [Package "Typography"; Package "db"]
+  ; needs     = []
   ; suggests  = []
-  ; internals = [] }
+  ; internals = [Package "Typography"; Package "db"] }
 
 let all_patoline_drivers =
   [ { name      = "None"
@@ -437,37 +437,37 @@ let all_patoline_drivers =
   ; { name      = "Pdf"
     ; needs     = []
     ; suggests  = [Package "zip"]
-    ; internals = [] }
+    ; internals = [Package "Typography"] }
 
   ; { name      = "Bin"
     ; needs     = []
     ; suggests  = []
-    ; internals = [] }
+    ; internals = [Package "Typography"] }
 
   ; { name      = "Html"
-    ; needs     = [ Package "unicodelib"]
+    ; needs     = []
     ; suggests  = []
-    ; internals = [] }
+    ; internals = [Package "Typography"; Package "unicodelib"] }
 
   ; { name      = "Patonet"
-    ; needs     = [ Package "cryptokit"]
+    ; needs     = [Package "cryptokit"]
     ; suggests  = []
-    ; internals = [Driver svg_driver] }
+    ; internals = [Package "Typography"; Driver svg_driver] }
 
   ; { name      = "DriverCairo"
     ; needs     = [ Package "cairo"]
     ; suggests  = []
-    ; internals = [] }
+    ; internals = [Package "Typography"] }
 
   ; { name      = "Net"
     ; needs     = []
     ; suggests  = []
-    ; internals = [Driver svg_driver] }
+    ; internals = [Package "Typography"; Driver svg_driver] }
 
   ; { name      = "Web"
     ; needs     = []
     ; suggests  = []
-    ; internals = [Driver svg_driver] }
+    ; internals = [Package "Typography"; Driver svg_driver] }
 
   ; svg_driver
   ; patoline_driver_gl
@@ -476,6 +476,28 @@ let all_patoline_drivers =
 let patoline_drivers =
   let pred d = not (List.mem d.name !driver_blist) in
   List.filter pred all_patoline_drivers
+
+let find_driver name =
+  try List.find (fun p -> name = p.name) patoline_drivers
+  with Not_found ->
+    Printf.printf "Did not find driver \"%s\"...\n%!" name;
+    raise Not_found
+
+let includes_driver ?(subdir_only=true) name =
+  let add d acc = if List.mem d acc then acc else d::acc in
+  let rec fn acc name =
+    match name with
+    | Driver p ->
+       let acc = if false && subdir_only then acc else
+	 add ("-I "^(Filename.concat (Filename.concat "src" "Drivers") p.name)) acc
+       in
+       let acc = List.fold_left fn acc p.internals in
+       acc
+
+    | Package name ->
+       List.fold_left (fun acc x -> add x acc) acc (includes_local_list ~subdir_only name)
+  in String.concat " " (fn [] (Driver name))
+
 
 (* Checks whether we can build a given driver.
  * This certainly won't check that a driver doesn't somehow reference itself:
@@ -597,9 +619,12 @@ let _=
   (* Output -package option for enabled drivers *)
   List.iter
   (fun d ->
-    let pack = String.concat "," (gen_pack_line (d.needs @ d.suggests)) in
-    if pack <> "" then
-    Printf.fprintf make "PACK_DRIVER_%s := -package %s\n" d.name pack
+    let pack = String.concat "," (gen_pack_line (d.internals @ d.needs @ d.suggests)) in
+    let pack = if pack <> "" then "-package "^pack else pack in
+    Printf.fprintf make "PACK_DRIVER_%s := %s %s\n" d.name pack
+      (includes_driver d);
+    Printf.fprintf make "DEPS_PACK_DRIVER_%s := %s %s\n"d.name pack
+      (includes_driver ~subdir_only:false d)
   )
   ok_drivers;
 
