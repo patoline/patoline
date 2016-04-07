@@ -576,35 +576,35 @@ let parser arg_descriptions =
   | EMPTY -> []
   | a:arg_description l:{ _:"," arg_description }* -> a::l
 
-let expr_filter : (string, Parsetree.expression -> Parsetree.expression) Hashtbl.t =
+let expr_filter : (string, Parsetree.expression -> Location.t -> Parsetree.expression) Hashtbl.t =
   Hashtbl.create 31
 
-let struct_filter : (string, Parsetree.structure -> Parsetree.expression) Hashtbl.t =
+let struct_filter : (string, Parsetree.structure -> Location.t -> Parsetree.expression) Hashtbl.t =
   Hashtbl.create 31
 
-let string_filter : (string, string -> Parsetree.expression) Hashtbl.t =
+let string_filter : (string, string -> Location.t -> Parsetree.expression) Hashtbl.t =
   Hashtbl.create 31
 
-let apply_string_filter config s =
-  try Hashtbl.find string_filter config.filter_name s with Not_found ->
+let apply_string_filter config s _loc =
+  try Hashtbl.find string_filter config.filter_name s _loc with Not_found ->
     Printf.eprintf "Unknown string filter: %S\n%!" config.filter_name; exit 1
 
-let apply_expr_filter config s =
-  try Hashtbl.find expr_filter config.filter_name s with Not_found ->
+let apply_expr_filter config s _loc =
+  try Hashtbl.find expr_filter config.filter_name s _loc with Not_found ->
     Printf.eprintf "Unknown expression filter: %S\n%!" config.filter_name; exit 1
 
-let apply_struct_filter config s =
-  try Hashtbl.find struct_filter config.filter_name s with Not_found ->
+let apply_struct_filter config s _loc =
+  try Hashtbl.find struct_filter config.filter_name s _loc with Not_found ->
     Printf.eprintf "Unknown structure filter: %S\n%!" config.filter_name; exit 1
 
 let _ =
-  Hashtbl.add string_filter "" (fun s -> <:expr< $string:s$ >>)
+  Hashtbl.add string_filter "" (fun s _loc -> <:expr<$string:s$ >>)
 
 let _ =
-  Hashtbl.add expr_filter "" (fun e -> e)
+  Hashtbl.add expr_filter "" (fun e _loc -> e)
 
 let _ =
-  Hashtbl.add struct_filter "" (fun s ->
+  Hashtbl.add struct_filter "" (fun s _loc ->
     <:expr<
           [bB (fun env ->
             let module Res =
@@ -614,7 +614,7 @@ let _ =
              in [ Drawing (Res.drawing ()) ])]>>)
 
 let _ =
-  Hashtbl.add string_filter "genumerate" (fun s->
+  Hashtbl.add string_filter "genumerate" (fun s _loc ->
       let pos = Str.search_forward (Str.regexp "&\\([1iIaA]\\)") s 0 in
     (* let c = String.make 1 s.[pos+1] in *)
       let c = s.[pos+1] in
@@ -634,7 +634,7 @@ let _ =
     Decap.parse_string Pa_ocaml_prelude.expression blank2 caml)
 
 let _ =
-  Hashtbl.add struct_filter "diagram" (fun s->
+  Hashtbl.add struct_filter "diagram" (fun s _loc ->
     <:expr<
           [bB (fun env ->
             let module Res =
@@ -730,7 +730,7 @@ type delimiter =
 let invisible_delimiter = {
   delimiter_utf8_names  = [];
   delimiter_macro_names = [];
-  delimiter_values      = <:expr< [] >>;
+  delimiter_values      = let _loc = Location.none in <:expr< [] >>;
 }
 
 module PMap = PrefixTree
@@ -948,23 +948,23 @@ let math_toplevel = declare_grammar "math_toplevel"
 
 let parser macro_argument config =
   | '{' m:(math_toplevel) '}' when config.entry = Math
-			      -> apply_expr_filter config m
+			      -> apply_expr_filter config m _loc
   | '{' e:(change_layout (paragraph_basic_text TagSet.empty) blank1) '}' when config.entry = Text
-			      -> apply_expr_filter config e
+			      -> apply_expr_filter config e _loc
   | e:wrapped_caml_expr when config.entry <> CamlStruct
-			      -> apply_expr_filter config e
+			      -> apply_expr_filter config e _loc
   | e:wrapped_caml_array when config.entry <> CamlStruct
-                              -> apply_expr_filter config <:expr<$array:e$>>
+                              -> apply_expr_filter config <:expr<$array:e$>> _loc
   | e:wrapped_caml_list when config.entry <> CamlStruct
-                              -> apply_expr_filter config <:expr<$list:e$>>
+                              -> apply_expr_filter config <:expr<$list:e$>> _loc
   | s:wrapped_caml_structure when config.entry = CamlStruct
-			      -> apply_struct_filter config s
+			      -> apply_struct_filter config s _loc
   | '{' e:caml_expr '}' when config.entry = Caml
-			      -> apply_expr_filter config e
+			      -> apply_expr_filter config e _loc
   | '{' s:caml_structure '}' when config.entry = CamlStruct
-			      -> apply_struct_filter config s
+			      -> apply_struct_filter config s _loc
   | '{' s:(change_layout br_string no_blank) '}' when config.entry = String
-			      -> apply_string_filter config s
+			      -> apply_string_filter config s _loc
 
 let parser simple_text_macro_argument =
   | '{' l:(change_layout (paragraph_basic_text TagSet.empty) blank1) '}' -> l
@@ -1723,6 +1723,7 @@ let _ = set_grammar math_toplevel (parser
   let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
     let x,y = Lexing.((end_pos _loc_p1).pos_cnum, (start_pos _loc_p2).pos_cnum) in
     (*Printf.fprintf stderr "x: %d, y: %d\n%!" x y;*)
+    let _loc = _loc_p2 in
     let bl e = if y - x >= 1 then <:expr<tT" "::$e$>> else e in
     let _loc = Pa_ast.merge2 _loc_p1 _loc_p2 in
     <:expr<$p1$ @ $bl p2$>>
