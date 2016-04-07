@@ -32,8 +32,6 @@ all: $(PA_PATOLINE)
 
 PATOLINE_DIR := $(d)
 
-SUBSUP_ML := $(d)/Subsup.ml
-
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) \
@@ -62,6 +60,12 @@ $(d)/Subsup.cmx: $(d)/Subsup.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -I $(PATOLINE_DIR) -c -package decap $(COMPILER_INC) -o $@ $<
 
+PATOLINE_UNICODE_SCRIPTS := $(d)/UnicodeScripts
+
+$(EDITORS_DIR)/emacs/Subsup.el $(d)/Subsup.ml: $(d)/UnicodeData.txt $(d)/UnicodeScripts
+	$(ECHO) "[UNIC]   $< -> $@ $(EDITORS_DIR)/emacs/Subsup.el"
+	$(Q)$(PATOLINE_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/Subsup.el
+
 #$(d)/patolineGL: $(UTIL_DIR)/util.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
 #	$(ECHO) "[OPT]    $(lastword $^) -> $@"
 #	$(Q)$(OCAMLOPT) -o $@ $(PACK) -package $(PACK_DRIVER_DriverGL) -I $(DRIVERS_DIR)/DriverGL -I $(DRIVERS_DIR) -I $(UTIL_DIR) $^
@@ -73,14 +77,6 @@ $(d)/Main.cmx: $(d)/Main.ml
 $(d)/Main.cmo: $(d)/Main.ml
 	$(ECHO) "[OPT]    $<"
 	$(Q)$(OCAMLC) -thread -rectypes -I +threads $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
-
-PATOLINE_UNICODE_SCRIPTS := $(d)/UnicodeScripts
-
-$(EDITORS_DIR)/emacs/SubSuper.el: $(d)/SubSuper.ml ;
-$(d)/SubSuper.ml: $(d)/UnicodeData.txt $(PATOLINE_UNICODE_SCRIPTS)
-	$(ECHO) "[UNIC]   $< -> $@"
-	$(Q)$(PATOLINE_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/SubSuper.el $(SUBSUP_ML)
-$(SUBSUP_ML):$(d)/SubSuper.ml
 
 $(d)/UnicodeScripts.cmx: $(UNICODELIB_CMX) $(UNICODELIB_DEPS) $(UNICODELIB_ML)
 

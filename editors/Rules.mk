@@ -21,24 +21,23 @@ $(d)/emacs/SubstKey: $(d)/emacs/SubstKey.cmx
 	$(Q)$(OCAMLOPT) -package str,unicodelib $< -linkpkg -o $@
 
 # $(d)/emacs/SubSuper.el is built by src/Patoline/Rules.mk
-$(d)/emacs/SubSuper2.el: $(d)/emacs/SubSuper.el $(d)/emacs/quail.el $(d)/emacs/SubstKey
+$(d)/emacs/Subsup2.el: $(d)/emacs/Subsup.el $(d)/emacs/quail.el $(d)/emacs/SubstKey
 	$(ECHO) "[SUBST]  ... -> $@"
 	$(Q)$(lastword $^) $(EDITORS_DIR)/emacs/quail.el $< > $@
 
 $(d)/emacs/patoline-input.el: $(d)/emacs/patoline-input.pre $(d)/emacs/quail.el \
-  $(d)/emacs/SubSuper2.el $(d)/emacs/patoline-input.post
+  $(d)/emacs/Subsup2.el $(d)/emacs/patoline-input.post
 	$(ECHO) "[CAT]    ... -> $@"
 	$(Q)cat $^ > $@
 
-CLEAN += $(d)/emacs/SubSuper2.el $(d)/emacs/SubstKey $(d)/emacs/patoline-input.el $(d)/emacs/*.cmo $(d)/emacs/*.cmi $(d)/emacs/*.o $(d)/emacs/*.cmx
+CLEAN += $(d)/emacs/Subsup2.el $(d)/emacs/SubstKey $(d)/emacs/patoline-input.el $(d)/emacs/*.cmo $(d)/emacs/*.cmi $(d)/emacs/*.o $(d)/emacs/*.cmx
 DISTCLEAN += $(d)/emacs/*.depends
 
 # Installing
 install: install-editors
 .PHONY: install-editors
 
-install-editors: $(d)/emacs/patoline-input.el $(d)/emacs/patoline-mode.el \
-  $(d)/emacs/SubSuper2.el $(d)/emacs/SubSuper.el
+install-editors: $(d)/emacs/patoline-input.el $(d)/emacs/patoline-mode.el
 	install -m 755 -d $(DESTDIR)/$(INSTALL_EMACS_DIR)
 	install -p -m 644 $^ $(DESTDIR)/$(INSTALL_EMACS_DIR)
 

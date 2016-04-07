@@ -24,9 +24,8 @@
  *)
 
 let unicodedata_file = Sys.argv.(1)
-and subsuperml_file = Sys.argv.(2)
-and subsuperel_file = Sys.argv.(3)
-and subsupeml_file = Sys.argv.(4)
+let subsuperml_file = Sys.argv.(2)
+let subsuperel_file = Sys.argv.(3)
 
 let file = open_in unicodedata_file
 
@@ -138,19 +137,4 @@ let _ =
     Printf.fprintf ch "(\"_%s\" ?%s)\n" (int_to_bytes h') (int_to_bytes h)) subscripts;
   List.iter (fun (c,h,h') ->
     Printf.fprintf ch "(\"^%s\" ?%s)\n" (int_to_bytes h') (int_to_bytes h)) superscripts;
-  close_out ch
-
-let ch = open_out subsupeml_file
-
-let _ =
-  Printf.fprintf ch "open Decap\n\n";
-  Printf.fprintf ch "let parser subscript =\n";
-   List.iter (fun (c,h,h') ->
-    Printf.fprintf ch "|\"%s\" -> \"%s\" \n" (esc_int_to_bytes h) (esc_int_to_bytes h')) subscripts;
-  Printf.fprintf ch "\n";
-  Printf.fprintf ch "let parser superscript =\n";
-  List.iter (fun (c,h,h') ->
-    Printf.fprintf ch "|\"%s\" -> \"%s\" \n" (esc_int_to_bytes h) (esc_int_to_bytes h')) superscripts;
-
-
   close_out ch
