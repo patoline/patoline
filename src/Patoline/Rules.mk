@@ -14,7 +14,7 @@ PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx \
 $(PAT_CMX): %.cmx: %.cmo
 
 # Compute ML dependencies
-SRC_$(d) := $(filter-out UnicodeScripts.ml.depends, $(addsuffix .depends,$(wildcard $(d)/*.ml)))
+SRC_$(d) := $(filter-out $(d)/Subsup.ml.depends, $(filter-out $(d)/UnicodeScripts.ml.depends, $(addsuffix .depends,$(wildcard $(d)/*.ml))))
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
@@ -53,10 +53,10 @@ $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(d)/Subsup.cmx $(d)/prefixTree.cmx
 	$(Q)$(OCAMLOPT_NOINTF) -rectypes -pp pa_ocaml -I $(PATOLINE_DIR) -c -package patutil,decap $(COMPILER_INC) -o $@ $<
 
 $(d)/Subsup.ml.depends: $(d)/Subsup.ml
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[DEPS]    $< -> $@"
 	$(Q)$(OCAMLDEP) -pp pa_ocaml -I $(<D) -I $(UTIL_DIR) -package decap $< > $@
 
-$(d)/Subsup.cmx: $(d)/Subsup.ml
+$(d)/Subsup.cmx: $(d)/Subsup.ml $(d)/Subsup.ml.depends
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -I $(PATOLINE_DIR) -c -package decap $(COMPILER_INC) -o $@ $<
 
@@ -86,7 +86,7 @@ $(d)/UnicodeScripts: $(d)/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
 
 $(d)/Build.cmo $(d)/Build.cmx: OFLAGS += -thread
 
-CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/patoline $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts $(d)/pa_patoline $(d)/emacs/SubSuper.ml
+CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/patoline $(EDITORS_DIR)/emacs/Subsup.el $(d)/UnicodeScripts $(d)/pa_patoline $(d)/emacs/Subsup.ml
 
 DISTCLEAN += $(d)/*.depends
 

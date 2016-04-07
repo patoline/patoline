@@ -2,6 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
+$(d)/%.depends: INCLUDES += $(DEPS_PACK_UNICODELIB)
 CESURE_OCAMLDEP := ocamlfind ocamldep -I $(d)
 CESURE_OCAMLC   := ocamlfind ocamlc -I $(d)
 CESURE_OCAMLOPT := ocamlfind ocamlopt -I $(d)
