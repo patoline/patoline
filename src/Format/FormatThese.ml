@@ -494,6 +494,27 @@ end
        end)
     include Th
   end
+  module Env_example=struct
+    module Th=Default.Make_theorem
+      (struct
+         let refType="example"
+         let counter="example"
+         let counterLevel=3
+         let display num=alternative Bold [tT (Printf.sprintf "Example %s" num); tT " "]
+       end)
+    include Th
+  end
+  module Env_axiom=struct
+    module Th=Default.Make_theorem
+      (struct
+         let refType="theorem"
+         let counter="theorem"
+         let counterLevel=3
+         let display num=alternative Bold [tT (Printf.sprintf "Axiom %s" num); tT " "]
+       end)
+    include Th
+    module Env_proof=Default.Proof
+  end
 
   open Util
 

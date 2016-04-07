@@ -257,7 +257,7 @@ let freshUid () =
 
 let parser verbatim_line = ''\(^#?#?\([^#\t\n][^\t\n]*\)?\)''
 let parser mode_ident = ''[a-zA-Z0-9_']+''
-let parser filename = ''[a-zA-Z0-9-_.]*''
+let parser filename = ''[a-zA-Z0-9-_./]*''
 
 let parser verbatim_environment =
   ''^###''
@@ -1065,9 +1065,7 @@ let print_math_deco_sym _loc elt ind =
 
 let print_math_deco _loc elt ind =
   if ind = no_ind then
-    <:expr<
-      [Maths.Ordinary (Maths.noad (fun env st -> Maths.draw [env] $elt$))]
-    >>
+    elt
   else
     begin
       let r = ref [] in
@@ -1487,9 +1485,10 @@ let parser math_aux prio =
   (* Les règles commençant avec un { forment un conflict avec les arguments
    des macros. Je pense que c'est l'origine de nos problèmes de complexité. *)
   | '{' m:(math_aux Punc) '}' when prio = AtomM -> m
-  | '{' s:any_symbol '}' when prio = AtomM ->
+  | '{' s:any_symbol ind:with_indices '}' when prio = AtomM ->
       if s = Invisible then give_up "";
       let f indices =
+        let indices = merge_indices indices ind in
         let md = print_math_deco_sym _loc_s s indices in
         <:expr<[Maths.Ordinary $md$]>>
       in f
