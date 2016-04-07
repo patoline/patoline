@@ -188,11 +188,11 @@ let freshUid () =
   "MOD" ^ (string_of_int current)
 
   let caml_structure    = change_layout structure blank2
-  let parser wrapped_caml_structure = '(' caml_structure ')'
+  let parser wrapped_caml_structure = '(' {caml_structure | EMPTY -> <:struct<>>} ')'
 
   (* Parse a caml "expr" wrapped with parentheses *)
   let caml_expr         = change_layout expression blank2
-  let parser wrapped_caml_expr = '(' caml_expr ')'
+  let parser wrapped_caml_expr = '(' {caml_expr  | EMPTY -> <:expr<()>>} ')'
 
   (* Parse a list of caml "expr" *)
   let parser wrapped_caml_list =
@@ -1718,6 +1718,7 @@ let _ = set_grammar math_toplevel (parser
     | ws:word+# ->
        <:expr<[tT $string:String.concat " " ws$]>>
 
+    | '{' p:(paragraph_basic_text TagSet.empty) '}' -> p
 
   let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
     let x,y = Lexing.((end_pos _loc_p1).pos_cnum, (start_pos _loc_p2).pos_cnum) in
