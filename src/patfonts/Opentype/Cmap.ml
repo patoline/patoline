@@ -39,7 +39,7 @@ let write_cmap_table cmap format lang file=
       (* Il faut commencer par trier les codes de caractères par
          premier octet, puis à préparer les structures pour réutiliser
          des rangs *)
-      let firstCode=String.create 256 in
+      let firstCode=Bytes.create 256 in
       let entryCount=String.make 256 (char_of_int 0) in
       let idDelta=Array.make 256 0 in
       let arr=Array.init 256 (fun _->Rbuffer.create 0) in
@@ -51,7 +51,7 @@ let write_cmap_table cmap format lang file=
         if k<=0xffff && a<=0xffff then (
           let i=k lsr 8 in
           (if int_of_char (entryCount.[i])=0 then (
-            firstCode.[i]<-char_of_int (k land 0xff);
+            Bytes.set firstCode i (char_of_int (k land 0xff));
             idDelta.(i)<-a;
             sh_length:= !sh_length+8
            ));
@@ -60,9 +60,9 @@ let write_cmap_table cmap format lang file=
             Rbuffer.add_char arr.(i) (char_of_int 0);
             ga_length:= !ga_length+2
           done;
-          last.[i]<-char_of_int (k land 0xff);
+          Bytes.set last i (char_of_int (k land 0xff));
 
-          entryCount.[i]<-char_of_int ((k land 0xff) - int_of_char firstCode.[i] + 1);
+          Bytes.set entryCount i (char_of_int ((k land 0xff) - int_of_char firstCode.[i] + 1));
           let x=a-idDelta.(i) in
           Rbuffer.add_char arr.(i) (char_of_int (x lsr 8));
           Rbuffer.add_char arr.(i) (char_of_int (x land 0xff));

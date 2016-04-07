@@ -141,7 +141,7 @@ let index f idx_off=
 
 let strIndex f idx_off=
   let off=index f idx_off in
-  let str=Array.create (Array.length off-1) "" in
+  let str=Array.make (Array.length off-1) "" in
     for i=0 to Array.length off-2 do
       seek_in f (off.(i));
       str.(i)<-Bytes.create (off.(i+1)-off.(i));
@@ -287,7 +287,7 @@ let loadFont ?offset:(off=0) ?size file=
   let dictIndex=index f (nameIndex.(Array.length nameIndex-1)) in
   let stringIndex=index f (dictIndex.(Array.length dictIndex-1)) in
   let subrIndex=
-    let subrs=Array.create (Array.length dictIndex-1) [||] in
+    let subrs=Array.make (Array.length dictIndex-1) [||] in
     for idx=0 to Array.length dictIndex-2 do
       try
         let privOffset=findDict f (dictIndex.(idx)) (dictIndex.(idx+1)) 18 in
@@ -307,7 +307,7 @@ let loadFont ?offset:(off=0) ?size file=
   in
   let gsubrIndex=
     let offIndex=index f (stringIndex.(Array.length stringIndex-1)) in
-    let gsubr=Array.create (Array.length offIndex-1) "" in
+    let gsubr=Array.make (Array.length offIndex-1) "" in
     for i=0 to Array.length gsubr-1 do
       seek_in f (offIndex.(i));
       gsubr.(i)<-Bytes.create (offIndex.(i+1)-offIndex.(i));
@@ -1147,10 +1147,10 @@ let subset(* _encoded *) font info cmap gls=
     ) cmap 0
     in
     let enc=String.make (size+2) (char_of_int 0) in
-    enc.[0]<-char_of_int 0;
-    enc.[1]<-char_of_int size;
+    Bytes.set enc 0 (char_of_int 0);
+    Bytes.set enc 1 (char_of_int size);
     IntMap.iter (fun k a->
-      if a<0x100 && a>0 then enc.[1+a]<-char_of_int k
+      if a<0x100 && a>0 then Bytes.set enc (1+a) (char_of_int k)
     ) cmap;
     enc
   in
@@ -1218,8 +1218,8 @@ let subset(* _encoded *) font info cmap gls=
                 )
           )
         in
-        str.[2*i-1]<-char_of_int (num lsr 8);
-        str.[2*i]<-char_of_int (num land 0xff)
+        Bytes.set str (2*i-1) (char_of_int (num lsr 8));
+        Bytes.set str (2*i) (char_of_int (num land 0xff))
       done;
       str
     with

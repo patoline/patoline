@@ -22,7 +22,7 @@ let insert tree a =
     if i < String.length a then
       let c = code (UTF8.look a i) in
       if is_num c then begin
-        breaks0.[i- !j] <- char_of_int (c - int_of_char '0');
+        Bytes.set breaks0 (i- !j) (char_of_int (c - int_of_char '0'));
         incr j
       end;
       fill_breaks (UTF8.next a i)
@@ -96,10 +96,10 @@ let hyphenate tree a0 =
   let first_punct = find_punct 0 in
   let l = dash_hyphen a0 0 [] in
   if List.length l >= 1 then l else
-  let a = String.create (first_punct+2) in
+  let a = Bytes.create (first_punct+2) in
   String.blit a0 0 a 1 first_punct;
-  a.[0] <- '.';
-  a.[String.length a - 1] <- '.';
+  Bytes.set a 0 '.';
+  Bytes.set a (String.length a - 1) '.';
   let breaks = String.make (String.length a + 1) (char_of_int 0) in
 
   let rec hyphenate i j t =
@@ -114,7 +114,7 @@ let hyphenate tree a0 =
       | Node (x,t) ->
         if String.length x > 0 then begin
           let rec fill_breaks k =
-            breaks.[i+k] <- max breaks.[i+k] x.[k];
+            Bytes.set breaks (i+k) (max breaks.[i+k] x.[k]);
             fill_breaks (UTF8.next a (i+k)-i)
           in fill_breaks 0
         end;

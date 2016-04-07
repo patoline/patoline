@@ -1392,7 +1392,7 @@ let font_features font=try
     if i>=featureCount then result else (
       seek_in file (gsubOff+features+2+i*6);
       let _=input file buf 0 4 in
-      make_features (i+1) (String.copy buf::result)
+      make_features (i+1) (Bytes.copy buf::result)
     )
   in
   make_features 0 []
@@ -1925,10 +1925,10 @@ let make_tables font fontInfo cmap glyphs_idx=
   (* maxp *)
   (if fontInfo.fontType="OTTO" then (
     let buf_maxp=Bytes.create 6 in
-    buf_maxp.[0]<-char_of_int 0x00;
-    buf_maxp.[1]<-char_of_int 0x00;
-    buf_maxp.[2]<-char_of_int 0x50;
-    buf_maxp.[3]<-char_of_int 0x00;
+    Bytes.set buf_maxp 0 (char_of_int 0x00);
+    Bytes.set buf_maxp 1 (char_of_int 0x00);
+    Bytes.set buf_maxp 2 (char_of_int 0x50);
+    Bytes.set buf_maxp 3 (char_of_int 0x00);
     strInt2 buf_maxp 4 (IntMap.cardinal glyphMap);
     fontInfo.tables<-StrMap.add "maxp" buf_maxp fontInfo.tables
    ) else (

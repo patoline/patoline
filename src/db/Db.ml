@@ -146,11 +146,12 @@ let init_db table_name db_info =
 
     interaction_start_hook := (fun () ->
       match !dbptr with None -> () | Some db -> Mysql.disconnect db; dbptr := None; Printf.eprintf "Disconnected from db\n%!")::!interaction_start_hook;
-
-    (let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
+      (
+     (* FIXME: new sql ? *)
+(*    let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
       `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `VALUE` text,
       `createtime` DATETIME NOT NULL,
-      `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);" table_name in
+      `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);" table_name in*)
      let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
       `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `time` DATETIME NOT NULL);" log_name in
      let _r = Mysql.exec (db ()) sql in
@@ -295,7 +296,7 @@ let init_db table_name db_info =
 
 let make_sessid () =
   let size = 32 in
-  let str = String.create size in
+  let str = Bytes.create size in
   for i = 0 to size - 1 do
     let c = Random.int 62 in
     let d =
@@ -303,7 +304,7 @@ let make_sessid () =
       else if c < 52 then Char.chr (c - 26 + Char.code 'A')
       else Char.chr (c - 52 + Char.code '0')
     in
-    str.[i] <- d;
+    Bytes.set str i d;
   done;
   sessid:=Some (str, "guest", []);
   str
