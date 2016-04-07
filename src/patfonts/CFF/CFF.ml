@@ -144,7 +144,7 @@ let strIndex f idx_off=
   let str=Array.create (Array.length off-1) "" in
     for i=0 to Array.length off-2 do
       seek_in f (off.(i));
-      str.(i)<-String.create (off.(i+1)-off.(i));
+      str.(i)<-Bytes.create (off.(i+1)-off.(i));
       really_input f (str.(i)) 0 (off.(i+1)-off.(i))
     done;
     str
@@ -158,7 +158,7 @@ let indexGet f idx_off idx=
          seek_in f (idx_off+3+idx*idx_offSize);
          let off0=readInt f idx_offSize in
          let off1=readInt f idx_offSize in
-         let buf=String.create (off1-off0) in
+         let buf=Bytes.create (off1-off0) in
            seek_in f (idx_off+2+(count+1)*idx_offSize+off0);
            really_input f buf 0 (off1-off0);
            buf
@@ -207,13 +207,13 @@ let readEncoding f off=
   let format=input_byte f in
   let enc=if format land 1 =0 then (
     let nCodes=input_byte f in
-    let buf=String.create (2+nCodes) in
+    let buf=Bytes.create (2+nCodes) in
       seek_in f off;
       really_input f buf 0 (String.length buf);
       buf
   ) else (
     let nCodes=input_byte f in
-    let buf=String.create (2+2*nCodes) in
+    let buf=Bytes.create (2+2*nCodes) in
       seek_in f off;
       really_input f buf 0 (String.length buf);
       buf
@@ -221,7 +221,7 @@ let readEncoding f off=
   in
   let supl=
     let nSups=input_byte f in
-    let buf=String.create (1+3*nSups) in
+    let buf=Bytes.create (1+3*nSups) in
       seek_in f (off+String.length enc);
       really_input f buf 0 (String.length buf);
       buf
@@ -310,7 +310,7 @@ let loadFont ?offset:(off=0) ?size file=
     let gsubr=Array.create (Array.length offIndex-1) "" in
     for i=0 to Array.length gsubr-1 do
       seek_in f (offIndex.(i));
-      gsubr.(i)<-String.create (offIndex.(i+1)-offIndex.(i));
+      gsubr.(i)<-Bytes.create (offIndex.(i+1)-offIndex.(i));
       really_input f gsubr.(i) 0 (offIndex.(i+1)-offIndex.(i))
     done;
     gsubr
@@ -421,7 +421,7 @@ let glyphNumber glyph=glyph.glyphNumber
 
 let fontName ?index:(idx=0) font=
   (* postscript name *)
-  let buf = String.create (font.nameIndex.(idx+1)-font.nameIndex.(idx)) in
+  let buf = Bytes.create (font.nameIndex.(idx+1)-font.nameIndex.(idx)) in
   let f=open_in_bin_cached font.file in
   seek_in f (font.nameIndex.(idx));
   really_input f buf 0 (font.nameIndex.(idx+1)-font.nameIndex.(idx));
@@ -431,7 +431,7 @@ let fontName ?index:(idx=0) font=
     if idx<=390 then CFFStd.stdStrings.(idx) else (
       let off0=font.stringIndex.(idx-391) in
       let off1=font.stringIndex.(idx-390) in
-      let b=String.create (off1-off0) in
+      let b=Bytes.create (off1-off0) in
       seek_in f off0;
       really_input f b 0 (off1-off0);
       b
@@ -459,7 +459,7 @@ let glyphName glyph=
   if idx<=390 then CFFStd.stdStrings.(idx) else (
     let off0=font.stringIndex.(idx-391) in
     let off1=font.stringIndex.(idx-390) in
-    let b=String.create (off1-off0) in
+    let b=Bytes.create (off1-off0) in
     seek_in f off0;
     really_input f b 0 (off1-off0);
     b
@@ -674,7 +674,7 @@ let readIndex f idx_off=
     for i=1 to count do
       seek_in f (idx_off+3+i*idx_offSize);
       let idx=readInt f idx_offSize in
-        idx_arr.(i-1)<-String.create (idx - !last_idx);
+        idx_arr.(i-1)<-Bytes.create (idx - !last_idx);
         seek_in f (idx_off+2+(count+1)*idx_offSize+ !last_idx);
         really_input f (idx_arr.(i-1)) 0 (idx - !last_idx);
         last_idx:=idx;
@@ -694,14 +694,14 @@ let copyIndex f=
   let count=readInt f 2 in
     if count=0 then (
       seek_in f idx_off;
-      let buf=String.create 2 in
+      let buf=Bytes.create 2 in
         really_input f buf 0 2;
         buf
     ) else (
       let idx_offSize=input_byte f in
         seek_in f (idx_off+3+count*idx_offSize);
         let off=readInt f idx_offSize in
-        let buf=String.create (2+(count+1)*idx_offSize+off) in
+        let buf=Bytes.create (2+(count+1)*idx_offSize+off) in
           seek_in f idx_off;
           really_input f buf 0 (String.length buf);
           buf
@@ -754,7 +754,7 @@ let subset font info cmap gls=
 
   (* Ecriture du nameIndex *)
   let name=
-    let buf_=String.create (font.nameIndex.(1)-font.nameIndex.(0)) in
+    let buf_=Bytes.create (font.nameIndex.(1)-font.nameIndex.(0)) in
     seek_in f (font.nameIndex.(0));
     really_input f buf_ 0 (String.length buf_);
     buf_
@@ -901,7 +901,7 @@ let subset font info cmap gls=
              (try
                 let s0=font.stringIndex.(int_of_num h-391) in
                 let s1=font.stringIndex.(int_of_num h-391+1) in
-                let s=String.create (s1-s0) in
+                let s=Bytes.create (s1-s0) in
                 seek_in f s0;
                 really_input f s 0 (s1-s0);
                 let sid=getSid s in
@@ -1081,7 +1081,7 @@ let subset(* _encoded *) font info cmap gls=
 
   (* Ecriture du nameIndex *)
   let name=
-    let buf_=String.create (font.nameIndex.(1)-font.nameIndex.(0)) in
+    let buf_=Bytes.create (font.nameIndex.(1)-font.nameIndex.(0)) in
     seek_in f (font.nameIndex.(0));
     really_input f buf_ 0 (String.length buf_);
     buf_
@@ -1119,7 +1119,7 @@ let subset(* _encoded *) font info cmap gls=
              (try
                 let s0=font.stringIndex.(int_of_num h-391) in
                 let s1=font.stringIndex.(int_of_num h-391+1) in
-                let s=String.create (s1-s0) in
+                let s=Bytes.create (s1-s0) in
                 seek_in f s0;
                 really_input f s 0 (s1-s0);
                 let sid=getSid s in

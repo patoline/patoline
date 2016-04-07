@@ -70,7 +70,7 @@ let stream buf=
   Zlib.compress (fun zbuf->
     let m=min (Rbuffer.length buf- !buf_pos) (String.length zbuf) in
     for i=0 to m-1 do
-      zbuf.[i]<-Rbuffer.nth buf (!buf_pos);
+      Bytes.set zbuf i (Rbuffer.nth buf (!buf_pos));
       incr buf_pos
     done;
     m
@@ -603,12 +603,12 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 		    RGB _ | RGBA _ -> "RGB", 3
                   | Grey _ | GreyA _ -> "Gray", 1
 		in
-                let img_buf=Rbuffer.create (w*h*nbc*(bits_per_component/8)) in		
-		let alpha_buf = 
+                let img_buf=Rbuffer.create (w*h*nbc*(bits_per_component/8)) in
+		let alpha_buf =
       match image.pixels with
       | RGB _  | Grey _  -> None
       | RGBA _ | GreyA _ -> Some (Rbuffer.create (w*h*(bits_per_component/8)))
-		in 
+		in
 		if device = "RGB" then
                   for j=0 to h-1 do
                     for i=0 to w-1 do
@@ -1156,7 +1156,7 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
 
 let output' = output_to_prime output
 
-let _ = 
+let _ =
   Hashtbl.add DynDriver.drivers "Pdf" (
     module struct
       let output = output

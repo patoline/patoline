@@ -319,7 +319,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	Printf.eprintf "encoding %s\n%!" filename;
 	let ch = open_in k in
 	let len = in_channel_length ch in
-	let buf = String.create len in
+	let buf = Bytes.create len in
 	really_input ch buf 0 len;
 	buf
     in

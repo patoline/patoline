@@ -78,7 +78,7 @@ let tableList file off=
   let rec getTables n l=
     if n=offsetTable then l else
       (seek_in file (off+n);
-       let newTable=String.create 4 in
+       let newTable=Bytes.create 4 in
          really_input file newTable 0 4;
          getTables (n-dirSize) (newTable::l))
   in
@@ -86,7 +86,7 @@ let tableList file off=
 
 let loadFont ?offset:(off=0) ?size:(_=0) file=
   let f=open_in_bin_cached file in
-  let typ=String.create 4 in
+  let typ=Bytes.create 4 in
     seek_in f off;
     really_input f typ 0 4;
     match typ with
@@ -119,7 +119,7 @@ let getNames font off=
           let nameID=readInt2 file in
           let length=readInt2 file in
           let offset=readInt2 file in
-          let str=String.create length in
+          let str=Bytes.create length in
           seek_in file (a+stringOffset+offset);
           really_input file str 0 length;
           let m'=
@@ -1349,7 +1349,7 @@ let select_features font feature_tags=try
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let features=seek_in file (gsubOff+6); readInt2 file in
   let featureCount=seek_in file (gsubOff+features);readInt2 file in
-  let feature_tag=String.create 4 in
+  let feature_tag=Bytes.create 4 in
   let rec select i result=
     if i>=featureCount then result else (
         seek_in file (gsubOff+features+2+i*6);
@@ -1387,7 +1387,7 @@ let font_features font=try
 
   let features=seek_in file (gsubOff+6); readInt2 file in
   let featureCount=seek_in file (gsubOff+features);readInt2 file in
-  let buf=String.create 4 in
+  let buf=Bytes.create 4 in
   let rec make_features i result=
     if i>=featureCount then result else (
       seek_in file (gsubOff+features+2+i*6);
@@ -1406,7 +1406,7 @@ let read_scripts font=
   let scripts=seek_in file (gsubOff+4); readInt2 file in
   let scriptCount=seek_in file (gsubOff+scripts); readInt2 file in
     for i=0 to scriptCount-1 do
-      let scriptTag=String.create 4 in
+      let scriptTag=Bytes.create 4 in
         seek_in file (gsubOff+scripts+2+i*6);
         let _=input file scriptTag 0 4 in
         let off=readInt2 file in
@@ -1414,7 +1414,7 @@ let read_scripts font=
         let offset1=gsubOff+scripts+off in
         let langSysCount=seek_in file (offset1+2); readInt2 file in
         for langSys=0 to langSysCount-1 do
-          let langSysTag=String.create 4 in
+          let langSysTag=Bytes.create 4 in
           seek_in file (offset1+4+langSys*6);
           let _=input file langSysTag 0 4 in
           Printf.printf "lang : %s\n" langSysTag
@@ -1555,7 +1555,7 @@ let fontInfo font=
     | TTF ttf->ttf.ttf_file,ttf.ttf_offset
   in
   let file=open_in_bin_cached fileName in
-  let fontType=String.create 4 in
+  let fontType=Bytes.create 4 in
   seek_in file off;
   really_input file fontType 0 4;
   seek_in file (off+4);
@@ -1563,14 +1563,14 @@ let fontInfo font=
   let rec getTables n l=
     if n<offsetTable then l else (
       seek_in file (off+n);
-      let newTable=String.create 4 in
+      let newTable=Bytes.create 4 in
       really_input file newTable 0 4;
       (* Printf.fprintf stderr "%S newTable=%S\n" fileName newTable;flush stderr; *)
       let _ (* checkSum *)=readInt4 file in
       let offset=readInt4_int file in
       let length=readInt4_int file in
       seek_in file (off+offset);
-      let buf=String.create length in
+      let buf=Bytes.create length in
       really_input file buf 0 length;
       getTables (n-dirSize) (StrMap.add newTable buf l)
     )
@@ -1856,7 +1856,7 @@ let make_tables font fontInfo cmap glyphs_idx=
 #endif
   (* hmtx *)
   let numberOfHMetrics=ref (Array.length glyphs-1) in
-  let buf_hmtx=String.create (4*Array.length glyphs) in
+  let buf_hmtx=Bytes.create (4*Array.length glyphs) in
   let advanceWidthMax=ref 0 in
   for i=0 to Array.length glyphs-1 do
     let w=glyphWidth glyphs.(i) in
@@ -1924,7 +1924,7 @@ let make_tables font fontInfo cmap glyphs_idx=
 #endif
   (* maxp *)
   (if fontInfo.fontType="OTTO" then (
-    let buf_maxp=String.create 6 in
+    let buf_maxp=Bytes.create 6 in
     buf_maxp.[0]<-char_of_int 0x00;
     buf_maxp.[1]<-char_of_int 0x00;
     buf_maxp.[2]<-char_of_int 0x50;
@@ -1989,7 +1989,7 @@ let make_tables font fontInfo cmap glyphs_idx=
   (* os/2 *)
   (try
      let buf_os2=StrMap.find "OS/2" fontInfo_tables in
-     let buf_os2=if String.length buf_os2 < 96 then String.create 96 else buf_os2 in
+     let buf_os2=if String.length buf_os2 < 96 then Bytes.create 96 else buf_os2 in
      strInt2 buf_os2 0 3;               (* version *)
 
      strInt2 buf_os2 2 ((round (!xAvgCharWidth/.float_of_int (Array.length glyphs))));

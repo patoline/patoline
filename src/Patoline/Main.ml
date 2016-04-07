@@ -543,7 +543,7 @@ and patoline_rule objects (builddir:string) (hs:string list) =
             if options_have_changed || compilation_needed [source] [h] then (
               let o=open_out h in
               let main_mod=Filename.chop_extension (Filename.basename modu) in
-              main_mod.[0]<-Char.uppercase main_mod.[0];
+              Bytes.set main_mod 0 (Char.uppercase main_mod.[0]);
               write_main_file !dynlink o opts.formats opts.driver "" main_mod (ori_name r0);
               close_out o;
             );

@@ -461,7 +461,7 @@ module Curve = struct
       scan z 0. 0. curve
 
   let map fx fy = List.map (fun (u,v)-> Array.map fx u, Array.map fy v)
-	       
+
   let rotate angle = List.map (Bezier.rotate angle)
 
 
@@ -1094,7 +1094,6 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	else main)
 
     let ray_intersect main outer_curve angle =
-	      let (x,y) = main in
 	      let angle = to_rad angle in
 	      let direction = (cos angle, sin angle) in
 	      let (vx,vy) as direction' = Vector.normalise ~norm:300. direction in
@@ -1103,7 +1102,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 		app_default Curve.latest_intersection rayon outer_curve (0,0.)
 	      in
 	      Curve.eval_local rayon inter
-	   
+
     let (rectangle : Document.environment -> Transfo.Style.t),
       shape_pet =
       Pet.register "node shape"
@@ -1127,7 +1126,6 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  let mid_curve = rectangle  (BB.mid_points info bb_boot) in
 	  let outer_curve = rectangle outer_bb in
 
-	  let text_depth = -. y0 in
 	  let inner_sep = info.innerSep  in
 	  let outer_sep = info.outerSep  in
 	  let south = Point.middle p1 p2 in
@@ -1685,22 +1683,22 @@ Doing a rectangle.\n" ;
       let mk_matrix_anchor f info =
 	let v = f info in
 	let c = info.mainNode.Node.center in
-	Vector.of_points c v 
+	Vector.of_points c v
 
 	let matrixLine info =
 	    let ms = info.nodes in
 	    let height = Array.length ms in
 	    let width = Array.length ms.(0) in
 	    Point.middle (ms.(height - 1).(0).Node.anchor `LineWest)
-	    (ms.(height - 1).(width - 1).Node.anchor `LineEast)	    
+	    (ms.(height - 1).(width - 1).Node.anchor `LineEast)
 
 	let matrixBase info =
 	    let ms = info.nodes in
 	    let height = Array.length ms in
 	    let width = Array.length ms.(0) in
 	    Point.middle (ms.(height - 1).(0).Node.anchor `BaseWest)
-	    (ms.(height - 1).(width - 1).Node.anchor `BaseEast)	    
-	      
+	    (ms.(height - 1).(width - 1).Node.anchor `BaseEast)
+
       let mainNode,main_node_pet =
       Pet.register "matrix main node" ~depends:[make_placement_pet]
 	(fun pet ?matrix_anchor node_transfos ->
@@ -2244,7 +2242,7 @@ Doing a rectangle.\n" ;
                       FTypes.glyph_utf8="\033\146"} in
 	let gl_arr=Fonts.loadGlyph font utf8_arr in
 	Fonts.outlines gl_arr, size
-				    
+
       let fontArrowHead (xe,ye) angle env info params arr size  =
 	(* We start by extracting the arrow head from the whole arrow *)
 	(* In passing, we need to do a little surgery to compensate for the missing shaft *)
@@ -2263,7 +2261,7 @@ Doing a rectangle.\n" ;
 						   (array_last (snd c2))) in
 			       let wdtip = array_last (fst c1) -. (fst c1).(0) in
 			       let tipCurve = if info.is_double then
-						(* Compute the "co-tip" point by subtracting the 
+						(* Compute the "co-tip" point by subtracting the
                                               "linewidth" horizontally to the tip *)
 						let x = xt -. wdtip in
 						let _ = (fst c0).(0) <- x in
@@ -2293,7 +2291,7 @@ Doing a rectangle.\n" ;
 	  (fun y-> ((y -. y_tip)*.size)) arr in
 	let arr' = (if info.is_double then
 	    Curve.map (fun x-> (x *. widthFactor))
-	      (fun y-> (y *. widthFactor))  
+	      (fun y-> (y *. widthFactor))
 	      (Array.to_list arr)
 	  else
 	    let update i j f = (fst (arr.(i))).(j) <- f ((fst (arr.(i))).(j)) in
@@ -2301,7 +2299,7 @@ Doing a rectangle.\n" ;
 	    let scale (i, j) = update i j (fun x -> x +. size *. wdtip -. params.lineWidth) in
 	    let scale_xs i = update_xs i (fun x -> x +. size *. wdtip -. params.lineWidth) in
 	    let _ = (List.iter scale_xs  [ 0 ; 5 ; 6 ]) in
-	    let _ = (List.iter scale [ (1, 0) ; (4, 1) ]) in 
+	    let _ = (List.iter scale [ (1, 0) ; (4, 1) ]) in
 	    Array.to_list (arr)
 	) in
 	let arr''= Curve.rotate angle arr' in
@@ -2309,7 +2307,7 @@ Doing a rectangle.\n" ;
 	arr'''
 
 
-	
+
 (* Helper function to shorten the main curves of a path when an arrow head is added *)
 (* grad is the gradient of the curve at the point where the arrow head is added *)
 (* info is the current Edge.info *)
@@ -2339,11 +2337,10 @@ let cliptip grad info tip curve0 =
     if Curve.compare_lt (0,0.) finish < 0 then
       Curve.internal_restrict curve0 (0,0.) finish
     else Curve.restrict curve0 0. 0.
-			    
+
 (* Transformation for adding an arrow head *)
       let base_arrow env ?head_or_tail:(head_or_tail=true) transfos edge_info=
 	(* We first compute the gradient where the arrow head should be added *)
-	let info = edge_info.tip_info in
 	let params = edge_info.params in
 	let underlying_curve = edge_info.underlying_curve in
 	let time = if head_or_tail then 1. else 0. in
@@ -2363,7 +2360,7 @@ let cliptip grad info tip curve0 =
 	      | _ ->
 		 (* Now we're in business *)
 		 let angle = Vector.angle grad in
-		 let tip = fontArrowHead e angle env edge_info.tip_info params arrowCurves size in 
+		 let tip = fontArrowHead e angle env edge_info.tip_info params arrowCurves size in
 		 { edge_info with
 		   (* We shorten the main curves as needed *)
 		   curves = List.map (fun (params,curve) -> params, cliptip grad edge_info tip curve)
@@ -2381,7 +2378,7 @@ let cliptip grad info tip curve0 =
 	Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow head"
 		     (fun pet env  ->
 		      { pet = pet ; transfo = base_arrow env  })
-      let arrow env = arrowOf env 
+      let arrow env = arrowOf env
 
       let backArrowOf, backArrow_head_pet =
 	Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow tail"
@@ -2809,7 +2806,7 @@ let cliptip grad info tip curve0 =
       open Node
       open Edge
 
-      let defaultLabelStyle = [innerSep 0.1;outerSep 0.]     
+      let defaultLabelStyle = [innerSep 0.1;outerSep 0.]
       let label_anchor a ?pos:(pos=(`Temporal 0.5 : anchor))
 	  ?shape:(shape=Node.rectangle env)
 	  ?style:(style=defaultLabelStyle)
@@ -2955,7 +2952,7 @@ let cliptip grad info tip curve0 =
 			       val make_matrix: Matrix.T.Style.t list ->
 						(Node.Transfo.Style.t list * t list) list list ->
 						Node.info * Node.info Matrix.matrix
-			     end) = struct 
+			     end) = struct
 
 	let array anchors
 		  ?vertical_padding:(vpad=fun _ -> 1.)

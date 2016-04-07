@@ -14,7 +14,7 @@
 
 (* Ropes-based implementation of Buffer *)
 
-type rope = 
+type rope =
   | Str of string
   | App of rope * rope * int (* total length *)
 
@@ -25,7 +25,7 @@ let rope_length = function
   | App (_, _, n) -> n
 
 let rec rope_nth i = function
-  | Str s -> 
+  | Str s ->
       String.unsafe_get s i
   | App (l, r, _) ->
       let ll = rope_length l in
@@ -40,7 +40,7 @@ type t = {
 let create n =
   let n = if n < 1 then 1 else n in
   let n = if n > Sys.max_string_length then Sys.max_string_length else n in
-  let s = String.create n in
+  let s = Bytes.create n in
   { rope = rope_empty; buffer = s; position = 0; }
 
 let reset b =
@@ -49,12 +49,12 @@ let reset b =
 
 let clear = reset
 
-let length b = 
+let length b =
   rope_length b.rope + b.position
 
 (* [blit s i r] blits the contents of rope [r] in string [s] at index [i] *)
 let rec blit_rope s i = function
-  | Str str -> 
+  | Str str ->
       String.blit str 0 s i (String.length str)
   | App (l, r, _) ->
       let ll = rope_length l in
@@ -66,7 +66,7 @@ let contents b =
   let n = b.position in
   let len = r + n in
   if len > Sys.max_string_length then invalid_arg "Rbuffer.contents";
-  let s = String.create len in
+  let s = Bytes.create len in
   blit_rope s 0 b.rope;
   String.blit b.buffer 0 s r n;
   s
@@ -79,10 +79,10 @@ let rec blit_subrope s i ofs len = function
       String.blit str ofs s i len
   | App (l, r, _) ->
       let ll = rope_length l in
-      if ofs + len <= ll then 
+      if ofs + len <= ll then
 	blit_subrope s i ofs len l
-      else if ofs >= ll then 
-	blit_subrope s i (ofs - ll) len r 
+      else if ofs >= ll then
+	blit_subrope s i (ofs - ll) len r
       else begin
 	let lenl = ll - ofs in
 	blit_subrope s i ofs lenl l;
@@ -91,11 +91,11 @@ let rec blit_subrope s i ofs len = function
 
 let sub b ofs len =
   let r = rope_length b.rope in
-  if len > Sys.max_string_length || 
+  if len > Sys.max_string_length ||
      ofs < 0 || len < 0 || ofs > r + b.position - len
   then invalid_arg "Buffer.sub";
-  let s = String.create len in
-  if ofs + len <= r then 
+  let s = Bytes.create len in
+  if ofs + len <= r then
     blit_subrope s 0 ofs len b.rope
   else if ofs >= r then
     String.blit b.buffer (ofs - r) s 0 len
@@ -118,7 +118,7 @@ let move_buffer_to_rope b =
     if pos = n then begin
       (* whole buffer goes to the rope; faster to allocate a new buffer *)
       b.rope <- App (b.rope, Str b.buffer, rope_length b.rope + pos);
-      b.buffer <- String.create n
+      b.buffer <- Bytes.create n
     end else begin
       (* part of the buffer goes to the rope; easier to copy it *)
       b.rope <- App (b.rope, Str (String.sub b.buffer 0 pos),
@@ -126,11 +126,11 @@ let move_buffer_to_rope b =
     end;
     b.position <- 0
   end
-  
-let add_char b c =  
+
+let add_char b c =
   if b.position = String.length b.buffer then move_buffer_to_rope b;
   let pos = b.position in
-  b.buffer.[pos] <- c;
+  Bytes.set b.buffer pos c;
   b.position <- pos + 1
 
 (* allocates space for [len] bytes and returns the corresponding place
@@ -145,15 +145,15 @@ let alloc b len =
     b.buffer, pos
   end else if len' <= Sys.max_string_length then begin
     (* buffer and len fit in a new string, allocated in the rope *)
-    let str = String.create len' in
+    let str = Bytes.create len' in
     String.blit b.buffer 0 str 0 pos;
     b.rope <- App (b.rope, Str str, rope_length b.rope + len');
     b.position <- 0;
     str, pos
   end else begin
     (* buffer and len require two strings, allocated in the rope *)
-    let str = String.create len in
-    b.rope <- App (b.rope, 
+    let str = Bytes.create len in
+    b.rope <- App (b.rope,
 		   App (Str (String.sub b.buffer 0 pos), Str str, len'),
 		   rope_length b.rope + len');
     b.position <- 0;
@@ -206,7 +206,7 @@ let print fmt b =
   print_rope b.rope;
   pp_print_string fmt (String.sub b.buffer 0 b.position)
 
-      
+
 (* substitution: the code of [add_substitute] is actually indepedent of
    the buffer data structure (and thus could be written outside);
    as a consequence, what follows is simply a copy of [Buffer]'s code, from

@@ -27,7 +27,7 @@ open Driver
 open Color
 open RawContent
 
-let buf=String.create 10000
+let buf=Bytes.create 10000
 let buf_start=ref 1
 let buf_end=ref 0
 
@@ -63,7 +63,7 @@ let rec print_tree t=match t with
 
 let parse file=
   let f=open_in_bin file in
-  let buf=String.create 80 in
+  let buf=Bytes.create 80 in
   let is_space x=x='\n' || x=' ' || x='\t' || x='\r' in
   let pos=ref 0 in
   let rec skip_while predicate f i0=

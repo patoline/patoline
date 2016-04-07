@@ -23,7 +23,7 @@ open HtmlFonts
 open Driver
 
 let driver_options = []
-let filter_options argv = argv			    
+let filter_options argv = argv
 
 let websocket is_master w=
   Printf.sprintf "var websocket;var was_error;
@@ -212,7 +212,7 @@ function gotoSlide(n){
     let paths = [ Config0.pluginsdir; "." ] in
     let pato = FilenameExtra.findPath "patonet.c" paths in
     let patof=open_in pato in
-    let s=String.create (in_channel_length patof) in
+    let s=Bytes.create (in_channel_length patof) in
     really_input patof s 0 (String.length s);
     close_in patof;
     s

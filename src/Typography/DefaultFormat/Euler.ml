@@ -138,7 +138,7 @@ let changeFont l env=
         env.mathsEnvironment }
 let default_env=
     {
-      mathsFont=Lazy.lazy_from_fun (fun () -> Fonts.loadFont
+      mathsFont=Lazy.from_fun (fun () -> Fonts.loadFont
         (findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})));
       mathsSubst=(fun x->(* List.iter (fun x->Printf.printf "normal : %d\n" x.glyph_index) x; *) x);
       mathsSize=1.;
@@ -180,7 +180,7 @@ let msubst m x=List.map (fun x->try
                          with
                              Not_found->x) x
 
-let displaySubst=Lazy.lazy_from_fun
+let displaySubst=Lazy.from_fun
   (fun ()->
      List.fold_left (fun m (a,b)->IntMap.add a b m) IntMap.empty
        [(* Sum operators *)

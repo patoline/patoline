@@ -65,7 +65,7 @@ let message=function
   | Opt_error (Widow (s))->Printf.sprintf "Widow:\n\t%s" (*sprint_linef line*) s
   | Opt_error (Orphan (s))->Printf.sprintf "Orphan:\n\t%s" (*sprint_linef line*) s
   | Opt_error (Overfull_line (s))->Printf.sprintf "Overfull line:\n\t%s" (*sprint_linef line*) s
-  | Opt_error (Overfull_line (s))->Printf.sprintf "Underfull line:\n\t%s" (*sprint_linef line*) s
+  | Opt_error (Underfull_line (s))->Printf.sprintf "Underfull line:\n\t%s" (*sprint_linef line*) s
   | PleaseReport x->Printf.sprintf "Something (not \"the impossible\", though) has happened that Patoline is not comfortable with. Please report the following by email to mltypography@googlegroups.com:\n%s" x
   | BadEncoding x->Printf.sprintf "File encoding problem, could not decode:\n%S" x
 #ifdef BAN_COMIC_SANS

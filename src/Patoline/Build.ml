@@ -123,7 +123,7 @@ let command cmd args=
     let buf_out=Rbuffer.create 1000 in
     let buf_err=Rbuffer.create 1000 in
 
-    let str=String.create 1000 in
+    let str=Bytes.create 1000 in
     let rec read_all chans=
       if chans<>[] then (
         let a,b,c=Thread.select chans [] chans (-.1.) in
@@ -191,4 +191,3 @@ let rec build_with_rule ?builddir:(builddir=".") r hs=
            with
                e->(Mutex.unlock m;raise e));
         )
-

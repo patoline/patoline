@@ -84,7 +84,7 @@ let showStack st stc=
 exception Found of float
 let outlines_ subrs gsubrs gl onlyWidth=
 (*  Random.init (int_of_char gl.type2.[0]);*)
-  let rstack=ref (Array.create 48 0.) in
+  let rstack=ref (Array.make 48 0.) in
   let stackC=ref 0 in
   let stWrite c x=
       (if c>= Array.length (!rstack) then
@@ -97,7 +97,7 @@ let outlines_ subrs gsubrs gl onlyWidth=
     if !stackC<=0 then failwith "CFF.outlines : empty stack" else
       (decr stackC;
        (!rstack).(!stackC)) in
-  let heap=Array.create 33 0. in
+  let heap=Array.make 33 0. in
   let hints=ref 0 in
   let opened=ref false in
   let x=ref 0. in
@@ -484,7 +484,7 @@ let rec unsubr subrs gsubrs gl=
   let buf=Rbuffer.create 1000 in
   let changed=ref false in
   (*  Random.init (int_of_char gl.type2.[0]);*)
-  let rstack=ref (Array.create 48 0.) in
+  let rstack=ref (Array.make 48 0.) in
   let stackC=ref 0 in
   let stWrite c x=
       (if c>= Array.length (!rstack) then
@@ -497,7 +497,7 @@ let rec unsubr subrs gsubrs gl=
     if !stackC<=0 then failwith "CFF.outlines : empty stack" else
       (decr stackC;
        (!rstack).(!stackC)) in
-  let heap=Array.create 33 0. in
+  let heap=Array.make 33 0. in
   let hints=ref 0 in
   let opened=ref false in
   let x=ref 0. in
