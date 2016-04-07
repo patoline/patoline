@@ -43,15 +43,15 @@ $(d)/FrameBuffer.o: $(d)/FrameBuffer.c
 
 DRIVERGL_DIR:= $(d)
 
-$(d)/DriverGL.cma: $(d)/FrameBuffer.o $(d)/GlFBO.cmo $(d)/Vec3.cmo $(d)/DriverGL.cmo $(TYPOGRAPHY_DIR)/DefaultFormat.cma
+$(d)/DriverGL.cma: $(d)/FrameBuffer.o $(d)/GlFBO.cmo $(d)/Vec3.cmo $(d)/DriverGL.cmo
 	$(ECHO) "[MKLIB] ... -> $@"
-	$(Q)$(OCAMLMKLIB) $(INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $(DRIVERGL_DIR)/FrameBuffer.o $(DRIVERGL_DIR)/GlFBO.cmo $(DRIVERGL_DIR)/Vec3.cmo $(DRIVERGL_DIR)/DriverGL.cmo
+	$(Q)$(OCAMLMKLIB) $(INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
 
-$(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa
+$(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx
 	$(ECHO) "[OMKLIB] ... -> $@"
-	$(Q)$(OCAMLMKLIB) $(INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $(DRIVERGL_DIR)/FrameBuffer.o $(DRIVERGL_DIR)/GlFBO.cmx $(DRIVERGL_DIR)/Vec3.cmx $(DRIVERGL_DIR)/DriverGL.cmx
+	$(Q)$(OCAMLMKLIB) $(INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
 
-$(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx $(TYPOGRAPHY_DIR)/DefaultFormat.cmxs
+$(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(CESURE_DIR)/cesure.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[SHARE] ... -> $@"
 	$(Q)$(OCAMLOPT) $(INCLUDES) -shared -linkpkg -o $@ $(DRIVERGL_DIR)/FrameBuffer.o $(DRIVERGL_DIR)/GlFBO.cmx $(DRIVERGL_DIR)/Vec3.cmx $(DRIVERGL_DIR)/DriverGL.cmx
 

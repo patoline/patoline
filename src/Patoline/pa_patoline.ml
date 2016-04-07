@@ -1710,7 +1710,7 @@ let _ = set_grammar math_toplevel (parser
         <:expr<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                           $m$)]>>
-    | "$$" m:math_toplevel "$$" ->
+    | "\\(" m:math_toplevel "\\)" ->
         <:expr<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle $m$))]>>
@@ -1843,7 +1843,7 @@ let _ = set_grammar math_toplevel (parser
                          $struct:ps indent_first$
                          let _ = $uid:m2$ . do_end_env ()
                         end>>)
-    | "\\[" m:math_toplevel "\\]" ->
+    | m:{ "\\[" m:math_toplevel "\\]" | "$$" m:math_toplevel "$$" } ->
          (fun _ ->
            <:struct<let _ = newPar D.structure
                         ~environment:(fun x -> {x with par_indent = []})
