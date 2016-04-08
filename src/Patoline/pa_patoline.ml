@@ -1563,6 +1563,17 @@ let parser math_aux prio =
 	m { indices with up_right = Some (r no_ind) }
      )
 
+  | m:(math_aux Ind) - h:right_indices - s:any_symbol when prio = Ind ->
+     let s = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc s$) ]>> in
+     (fun indices -> match h with
+     | Down ->
+ 	if indices.down_right <> None then give_up "double indices";
+        m { indices with down_right = Some s }
+     | Up ->
+	if indices.up_right <> None then give_up "double indices";
+	m { indices with up_right = Some s }
+     )
+
   | m:(math_aux Accent) - h:left_indices - r:(math_aux LInd) when prio = LInd ->
      (fun indices -> match h with
      | Down ->
@@ -1571,6 +1582,17 @@ let parser math_aux prio =
      | Up ->
 	if indices.up_left <> None then give_up "double indices";
         r { indices with up_left = Some (m no_ind) }
+     )
+
+  | s:any_symbol - h:left_indices - r:(math_aux LInd) when prio = LInd ->
+     let s = <:expr<[Maths.Ordinary (Maths.noad $print_math_symbol _loc s$) ]>> in
+     (fun indices -> match h with
+     | Down ->
+	if indices.down_left <> None then give_up "double indices";
+        r { indices with down_left = Some s }
+     | Up ->
+	if indices.up_left <> None then give_up "double indices";
+        r { indices with up_left = Some s }
      )
 
 and with_indices =

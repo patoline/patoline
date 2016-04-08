@@ -71,26 +71,25 @@ $(d)/Break.cmx: $(d)/Break.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 
-# Build DefaultFormat
-DEFAULT_FORMAT_ML := $(d)/DefaultFormat/Euler.ml $(d)/DefaultFormat/Numerals.ml \
+# Build DefaultFormat; The variable must be ordered
+DEFAULTFORMAT_ML := $(d)/DefaultFormat/Euler.ml $(d)/DefaultFormat/Numerals.ml \
   $(d)/DefaultFormat/TableOfContents.ml $(d)/DefaultFormat/PageLayout.ml \
   $(d)/DefaultFormat/DefaultFormat.ml
-DEFAULTFORMAT_ML:=$(wildcard $(d)/DefaultFormat/*.ml)
 DEFAULTFORMAT_CMI:= $(DEFAULTFORMAT_ML:.ml=.cmi)
 
-$(d)/DefaultFormat.cmxa: $(DEFAULT_FORMAT_ML:.ml=.cmx)
+$(d)/DefaultFormat.cmxa: $(DEFAULTFORMAT_ML:.ml=.cmx)
 	$(ECHO) "[OPT]    $<"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -a $^
 
-$(d)/DefaultFormat.cmxs: $(DEFAULT_FORMAT_ML:.ml=.cmx)
+$(d)/DefaultFormat.cmxs: $(DEFAULTFORMAT_ML:.ml=.cmx)
 	$(ECHO) "[OPT]    $<"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -shared $^
 
-$(d)/DefaultFormat.cma: $(DEFAULT_FORMAT_ML:.ml=.cmo)
+$(d)/DefaultFormat.cma: $(DEFAULTFORMAT_ML:.ml=.cmo)
 	$(ECHO) "[OCAMLC] $<"
 	$(Q)$(OCAMLC) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -a $^
 
-$(d)/DefaultFormat.p.cma: $(DEFAULT_FORMAT_ML:.ml=.p.cmo)
+$(d)/DefaultFormat.p.cma: $(DEFAULTFORMAT_ML:.ml=.p.cmo)
 	$(ECHO) "[OPT -p] $<"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -p -a $^
 
