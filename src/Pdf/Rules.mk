@@ -56,9 +56,10 @@ install-pdf: install-typography $(d)/pdf_parser.cmxa $(d)/pdf_parser.a $(d)/pdf_
 CLEAN += $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi \
 	 $(d)/*.cmxa $(d)/*.cma \
 	 $(d)/*.p.cmx $(d)/*.p.cmxa \
-	 $(d)/*.o $(d)/*.a \
-	 $(d)/obj_parser.ml $(d)/obj_parser.mli $(d)/obj_lexer.ml
-DISTCLEAN += $(d)/*.depends
+	 $(d)/*.o $(d)/*.a
+
+DISTCLEAN += $(d)/*.depends $(d)/obj_parser.ml $(d)/obj_parser.mli $(d)/obj_lexer.ml
+
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

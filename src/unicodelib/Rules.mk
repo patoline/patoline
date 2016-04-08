@@ -108,25 +108,6 @@ install-unicodelib: $(d)/unicodelib.cma $(d)/unicodelib.cmxa $(d)/unicodelib.cmx
 	install -m 755 -d $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
 
-$(d)/UTF16.cmo : $(d)/UTF.cmo $(d)/UChar.cmo
-$(d)/UTF16.cmx : $(d)/UTF.cmx $(d)/UChar.cmx
-$(d)/UTF8.cmo : $(d)/UTF.cmo $(d)/UChar.cmo
-$(d)/UTF8.cmx : $(d)/UTF.cmx $(d)/UChar.cmx
-$(d)/UTF32.cmo : $(d)/UTF.cmo $(d)/UChar.cmo
-$(d)/UTF32.cmx : $(d)/UTF.cmx $(d)/UChar.cmx
-$(d)/UTFConvert.cmo : $(d)/UTF8.cmo \
-    $(d)/UTF32.cmo $(d)/UTF16.cmo
-$(d)/UTFConvert.cmx : $(d)/UTF8.cmx \
-    $(d)/UTF32.cmx $(d)/UTF16.cmx
-$(d)/UTF.cmo : $(d)/UChar.cmo
-$(d)/UTF.cmx : $(d)/UChar.cmx
-$(d)/LATIN1.cmo: $(d)/UTF8.cmo
-$(d)/LATIN1.cmx: $(d)/UTF8.cmx
-src/unicodelib/UCharInfo.cmo : src/unicodelib/UnicodeLibConfig.cmo \
-    src/unicodelib/UChar.cmo src/unicodelib/PermanentMap.cmo
-src/unicodelib/UCharInfo.cmx : src/unicodelib/UnicodeLibConfig.cmx \
-    src/unicodelib/UChar.cmx src/unicodelib/PermanentMap.cmx
-
 $(ENCODING_CMO): %.cmo: $(UNICODE_CMO)
 $(ENCODING_CMX): %.cmx: $(UNICODE_CMX)
 

@@ -19,6 +19,7 @@ endif
 # cmi race condition
 $(d)/Patonet.cmx: %.cmx: %.cmo
 $(d)/Hammer.cmx: %.cmx: %.cmo
+$(d)/Hammer.ml.depends: $(d)/Hammer.ml
 
 $(d)/Patonet.cma: $(d)/Hammer.cmo $(d)/Patonet.cmo
 	$(ECHO) "[MKLIB]    $< -> $@"
@@ -36,11 +37,9 @@ $(d)/Hammer.ml: $(d)/Hammer.js
 	$(ECHO) "[JSTOML] $< -> $@"
 	$(Q)$(OCAML) ./Tools/file_to_string.ml $< > $@
 
-CLEAN += $(d)/Hammer.ml
+CLEAN +=
 
-DISTCLEAN += $(DEPENDS_$(d))
-
-Hammer.ml.depends: Hammer.ml
+DISTCLEAN += $(DEPENDS_$(d)) $(d)/Hammer.ml
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
