@@ -30,9 +30,9 @@ $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 all: $(d)/DefaultGrammar.pdf $(d)/_patobuild/DefaultGrammar.tgy
 
 $(d)/_patobuild/DefaultGrammar.tgy: $(d)/DefaultGrammar.ttml
-$(SRC_DIR)/../editors/emacs/quail.el $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
+$(EDITORS_DIR)/emacs/quail.el $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
 	$(ECHO) "[PAPAT]  $< -> $@"
-	$(Q)$(PA_PATOLINE_IN_SRC) --ascii --quail-out $(SRC_DIR)/../editors/emacs/quail.el --driver Pdf --no-default-grammar $< > $@
+	$(Q)$(PA_PATOLINE_IN_SRC) --ascii --quail-out $(EDITORS_DIR)/emacs/quail.el --driver Pdf --no-default-grammar $< > $@
 
 $(d)/DefaultGrammar_.tml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
 	$(ECHO) "[PAT]    $< -> $@"
@@ -59,7 +59,7 @@ CLEAN += $(d)/DefaultGrammar.tgx $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.tt
 	 $(d)/DefaultGrammar.pdf $(d)/DefaultGrammar.tdx  $(d)/DefaultGrammar.tmx \
 	 $(d)/DefaultGrammar.cmi $(d)/DefaultGrammar.cmx $(d)/DefaultGrammar.o \
 	 $(d)/DefaultGrammar_.cmi $(d)/DefaultGrammar_.cmx $(d)/DefaultGrammar_.o \
-	 $(d)/DefaultGrammar_.dep $(d)/DefaultGrammar.tdep $(d)/quail.el
+	 $(d)/DefaultGrammar_.dep $(d)/DefaultGrammar.tdep $(EDITORS_DIR)/emacs/quail.el
 
 CLEANR += $(d)/_patobuild
 

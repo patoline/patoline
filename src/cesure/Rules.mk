@@ -28,8 +28,8 @@ $(d)/cesure: $(UNICODE_DIR)/unicodelib.cmxa $(d)/hyphen.cmx $(d)/cesure.cmx
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ unix.cmxa str.cmxa sqlite3.cmxa decap.cmxa $^
 
-CLEAN += $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.a
-DISTCLEAN += $(d)/cesure.cma $(d)/cesure.cmxa $(d)/cesure
+CLEAN += $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.a $(d)/*.cma $(d)/*.cmxa
+DISTCLEAN += $(d)/*.depends $(d)/cesure
 
 # Installing
 install: install-cesure-bin install-cesure-lib
