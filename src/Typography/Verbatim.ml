@@ -2,6 +2,25 @@ open Document
 open FTypes
 open Box
 
+(*
+let verb_counter filename =
+  let get_line env =
+    if filename = "" then 1 else
+      try
+	match StrMap.find filename env.counters
+	with a,[line] -> line
+	| _ -> raise Not_found
+      with Not_found -> 1
+  in
+  C (fun env ->
+    let line = string_of_int (get_line env) in
+    let miss = 4 - String.length line in
+    glue_space miss ::  color Color.(mix 0.5 white black) [tT line] @ [tT " "])::
+    Env (fun env ->
+      let line = get_line env in
+      {env with counters = StrMap.add filename (-1,[line+1]) env.counters})::
+  []*)
+
 (* [lines_to_file lines fn] writes the lines [lines] to the optional file
    [fn] if it is provided. Do nothing otherwise. *)
 let lines_to_file : string list -> string option -> unit = fun lines fn ->
@@ -98,7 +117,6 @@ type param =
 
 exception Found_symbol of int * string * content
 
-
 (* [handle_word par w] build the contents corresponding to the word [w]. The
    [par] variable provides parameters for keywords to be put in bold and
    special symbols to be displayed using the maths font. *)
@@ -140,3 +158,53 @@ let verb_text : (string -> content list) -> string -> content list =
       {(envFamily env.fontMonoFamily env) with size}
     in
     [Scoped (f, build s)]
+
+
+
+let param_SML =
+  { keywords = ["fun";"as";"fn";"*";"(";")";",";";";"val";
+		"and";"type";"|";"=";"case";"of";
+		"datatype";"let";"rec";"end"]
+  ; symbols = [("->", symbol "→");  ("=>", symbol "⇒")]
+  }
+
+let param_OCaml =
+  { keywords = ["fun";"as";"function";"(";")";"*";";";",";"val";
+		"and";"type";"|";"=";"match";"with";
+		"rec";"let";"begin";"end";"while";"for";"do";"done";
+		"struct"; "sig"; "module"; "functor"; "if"; "then";
+          "else"; "try"; "parser"; "in" ]
+  ; symbols = [("->", symbol "→");  ("=>", symbol "⇒")]
+  }
+
+let param_Python =
+  { keywords = ["def";"(";")";"*";";";",";"|";"=";":";
+		"while";"for";"if";"else";"return";"try";"except";"break"]
+  ; symbols  = [] }
+
+let lang_Default lines =
+  List.map (handle_spaces (fun s -> [tT s])) lines
+
+let lines_to_contents param lines =
+  List.map (handle_spaces (handle_word param)) lines
+
+let lang_OCaml = lines_to_contents param_OCaml
+let lang_SML = lines_to_contents param_SML
+let lang_Python = lines_to_contents param_Python
+
+  (*
+let verb_OCaml = verb_Lang
+let verb_SML = verb_Lang param_SML
+let verb_Python = verb_Lang param_Python
+let verb_default fn lines =
+  lines_to_file lines fn;
+  let build_line = handle_spaces (fun s -> [tT s]) in
+  lines
+
+let verb_Lang param fn lines =
+  lines_to_file lines fn;
+  let build_line = handle_spaces (handle_word param) in
+  lines
+
+
+  *)

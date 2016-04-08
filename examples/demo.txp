@@ -136,15 +136,15 @@ let questions = Array.init 5 (fun i -> db.create_data ("box"^string_of_int i) fa
 \Title{Qui êtes-vous ?}
 
 \begin{raggedLeft}
-\caml(checkBox  ~destinations questions.(0))(fun b -> << \b J'aime le nombre 42. >>)
+\caml(checkBox  ~destinations questions.(0))(fun b -> << \b() J'aime le nombre 42. >>)
 
-\caml(checkBox  ~destinations questions.(1))(fun b -> << \b J'ai vu presque tous les épisodes de \italic{Startrek} ou \italic{Big-Bang Theory} >>)
+\caml(checkBox  ~destinations questions.(1))(fun b -> << \b() J'ai vu presque tous les épisodes de \italic{Startrek} ou \italic{Big-Bang Theory} >>)
 
-\caml(checkBox  ~destinations questions.(2))(fun b -> << \b Je programme souvent >>)
+\caml(checkBox  ~destinations questions.(2))(fun b -> << \b() Je programme souvent >>)
 
-\caml(checkBox  ~destinations questions.(3))(fun b -> << \b J'ai un casse tête que je ne sais pas résoudre >>)
+\caml(checkBox  ~destinations questions.(3))(fun b -> << \b() J'ai un casse tête que je ne sais pas résoudre >>)
 
-\caml(checkBox  ~destinations questions.(4))(fun b -> << \b Mes amis me trouvent bizarre >>)
+\caml(checkBox  ~destinations questions.(4))(fun b -> << \b() Mes amis me trouvent bizarre >>)
 \end{raggedLeft}
 
 \vspaceBefore(5.0)
@@ -173,13 +173,13 @@ let radios = radioButtons ~destinations:["histo"] data values
 \vspaceAfter(5.0)
 \end{center}
 
-\caml(radios.(1) (fun b -> << \b Patoline c'est null, ça ne marchera jamais. >>))
+\caml(radios.(1) (fun b -> << \b() Patoline c'est null, ça ne marchera jamais. >>))
 
-\caml(radios.(2) (fun b -> << \b Patoline c'est chouette, mais ça ne marchera pas. >>))
+\caml(radios.(2) (fun b -> << \b() Patoline c'est chouette, mais ça ne marchera pas. >>))
 
-\caml(radios.(3) (fun b -> << \b Patoline c'est chouette, et ça va casser la baraque ! >>))
+\caml(radios.(3) (fun b -> << \b() Patoline c'est chouette, et ça va casser la baraque ! >>))
 
-\caml(radios.(4) (fun b -> << \b Je ne sais pas. >>))
+\caml(radios.(4) (fun b -> << \b() Je ne sais pas. >>))
 
 \end{slide}
 
@@ -217,7 +217,7 @@ let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
 Un petit programme éditable, the program is compiled and executed (beware of security issues)~:
 }
 \caml(
-  editableText ~nb_lines:7 ~lang:lang_OCaml ~extra:(test_ocaml ~run:true) ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML"
+  editableText ~nb_lines:7 ~lang:Verbatim.lang_OCaml ~extra:(test_ocaml ~run:true) ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML"
 )
 \end{block}
 \end{slide}

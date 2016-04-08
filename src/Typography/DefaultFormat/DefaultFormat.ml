@@ -518,114 +518,22 @@ let defaultEnv:environment=
 	let w =  float n *. env.size *. Fonts.glyphWidth x /.1000. in
 	[glue w w w])
 
-    let split_space is_letter is_special s =
-      let len = String.length s in
-      let rec fn acc w i0 i =
-	if i >= len then
-	  List.rev (if i <> i0 then tT (String.sub s i0 (len - i0))::acc
-	    else acc)
-	else if s.[i] = ' ' then
-	  let j = ref (i+1) in
-	  while !j < len && s.[!j] = ' ' do
-	    incr j;
-	  done;
-	  let j = !j in
-	  let acc = if i <> i0 then
-	      glue_space(j-i)::tT (String.sub s i0 (i - i0))::acc
-	    else
-	      glue_space(j-i)::acc
-	  in
-	  fn acc None j j
-	else if is_special s.[i] then
-	  let acc = if i <> i0 then
-	    tT(String.sub s i 1)::tT (String.sub s i0 (i - i0))::acc
-	    else
-	      tT(String.sub s i 1)::acc
-	  in
-	  fn acc None (i+1) (i+1)
-	else if w = None then
-	  fn acc (Some (is_letter s.[i])) i0 (i+1)
-	else if w = Some (is_letter s.[i]) then
-	  fn acc  w i0 (i + 1)
-	else
-	  fn (if i <> i0 then tT (String.sub s i0 (i - i0))::acc
-	    else acc) (Some (is_letter s.[i])) i (i+1)
-      in fn [] None 0 0
-
-    let is_letter_ml = fun c ->
-      let c = Char.code c in
-      (Char.code 'a' <= c && c <= Char.code 'z') ||
-      (Char.code 'A' <= c && c <= Char.code 'Z') ||
-      (Char.code '0' <= c && c <= Char.code '9') ||
-      Char.code '_' = c || c = Char.code '\''
-
-
-    let verb_counter filename =
-      let get_line env =
-	if filename = "" then 1 else
-	  try
-	    match StrMap.find filename env.counters
-	    with a,[line] -> line
-	    | _ -> raise Not_found
-	  with Not_found -> 1
-      in
-      C (fun env ->
-	let line = string_of_int (get_line env) in
-	let miss = 4 - String.length line in
-	glue_space miss ::  color Color.(mix 0.5 white black) [tT line] @ [tT " "])::
-      Env (fun env ->
-	let line = get_line env in
-	{env with counters = StrMap.add filename (-1,[line+1]) env.counters})::
-	[]
-
-    let lang_ML (keywords: string list) (specials: char list) (lines: string list) : content list list =
-      let do_one s =
-        let l = split_space is_letter_ml (fun c -> List.mem c specials) s in
-        List.rev (List.fold_left (fun a x ->
-	  match x with
-          | T (s,_) as x when List.mem s keywords -> bold [x]@a
-	  | x -> x::a) [] l)
-      in
-        List.map do_one lines
-
-    let lang_default (lines: string list) : content list list =
-      List.map (fun str ->
-        split_space (fun _ -> true) (fun _ -> false) str
-        ) lines
-
-    let lang_SML s=
-      let specials = ['(' ; ')' ; ';' ; ','] in
-      let keywords = ["fun";"as";"fn";"*";"(";")";",";";";"val";
-		      "and";"=>";"->";"type";"|";"=";"case";"of";
-		      "datatype";"let";"rec";"end"] in
-      lang_ML keywords specials s
-
-    let lang_OCaml s=
-      let specials = ['(' ; ')' ; ';' ; ','] in
-      let keywords = ["fun";"as";"function";"(";")";"*";";";",";"val";
-		      "and";"=>";"->";"type";"|";"=";"match";"with";
-		      "rec";"let";"begin";"end";"while";"for";"do";"done";
-		      "struct"; "sig"; "module"; "functor"; "if"; "then";
-          "else"; "try"; "parser"; "in" ] in
-      lang_ML keywords specials s
-
-    let lang_Python s=
-      let specials = ['(' ; ')' ; ';' ; ','] in
-      let keywords = ["def";"(";")";"*";";";",";"|";"=";":";
-		      "while";"for";"if";"else";"return";"try";"except";"break"] in
-      lang_ML keywords specials s
-
     (* New parser version of verbatim environment. *)
     let verb_default fn lines =
-      Verbatim.lines_to_file lines fn;
-      let build_line = Verbatim.handle_spaces (fun s -> [tT s]) in
-      Verbatim.line_per_line D.structure build_line lines
+      let open Verbatim in
+      lines_to_file lines fn;
+      let build_line = handle_spaces (fun s -> [tT s]) in
+      line_per_line D.structure build_line lines
 
-    (* New parser version of verbatim environment. *)
-    let verb_OCaml fn lines =
-      Verbatim.lines_to_file lines fn;
-      let build_line = Verbatim.handle_spaces (fun s -> [tT s]) in
-      Verbatim.line_per_line D.structure build_line lines
+    let verb_Lang param fn lines =
+      let open Verbatim in
+      lines_to_file lines fn;
+      let build_line = handle_spaces (handle_word param) in
+      line_per_line D.structure build_line lines
+
+    let verb_OCaml = verb_Lang Verbatim.param_OCaml
+    let verb_SML = verb_Lang Verbatim.param_SML
+    let verb_Python = verb_Lang Verbatim.param_Python
 
     let verbatim = Verbatim.verb_text (fun s -> [tT s])
 
