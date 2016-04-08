@@ -3,16 +3,13 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 TYPOGRAPHY_INCLUDES := -I $(d) $(PACK_TYPOGRAPHY)
-TYPOGRAPHY_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_TYPOGRAPHY)
+TYPOGRAPHY_DEPS_INCLUDES := -I $(d) -I $(d)/DefaultFormat $(DEPS_PACK_TYPOGRAPHY)
 
 # Compute ML files dependencies
-$(d)/%.depends: INCLUDES:=$(TYPOGRAPHY_DEPS_INCLUDES)
-$(d)/%.cmx $(d)/%.cmo $(d)/%.cmi: INCLUDES:=$(TYPOGRAPHY_INCLUDES)
+$(d)/%.depends $(wildcard $(d)/*/%.depends): INCLUDES:=$(TYPOGRAPHY_DEPS_INCLUDES)
+$(d)/%.cmx $(d)/%.cmo $(d)/%.cmi $(wildcard $(d)/*/%.cmx) $(wildcard $(d)/*/%.cmo) $(wildcard $(d)/*/%.cmi): INCLUDES:=$(TYPOGRAPHY_INCLUDES)
 
-SRC_$(d):=$(wildcard $(d)/*.ml) \
-  $(wildcard $(d)/*.mli) \
-  $(wildcard $(d)/*/*.ml) \
-  $(wildcard $(d)/*/*.mli)
+SRC_$(d):=$(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) $(wildcard $(d)/*/*.ml) $(wildcard $(d)/*/*.mli)
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))

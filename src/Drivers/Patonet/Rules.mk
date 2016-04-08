@@ -8,7 +8,7 @@ PATONET_DRIVER_DEPS_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(DEPS_PACK_DRIVER_
 $(d)/%.ml.depends: INCLUDES += $(PATONET_DRIVER_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATONET_DRIVER_INCLUDES)
 
-SRC_$(d):=$(wildcard $(d)/*.ml)
+SRC_$(d):=$(wildcard $(d)/*.ml) $(d)/Hammer.ml
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)

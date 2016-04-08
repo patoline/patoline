@@ -1066,6 +1066,8 @@ let label ?labelType name=
      [Marker (Label name)])
   ]
 
+let pass_number = ref (-1)
+
 let lref ?refType name=
   let name=make_name name in
   [ C (fun env->
@@ -1093,7 +1095,7 @@ let lref ?refType name=
     with
       Not_found ->
 	let refType=match refType with Some x->x | None-> "Default" in
-	Printf.eprintf "Unknown label %S of labelType %S\n%!" name refType;
+	if !pass_number <> 0 then Printf.eprintf "Unknown label %S of labelType %S (%d)\n%!" name refType !pass_number;
 	[]
   )]
 

@@ -621,6 +621,12 @@ let defaultEnv:environment=
       let build_line = Verbatim.handle_spaces (fun s -> [tT s]) in
       Verbatim.line_per_line D.structure build_line lines
 
+    (* New parser version of verbatim environment. *)
+    let verb_OCaml fn lines =
+      Verbatim.lines_to_file lines fn;
+      let build_line = Verbatim.handle_spaces (fun s -> [tT s]) in
+      Verbatim.line_per_line D.structure build_line lines
+
     let verbatim = Verbatim.verb_text (fun s -> [tT s])
 
     let env_stack=ref []
@@ -1352,9 +1358,9 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
       let max_iterations=ref !Config.atmost
 
       let rec resolve tree i env0=
-        Printf.printf "Pass number %d\n" i; flush stdout;
+        Printf.eprintf "Pass number %d\n%!" i; flush stdout; pass_number := i;
         let env1,fig_params,params,new_page_list,new_line_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 tree in
-        Printf.fprintf stderr "Optimization starts: %f s\n" (Sys.time ());flush stderr;
+        Printf.eprintf "Optimization starts: %f s\n%!" (Sys.time ());
         let (logs,opt_pages,figs',user')=TS.typeset
           ~completeLine:compl
           ~figure_parameters:fig_params
@@ -1365,7 +1371,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
           ~badness:badness
           paragraphs
         in
-        Printf.fprintf stderr "Optimization ends: %f s\n" (Sys.time ());flush stderr;
+        Printf.eprintf "Optimization ends: %f s\n%!" (Sys.time ());
         let env, reboot=update_names env1 figs' user' in
         let env=reset_counters env in
         if i < !max_iterations-1 && reboot && !(env.fixable) then (

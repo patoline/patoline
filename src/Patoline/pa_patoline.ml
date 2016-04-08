@@ -894,12 +894,12 @@ let before_parse_hook () =
   let add_grammar g =
     if !no_default_grammar && g = "DefaultGrammar" then () else
     let g = findPath (g ^ ".tgy") path in
-    Printf.eprintf "Reading grammar %s\n%!" g;
+    (*Printf.eprintf "Reading grammar %s\n%!" g;*)
     let ch = open_in_bin g in
     let st = input_value ch in
     merge_states state st;
     close_in ch;
-    Printf.eprintf "Done with grammar %s\n%!" g
+  (*Printf.eprintf "Done with grammar %s\n%!" g*)
   in
   List.iter add_grammar !patoline_grammar;
   build_grammar ()
@@ -984,8 +984,8 @@ let parser macro_arguments_aux l =
 
 let macro_arguments id current config =
   match macro_args id config, current with
-  | None, Math   -> (parser simple_math_macro_argument*#)
-  | None, Text   -> (parser simple_text_macro_argument*#)
+  | None, Math   -> (parser simple_math_macro_argument*$)
+  | None, Text   -> (parser simple_text_macro_argument*$)
   | None, _      -> assert false
   | Some l, _    ->
      let l = List.map (fun s -> if s.entry = Current then { s with entry = current } else s) l in
@@ -1412,17 +1412,9 @@ let merge_indices indices ind =
     down_right = if ind.down_right <> None then ind.down_right else indices.down_right;
     up_right = if ind.up_right <> None then ind.up_right else indices.up_right}
 
-let parser math_aux prio =
-  | m:(math_aux (next_prio prio)) when prio <> AtomM -> m
 
-  | sym:(math_prefix_symbol prio) ind:with_indices m:(math_aux prio) ->
-     (fun indices ->
-       let indices = merge_indices indices ind in
-       let psp = sym.prefix_space in
-       let pnsp = sym.prefix_no_space in
-       let md = print_math_deco_sym _loc_sym sym.prefix_value indices in
-       <:expr<[Maths.bin $int:psp$ (Maths.Normal(true,$md$,$bool:pnsp$)) [] $m no_ind$]>>
-     )
+let parser math_aux prio =
+  | m:(math_prefix (next_prio prio)) when prio <> AtomM -> m
 
   | sym:math_quantifier_symbol ind:with_indices d:math_declaration p:math_punctuation_symbol? m:(math_aux prio) when prio = Operator ->
     (fun indices ->
@@ -1448,14 +1440,6 @@ let parser math_aux prio =
 	  <:expr<[Maths.op_limits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>
       | NoLimits ->
 	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>)
-
-  | m:(math_aux prio) sym:(math_postfix_symbol prio) ->
-      (fun indices ->
-        let psp = sym.postfix_space in
-        let nsp = sym.postfix_no_space in
-        let md  = print_math_deco_sym _loc_sym sym.postfix_value indices in
-        let m = m no_ind in
-        <:expr<[Maths.bin $int:psp$ (Maths.Normal($bool:nsp$,$md$,true)) $m$ []] >>)
 
   | l:(math_aux prio) st:{ s:(math_infix_symbol prio) i:with_indices -> (s,i)
 			 | s:(empty invisible_product) when prio = IProd -> (s,no_ind) }
@@ -1595,6 +1579,29 @@ let parser math_aux prio =
         r { indices with up_left = Some s }
      )
 
+and math_prefix prio =
+  | p:(math_postfix prio) -> p
+
+  | sym:(math_prefix_symbol prio) ind:with_indices m:(math_prefix prio) ->
+     (fun indices ->
+       let indices = merge_indices indices ind in
+       let psp = sym.prefix_space in
+       let pnsp = sym.prefix_no_space in
+       let md = print_math_deco_sym _loc_sym sym.prefix_value indices in
+       <:expr<[Maths.bin $int:psp$ (Maths.Normal(true,$md$,$bool:pnsp$)) [] $m no_ind$]>>
+     )
+
+and math_postfix prio =
+  | p:(math_aux prio) -> p
+
+  | m:(math_postfix prio) sym:(math_postfix_symbol prio) ->
+      (fun indices ->
+        let psp = sym.postfix_space in
+        let nsp = sym.postfix_no_space in
+        let md  = print_math_deco_sym _loc_sym sym.postfix_value indices in
+        let m = m no_ind in
+        <:expr<[Maths.bin $int:psp$ (Maths.Normal($bool:nsp$,$md$,true)) $m$ []] >>)
+
 and with_indices =
   | EMPTY -> no_ind
 
@@ -1661,7 +1668,7 @@ and long_math_declaration =
 and math_declaration =
     | '{' m:long_math_declaration '}' -> m
     | no_brace m:(math_aux Ind) -> m no_ind
-    | no_brace m:(math_aux Ind) s:math_relation_symbol ind:with_indices r:math_punc_list ->
+    | no_brace m:(math_aux Ind) s:math_relation_symbol ind:with_indices r:(math_aux Ind) ->
        let nsl = s.infix_no_left_space in
        let nsr = s.infix_no_right_space in
        let inter =
@@ -1669,7 +1676,7 @@ and math_declaration =
                               $print_math_deco_sym _loc_s s.infix_value ind$,
                               $bool:nsr$) >>
        in
-       <:expr<[Maths.bin 2 $inter$ $m no_ind$ $r$] >>
+       <:expr<[Maths.bin 2 $inter$ $m no_ind$ $r no_ind$] >>
 
 
 let _ = set_grammar math_toplevel (parser
@@ -1736,7 +1743,7 @@ let _ = set_grammar math_toplevel (parser
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle $m$))]>>
 
-    | ws:word+# ->
+    | ws:word+$ ->
        <:expr<[tT $string:String.concat " " ws$]>>
 
     | '{' p:(paragraph_basic_text TagSet.empty) '}' -> p

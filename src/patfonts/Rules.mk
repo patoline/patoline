@@ -16,7 +16,8 @@ $(d)/Opentype/Opentype.ml.depends: $(UNICODE_DIR)/ROMAN.ml $(UNICODE_DIR)/LATIN1
 
 SRC_$(d):=$(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) \
           $(wildcard $(d)/CFF/*.ml) $(wildcard $(d)/CFF/*.mli) \
-          $(wildcard $(d)/Opentype/*.ml) $(wildcard $(d)/Opentype/*.mli)
+          $(wildcard $(d)/Opentype/*.ml) $(wildcard $(d)/Opentype/*.mli) \
+          $(d)/UnicodeRanges.ml $(d)/IsoAdobe.ml
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
