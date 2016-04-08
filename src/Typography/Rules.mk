@@ -106,15 +106,14 @@ CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.a $(d)/*.cmxs \
   $(d)/DefaultFormat/*.cmo $(d)/DefaultFormat/*.cmx $(d)/DefaultFormat/*.cmi $(d)/DefaultFormat/*.o \
   $(d)/_tags
 
-DISTCLEAN += $(wildcard $(d)/*.depends) \
-	     $(wildcard $(d)/DefaultFormat/*.depends) \
+DISTCLEAN += $(d)/*.depends $(d)/DefaultFormat/*.depends
 
 # Installing
 install: install-typography
 .PHONY: install-typography
 
 install-typography: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/Typography.cmxs $(d)/Typography.a \
-  $(d)/Typography.cmi $(d)/ParseMainArgs.cmx $(d)/ParseMainArgs.o $(d)/ParseMainArgs.cmi \
+$(d)/Typography.cmi $(d)/ParseMainArgs.cmx $(d)/ParseMainArgs.o $(d)/ParseMainArgs.cmi \
   $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.cmxs $(d)/DefaultFormat.a $(DEFAULTFORMAT_CMI)
 	install -m 755 -d $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 	install -p -m 644 $^ $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
