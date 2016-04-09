@@ -1813,7 +1813,7 @@ let _ = set_grammar math_toplevel (parser
     | "\\Include" '{' id:uid '}' -> (fun _ ->
          incr nb_includes;
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
-         <:struct< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output)(D)
+         <:struct< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output )(D)
                    open $uid:temp_id$>>)
     | "\\TableOfContents" -> (fun _ ->
          let m = freshUid () in
@@ -1897,63 +1897,56 @@ let _ = set_grammar math_toplevel (parser
  * Sections, layout of the document.                                        *
  ****************************************************************************)
 
-  let text = declare_grammar "text"
+let sect_re = ''\(===?=?=?=?=?=?=?\)\|\(---?-?-?-?-?-?-?\)''
 
-  let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
-  let op_section = "[-=]>"
-  let cl_section = "[-=]<"
+let numbered op cl =
+  match (op.[0], cl.[0]) with
+  | ('=', '=') -> true
+  | ('-', '-') -> false
+  | _          -> give_up "Non-matching section markers..."
 
-  let parser text_item =
-      op:RE(op_section) title:text_only txt:text cl:RE(cl_section) ->
-        (fun _ lvl ->
-         let numbered = match op.[0], cl.[0] with
-             '=', '=' -> <:expr<newStruct>>
-           | '-', '-' -> <:expr<newStruct ~numbered:false>>
-           | _ -> give_up "Non-matching relative section markers"
-         in
-         true, lvl, <:struct< let _ = $numbered$ D.structure $title$
-                              $struct:txt false (lvl+1)$
-                              let _ = go_up D.structure >>)
+let parser text_item =
+  | op:''[-=]>'' title:text_only txt:topleveltext cl:''[-=]<'' ->
+    let num = numbered op cl in
+    (fun _ lvl ->
+      let code =
+        <:struct<
+          let _ = newStruct ~numbered:$bool:num$ D.structure $title$
+          $struct:txt false (lvl+1)$
+          let _ = go_up D.structure
+        >>
+      in
+      (true, lvl, code))
 
-    | op:RE(section) title:text_only cl:RE(section) txt:text ->
-        (fun _ lvl ->
-         if String.length op <> String.length cl then
-	   give_up "Non-matching absolute section marker";
-         let numbered = match op.[0], cl.[0] with
-             '=', '=' -> <:expr<newStruct>>
-           | '-', '-' -> <:expr<newStruct ~numbered:false>>
-           | _ -> give_up "Non-mathing section marker"
-         in
-         let l = String.length op - 1 in
-         if l > lvl + 1 then failwith "Illegal level skip";
-         let res = ref [] in
-         for i = 0 to lvl - l do
-           res := !res @ <:struct<let _ = go_up D.structure>>
-         done;
-         true, lvl, <:struct< $struct:!res$
-                              let _ = ($numbered$) D.structure $title$
-                              $struct:txt false l$>>)
+  | op:RE(sect_re) title:text_only cl:RE(sect_re) txt:topleveltext ->
+    let lvlop = String.length op - 1 in
+    let lvlcl = String.length cl - 1 in
+    if lvlop <> lvlcl then give_up "Non-matching section marker length...";
+    let lvl' = lvlop in
+    let num = numbered op cl in
+    (fun _ lvl ->
+      if lvl' > lvl + 1 then give_up "Illegal section level skip...";
+      let code =
+        <:struct<
+          let _ = n_go_up $int:lvl - lvl' + 1$ D.structure
+          let _ = newStruct ~numbered:$bool:num$ D.structure $title$
+          $struct:txt false lvl'$
+        >>
+      in
+      (true, lvl, code))
 
-    | ps:paragraph ->
-         (fun indent lvl -> indent, lvl, ps indent)
+  | ps:paragraph ->
+    (fun indent lvl -> (indent, lvl, ps indent))
 
-  let _ = set_grammar text (
-     parser
-       l:text_item* ->
-         (fun indent lvl ->
-          let fn = fun (indent, lvl, ast) txt ->
-            let indent, lvl, ast' = txt indent lvl in
-            indent, lvl, (ast @ ast')
-          in
-          let _,_,r = List.fold_left fn (indent, lvl, []) l in
-          r)
-      )
+and topleveltext = l:text_item* ->
+  (fun indent lvl ->
+    let fn (indent, lvl, ast) txt =
+      let indent, lvl, ast' = txt indent lvl in
+      (indent, lvl, (ast @ ast'))
+    in
+    let _,_,r = List.fold_left fn (indent, lvl, []) l in r)
 
-  let otext = text
-  let parser text = txt:otext -> txt true 0
-
-
-
+and text = txt:topleveltext -> txt true 0
 
 (* Header, title, main Patoline entry point *********************************)
 

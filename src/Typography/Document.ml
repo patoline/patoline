@@ -582,6 +582,10 @@ let go_up str=
   (if snd !str=[] then Printf.fprintf stderr "Warning : go_up\n");
   str:=(up !str)
 
+let n_go_up n str =
+  for i = 1 to n do go_up str done
+
+
 (* La structure actuelle *)
 (* let str=Printf.printf "str : init\n";ref [(Node empty,[])] *)
 (* Le chemin vers le noeud courant *)
