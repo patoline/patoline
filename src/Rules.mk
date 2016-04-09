@@ -30,7 +30,10 @@ $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 all: $(d)/DefaultGrammar.pdf $(d)/_patobuild/DefaultGrammar.tgy
 
 $(d)/_patobuild/DefaultGrammar.tgy: $(d)/DefaultGrammar.ttml
-$(EDITORS_DIR)/emacs/quail.el $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
+
+$(EDITORS_DIR)/emacs/quail.el: $(d)/DefaultGrammar.ttml
+
+$(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
 	$(ECHO) "[PAPAT]  $< -> $@"
 	$(Q)$(PA_PATOLINE_IN_SRC) --ascii --quail-out $(EDITORS_DIR)/emacs/quail.el --driver Pdf --no-default-grammar $< > $@
 
@@ -40,7 +43,7 @@ $(d)/DefaultGrammar_.tml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
 
 $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) $(PACK_FORMAT) -c -o $@ -impl $<
+	$(Q)$(OCAMLOPT_NOINTF) -intf-suffix .mli $(PACK_FORMAT) -c -o $@ -impl $<
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
   $(RBUFFER_DIR)/rbuffer.cmxa \

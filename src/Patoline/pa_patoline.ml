@@ -1499,7 +1499,6 @@ let parser math_aux prio =
      (fun indices ->
        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>)
 
-  (* macro non déclarée *)
   | '\\' id:mathlid when prio = AtomM ->>
      let config = try List.assoc id state.math_macros with Not_found -> [] in
      args:(macro_arguments id Math config) ->

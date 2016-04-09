@@ -21,15 +21,24 @@ let verb_counter filename =
       {env with counters = StrMap.add filename (-1,[line+1]) env.counters})::
   []*)
 
+let file_cache = Hashtbl.create 31
+
 (* [lines_to_file lines fn] writes the lines [lines] to the optional file
    [fn] if it is provided. Do nothing otherwise. *)
 let lines_to_file : string list -> string option -> unit = fun lines fn ->
   match fn with
   | None    -> ()
   | Some fn ->
-      let oc = open_out fn in
-      List.iter (Printf.fprintf oc "%s\n") lines;
-      close_out oc
+     let nb_lines = List.length lines in
+     let oc, nbl =
+       try
+	 Hashtbl.find file_cache fn
+       with Not_found ->
+	 (open_out fn, 1)
+     in
+     List.iter (Printf.fprintf oc "%s\n") lines;
+     Hashtbl.replace file_cache fn (oc, nbl + nb_lines);
+     flush oc
 
 (* [glue_space n] corresponds to [n] spaces from the font. *)
 let glue_space : int -> content = fun n ->

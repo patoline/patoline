@@ -128,7 +128,7 @@ endif
 # Compilers and various tools
 OCAML    := ocaml
 OCAMLC   := ocamlfind ocamlc $(if $(OCPP),-pp '$(OCPP)',)
-OCAMLOPT_NOPP := ocamlfind ocamlopt -g
+OCAMLOPT_NOPP := ocamlfind ocamlopt -g -intf-suffix .cmi
 OCAMLOPT_NOINTF := $(OCAMLOPT_NOPP) $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLOPT := $(OCAMLOPT_NOINTF) -intf-suffix .cmi
 OCAMLDEP := ocamlfind ocamldep $(if $(OCPP),-pp '$(OCPP)',) $(OCAMLDEPEXTRAS)
@@ -246,6 +246,7 @@ INCLUDES:=
 %.cmo: %.ml %.ml.depends
 	$(ECHO) "[OCAMLC] $< -> $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
+%.cmx: %.cmo
 %.cmx: %.ml %.ml.depends
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ -c $<
