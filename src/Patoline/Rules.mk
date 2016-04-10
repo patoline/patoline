@@ -8,7 +8,7 @@ $(d)/%.depends: INCLUDES += $(PATOLINE_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATOLINE_INCLUDES)
 
 PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx \
-	$(d)/Config2.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx
+	$(d)/Config2.cmx $(d)/Main.cmx
 
 # $(PAT_CMX): OCAMLOPT := $(OCAMLOPT_NOINTF)
 $(PAT_CMX): %.cmx: %.cmo

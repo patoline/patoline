@@ -838,26 +838,14 @@ let process_each_file l=
           exit 1
         )
       ) else (
-        if Sys.file_exists f then (
-          let fread = open_in f in
-          let name_ml = mlname_of f in
-          let where_ml = open_out name_ml in
-          (*
-          Parser.out_grammar_name:=Filename.chop_extension f;
-          Parser.out_quail_name:=(Filename.dirname name_ml) ^ "/quail.el";
-          *)
-          if Filename.check_suffix f "txt" then (
-            SimpleGenerateur.gen_ml (List.hd !formats) SimpleGenerateur.Main f fread name_ml where_ml (Filename.chop_extension f)
-          );
-          close_out where_ml;
-          close_in fread;
-        ) else (
-          Mutex.lock Build.mstderr;
-          Printf.fprintf stderr "%s\n%!"
-            (Language.message (Language.Inexistent_file f));
-          Mutex.unlock Build.mstderr;
-          exit 1
-        )
+        if not (Sys.file_exists f) then
+          begin
+            Mutex.lock Build.mstderr;
+            Printf.fprintf stderr "%s\n%!"
+              (Language.message (Language.Inexistent_file f));
+            Mutex.unlock Build.mstderr;
+            exit 1
+          end
       )
     ) l
 
