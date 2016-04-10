@@ -2067,10 +2067,7 @@ let extra_expressions = patoline_quotations :: extra_expressions
 (* Adding the new entry points *)
 
 let entry_points =
-    (".txp", Implementation (full_text, blank2)) ::
-    (".typ", Implementation (full_text, blank2)) ::
-    (".mlp", Implementation (structure, Pa_lexing.ocaml_blank)) ::
-    entry_points
+  (".txp", Implementation (full_text, blank2)) :: entry_points
 
 end (* of the functor *)
 
