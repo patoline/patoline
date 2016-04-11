@@ -1886,11 +1886,14 @@ let _ = set_grammar math_toplevel (parser
   let _ = set_grammar paragraph (change_layout paragraph_elt blank1)
 
   let _ = set_grammar paragraphs (
-                        parser
-                          p:paragraph ps:paragraph* ->
-                                               let ps = List.flatten (List.map (fun r -> r true) ps) in
-                                         fun indent_first -> p indent_first @ ps
-                      )
+    parser p:paragraph ps:paragraph* ->
+      (* FIXME Never indent for now. *)
+      (*
+      let ps = List.flatten (List.map (fun r -> r true) ps) in
+      fun indent_first -> p indent_first @ ps)
+      *)
+      let ps = List.flatten (List.map (fun r -> r false) ps) in
+      fun indent_first -> p false @ ps)
 
 (****************************************************************************
  * Sections, layout of the document.                                        *
@@ -1935,7 +1938,10 @@ let parser text_item =
       (true, lvl, code))
 
   | ps:paragraph ->
+    (*
     (fun indent lvl -> (indent, lvl, ps indent))
+    *)
+    (fun indent lvl -> (indent, lvl, ps false)) (* FIXME Never indent for now. *)
 
 and topleveltext = l:text_item* ->
   (fun indent lvl ->
