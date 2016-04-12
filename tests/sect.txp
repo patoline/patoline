@@ -1,0 +1,27 @@
+==========
+Test with absolute sections
+==========
+
+== First section ==
+
+blabla bla blabla bli bla blo
+
+=== First subsection ===
+
+blabla bla blabla bli bla blo
+
+=== Second subsection ===
+
+blabla bla blabla bli bla blo
+
+==== First subsubsection ====
+
+blabla bla blabla bli bla blo
+
+==== Second subsubsection ====
+
+blabla bla blabla bli bla blo
+
+== Second section ==
+
+blabla bla blabla bli bla blo
