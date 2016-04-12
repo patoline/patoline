@@ -2,10 +2,10 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-PATOLINE_INCLUDES := -I $(d) $(PACK_PATOLINE)
-PATOLINE_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PATOLINE)
-$(d)/%.depends: INCLUDES += $(PATOLINE_DEPS_INCLUDES)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATOLINE_INCLUDES)
+PATOBUILD_INCLUDES := -I $(d) $(PACK_PATOBUILD)
+PATOBUILD_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PATOBUILD)
+$(d)/%.depends: INCLUDES += $(PATOBUILD_DEPS_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATOBUILD_INCLUDES)
 
 PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx \
 	$(d)/Config2.cmx $(d)/Main.cmx
@@ -24,25 +24,25 @@ endif
 
 $(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -o $@ $(PATOLINE_INCLUDES),threads -thread \
+	$(Q)$(OCAMLOPT) -o $@ $(PATOBUILD_INCLUDES),threads -thread \
 		dynlink.cmxa patutil.cmxa str.cmxa unix.cmxa rbuffer.cmxa \
 		unicodelib.cmxa threads.cmxa $(PAT_CMX)
 
 all: $(PA_PATOLINE)
 
-PATOLINE_DIR := $(d)
+PATOBUILD_DIR := $(d)
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) \
 		-package patutil,imagelib,dynlink,str,decap \
-		-I $(PATOLINE_DIR) $(COMPILER_INC) -o $@ \
+		-I $(PATOBUILD_DIR) $(COMPILER_INC) -o $@ \
 		bigarray.cmxa unicodelib.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa str.cmxa \
 		$(COMPILER_LIBO) decap.cmxa decap_ocaml.cmxa Config2.cmx Subsup.cmx prefixTree.cmx $<
 
 $(d)/prefixTree.cmx: $(d)/prefixTree.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT_NOINTF) -I $(PATOLINE_DIR) -o $@ -c $<
+	$(Q)$(OCAMLOPT_NOINTF) -I $(PATOBUILD_DIR) -o $@ -c $<
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
@@ -50,7 +50,7 @@ $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(d)/Subsup.cmx $(d)/prefixTree.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -rectypes -pp pa_ocaml -I $(PATOLINE_DIR) -c -package patutil,decap $(COMPILER_INC) -o $@ $<
+	$(Q)$(OCAMLOPT_NOINTF) -rectypes -pp pa_ocaml -I $(PATOBUILD_DIR) -c -package patutil,decap $(COMPILER_INC) -o $@ $<
 
 $(d)/Subsup.ml.depends: $(d)/Subsup.ml
 	$(ECHO) "[DEPS]    $< -> $@"
@@ -58,13 +58,13 @@ $(d)/Subsup.ml.depends: $(d)/Subsup.ml
 
 $(d)/Subsup.cmx: $(d)/Subsup.ml $(d)/Subsup.ml.depends
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -I $(PATOLINE_DIR) -c -package decap $(COMPILER_INC) -o $@ $<
+	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -I $(PATOBUILD_DIR) -c -package decap $(COMPILER_INC) -o $@ $<
 
-PATOLINE_UNICODE_SCRIPTS := $(d)/UnicodeScripts
+PATOBUILD_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 
 $(EDITORS_DIR)/emacs/Subsup.el $(d)/Subsup.ml: $(d)/UnicodeData.txt $(d)/UnicodeScripts
 	$(ECHO) "[UNIC]   $< -> $@ $(EDITORS_DIR)/emacs/Subsup.el"
-	$(Q)$(PATOLINE_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/Subsup.el
+	$(Q)$(PATOBUILD_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/Subsup.el
 
 #$(d)/patolineGL: $(UTIL_DIR)/util.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
 #	$(ECHO) "[OPT]    $(lastword $^) -> $@"
@@ -72,11 +72,11 @@ $(EDITORS_DIR)/emacs/Subsup.el $(d)/Subsup.ml: $(d)/UnicodeData.txt $(d)/Unicode
 
 $(d)/Main.cmx: $(d)/Main.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) -thread -rectypes -I +threads $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) -thread -rectypes -I +threads $(OFLAGS) $(PATOBUILD_INCLUDES) -o $@ -c $<
 
 $(d)/Main.cmo: $(d)/Main.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLC) -thread -rectypes -I +threads $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) -thread -rectypes -I +threads $(OFLAGS) $(PATOBUILD_INCLUDES) -o $@ -c $<
 
 $(d)/UnicodeScripts.cmx: $(UNICODELIB_CMX) $(UNICODELIB_DEPS) $(UNICODELIB_ML)
 
@@ -86,7 +86,9 @@ $(d)/UnicodeScripts: $(d)/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
 
 $(d)/Build.cmo $(d)/Build.cmx: OFLAGS += -thread
 
-CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/patoline $(EDITORS_DIR)/emacs/Subsup.el $(d)/UnicodeScripts $(d)/pa_patoline $(d)/emacs/Subsup.ml
+CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/patoline \
+				 $(EDITORS_DIR)/emacs/Subsup.el $(d)/UnicodeScripts \
+				 $(d)/pa_patoline $(d)/emacs/Subsup.ml
 
 DISTCLEAN += $(d)/*.depends
 

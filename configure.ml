@@ -191,8 +191,8 @@ let local_packages =
     ; subdirs      = []
     ; has_meta     = false }
 
-  ; { package_name = "Patoline"
-    ; macro_suffix = "PATOLINE"
+  ; { package_name = "patobuild"
+    ; macro_suffix = "PATOBUILD"
     ; local_deps   = ["Typography";"plugins"]
     ; extern_deps  = ["decap";"bytes";"compiler-libs"]
     ; subdirs      = []
@@ -632,7 +632,7 @@ let _=
   Printf.fprintf make "OCAML_BIBI := %s\n" (if has_sqlite3 then "ocaml-bibi" else "");
 
   (* Enable compilation of pa_patoline if pa_ocaml is installed *)
-  Printf.fprintf make "PA_PATOLINE := %s\n" "src/Patoline/pa_patoline";
+  Printf.fprintf make "PA_PATOLINE := %s\n" "src/patobuild/pa_patoline";
 
   (* Tell make which ConfigFindFont (fontconfig or not) should be linked while
    * building Typograhy.cmxa. *)
@@ -726,7 +726,7 @@ let _=
   close_out config0;
 
   let config=open_out "src/Typography/Config.ml" in
-  let config'=open_out "src/Patoline/Config2.ml" in
+  let config'=open_out "src/patobuild/Config2.ml" in
 
       (* Ecriture de la configuration *)
       let conf=if Sys.os_type= "Win32" then (
@@ -793,7 +793,7 @@ let _=
         (* Generate Rules.clean which tells GNUmakefile which files we've
          * generated, and have to be removed. *)
         let rules_clean = open_out "Rules.clean" in
-        Printf.fprintf rules_clean "DISTCLEAN += Rules.clean src/Typography/Config.ml src/Patoline/Config2.ml src/Typography/META src/Makefile.config %s\n"
+        Printf.fprintf rules_clean "DISTCLEAN += Rules.clean src/Typography/Config.ml src/patobuild/Config2.ml src/Typography/META src/Makefile.config %s\n"
         (String.concat " " !driver_generated_metas);
         close_out rules_clean;
 
