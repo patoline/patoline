@@ -14,15 +14,15 @@ $(d)/prefixTree.cmx: $(d)/prefixTree.ml
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(d)/Subsup.cmx $(d)/prefixTree.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -package patutil,decap $(COMPILER_INC) \
+	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -package patutil,decap,compiler-libs \
 		-I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -rectypes -o $@ -c $<
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -package patutil,imagelib,dynlink,str,decap \
-		$(COMPILER_INC) -I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -o $@ \
+	$(Q)$(OCAMLOPT) -package patutil,imagelib,dynlink,str,decap,compiler-libs \
+		-I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -o $@ \
 		bigarray.cmxa unicodelib.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa \
-		str.cmxa $(COMPILER_LIBO) decap.cmxa decap_ocaml.cmxa Config2.cmx \
+		str.cmxa ocamlcommon.cmxa decap.cmxa decap_ocaml.cmxa Config2.cmx \
 		Subsup.cmx prefixTree.cmx $<
 
 CLEAN += $(d)/*.o $(d)/*.cm[iox]

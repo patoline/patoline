@@ -52,8 +52,8 @@ $(ENCODING_CMX): %.cmx: %.cmo
 
 $(PA_CONV): $(d)/pa_convert.ml
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml -o $@ \
-		$(COMPILER_INC) $(COMPILER_LIBO) unix.cmxa str.cmxa \
+	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml \
+		-package compiler-libs -o $@ ocamlcommon.cmxa unix.cmxa str.cmxa \
 		decap.cmxa decap_ocaml.cmxa $<
 
 $(ENCODING_ML): %.ml: $(PA_CONV)
@@ -65,12 +65,12 @@ $(ENCODING_ML): %.ml: $(PA_CONV)
 ### Parsing and data generation for UnicodeData.txt
 $(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml
 	$(ECHO) "[OCAMLC] ... -> $@"
-	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml $(COMPILER_INC)  -c $<
+	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml -package compiler-libs -c $<
 
 $(d)/pa_UnicodeData: $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -linkpkg $(COMPILER_INC)\
-		$(UNICODELIB_INCLUDES) -o $@ $(COMPILER_LIBO) $^
+	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -package compiler-libs -linkpkg \
+		$(UNICODELIB_INCLUDES) -o $@ ocamlcommon.cmxa $^
 
 UNICODE_DATA_TXT := $(d)/data/UnicodeData.txt
 UNICODE_DATABASE := $(d)/UnicodeData.data
