@@ -5,8 +5,9 @@ d := $(if $(d),$(d)/,)$(mod)
 # Useful directories, to be referenced from other Rules.ml
 SRC_DIR := $(d)
 PATOLINE_IN_SRC := $(d)/patobuild/patoline
-PA_PATOLINE_IN_SRC := $(d)/patobuild/pa_patoline
-PATOLINE_DIR := $(d)/patobuild
+PA_PATOLINE_DIR := $(d)/pa_patoline
+PA_PATOLINE_IN_SRC := $(PA_PATOLINE_DIR)/pa_patoline
+PATOBUILD_DIR := $(d)/patobuild
 TYPOGRAPHY_DIR := $(d)/Typography
 RAWLIB_DIR := $(d)/rawlib
 DB_DIR := $(d)/db
@@ -19,8 +20,9 @@ CESURE_DIR := $(d)/cesure
 UNICODE_DIR := $(d)/unicodelib
 
 # Visit subdirectories
-MODULES := unicodelib rbuffer patutil patfonts rawlib db Typography Drivers \
-	Pdf cesure Format $(OCAML_BIBI) plot proof plugins patobuild grammar
+MODULES := unicodelib rbuffer patutil patfonts rawlib db Typography \
+	Drivers Pdf cesure Format $(OCAML_BIBI) plot proof plugins patobuild \
+	grammar pa_patoline
 
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 
