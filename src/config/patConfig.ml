@@ -21,8 +21,10 @@ module Spec = struct
     ; ("extra_grammars_dirs", of_list String extra_grammars_dir)
     ; ("extra_hyphen_dirs"  , of_list String extra_hyphen_dir  )
 
-    ; ("drivers"            , of_list String drivers)
-    ; ("has_patonet"        , of_bool has_patonet   ) ]
+    ; ("drivers"    , of_list String drivers)
+    ; ("has_patonet", of_bool has_patonet   )
+    ; ("max_iter"   , of_int 4              )
+    ; ("user_dir"   , of_string home        ) ]
 
   let name = "Patoline"
   let path = ("/etc/patolinerc", [home ^ "/.patolinerc"; "./patolinerc"])
@@ -36,17 +38,22 @@ type patoconfig =
   ; grammars_dir : string * string list
   ; hyphen_dir   : string * string list
   ; drivers      : string list
-  ; has_patonet  : bool }
+  ; has_patonet  : bool
+  ; max_iter     : int
+  ; user_dir     : string }
 
 let get_patoconfig : unit -> patoconfig = fun () ->
   let cfg = Conf.get_config () in
   let open Data in
   let get_s k = to_string (Config.get k cfg) in
   let get_b k = to_bool (Config.get k cfg) in
+  let get_i k = to_int (Config.get k cfg) in
   let get_l k = to_list String (Config.get k cfg) in
   { fonts_dir    = (get_s "fonts_dir"   , get_l "extra_fonts_dirs"   ) 
   ; plugins_dir  = (get_s "plugins_dir" , get_l "extra_plugins_dirs" )
   ; grammars_dir = (get_s "grammars_dir", get_l "extra_grammars_dirs")
   ; hyphen_dir   = (get_s "hyphen_dir"  , get_l "extra_hyphen_dirs"  )
   ; drivers      = get_l "drivers"
-  ; has_patonet  = get_b "has_patonet" }
+  ; has_patonet  = get_b "has_patonet"
+  ; max_iter     = get_i "max_iter"
+  ; user_dir     = get_s "user_dir" }
