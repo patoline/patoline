@@ -90,10 +90,6 @@ $(d)/DefaultFormat.p.cma: $(DEFAULTFORMAT_ML:.ml=.p.cmo)
 	$(ECHO) "[OPT -p] $<"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -p -a $^
 
-# ocamldep cannot find dependencies on Typography
-$(d)/ParseMainArgs.cmo: $(d)/Typography.cma
-$(d)/ParseMainArgs.cmx: $(d)/Typography.cmxa
-
 # Building everything
 all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.cmxs
 
@@ -109,8 +105,8 @@ DISTCLEAN += $(d)/*.depends $(d)/DefaultFormat/*.depends
 install: install-typography
 .PHONY: install-typography
 
-install-typography: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/Typography.cmxs $(d)/Typography.a \
-$(d)/Typography.cmi $(d)/ParseMainArgs.cmx $(d)/ParseMainArgs.o $(d)/ParseMainArgs.cmi \
+install-typography: $(d)/Typography.cmxa $(d)/Typography.cma \
+	$(d)/Typography.cmxs $(d)/Typography.a $(d)/Typography.cmi \
   $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.cmxs $(d)/DefaultFormat.a $(DEFAULTFORMAT_CMI)
 	install -m 755 -d $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 	install -p -m 644 $^ $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)

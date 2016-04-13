@@ -2007,7 +2007,6 @@ let wrap basename _loc ast =
     open Typography
     open Util
     open Typography.Box
-    open Typography.Config
     open Typography.Document
     open Typography.Maths
     open RawContent

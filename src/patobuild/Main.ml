@@ -161,7 +161,8 @@ module Driver = (val Hashtbl.find DynDriver.drivers driver:Driver:OutputDriver);
   else
     Printf.fprintf where "module Driver = %s;;\n" driver;
 
-  Printf.fprintf where "let _ = ParseMainArgs.parse Driver.filter_options Driver.driver_options\n";
+  Printf.fprintf where
+    "let _ = Arg.parse_argv (Driver.filter_options Sys.argv) (Driver.driver_options @ DefaultFormat.spec) ignore \"Usage :\"\n";
 
   List.iter (fun x->
     Printf.fprintf where "module Patoline_Format%d=%s.Format(D);;\nopen Patoline_Format%d;;\n" !i x !i;
@@ -678,7 +679,7 @@ and patoline_rule objects (builddir:string) (hs:string list) =
                   (let pack=String.concat "," (List.rev (opts.packages)) in
                    if pack<>"" then ["-package";pack] else [])@
                   dirs_@includes_opts source@
-                  ["-shared";"-o";h]@["ParseMainArgs.cmx"]@
+                  ["-shared";"-o";h]@
                   (List.filter (fun f->Filename.check_suffix f ".cmx") objs)@
                   ["-impl";source])
             in

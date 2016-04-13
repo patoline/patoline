@@ -676,8 +676,8 @@ let _=
                                          Package "fontconfig"; Package
                                          "cesure"; Package
                                          "db"]));
-    Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, ParseMainArgs.cmx\"\n";
-    Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cmx, ParseMainArgs.cmo\"\n";
+    Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"\n";
+    Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cmx\"\n";
 
   let check_name file=
     let valid=ref (String.length file>0) in

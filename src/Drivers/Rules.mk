@@ -24,11 +24,11 @@ DRIVERS_WITHOUT_RULES_MK := $(filter-out $(DRIVERS_WITH_RULES_MK),$(DRIVERS_CMXA
 # for cmi race condition
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.cmo
 
-$(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmo): %.cmo: %.ml $(TYPOGRAPHY_DIR)/ParseMainArgs.cmo
+$(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmo): %.cmo: %.ml
 	$(ECHO) "[OCAMLC]    $< -> $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) -o $@ -c $<
 
-$(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.ml $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx
+$(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) -o $@ -c $<
 
