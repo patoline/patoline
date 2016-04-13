@@ -17,7 +17,6 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open ConfigUtil
 open Util
 open Box
 open FTypes
@@ -993,7 +992,7 @@ let make_sqrt env_ style box=
   let (bx0,by0,bx1,by1)=bounding_box_full under in
 
   let f= Fonts.loadFont (
-    findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})
+    Config.findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})
   ) in
   sqrts:=Array.map (fun x->Fonts.loadGlyph f { glyph_utf8="\\sqrt";glyph_index=x })
     [|693;694;695;696;697|];

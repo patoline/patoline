@@ -16,7 +16,7 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-TYPOGRAPHY_MODS:= TypoLanguage FontPattern $(FINDFONT) Config ConfigUtil Distance \
+TYPOGRAPHY_MODS:= TypoLanguage FontPattern $(FINDFONT) Config Distance \
   Offset Box Badness Break Document Complete Maths \
 	OutputDrawing Geometry Proj3d Diagrams ProofTree Verbatim
 

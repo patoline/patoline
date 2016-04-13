@@ -22,9 +22,9 @@ open Typography.Document
 open Typography.Complete
 open FTypes
 open Util
-open Typography.ConfigUtil
 open Fonts
 open Typography.Box
+open DefaultFormat
 
 let _=Random.self_init ()
 

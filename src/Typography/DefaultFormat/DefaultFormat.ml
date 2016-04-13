@@ -23,7 +23,6 @@ open Typography.Complete
 open FTypes
 open Util
 open UsualMake
-open Typography.ConfigUtil
 open Fonts
 open Box
 open Typography.Break
@@ -32,6 +31,10 @@ let _=Random.self_init ()
 module Euler = Euler
 module Numerals = Numerals
 module TOC = TableOfContents
+
+let findFont = Config.findFont
+let findGrammar f = FilenameExtra.findPath f ("." :: (!Config.grammarspath))
+let findHyph f    = FilenameExtra.findPath f ("."::(!Config.hyphenpath))
 
 let sprint_page_number = ref string_of_int
 

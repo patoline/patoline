@@ -128,8 +128,6 @@ open Document
 open Document.Mathematical
 open Maths
 open Util
-open ConfigUtil
-
 
 let compose f g x=f(g x)
 let changeFont l env=
@@ -139,7 +137,7 @@ let changeFont l env=
 let default_env=
     {
       mathsFont=Lazy.from_fun (fun () -> Fonts.loadFont
-        (findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})));
+        (Config.findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})));
       mathsSubst=(fun x->(* List.iter (fun x->Printf.printf "normal : %d\n" x.glyph_index) x; *) x);
       mathsSize=1.;
       numerator_spacing=0.18;

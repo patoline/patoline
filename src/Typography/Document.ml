@@ -18,7 +18,6 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Config
 open Util
 open UsualMake
 open Fonts
