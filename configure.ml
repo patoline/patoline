@@ -104,7 +104,23 @@ let spec =
        "Blacklist a driver (will not be compiled / installed).") ]
 
 let _ =
-  Arg.parse spec ignore "Usage:";
+  Arg.parse spec ignore "Usage:"
+
+(* Generation of config. *)
+let _ =
+  let plist oc l = List.iter (Printf.fprintf oc "%S;") l in
+  let oc = open_out "src/config/patDefault.ml" in
+  Printf.fprintf oc "let fonts_dir          = %S\n" !fonts_dir;
+  Printf.fprintf oc "let plugins_dir        = %S\n" !plugins_dir;
+  Printf.fprintf oc "let grammars_dir       = %S\n" !grammars_dir;
+  Printf.fprintf oc "let hyphen_dir         = %S\n" !hyphen_dir; 
+  Printf.fprintf oc "let extra_fonts_dir    = [%a]\n" plist !fonts_dirs;
+  Printf.fprintf oc "let extra_plugins_dir  = [%a]\n" plist !plugins_dirs;
+  Printf.fprintf oc "let extra_grammars_dir = [%a]\n" plist !grammars_dirs;
+  Printf.fprintf oc "let extra_hyphen_dir   = [%a]\n" plist !hyphen_dirs;
+  close_out oc
+
+let _ =
   fonts_dirs    := !fonts_dir    :: !fonts_dirs;
   grammars_dirs := !grammars_dir :: !grammars_dirs;
   hyphen_dirs   := !hyphen_dir   :: !hyphen_dirs;

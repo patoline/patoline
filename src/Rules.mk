@@ -18,11 +18,12 @@ RBUFFER_DIR := $(d)/rbuffer
 LIBFONTS_DIR := $(d)/patfonts
 CESURE_DIR := $(d)/cesure
 UNICODE_DIR := $(d)/unicodelib
+CONFIG_DIR := $(d)/config
 
 # Visit subdirectories
 MODULES := unicodelib rbuffer patutil patfonts rawlib db Typography \
 	Drivers Pdf cesure Format $(OCAML_BIBI) plot proof plugins patobuild \
-	grammar pa_patoline
+	grammar pa_patoline config
 
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 

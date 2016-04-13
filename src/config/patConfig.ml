@@ -1,16 +1,10 @@
 open ConfigRC
 
-let fc = Filename.concat
-
 let home =
   try Sys.getenv "XDG_DATA_HOME"
   with Not_found -> Sys.getenv "HOME"
 
-let prefix       = "/usr/local"
-let fonts_dir    = fc prefix "share/patoline/fonts"
-let plugins_dir  = fc prefix "lib/patoline/plugins"
-let grammars_dir = fc prefix "lib/patoline/grammars"
-let hyphen_dir   = fc prefix "share/patoline/hyphen"
+include PatDefault
 
 module Spec = struct
   open Data
@@ -22,10 +16,10 @@ module Spec = struct
     ; ("grammars_dir"       , of_string grammars_dir)
     ; ("hyphen_dir"         , of_string grammars_dir)
 
-    ; ("extra_fonts_dirs"   , of_list String []     )
-    ; ("extra_plugins_dirs" , of_list String []     )
-    ; ("extra_grammars_dirs", of_list String []     )
-    ; ("extra_hyphen_dirs"  , of_list String []     ) ]
+    ; ("extra_fonts_dirs"   , of_list String extra_fonts_dir   )
+    ; ("extra_plugins_dirs" , of_list String extra_plugins_dir )
+    ; ("extra_grammars_dirs", of_list String extra_grammars_dir)
+    ; ("extra_hyphen_dirs"  , of_list String extra_hyphen_dir  ) ]
 
   let name = "Patoline"
   let path = ("/etc/patolinerc", [home ^ "/.patolinerc"; "./patolinerc"])
