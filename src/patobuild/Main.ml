@@ -101,6 +101,7 @@ let spec =
     message (Cli Dirs));
    ("--recompile",Arg.Set recompile,message (Cli Recompile));
    ("--no-grammar",Arg.Unit (fun ()-> extras_pp := ["--no-default-grammar"] :: !extras_pp), message (Cli No_grammar));
+   ("--position-from-parser",Arg.Unit (fun ()-> extras_pp := ["--position-from-parser"] :: !extras_pp), "");
    ("--format",Arg.String
      (fun f ->formats := Filename.basename f:: !formats), message (Cli Format));
    ("--dynlink",Arg.Unit(fun () -> dynlink:=true),message (Cli Dynlink));

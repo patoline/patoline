@@ -545,14 +545,13 @@ let default_config =
 type config = EatR | EatL | Name of string list * string | Syntax of arg_config list
 
 
-let real_name id cs =
+let real_name _loc id cs =
   let rec find_name : config list -> string list * string = function
     | []               -> raise Not_found
     | Name(mp,id) :: _ -> (mp,id)
     | _ :: cs          -> find_name cs
   in
   let (mp, mid) = try find_name cs with Not_found -> ([], id) in
-  let _loc = Location.none in
   (* FIXME: this is not exactly what we want *)
   List.fold_left (fun acc m -> <:expr<$uid:m$.($acc$)>>) <:expr<$lid:mid$>> mp
 
@@ -1508,7 +1507,7 @@ let parser math_aux prio =
      let config = try List.assoc id state.math_macros with Not_found -> [] in
      args:(macro_arguments id Math config) ->
      (fun indices ->
-       let m = real_name id config in
+       let m = real_name _loc id config in
        (* TODO special macro properties to be handled. *)
        let apply acc arg = <:expr<$acc$ $arg$>> in
        let e = List.fold_left apply <:expr<$m$>> args in
