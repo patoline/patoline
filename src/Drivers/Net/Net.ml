@@ -208,8 +208,10 @@ function gotoSlide(n){
   ) imgs;
   Printf.fprintf o "]\n";
 *)
-  let patonet=
-    let paths = [ Config0.pluginsdir; "." ] in
+  let patonet =
+    let open PatConfig in
+    let cfg = get_patoconfig () in
+    let paths = "." :: (snd cfg.plugins_dir) in
     let pato = FilenameExtra.findPath "patonet.c" paths in
     let patof=open_in pato in
     let s=Bytes.create (in_channel_length patof) in

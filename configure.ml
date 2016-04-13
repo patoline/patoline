@@ -106,20 +106,6 @@ let spec =
 let _ =
   Arg.parse spec ignore "Usage:"
 
-(* Generation of config. *)
-let _ =
-  let plist oc l = List.iter (Printf.fprintf oc "%S;") l in
-  let oc = open_out "src/config/patDefault.ml" in
-  Printf.fprintf oc "let fonts_dir          = %S\n" !fonts_dir;
-  Printf.fprintf oc "let plugins_dir        = %S\n" !plugins_dir;
-  Printf.fprintf oc "let grammars_dir       = %S\n" !grammars_dir;
-  Printf.fprintf oc "let hyphen_dir         = %S\n" !hyphen_dir; 
-  Printf.fprintf oc "let extra_fonts_dir    = [%a]\n" plist !fonts_dirs;
-  Printf.fprintf oc "let extra_plugins_dir  = [%a]\n" plist !plugins_dirs;
-  Printf.fprintf oc "let extra_grammars_dir = [%a]\n" plist !grammars_dirs;
-  Printf.fprintf oc "let extra_hyphen_dir   = [%a]\n" plist !hyphen_dirs;
-  close_out oc
-
 let _ =
   fonts_dirs    := !fonts_dir    :: !fonts_dirs;
   grammars_dirs := !grammars_dir :: !grammars_dirs;
@@ -737,14 +723,7 @@ let _=
   ) patoline_drivers;
   close_out meta;
 
-  let config0 = open_out "src/rawlib/Config0.ml" in
-  Printf.fprintf config0 "let pluginsdir = %S\n" !plugins_dir;
-  close_out config0;
-
   let config=open_out "src/Typography/Config.ml" in
-  let config'=open_out "src/patobuild/Config2.ml" in
-
-      (* Ecriture de la configuration *)
       let conf=if Sys.os_type= "Win32" then (
         let path_var="PATOLINE_PATH" in
         Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\nlet path=try Sys.getenv %S with _->\"\"\n(** Chemin des polices de caractères *)\nlet fontsdir=%S\nlet fontspath=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=%S\nlet grammarspath=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=%S\nlet hyphenpath=ref [%s]\n(** Chemin des plugins de compilation *)\nlet driverdir=[%S]\nlet pluginsdir=%S\nlet pluginspath=ref [%s]\nlet local_path:string list ref=ref []\nlet user_dir=(try Filename.concat (Sys.getenv \"APPDATA\") \"patoline\" with Not_found->\"\")\n"
@@ -777,39 +756,12 @@ let _=
         Printf.fprintf config "(** Module used to query font paths *)\nlet findFont=%s.findFont fontspath\n" (if ocamlfind_has "fontconfig" then "ConfigFindFontFC" else "ConfigFindFontLeg");
 	Printf.fprintf config "let atmost = ref 3\nlet input_bin = ref (None : string option) (* if Some str, the file a a .bin that should be read instead of producing the structure/pages *)\nlet driver=ref (None:string option)\n";
 
-        Printf.fprintf config' "%slet has_patonet = %b\nlet drivers = [\"%s\"]\n"
-	  conf has_patonet
-	  (String.concat "\"; \"" (List.map (fun d -> d.name) ok_drivers));
-
         close_out config;
-        close_out config';
 
-        (*
-        let _=
-          if Sys.os_type="Unix" then (
-            let i=Unix.open_process_in "uname" in
-            let uname=input_line i in
-            close_in i;
-            let o=open_out "Accessoires/Rules.mk" in
-            if uname="Darwin" then (
-              Printf.fprintf o "d := $(if $(d),$(d)/,)$(mod)\n";
-              Printf.fprintf o "all:$(d)/patomote\n";
-              Printf.fprintf o "$(d)/patomote:$(d)/patomote_macos.m\n";
-              Printf.fprintf o "\tgcc -o $@ -framework cocoa -framework iokit $<\n";
-              Printf.fprintf o "install:\n";
-              Printf.fprintf o "\tinstall -m 755 $(d)/patomote $(DESTDIR)/$(INSTALL_BIN_DIR)\n"
-            ) else (
-            );
-            close_out o;
-          ) else (
-
-          )
-        in
-        *)
         (* Generate Rules.clean which tells GNUmakefile which files we've
          * generated, and have to be removed. *)
         let rules_clean = open_out "Rules.clean" in
-        Printf.fprintf rules_clean "DISTCLEAN += Rules.clean src/Typography/Config.ml src/patobuild/Config2.ml src/Typography/META src/Makefile.config %s\n"
+        Printf.fprintf rules_clean "DISTCLEAN += Rules.clean src/Typography/Config.ml src/Typography/META src/Makefile.config %s\n"
         (String.concat " " !driver_generated_metas);
         close_out rules_clean;
 
@@ -822,4 +774,23 @@ And optionally
 	make doc
 	make check
 
-"
+";
+
+  (* Generation of config. *)
+  let open Printf in
+  let plist oc l = List.iter (fprintf oc "%S;") l in
+  let oc = open_out "src/config/patDefault.ml" in
+  fprintf oc "let fonts_dir          = %S\n" !fonts_dir;
+  fprintf oc "let plugins_dir        = %S\n" !plugins_dir;
+  fprintf oc "let grammars_dir       = %S\n" !grammars_dir;
+  fprintf oc "let hyphen_dir         = %S\n" !hyphen_dir; 
+  fprintf oc "let extra_fonts_dir    = [%a]\n" plist (List.tl !fonts_dirs);
+  fprintf oc "let extra_plugins_dir  = [%a]\n" plist (List.tl !plugins_dirs);
+  fprintf oc "let extra_grammars_dir = [%a]\n" plist (List.tl !grammars_dirs);
+  fprintf oc "let extra_hyphen_dir   = [%a]\n" plist (List.tl !hyphen_dirs);
+  let drivers = List.map (fun d -> d.name) ok_drivers in
+  fprintf oc "let drivers            =\n  [%a]\n" plist drivers;
+  fprintf oc "let has_patonet        = %b\n" has_patonet;
+  close_out oc
+
+

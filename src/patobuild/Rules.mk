@@ -2,13 +2,12 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-PATOBUILD_INCLUDES := -I $(d) $(PACK_PATOBUILD)
-PATOBUILD_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PATOBUILD)
+PATOBUILD_INCLUDES := -I $(d) $(PACK_PATOBUILD) -I $(CONFIG_DIR)
+PATOBUILD_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PATOBUILD) -I $(CONFIG_DIR)
 $(d)/%.depends: INCLUDES += $(PATOBUILD_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATOBUILD_INCLUDES)
 
-PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx \
-	$(d)/Config2.cmx $(d)/Main.cmx
+PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx $(d)/Main.cmx
 
 # $(PAT_CMX): OCAMLOPT := $(OCAMLOPT_NOINTF)
 $(PAT_CMX): %.cmx: %.cmo
@@ -24,11 +23,11 @@ endif
 
 all: $(d)/patoline
 
-$(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
+$(d)/patoline: $(CONFIG_DIR)/patoconfig.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -o $@ $(PATOBUILD_INCLUDES),threads -thread \
+	$(Q)$(OCAMLOPT) -o $@ $(PATOBUILD_INCLUDES) -I +threads -thread \
 		dynlink.cmxa patutil.cmxa str.cmxa unix.cmxa rbuffer.cmxa \
-		unicodelib.cmxa threads.cmxa $(PAT_CMX)
+		unicodelib.cmxa threads.cmxa patoconfig.cmxa $(PAT_CMX)
 
 PATOBUILD_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 
@@ -36,7 +35,7 @@ $(EDITORS_DIR)/emacs/Subsup.el $(d)/Subsup.ml: $(d)/UnicodeData.txt $(d)/Unicode
 	$(ECHO) "[UNIC]   $< -> $@ $(EDITORS_DIR)/emacs/Subsup.el"
 	$(Q)$(PATOBUILD_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/Subsup.el
 
-$(d)/Main.cmx: $(d)/Main.ml
+$(d)/Main.cmx: $(d)/Main.ml $(CONFIG_DIR)/patoconfig.cmxa
 	$(ECHO) "[OPT]    $<"
 	$(Q)$(OCAMLOPT) -thread -rectypes -I +threads $(OFLAGS) $(PATOBUILD_INCLUDES) -o $@ -c $<
 

@@ -18,7 +18,7 @@ endif
 endif
 
 # Building
-RAWLIB_MODS:= Config0 Color Bezier RawContent Driver DynDriver
+RAWLIB_MODS:= Color Bezier RawContent Driver DynDriver
 
 RAWLIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(RAWLIB_MODS)))
 
@@ -49,7 +49,7 @@ all: $(d)/rawlib.cmxa $(d)/rawlib.cma $(d)/rawlib.cmxs
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs
 
-DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/Config0.ml
+DISTCLEAN += $(wildcard $(d)/*.depends)
 
 # Installing
 install: install-rawlib

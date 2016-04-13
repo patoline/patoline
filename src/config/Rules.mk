@@ -27,7 +27,7 @@ $(d)/patDefault.cmo: $(d)/patDefault.ml
 
 $(d)/patDefault.cmx: $(d)/patDefault.ml
 	$(ECHO) "[OPT]    $^ -> $@"
-	$(Q)$(OCAMLC) -I $(CONFIG_DIR) -c -o $@ $<
+	$(Q)$(OCAMLOPT) -I $(CONFIG_DIR) -c -o $@ $<
 
 $(d)/patConfig.cmo: $(d)/patConfig.ml $(d)/patDefault.cmo $(d)/configRC.cmi $(d)/patConfig.cmi
 	$(ECHO) "[OCAMLC] $^ -> $@"
@@ -39,15 +39,25 @@ $(d)/patConfig.cmx: $(d)/patConfig.ml $(d)/patDefault.cmx $(d)/configRC.cmx $(d)
 
 $(d)/patoconfig.cma: $(d)/configRC.cmo $(d)/patDefault.cmo $(d)/patConfig.cmo
 	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLC) -I $(CONFIG_DIR) -a -o $@ $<
+	$(Q)$(OCAMLC) -I $(CONFIG_DIR) -a -o $@ $^
 
 $(d)/patoconfig.cmxa: $(d)/configRC.cmx $(d)/patDefault.cmx $(d)/patConfig.cmx
 	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLOPT) -I $(CONFIG_DIR) -a -o $@ $<
+	$(Q)$(OCAMLOPT) -I $(CONFIG_DIR) -a -o $@ $^
 
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs
 DISTCLEAN += $(d)/patDefault.ml
+
+# Installing
+install: install-config
+.PHONY: install-unicodelib
+
+CMFILES := $(wildcard $(d)/*.cm[iox]) $(wildcard $(d)/*.mli)
+
+install-config: $(d)/patoconfig.cma $(d)/patoconfig.cmxa $(CMFILES)
+	install -m 755 -d $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
+	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

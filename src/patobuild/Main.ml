@@ -17,9 +17,14 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-(* let amble=ref Generateur.Main *)
 
 open BuildDir
+open PatConfig
+
+(* Obtain the configuration. *)
+let cfg = get_patoconfig ()
+
+let local_path = ref []
 
 let output=ref ""
 let files=ref []
@@ -45,10 +50,10 @@ let main_ml=ref false
 let edit_link=ref false
 let shortDrivers = List.map (fun name ->
   let len = String.length name in
-  if len > 6 && String.sub name 0 6 = "Driver" then String.sub name 6 (len - 6) else name) Config2.drivers
+  if len > 6 && String.sub name 0 6 = "Driver" then String.sub name 6 (len - 6) else name) cfg.drivers
 let aliasDriver=
   List.filter (fun (c, c') -> c <> c')
-  (List.combine shortDrivers Config2.drivers)
+  (List.combine shortDrivers cfg.drivers)
 
 (* Regexp for pragma-style things. *)
 let set_format   = Str.regexp "^[ \t(*]*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
@@ -94,10 +99,7 @@ let spec =
     message (Cli No_build_dir));
    ("--main-ml",Arg.Set main_ml, message (Cli MainMl));
    ("--ml",Arg.Tuple [Arg.Clear compile; Arg.Clear run], message (Cli Ml));
-   ("-I",Arg.String (fun x->
-     Config2.local_path:=x::(!Config2.local_path);
-     Config2.grammarspath:=x::(!Config2.grammarspath);
-     dirs := x :: !dirs),
+   ("-I",Arg.String (fun x-> local_path := x :: !local_path; dirs := x :: !dirs),
     message (Cli Dirs));
    ("--recompile",Arg.Set recompile,message (Cli Recompile));
    ("--no-grammar",Arg.Unit (fun ()-> extras_pp := ["--no-default-grammar"] :: !extras_pp), message (Cli No_grammar));
@@ -266,7 +268,7 @@ let add_format opts =
         format<>"DefaultFormat" &&
         List.mem format default_formats &&
         (try
-           let _=findPath (format ^ ".ml") (".":: !Config2.local_path) in
+           let _=findPath (format ^ ".ml") (".":: !local_path) in
            false
          with _->true)
       then
@@ -279,7 +281,7 @@ let add_format opts =
   let packages=
     (if (not (List.mem ("Typography." ^ opts.driver) opts.packages)) &&
         (try
-           let _=findPath (opts.driver ^ ".ml") (".":: !Config.local_path) in
+           let _=findPath (opts.driver ^ ".ml") (".":: !local_path) in
            false
          with _->true)
      then
@@ -325,14 +327,14 @@ let rec read_options_from_source_file f fread =
       in
       let name=
         try
-          let name=FilenameExtra.findPath (chg_ext n ".ml") ("."::!Config2.local_path) in
+          let name=FilenameExtra.findPath (chg_ext n ".ml") ("." :: !local_path) in
           let objects=(Mutex.create (), ref StrMap.empty) in
           Build.build_with_rule (patoline_rule objects) (Dynlink.adapt_filename (chg_ext name ".cmo")::f);
           Dynlink.adapt_filename (chg_ext name ".cmo")
         with
             No_matching_path _->FilenameExtra.findPath
               (Dynlink.adapt_filename (chg_ext n ".cmo"))
-              !Config2.pluginspath
+              ((fst cfg.plugins_dir) :: (snd cfg.plugins_dir))
       in
       let m,n=dynlinked in
       Mutex.lock m;
@@ -750,7 +752,7 @@ and patoline_rule objects (builddir:string) (hs:string list) =
                     comp_opts@
                     (let pack=String.concat ","
                        ((if !dynlink then ["dynlink"] else ["dynlink";"Typography."^opts.driver])@
-                           (if Config2.has_patonet && not (Filename.check_suffix h ".cmxs") then "cryptokit" else "")::
+                           (if cfg.has_patonet && not (Filename.check_suffix h ".cmxs") then "cryptokit" else "")::
                            List.rev opts.packages) in
                      if pack<>"" then ["-package";pack] else [])@
                     dirs_@includes_opts source@
@@ -873,13 +875,13 @@ let _ =
             Mutex.lock Build.mstdout;
             (match Sys.argv.(2) with
                 "fonts"->
-                  Printf.fprintf stdout "%s\n%!" Config2.fontsdir
+                  Printf.fprintf stdout "%s\n%!" (fst cfg.fonts_dir)
               | "plugins"->
-                Printf.fprintf stdout "%s\n%!" Config2.pluginsdir
+                Printf.fprintf stdout "%s\n%!" (fst cfg.plugins_dir)
               | "grammars"->
-                Printf.fprintf stdout "%s\n%!" Config2.grammarsdir
+                Printf.fprintf stdout "%s\n%!" (fst cfg.grammars_dir)
               | "hyphens"->
-                Printf.fprintf stdout "%s\n%!" Config2.hyphendir
+                Printf.fprintf stdout "%s\n%!" (fst cfg.hyphen_dir)
               | _->(
                 Mutex.unlock Build.mstdout;
                 Mutex.lock Build.mstderr;
