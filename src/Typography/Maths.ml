@@ -992,7 +992,7 @@ let make_sqrt env_ style box=
   let (bx0,by0,bx1,by1)=bounding_box_full under in
 
   let f= Fonts.loadFont (
-    Config.findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})
+    ConfigFindFont.findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})
   ) in
   sqrts:=Array.map (fun x->Fonts.loadGlyph f { glyph_utf8="\\sqrt";glyph_index=x })
     [|693;694;695;696;697|];

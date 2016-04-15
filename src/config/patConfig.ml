@@ -42,8 +42,10 @@ type patoconfig =
   ; mutable max_iter     : int
   ; mutable user_dir     : string }
 
+let debug = false
+
 let patoconfig : patoconfig =
-  let _ = Printf.eprintf "########## patoconfig creation !\n%!" in
+  if debug then Printf.eprintf "########## patoconfig creation !\n%!";
   let cfg = Conf.get_config () in
   let open Data in
   let get_s k = to_string (Config.get k cfg) in
@@ -62,8 +64,8 @@ let patoconfig : patoconfig =
 exception File_not_found of string
 
 let findPath (path, paths) fname =
-  Printf.eprintf "########## Looking for %S in:\n%!" fname;
-  List.iter (Printf.eprintf " - %S\n%!") (path :: paths);
+  if debug then Printf.eprintf "########## Looking for %S in:\n%!" fname;
+  if debug then List.iter (Printf.eprintf " - %S\n%!") (path :: paths);
   let rec find = function
     | []    -> raise (File_not_found fname)
     | p::ps -> let path = Filename.concat p fname in
@@ -76,21 +78,21 @@ let findGrammar fn = findPath patoconfig.grammars_dir fn
 let findHyphen  fn = findPath patoconfig.hyphen_dir fn
 
 let add_fonts_dir d =
-  Printf.eprintf "########## Adding fonts dir %S\n%!" d;
+  if debug then Printf.eprintf "########## Adding fonts dir %S\n%!" d;
   let (p, ps) = patoconfig.fonts_dir in
   patoconfig.fonts_dir <- (p, ps @ [d])
 
 let add_plugins_dir d =
-  Printf.eprintf "########## Adding plugins dir %S\n%!" d;
+  if debug then Printf.eprintf "########## Adding plugins dir %S\n%!" d;
   let (p, ps) = patoconfig.plugins_dir in
   patoconfig.plugins_dir <- (p, ps @ [d])
 
 let add_grammars_dir d =
-  Printf.eprintf "########## Adding grammars dir %S\n%!" d;
+  if debug then Printf.eprintf "########## Adding grammars dir %S\n%!" d;
   let (p, ps) = patoconfig.grammars_dir in
   patoconfig.grammars_dir <- (p, ps @ [d])
 
 let add_hyphen_dir d =
-  Printf.eprintf "########## Adding hyphen dir %S\n%!" d;
+  if debug then Printf.eprintf "########## Adding hyphen dir %S\n%!" d;
   let (p, ps) = patoconfig.hyphen_dir in
   patoconfig.hyphen_dir <- (p, ps @ [d])

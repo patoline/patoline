@@ -150,7 +150,7 @@ module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"]
 
   let i=ref 0 in
   if dynlink then
-    Printf.fprintf where "let driver = match !Config.driver with
+    Printf.fprintf where "let driver = match !Driver.driver with
   None -> %S
 | Some s -> s
 let _ = DynDriver.load_driver driver
@@ -258,7 +258,7 @@ let last_options_used file=
 let default_formats =
   [ "FormatArticle" ; "FormatLetter" ; "FormatLivre" ; "FormatMemoire"
   ; "FormatSlides" ; "FormatThese" ; "FormatWeb" ; "Interactive"
-  ; "LMFormat.ml" ]
+  ; "LMFormat" ]
 
 let add_format opts =
   let packages=

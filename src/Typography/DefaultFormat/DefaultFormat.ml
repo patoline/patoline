@@ -34,7 +34,7 @@ module Euler = Euler
 module Numerals = Numerals
 module TOC = TableOfContents
 
-let findFont = Config.findFont
+let findFont = ConfigFindFont.findFont
 
 let sprint_page_number = ref string_of_int
 let max_iterations     = ref patoconfig.max_iter

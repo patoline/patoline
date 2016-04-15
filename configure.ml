@@ -720,16 +720,11 @@ let _=
   ) patoline_drivers;
   close_out meta;
 
-  let config = open_out "src/Typography/Config.ml" in
-  Printf.fprintf config "let findFont  = ConfigFindFont%s.findFont\n"
-    (if ocamlfind_has "fontconfig" then "FC" else "Leg");
-  close_out config;
-
   (* Rules.clean tells GNUmakefile which files have been generated. *)
   let clean = open_out "Rules.clean" in
   let metas = String.concat " " !driver_generated_metas in
-  Printf.fprintf clean "DISTCLEAN += Rules.clean src/Typography/Config.ml ";
-  Printf.fprintf clean "src/Typography/META src/Makefile.config %s\n" metas;
+  Printf.fprintf clean "DISTCLEAN += Rules.clean src/Typography/META ";
+  Printf.fprintf clean "src/Makefile.config %s\n" metas;
   close_out clean;
 
   (* Generation of config. *)

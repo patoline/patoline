@@ -16,7 +16,7 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-TYPOGRAPHY_MODS:= TypoLanguage FontPattern $(FINDFONT) Config Distance \
+TYPOGRAPHY_MODS:= TypoLanguage FontPattern ConfigFindFont Distance \
   Offset Box Badness Break Document Complete Maths \
 	OutputDrawing Geometry Proj3d Diagrams ProofTree Verbatim
 
@@ -34,6 +34,10 @@ $(TYPOGRAPHY_CMX): %.cmx: %.cmo
 
 $(TYPOGRAPHY_CMI:.cmi=.cmo): %.cmo: %.cmi
 $(TYPOGRAPHY_CMI:.cmi=.cmx): %.cmx: %.cmi
+
+$(d)/ConfigFindFont.ml: $(d)/ConfigFindFont/$(FINDFONT).ml
+	$(ECHO) "[CP]     $< -> $@"
+	$(Q)cp $< $@
 
 $(d)/Typography.cmo: $(TYPOGRAPHY_CMO)
 	$(ECHO) "[PACK]   ... -> $@"
@@ -94,12 +98,12 @@ $(d)/DefaultFormat.p.cma: $(DEFAULTFORMAT_ML:.ml=.p.cmo)
 all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.cmxs
 
 # Cleaning
-CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.a $(d)/*.cmxs \
-  $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o \
-  $(d)/DefaultFormat/*.cmo $(d)/DefaultFormat/*.cmx $(d)/DefaultFormat/*.cmi $(d)/DefaultFormat/*.o \
-  $(d)/_tags
+CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.a $(d)/*.cmxs $(d)/*.cmo $(d)/*.cmx \
+	$(d)/*.cmi $(d)/*.o $(d)/DefaultFormat/*.cmo $(d)/DefaultFormat/*.cmx \
+ 	$(d)/DefaultFormat/*.cmi $(d)/DefaultFormat/*.o $(d)/_tags
 
-DISTCLEAN += $(d)/*.depends $(d)/DefaultFormat/*.depends
+DISTCLEAN += $(d)/*.depends $(d)/DefaultFormat/*.depends \
+	$(d)/ConfigFindFont.ml $(d)/ConfigFindFont/*.depends
 
 # Installing
 install: install-typography
