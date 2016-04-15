@@ -515,7 +515,6 @@ module Format=functor (D:Document.DocumentStructure)->(
       type output={
         format:float*float;
       }
-      let max_iterations=ref !Config.atmost
       let outputParams=
         {
           format=slidew,slideh;
@@ -782,7 +781,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           let layout_final,env_final=typeset_structure [] tree (empty_frame,[]) env0 in
 
           Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
-          if comp_i < !max_iterations-1 && !reboot then (
+          if comp_i < !DefaultFormat.max_iterations-1 && !reboot then (
             resolve (comp_i+1) (reset_counters env_final)
           ) else (
             (* Dessin du menu en haut de l'écran *)
@@ -1097,7 +1096,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
             in
 
 	    let pages, structure =
-	      match !Config.input_bin with
+	      match !Driver.input_bin with
 		None ->
 		  let pages=Array.mapi draw_slide (Array.of_list (List.rev !slides)) in
 		  let str=match make_structure pages structure with

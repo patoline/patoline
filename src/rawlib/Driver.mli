@@ -48,3 +48,6 @@ val output_to_prime : (?structure:structure -> page array -> 'b -> 'c)
 val output_from_prime :
   (?structure:structure -> 'a array array -> 'b -> 'c) ->
   ?structure:structure -> 'a array -> 'b -> 'c
+
+val input_bin : string option ref
+val driver : string option ref

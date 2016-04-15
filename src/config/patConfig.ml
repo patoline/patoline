@@ -1,20 +1,20 @@
 open ConfigRC
 
-let home =
-  try Sys.getenv "XDG_DATA_HOME"
-  with Not_found -> Sys.getenv "HOME"
-
-include PatDefault
-
 module Spec = struct
   open Data
+
+  include PatDefault
+
+  let home =
+    try Sys.getenv "XDG_DATA_HOME"
+    with Not_found -> Sys.getenv "HOME"
 
   (* Default Patoline configuration. *)
   let spec =
     [ ("fonts_dir"          , of_string fonts_dir   )
     ; ("plugins_dir"        , of_string plugins_dir )
     ; ("grammars_dir"       , of_string grammars_dir)
-    ; ("hyphen_dir"         , of_string grammars_dir)
+    ; ("hyphen_dir"         , of_string hyphen_dir  )
 
     ; ("extra_fonts_dirs"   , of_list String extra_fonts_dir   )
     ; ("extra_plugins_dirs" , of_list String extra_plugins_dir )
@@ -33,16 +33,17 @@ end
 module Conf = Make(Spec)
 
 type patoconfig =
-  { fonts_dir    : string * string list
-  ; plugins_dir  : string * string list
-  ; grammars_dir : string * string list
-  ; hyphen_dir   : string * string list
-  ; drivers      : string list
-  ; has_patonet  : bool
-  ; max_iter     : int
-  ; user_dir     : string }
+  { mutable fonts_dir    : string * string list
+  ; mutable plugins_dir  : string * string list
+  ; mutable grammars_dir : string * string list
+  ; mutable hyphen_dir   : string * string list
+  ; mutable drivers      : string list
+  ; mutable has_patonet  : bool
+  ; mutable max_iter     : int
+  ; mutable user_dir     : string }
 
-let get_patoconfig : unit -> patoconfig = fun () ->
+let patoconfig : patoconfig =
+  let _ = Printf.eprintf "########## patoconfig creation !\n%!" in
   let cfg = Conf.get_config () in
   let open Data in
   let get_s k = to_string (Config.get k cfg) in
@@ -57,3 +58,39 @@ let get_patoconfig : unit -> patoconfig = fun () ->
   ; has_patonet  = get_b "has_patonet"
   ; max_iter     = get_i "max_iter"
   ; user_dir     = get_s "user_dir" }
+
+exception File_not_found of string
+
+let findPath (path, paths) fname =
+  Printf.eprintf "########## Looking for %S in:\n%!" fname;
+  List.iter (Printf.eprintf " - %S\n%!") (path :: paths);
+  let rec find = function
+    | []    -> raise (File_not_found fname)
+    | p::ps -> let path = Filename.concat p fname in
+               if Sys.file_exists path then path else find ps
+  in find (List.rev (path :: paths))
+
+let findFont    fn = findPath patoconfig.fonts_dir fn
+let findPlugin  fn = findPath patoconfig.plugins_dir fn
+let findGrammar fn = findPath patoconfig.grammars_dir fn
+let findHyphen  fn = findPath patoconfig.hyphen_dir fn
+
+let add_fonts_dir d =
+  Printf.eprintf "########## Adding fonts dir %S\n%!" d;
+  let (p, ps) = patoconfig.fonts_dir in
+  patoconfig.fonts_dir <- (p, ps @ [d])
+
+let add_plugins_dir d =
+  Printf.eprintf "########## Adding plugins dir %S\n%!" d;
+  let (p, ps) = patoconfig.plugins_dir in
+  patoconfig.plugins_dir <- (p, ps @ [d])
+
+let add_grammars_dir d =
+  Printf.eprintf "########## Adding grammars dir %S\n%!" d;
+  let (p, ps) = patoconfig.grammars_dir in
+  patoconfig.grammars_dir <- (p, ps @ [d])
+
+let add_hyphen_dir d =
+  Printf.eprintf "########## Adding hyphen dir %S\n%!" d;
+  let (p, ps) = patoconfig.hyphen_dir in
+  patoconfig.hyphen_dir <- (p, ps @ [d])

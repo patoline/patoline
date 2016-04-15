@@ -22,15 +22,20 @@ $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/Typography.c
 	$(Q)$(OCAMLOPT_NOINTF) -intf-suffix .mli $(PACK_FORMAT) -c -o $@ -impl $<
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
-  $(RBUFFER_DIR)/rbuffer.cmxa \
-  $(UTIL_DIR)/patutil.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
+  $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa \
+	$(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
   $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOPP) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) -I $(<D) -I $(DRIVERS_DIR)/Pdf Pdf.cmxa $(CESURE_DIR)/cesure.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
+	$(Q)$(OCAMLOPT_NOPP) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) -I $(<D) \
+		-I $(DRIVERS_DIR)/Pdf -I $(CONFIG_DIR) \
+		rbuffer.cmxa sqlite3.cmxa unicodelib.cmxa patutil.cmxa fonts.cmxa \
+		zip.cmxa bigarray.cmxa imagelib.cmxa dynlink.cmxa rawlib.cmxa \
+		patoconfig.cmxa unix.cmxa Typography.cmxa Pdf.cmxa cesure.cmxa \
+		DefaultFormat.cmxa -o $@ $(@:.tmx=.cmx) -impl $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) $(HYPHENATION_DIR)/hyph-en-us.hdict
 	$(ECHO) "[TMX]    $< -> $@"
-	$(Q)$< --extra-fonts-dir $(FONTS_DIR) --unicode-data $(UNICODE_DIR)/UnicodeData.data --extra-hyph-dir $(HYPHENATION_DIR) --extra-driver-dir $(DRIVERS_DIR)/Pdf --driver Pdf
+	$(Q)$< --extra-fonts-dir $(FONTS_DIR) --extra-hyph-dir $(HYPHENATION_DIR) --driver Pdf
 
 # Cleaning
 CLEAN += $(d)/DefaultGrammar.tgx $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.ttml \

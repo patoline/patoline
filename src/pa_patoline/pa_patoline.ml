@@ -891,8 +891,7 @@ let parser all_right_delimiter =
 let before_parse_hook () =
   In.before_parse_hook ();
   let open PatConfig in
-  let cfg = get_patoconfig () in
-  let (gpath, gpaths) = cfg.grammars_dir in
+  let (gpath, gpaths) = patoconfig.grammars_dir in
   let path = "." :: "_patobuild" :: gpath :: gpaths in
   let add_grammar g =
     if !no_default_grammar && g = "DefaultGrammar" then () else

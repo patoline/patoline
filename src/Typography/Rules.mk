@@ -2,8 +2,8 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-TYPOGRAPHY_INCLUDES := -I $(d) $(PACK_TYPOGRAPHY)
-TYPOGRAPHY_DEPS_INCLUDES := -I $(d) -I $(d)/DefaultFormat $(DEPS_PACK_TYPOGRAPHY)
+TYPOGRAPHY_INCLUDES := -I $(d) $(PACK_TYPOGRAPHY) -I $(CONFIG_DIR)
+TYPOGRAPHY_DEPS_INCLUDES := -I $(d) -I $(d)/DefaultFormat $(DEPS_PACK_TYPOGRAPHY) -I $(CONFIG_DIR)
 
 # Compute ML files dependencies
 $(d)/%.depends $(wildcard $(d)/*/%.depends): INCLUDES:=$(TYPOGRAPHY_DEPS_INCLUDES)

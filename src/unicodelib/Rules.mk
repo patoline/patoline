@@ -37,7 +37,7 @@ endif
 ### Generation of the configuration file
 $(d)/UnicodeLibConfig.ml:
 	$(ECHO) "[CONF]   ... -> $@"
-	$(Q) echo 'let datafile = ref "$(INSTALL_UNICODELIB_DIR)/UnicodeData.data"' > $@
+	$(Q) echo 'let datafile = "$(INSTALL_UNICODELIB_DIR)/UnicodeData.data"' > $@
 ###
 
 ### To be used at build time to generate 8bit-enconding to UTF-X converters

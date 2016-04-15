@@ -20,12 +20,14 @@
 open Typography
 open Typography.Document
 open Typography.Complete
+open Typography.Break
 open FTypes
 open Util
 open UsualMake
 open Fonts
 open Box
-open Typography.Break
+open PatConfig
+
 let _=Random.self_init ()
 
 module Euler = Euler
@@ -33,31 +35,26 @@ module Numerals = Numerals
 module TOC = TableOfContents
 
 let findFont = Config.findFont
-let findGrammar f = FilenameExtra.findPath f ("." :: (!Config.grammarspath))
-let findHyph f    = FilenameExtra.findPath f ("."::(!Config.hyphenpath))
-
-let spec = [
-("--extra-fonts-dir",Arg.String (fun x->Config.fontspath:=x::(!Config.fontspath)),
- "Adds directories to the font search path");
-("--extra-driver-dir",Arg.String (fun x->Config.driverdir:=x::(!Config.driverdir)),
- "Adds directories to the driver search path");
-("--extra-hyph-dir",Arg.String (fun x->Config.hyphenpath:=x::(!Config.hyphenpath)),
- "Adds directories to the search path for hyphenation dictionaries");
-("--extra-plugins-dir",Arg.String (fun x->Config.pluginspath:=x::(!Config.pluginspath)), 
- "Adds directories to the plugins search path");
-("--unicode-data",Arg.String (fun x->UnicodeLibConfig.datafile:=x), 
- "Specify the file where to find unicode data");
-("-I",Arg.String (fun x->Config.local_path:=x::(!Config.local_path)),
- "Adds directories to the font search path");
-("--at-most",Arg.Int (fun x->Config.atmost:=x),
- "Compile at most n times");
-("--in",Arg.String (fun x->Config.input_bin := Some x),
- "input a .bin file instead of generating pages");
-("--driver",Arg.String (fun x->Config.driver := Some x),
- "specify a driver to dynlink");
-]
 
 let sprint_page_number = ref string_of_int
+let max_iterations     = ref patoconfig.max_iter
+
+let spec =
+  [ ( "--extra-fonts-dir"  , Arg.String add_fonts_dir
+    , "Adds directories to the font search path")
+  ; ( "--extra-hyph-dir"   , Arg.String add_hyphen_dir
+    , "Adds directories to the search path for hyphenation dictionaries")
+  ; ( "--extra-plugins-dir", Arg.String add_plugins_dir
+    , "Adds directories to the plugins search path")
+  ;
+
+("--at-most",Arg.Int (fun x->max_iterations:=x),
+ "Compile at most n times");
+("--in",Arg.String (fun x->Driver.input_bin := Some x),
+ "input a .bin file instead of generating pages");
+("--driver",Arg.String (fun x->Driver.driver := Some x),
+ "specify a driver to dynlink");
+]
 
 let replace_utf8 x y z=if String.length x>0 then (
   let buf=Buffer.create (String.length x) in
@@ -95,7 +92,7 @@ let word_subst=
 
 let hyphenate_dict dict=
   try
-    let i=open_in_bin (findHyph dict) in
+    let i=open_in_bin (findHyphen dict) in
     let inp=input_value i in
     close_in i;
     (fun str->
@@ -1287,7 +1284,6 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
       (*   mutable pageNumbers:OutputPaper.page->environment->int->unit *)
       (* } *)
       let outputParams=()
-      let max_iterations=ref !Config.atmost
 
       let rec resolve tree i env0=
         Printf.eprintf "Pass number %d\n%!" i; flush stdout; pass_number := i;
@@ -1625,7 +1621,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 
      let basic_output _ tree defaultEnv file=
        let pages, structure =
-	 match !Config.input_bin with
+	 match !Driver.input_bin with
 	   None ->
 	     let pages, positions = resolve tree 0 defaultEnv in
 	     let structure = make_struct positions tree in

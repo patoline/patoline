@@ -105,5 +105,6 @@ let pat_to_name pat =
   | _ -> raise Not_found
 
 
-let findFont fontspath pat =
-  findPath (pat_to_name pat) ("."::(!fontspath))
+let findFont pat =
+  let open PatConfig in
+  findFont (pat_to_name pat)

@@ -97,7 +97,7 @@ type char_description =
   }
 
 let get_char_descr_from_file : UChar.t -> char_description = fun u ->
-  let m = PermanentMap.open_map !UnicodeLibConfig.datafile in
+  let m = PermanentMap.open_map UnicodeLibConfig.datafile in
   let d = PermanentMap.get m u in
   PermanentMap.close_map m; d
 

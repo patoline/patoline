@@ -108,3 +108,6 @@ let output_to_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
 let output_from_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
     ?(structure:structure=empty_structure) pages fileName =
    output ~structure (Array.map (fun x -> [|x|]) pages) fileName
+
+let input_bin = ref None
+let driver    = ref None

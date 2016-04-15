@@ -21,9 +21,6 @@
 open BuildDir
 open PatConfig
 
-(* Obtain the configuration. *)
-let cfg = get_patoconfig ()
-
 let local_path = ref []
 
 let output=ref ""
@@ -50,10 +47,11 @@ let main_ml=ref false
 let edit_link=ref false
 let shortDrivers = List.map (fun name ->
   let len = String.length name in
-  if len > 6 && String.sub name 0 6 = "Driver" then String.sub name 6 (len - 6) else name) cfg.drivers
+  if len > 6 && String.sub name 0 6 = "Driver" then
+    String.sub name 6 (len - 6) else name) patoconfig.drivers
 let aliasDriver=
   List.filter (fun (c, c') -> c <> c')
-  (List.combine shortDrivers cfg.drivers)
+  (List.combine shortDrivers patoconfig.drivers)
 
 (* Regexp for pragma-style things. *)
 let set_format   = Str.regexp "^[ \t(*]*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ )*\t\r]*$"
@@ -335,7 +333,7 @@ let rec read_options_from_source_file f fread =
         with
             No_matching_path _->FilenameExtra.findPath
               (Dynlink.adapt_filename (chg_ext n ".cmo"))
-              ((fst cfg.plugins_dir) :: (snd cfg.plugins_dir))
+              ((fst patoconfig.plugins_dir) :: (snd patoconfig.plugins_dir))
       in
       let m,n=dynlinked in
       Mutex.lock m;
@@ -753,7 +751,7 @@ and patoline_rule objects (builddir:string) (hs:string list) =
                     comp_opts@
                     (let pack=String.concat ","
                        ((if !dynlink then ["dynlink"] else ["dynlink";"Typography."^opts.driver])@
-                           (if cfg.has_patonet && not (Filename.check_suffix h ".cmxs") then "cryptokit" else "")::
+                           (if patoconfig.has_patonet && not (Filename.check_suffix h ".cmxs") then "cryptokit" else "")::
                            List.rev opts.packages) in
                      if pack<>"" then ["-package";pack] else [])@
                     dirs_@includes_opts source@
@@ -876,13 +874,13 @@ let _ =
             Mutex.lock Build.mstdout;
             (match Sys.argv.(2) with
                 "fonts"->
-                  Printf.fprintf stdout "%s\n%!" (fst cfg.fonts_dir)
+                  Printf.fprintf stdout "%s\n%!" (fst patoconfig.fonts_dir)
               | "plugins"->
-                Printf.fprintf stdout "%s\n%!" (fst cfg.plugins_dir)
+                Printf.fprintf stdout "%s\n%!" (fst patoconfig.plugins_dir)
               | "grammars"->
-                Printf.fprintf stdout "%s\n%!" (fst cfg.grammars_dir)
+                Printf.fprintf stdout "%s\n%!" (fst patoconfig.grammars_dir)
               | "hyphens"->
-                Printf.fprintf stdout "%s\n%!" (fst cfg.hyphen_dir)
+                Printf.fprintf stdout "%s\n%!" (fst patoconfig.hyphen_dir)
               | _->(
                 Mutex.unlock Build.mstdout;
                 Mutex.lock Build.mstderr;

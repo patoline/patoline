@@ -157,7 +157,7 @@ let local_packages =
     ; subdirs      = ["CFF";"Opentype";"unicodeRanges"]
     ; has_meta     = true }
 
-  ; { package_name = "ocaml-bibi"
+  ; { package_name = "bibi"
     ; macro_suffix = "BIBI"
     ; local_deps   = ["Typography"; "patutil"; "unicodelib"]
     ; extern_deps  = ["sqlite3"]
@@ -630,9 +630,6 @@ let _=
   )
   ok_drivers;
 
-  (* Enable compilation of ocaml-bibi if sqlite3 is installed *)
-  Printf.fprintf make "OCAML_BIBI := %s\n" (if has_sqlite3 then "ocaml-bibi" else "");
-
   (* Enable compilation of pa_patoline if pa_ocaml is installed *)
   Printf.fprintf make "PA_PATOLINE := %s\n" "src/patobuild/pa_patoline";
 
@@ -723,58 +720,17 @@ let _=
   ) patoline_drivers;
   close_out meta;
 
-  let config=open_out "src/Typography/Config.ml" in
-      let conf=if Sys.os_type= "Win32" then (
-        let path_var="PATOLINE_PATH" in
-        Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\nlet path=try Sys.getenv %S with _->\"\"\n(** Chemin des polices de caractères *)\nlet fontsdir=%S\nlet fontspath=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=%S\nlet grammarspath=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=%S\nlet hyphenpath=ref [%s]\n(** Chemin des plugins de compilation *)\nlet driverdir=[%S]\nlet pluginsdir=%S\nlet pluginspath=ref [%s]\nlet local_path:string list ref=ref []\nlet user_dir=(try Filename.concat (Sys.getenv \"APPDATA\") \"patoline\" with Not_found->\"\")\n"
-          path_var
-          !fonts_dir
-          (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !fonts_dirs)))
-          !bindir
-          !grammars_dir
-          (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !grammars_dirs)))
-          !hyphen_dir
-          (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !hyphen_dirs)))
-	  !driver_dir
-          !plugins_dir
-          (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !plugins_dirs)))
-      ) else (
-        Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n(** Chemin des polices de caractères *)\nlet fontsdir=%S\nlet fontspath=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=%S\nlet grammarspath=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=%S\nlet hyphenpath=ref [%s]\n(** Chemin des plugins de compilation *)\nlet driverdir=ref [%S]\nlet pluginsdir=%S\nlet pluginspath=ref [%s]\nlet local_path:string list ref=ref []\nlet user_dir=Filename.concat (try Sys.getenv \"XDG_DATA_HOME\" with Not_found -> Filename.concat (Sys.getenv \"HOME\") \".local/share\" ) \"patoline\"\n"
-          !fonts_dir
-          (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !fonts_dirs)))
-          !bindir
-          !grammars_dir
-          (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !grammars_dirs)))
-          !hyphen_dir
-          (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !hyphen_dirs)))
-	  !driver_dir
-          !plugins_dir
-          (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !plugins_dirs)))
-      )
-      in
-        Printf.fprintf config "%s" conf;
-        Printf.fprintf config "(** Module used to query font paths *)\nlet findFont=%s.findFont fontspath\n" (if ocamlfind_has "fontconfig" then "ConfigFindFontFC" else "ConfigFindFontLeg");
-	Printf.fprintf config "let atmost = ref 3\nlet input_bin = ref (None : string option) (* if Some str, the file a a .bin that should be read instead of producing the structure/pages *)\nlet driver=ref (None:string option)\n";
+  let config = open_out "src/Typography/Config.ml" in
+  Printf.fprintf config "let findFont  = ConfigFindFont%s.findFont\n"
+    (if ocamlfind_has "fontconfig" then "FC" else "Leg");
+  close_out config;
 
-        close_out config;
-
-        (* Generate Rules.clean which tells GNUmakefile which files we've
-         * generated, and have to be removed. *)
-        let rules_clean = open_out "Rules.clean" in
-        Printf.fprintf rules_clean "DISTCLEAN += Rules.clean src/Typography/Config.ml src/Typography/META src/Makefile.config %s\n"
-        (String.concat " " !driver_generated_metas);
-        close_out rules_clean;
-
-          Printf.printf "\nGood news: you can use Patoline !\n
-Now build it by doing:
-	make
-	make install
-
-And optionally
-	make doc
-	make check
-
-";
+  (* Rules.clean tells GNUmakefile which files have been generated. *)
+  let clean = open_out "Rules.clean" in
+  let metas = String.concat " " !driver_generated_metas in
+  Printf.fprintf clean "DISTCLEAN += Rules.clean src/Typography/Config.ml ";
+  Printf.fprintf clean "src/Typography/META src/Makefile.config %s\n" metas;
+  close_out clean;
 
   (* Generation of config. *)
   let open Printf in
@@ -792,5 +748,3 @@ And optionally
   fprintf oc "let drivers            =\n  [%a]\n" plist drivers;
   fprintf oc "let has_patonet        = %b\n" has_patonet;
   close_out oc
-
-
