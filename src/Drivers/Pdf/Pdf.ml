@@ -1151,7 +1151,7 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
     fprintf outChan "trailer\n<< /Size %d /Root %d 0 R /ID [(%s) (%s)] >>\nstartxref\n%d\n%%%%EOF\n"
       (1+IntMap.cardinal !xref) cat file_id file_id xref_pos;
     close_out outChan;
-    Printf.fprintf stderr "File %s written.\n" fileName;
+    (* Printf.fprintf stderr "File %s written.\n" fileName; *)
     flush stderr
 
 let output' = output_to_prime output
