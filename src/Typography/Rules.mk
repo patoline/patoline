@@ -41,52 +41,52 @@ $(d)/Typography.cma: $(d)/patoconfig.cma $(d)/patoconfig.a
 $(d)/DefaultFormat.cma: $(d)/patoconfig.cma $(d)/patoconfig.a
 
 $(d)/patoconfig.cmxa: $(CONFIG_DIR)/patoconfig.cmxa
-	$(ECHO) "[CP]     $< -> $@"
+	$(ECHO) "[CPY] $@"
 	$(Q)cp $< $@
 
 $(d)/patoconfig.cma: $(CONFIG_DIR)/patoconfig.cma
-	$(ECHO) "[CP]     $< -> $@"
+	$(ECHO) "[CPY] $@"
 	$(Q)cp $< $@
 
 $(d)/patoconfig.a: $(CONFIG_DIR)/patoconfig.cmxa
-	$(ECHO) "[CP]     $< -> $@"
+	$(ECHO) "[CPY] $@"
 	$(Q)cp $(CONFIG_DIR)/patoconfig.a $@
 
 $(d)/ConfigFindFont.ml: $(d)/ConfigFindFont/$(FINDFONT).ml
-	$(ECHO) "[CP]     $< -> $@"
+	$(ECHO) "[CPY] $@"
 	$(Q)cp $< $@
 
 $(d)/Typography.cmo: $(TYPOGRAPHY_CMO)
-	$(ECHO) "[PACK]   ... -> $@"
+	$(ECHO) "[PAC] $@"
 	$(Q)$(OCAMLC) -pack -o $@ $^
 $(d)/Typography.cmx: $(TYPOGRAPHY_CMX)
-	$(ECHO) "[PACK]   ... -> $@"
+	$(ECHO) "[PAC] $@"
 	$(Q)$(OCAMLOPT) -pack -o $@ $^
 $(d)/Typography.cma: $(d)/Typography.cmo
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) -a -o $@ $<
 $(d)/Typography.cmxa: $(d)/Typography.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $<
 $(d)/Typography.cmxs: $(d)/Typography.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $<
 
 $(TYPOGRAPHY_CMI): %.cmi: %.mli
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 $(filter-out $(d)/Break.cmo,$(TYPOGRAPHY_CMO)): %.cmo: %.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 $(filter-out $(d)/Break.cmx,$(TYPOGRAPHY_CMX)): %.cmx: %.ml
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 
 $(d)/Break.cmo: $(d)/Break.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 $(d)/Break.cmx: $(d)/Break.ml
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 
 # Build DefaultFormat; The variable must be ordered
@@ -98,20 +98,16 @@ DEFAULTFORMAT_CMX:= $(DEFAULTFORMAT_ML:.ml=.cmx)
 DEFAULTFORMAT_CMO:= $(DEFAULTFORMAT_ML:.ml=.cmo)
 
 $(d)/DefaultFormat.cmxa: $(DEFAULTFORMAT_CMX)
-	$(ECHO) "[OPT]    $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -a $(DEFAULTFORMAT_CMX)
 
 $(d)/DefaultFormat.cmxs: $(DEFAULTFORMAT_CMX)
-	$(ECHO) "[OPT]    $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -shared $(DEFAULTFORMAT_CMX)
 
 $(d)/DefaultFormat.cma: $(DEFAULTFORMAT_CMO)
-	$(ECHO) "[OCAMLC] $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -a $(DEFAULTFORMAT_CMO)
-
-$(d)/DefaultFormat.p.cma: $(DEFAULTFORMAT_CMO)
-	$(ECHO) "[OPT -p] $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -p -a $(DEFAULTFORMAT_CMO)
 
 # Building everything
 all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.cmxs

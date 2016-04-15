@@ -34,15 +34,15 @@ RBUFFER_CMI:=$(RBUFFER_MLI:.mli=.cmi)
 #$(RBUFFER_CMX): %.cmx: %.cmo
 
 $(d)/rbuffer.cma: $(RBUFFER_CMO)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) -a -o $@ $^
 
 $(d)/rbuffer.cmxa: $(RBUFFER_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $^
 
 $(d)/rbuffer.cmxs: $(RBUFFER_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
 

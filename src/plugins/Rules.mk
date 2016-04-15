@@ -21,7 +21,7 @@ all: $(d)/caml.cmxs
 $(d)/caml.cmx: $(d)/caml.cmo
 
 $(d)/caml.cmxs: %.cmxs: %.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(INCLUDES) -shared -o $@ -linkpkg $<
 
 # Installing

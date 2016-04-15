@@ -50,27 +50,27 @@ $(LIBFONTS_MLI:.mli=.cmx): %.cmx: %.cmi
 $(filter-out $(LIBFONTS_MLI:.mli=.cmi), $(LIBFONTS_CMI)): %.cmi: %.cmo;
 
 $(d)/fonts.cma: $(LIBFONTS_CMO)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) -a -o $@ $^
 
 $(d)/fonts.cmxa: $(LIBFONTS_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $^
 
 $(d)/fonts.cmxs: $(LIBFONTS_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
 $(d)/unicodeRanges/unicode_ranges_cpp.ml: $(d)/unicodeRanges/unicode_ranges.ml
-	$(ECHO) "[CPP]    $< -> $@"
+	$(ECHO) "[CPP] $@"
 	$(Q)$(OCPP) $< $@
 
 $(d)/UnicodeRanges.ml: $(d)/unicodeRanges/unicode_ranges_cpp.ml $(d)/unicodeRanges/unicode
-	$(ECHO) "[UNIC]   ... $@"
+	$(ECHO) "[GEN] $@"
 	$(Q)$(OCAML) str.cma $^ $@
 
 $(d)/IsoAdobe.ml: $(d)/isoAdobe/ps_standards.ml $(d)/isoAdobe/isoadobe.source
-	$(ECHO) "[ISO]    ... $@"
+	$(ECHO) "[GEN] $@"
 	$(Q)$(OCAML) str.cma $^ $@
 
 # Building everything

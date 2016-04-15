@@ -36,7 +36,7 @@ endif
 
 ### Generation of the configuration file
 $(d)/UnicodeLibConfig.ml:
-	$(ECHO) "[CONF]   ... -> $@"
+	$(ECHO) "[GEN] $@"
 	$(Q) echo 'let datafile = "$(INSTALL_UNICODELIB_DIR)/UnicodeData.data"' > $@
 ###
 
@@ -51,24 +51,24 @@ ENCODING_O    := $(ENCODING_ML:.ml=.o)
 $(ENCODING_CMX): %.cmx: %.cmo
 
 $(PA_CONV): $(d)/pa_convert.ml
-	$(ECHO) "[OPT]    ... -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml \
 		-package compiler-libs -o $@ ocamlcommon.cmxa unix.cmxa str.cmxa \
 		decap.cmxa decap_ocaml.cmxa $<
 
 $(ENCODING_ML): %.ml: $(PA_CONV)
-	$(ECHO) "[PA_CNV] ... -> $@"
+	$(ECHO) "[GEN] $@"
 	$(Q)$(PA_CONV) --ascii $(@D)/encoding_data/$(basename $(@F)).TXT > $@
 
 ###
 
 ### Parsing and data generation for UnicodeData.txt
 $(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml
-	$(ECHO) "[OCAMLC] ... -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml -package compiler-libs -c $<
 
 $(d)/pa_UnicodeData: $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
-	$(ECHO) "[OPT]    ... -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -package compiler-libs -linkpkg \
 		$(UNICODELIB_INCLUDES) -o $@ ocamlcommon.cmxa $^
 
@@ -76,21 +76,21 @@ UNICODE_DATA_TXT := $(d)/data/UnicodeData.txt
 UNICODE_DATABASE := $(d)/UnicodeData.data
 
 $(d)/UnicodeData.data: $(d)/pa_UnicodeData $(UNICODE_DATA_TXT)
-	$(ECHO) "[PA_Uni] ... -> $@"
+	$(ECHO) "[UNI] $@"
 	$(Q) rm -f $(UNICODE_DATABASE)
 	$(Q) $< $(UNICODE_DATA_TXT) $(UNICODE_DATABASE)
 ###
 
 $(d)/unicodelib.cma: $(UNICODELIB_CMO) $(ENCODING_CMO)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) -a -o $@ $^
 
 $(d)/unicodelib.cmxa: $(UNICODELIB_CMX) $(ENCODING_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $^
 
 $(d)/unicodelib.cmxs: $(UNICODELIB_CMX) $(ENCODING_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
 # Building everything

@@ -17,17 +17,17 @@ endif
 $(d)/emacs/SubstKey.cmx: INCLUDES += -I $(UNICODE_DIR)
 
 $(d)/emacs/SubstKey: $(d)/emacs/SubstKey.cmx $(UNICODE_DIR)/unicodelib.cmxa
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -package str,unicodelib $< -linkpkg -o $@
 
 # $(d)/emacs/SubSuper.el is built by src/Patoline/Rules.mk
 $(d)/emacs/Subsup2.el: $(d)/emacs/Subsup.el $(d)/emacs/quail.el $(d)/emacs/SubstKey
-	$(ECHO) "[SUBST]  ... -> $@"
+	$(ECHO) "[GEN] $@"
 	$(Q)$(lastword $^) $(EDITORS_DIR)/emacs/quail.el $< > $@
 
 $(d)/emacs/patoline-input.el: $(d)/emacs/patoline-input.pre $(d)/emacs/quail.el \
   $(d)/emacs/Subsup2.el $(d)/emacs/patoline-input.post
-	$(ECHO) "[CAT]    ... -> $@"
+	$(ECHO) "[GEN] $@"
 	$(Q)cat $^ > $@
 
 CLEAN += $(d)/emacs/Subsup2.el $(d)/emacs/SubstKey $(d)/emacs/patoline-input.el $(d)/emacs/*.cmo $(d)/emacs/*.cmi $(d)/emacs/*.o $(d)/emacs/*.cmx

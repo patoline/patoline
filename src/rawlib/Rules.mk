@@ -32,15 +32,15 @@ RAWLIB_CMI:=$(RAWLIB_ML:.ml=.cmi)
 $(RAWLIB_CMX): %.cmx: %.cmo
 
 $(d)/rawlib.cma: $(RAWLIB_CMO)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) -a -o $@ $^
 
 $(d)/rawlib.cmxa: $(RAWLIB_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $^
 
 $(d)/rawlib.cmxs: $(RAWLIB_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
 # Building everything

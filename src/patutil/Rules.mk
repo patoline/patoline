@@ -32,15 +32,15 @@ UTIL_CMI:=$(UTIL_ML:.ml=.cmi)
 $(UTIL_CMX): %.cmx: %.cmo
 
 $(d)/patutil.cma: $(UTIL_CMO)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -a -o $@ $^
 
 $(d)/patutil.cmxa: $(UTIL_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -a -o $@ $^
 
 $(d)/patutil.cmxs: $(UTIL_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -shared -o $@ $^
 
 # Building everything

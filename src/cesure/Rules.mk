@@ -17,15 +17,15 @@ endif
 all: $(d)/cesure $(d)/cesure.cmxa $(d)/cesure.cma
 
 $(d)/cesure.cma: $(d)/hyphen.cmo $(UNICODE_DIR)/unicodelib.cma
-	$(ECHO) "[LINK]   $< -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -a -o $@ decap.cma $<
 
 $(d)/cesure.cmxa: $(d)/hyphen.cmx $(UNICODE_DIR)/unicodelib.cmxa
-	$(ECHO) "[LINK]   $< -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -a -o $@ $<
 
 $(d)/cesure: $(UNICODE_DIR)/unicodelib.cmxa $(d)/hyphen.cmx $(d)/cesure.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ unix.cmxa str.cmxa sqlite3.cmxa decap.cmxa $^
 
 CLEAN += $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.a $(d)/*.cma $(d)/*.cmxa

@@ -25,27 +25,27 @@ DRIVERS_WITHOUT_RULES_MK := $(filter-out $(DRIVERS_WITH_RULES_MK),$(DRIVERS_CMXA
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.cmo
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmo): %.cmo: %.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) -o $@ -c $<
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.ml
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) -o $@ -c $<
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.ml.depends): %.ml.depends: %.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLDEP) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) $< > $@
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cma): %.cma: %.cmo $(TYPOGRAPHY_DIR)/Typography.cma $(TYPOGRAPHY_DIR)/DefaultFormat.cma 
-	$(ECHO) "[MKLIB]  $< -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) $(PACK_DRIVER_$(patsubst %.cmo,%,$(notdir $(<)))) $(INCLUDES) -I $(dir $(<)) -a -o $@ $<
 
 $(DRIVERS_WITHOUT_RULES_MK): %.cmxa: %.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa
-	$(ECHO) "[OMKLIB] $< -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) $(PACK_DRIVER_$(patsubst %.cmx,%,$(notdir $(<)))) $(INCLUDES) -I $(dir $(<)) -a -o $@ $<
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmxs): %.cmxs: %.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cma 
-	$(ECHO) "[SHARE]  $< -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) $(PACK_DRIVER_$(patsubst %.cmx,%,$(notdir $(<)))) $(INCLUDES) -shared -o $@ $<
 
 # Find dependencies

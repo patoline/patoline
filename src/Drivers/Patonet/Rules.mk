@@ -22,19 +22,19 @@ $(d)/Hammer.cmx: %.cmx: %.cmo
 $(d)/Hammer.ml.depends: $(d)/Hammer.ml
 
 $(d)/Patonet.cma: $(d)/Hammer.cmo $(d)/Patonet.cmo
-	$(ECHO) "[MKLIB]    $< -> $@"
+	$(ECHO) "[MKL] $@"
 	$(Q)$(OCAMLC) $(INCLUDES) $(OFLAGS) -a -o $@ $^
 
 $(d)/Patonet.cmxa: $(d)/Hammer.cmx $(d)/Patonet.cmx
-	$(ECHO) "[OMKLIB]    $< -> $@"
+	$(ECHO) "[MKL] $@"
 	$(Q)$(OCAMLOPT) $(INCLUDES) $(OFLAGS) -a -o $@ $^
 
 $(d)/Patonet.cmxs: $(d)/Hammer.cmx $(d)/Patonet.cmx
-	$(ECHO) "[SHARE]    $< -> $@"
+	$(ECHO) "[SHR] $@"
 	$(Q)$(OCAMLOPT) $(INCLUDES) $(OFLAGS) -linkpkg -shared -o $@ $^
 
 $(d)/Hammer.ml: $(d)/Hammer.js
-	$(ECHO) "[JSTOML] $< -> $@"
+	$(ECHO) "[GEN] $@"
 	$(Q)$(OCAML) ./Tools/file_to_string.ml $< > $@
 
 CLEAN +=

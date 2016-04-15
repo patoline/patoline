@@ -20,20 +20,14 @@ BIBI_LIBS := $(d)/bibi.cmxa $(d)/bibi.cma
 all: $(BIBI_LIBS)
 
 $(d)/bibi.cmxa: %.cmxa: %.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ -a $<
 
-$(d)/bibi.p.cmxa: %.p.cmxa: %.p.cmx
-	$(ECHO) "[OPT -p] $< -> $@"
-	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(INCLUDES) -o $@ -a $<
-
 $(d)/bibi.cma: %.cma: %.cmo $(TYPOGRAPHY_DIR)/Typography.cma
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -a $<
 
 $(d)/bibi.cmi: $(d)/bibi.cmo ;
-$(d)/bibi.p.cmi: $(d)/bibi.cmi
-	cp $< $@
 
 # Installing
 install: install-bibi

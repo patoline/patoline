@@ -38,6 +38,7 @@ let findFont = ConfigFindFont.findFont
 
 let sprint_page_number = ref string_of_int
 let max_iterations     = ref patoconfig.max_iter
+let quiet = ref false
 
 let spec =
   [ ( "--extra-fonts-dir"  , Arg.String add_fonts_dir
@@ -46,6 +47,8 @@ let spec =
     , "Adds directories to the search path for hyphenation dictionaries")
   ; ( "--extra-plugins-dir", Arg.String add_plugins_dir
     , "Adds directories to the plugins search path")
+  ; ( "--quiet"            , Arg.Set quiet
+    , "Turn of compilation messages")
   ;
 
 ("--at-most",Arg.Int (fun x->max_iterations:=x),
@@ -1286,9 +1289,11 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
       let outputParams=()
 
       let rec resolve tree i env0=
-        Printf.eprintf "Pass number %d\n%!" i; flush stdout; pass_number := i;
+        if not !quiet then Printf.eprintf "Pass number %d\n%!" i;
+        pass_number := i;
         let env1,fig_params,params,new_page_list,new_line_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 tree in
-        Printf.eprintf "Optimization starts: %f s\n%!" (Sys.time ());
+        if not !quiet then
+          Printf.eprintf "Optimization starts: %f s\n%!" (Sys.time ());
         let (logs,opt_pages,figs',user')=TS.typeset
           ~completeLine:compl
           ~figure_parameters:fig_params
@@ -1299,7 +1304,8 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
           ~badness:badness
           paragraphs
         in
-        Printf.eprintf "Optimization ends: %f s\n%!" (Sys.time ());
+        if not !quiet then
+          Printf.eprintf "Optimization ends: %f s\n%!" (Sys.time ());
         let env, reboot=update_names env1 figs' user' in
         let env=reset_counters env in
         if i < !max_iterations-1 && reboot && !(env.fixable) then (

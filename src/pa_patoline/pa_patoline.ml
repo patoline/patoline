@@ -18,6 +18,7 @@ let patoline_format   = ref "DefaultFormat"
 let patoline_driver   = ref "Pdf"
 let patoline_packages = ref ["Typography"]
 let patoline_grammar  = ref ["DefaultGrammar"]
+let debug = ref false
 
 let set_patoline_format f =
   patoline_format := f
@@ -69,6 +70,8 @@ let extra_spec =
     "set a flag to inform parser that we are computing dependencies")
   ; ("--quail-out", (Arg.Set_string quail_out_name),
     "set a filename to output quail.el like file for emacs short cur")
+  ; ("--debug" , Arg.Set debug,
+    "turn on debuging mode.")
   ]
 
 #define LOCATE locate
@@ -2094,7 +2097,7 @@ let _ =
        let name = chop_extension' name ^ ".tgy" in
        let patobuild_dir = Filename.concat dir "_patobuild" in
        let name = Filename.concat patobuild_dir name in
-       Printf.eprintf "Writing grammar %s\n%!" name;
+       if !debug then Printf.eprintf "Writing grammar %s\n%!" name;
        (* Check if _patobuild/ needs to be created *)
        if not (Sys.file_exists patobuild_dir)
        then Unix.mkdir patobuild_dir 0o700;
@@ -2102,7 +2105,7 @@ let _ =
        let ch = open_out_bin name in
        output_value ch local_state;
        close_out ch;
-       Printf.eprintf "Written grammar %s\n%!" name
+       if !debug then Printf.eprintf "Written grammar %s\n%!" name
     | _ -> ()
 
   with e ->

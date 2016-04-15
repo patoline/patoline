@@ -6,43 +6,43 @@ d := $(if $(d),$(d)/,)$(mod)
 all: $(d)/patoconfig.cma $(d)/patoconfig.cmxa
 
 $(d)/configRC.cmi: $(d)/configRC.mli
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) -I $(CONFIG_DIR) -c -o $@ $<
 
 $(d)/patConfig.cmi: $(d)/patConfig.mli
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) -I $(CONFIG_DIR) -c -o $@ $<
 
 $(d)/configRC.cmo: $(d)/configRC.ml $(d)/configRC.cmi
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) -I $(CONFIG_DIR) -c -o $@ $<
 
 $(d)/configRC.cmx: $(d)/configRC.ml $(d)/configRC.cmi
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) -I $(CONFIG_DIR) -c -o $@ $<
 
 $(d)/patDefault.cmo: $(d)/patDefault.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) -I $(CONFIG_DIR) -c -o $@ $<
 
 $(d)/patDefault.cmx: $(d)/patDefault.ml
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) -I $(CONFIG_DIR) -c -o $@ $<
 
 $(d)/patConfig.cmo: $(d)/patConfig.ml $(d)/patDefault.cmo $(d)/configRC.cmi $(d)/patConfig.cmi
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) -I $(CONFIG_DIR) -c -o $@ $<
 
 $(d)/patConfig.cmx: $(d)/patConfig.ml $(d)/patDefault.cmx $(d)/configRC.cmx $(d)/patConfig.cmi
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) -I $(CONFIG_DIR) -c -o $@ $<
 
 $(d)/patoconfig.cma: $(d)/configRC.cmo $(d)/patDefault.cmo $(d)/patConfig.cmo
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) -I $(CONFIG_DIR) -a -o $@ $^
 
 $(d)/patoconfig.cmxa: $(d)/configRC.cmx $(d)/patDefault.cmx $(d)/patConfig.cmx
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -I $(CONFIG_DIR) -a -o $@ $^
 
 # Cleaning

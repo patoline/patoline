@@ -30,29 +30,21 @@ OTHER_FORMATS := $(d)/FormatArticle.ml $(d)/FormatLivre.ml $(d)/FormatThese.ml \
   $(d)/FormatMemoire.ml $(d)/Interactive.ml 
 
 $(OTHER_FORMATS:.ml=.cmxa): %.cmxa: %.cmx
-	$(ECHO) "[OPT]    $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -a $^
 
 $(OTHER_FORMATS:.ml=.cma): %.cma: %.cmo
-	$(ECHO) "[OCAMLC] $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -a $^
-
-$(OTHER_FORMATS:.ml=.p.cmxa): %.p.cmxa: %.p.cmx
-	$(ECHO) "[OPT -p] $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -p -a $^
 
 # Common ML rules with proper includes
 $(CMO_$(d)): %.cmo: %.ml
-	$(ECHO) "[OCAMLC] $<"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -c $<
 
 $(CMX_$(d)): %.cmx: %.ml
-	$(ECHO) "[OPT]    $<"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -c $<
-
-$(PCMX_$(d)): %.p.cmx: %.ml
-	$(ECHO) "[OPT -p] $<"
-	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -c $<
 
 # Tell make that we want to build all formats
 all: $(OTHER_FORMATS:.ml=.cmxa) $(OTHER_FORMATS:.ml=.cma)

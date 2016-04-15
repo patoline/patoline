@@ -28,15 +28,15 @@ $(d)/plot.cmi: $(d)/plot.cmo ;
 $(d)/plot.a: $(d)/plot.cmxa ;
 
 $(d)/plot.cmxa: %.cmxa: %.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa
-	$(ECHO) "[LINK]   $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $<
 
 $(d)/plot.cma: %.cma: %.cmo $(TYPOGRAPHY_DIR)/Typography.cma
-	$(ECHO) "[LINK]   $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) -a -o $@ $<
 
 $(d)/plot.p.cmxa: %.p.cmxa: %.p.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa
-	$(ECHO) "[LINK]   $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -a -p -o $@ $<
 
 # Installing

@@ -10,22 +10,22 @@ $(d)/_patobuild/DefaultGrammar.tgy: $(d)/DefaultGrammar.ttml
 $(EDITORS_DIR)/emacs/quail.el: $(d)/DefaultGrammar.ttml
 
 $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
-	$(ECHO) "[PAPAT]  $< -> $@"
+	$(ECHO) "[PPP] $@"
 	$(Q)$(PA_PATOLINE_IN_SRC) --ascii --quail-out $(EDITORS_DIR)/emacs/quail.el --driver Pdf --no-default-grammar $< > $@
 
 $(d)/DefaultGrammar_.tml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
-	$(ECHO) "[PAT]    $< -> $@"
+	$(ECHO) "[PAT] $@"
 	$(Q)$(PATOLINE_IN_SRC) --no-build-dir --main-ml --driver Pdf -o $@ $<
 
 $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa
-	$(ECHO) "[OPT]    ... -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOINTF) -intf-suffix .mli $(PACK_FORMAT) -c -o $@ -impl $<
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
   $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa \
 	$(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
   $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(PACK_TYPOGRAPHY) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) \
 		-I $(<D) -I $(CONFIG_DIR) \
 		rbuffer.cmxa sqlite3.cmxa unicodelib.cmxa patutil.cmxa fonts.cmxa \
@@ -34,8 +34,8 @@ $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
 		cesure.cmxa DefaultFormat.cmxa -o $@ $(@:.tmx=.cmx) -impl $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) $(HYPHENATION_DIR)/hyph-en-us.hdict
-	$(ECHO) "[TMX]    $< -> $@"
-	$(Q)$< --extra-fonts-dir $(FONTS_DIR) --extra-hyph-dir $(HYPHENATION_DIR) --driver Pdf
+	$(ECHO) "[TMX] $@"
+	$(Q)$< --quiet --extra-fonts-dir $(FONTS_DIR) --extra-hyph-dir $(HYPHENATION_DIR) --driver Pdf
 
 # Cleaning
 CLEAN += $(d)/DefaultGrammar.tgx $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.ttml \

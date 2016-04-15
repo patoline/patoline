@@ -8,7 +8,7 @@ DICTS:=$(FILES:.tex=.hdict)
 all: $(DICTS)
 
 %.hdict: %.tex $(CESURE_DIR)/cesure
-	$(ECHO) "[CESURE] $< -> $@"
+	$(ECHO) "[HYP] $@"
 	$(Q)$(CESURE_DIR)/cesure $<
 
 CLEAN += $(d)/*.hdict

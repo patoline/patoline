@@ -222,58 +222,38 @@ endif
 INCLUDES:=
 
 %.ml.depends: %.ml
-	$(ECHO) "[DEPS]   $< -> $@"
+	$(ECHO) "[DEP] $@"
 	$(Q)$(OCAMLDEP) $(INCLUDES) -I $(<D) $< > $@
+
 %.mli.depends: %.mli
-	$(ECHO) "[DEPS]   $< -> $@"
+	$(ECHO) "[DEP] $@"
 	$(Q)$(OCAMLDEP) $(INCLUDES) $< > $@
+
 %.cmi: %.mli %.ml.depends
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
+
 %.cmo: %.ml %.ml.depends
-	$(ECHO) "[OCAMLC] $< -> $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 %.cmx: %.cmo
+
 %.cmx: %.ml %.ml.depends
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ -c $<
-%.p.cmx: %.ml %.ml.depends
-	$(ECHO) "[OPT -p] $< -> $@"
-	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(INCLUDES) -o $@ -c $<
-%.cmo: %.mlpack
-	$(ECHO) "[PACK]   $< -> $@"
-	$(Q)$(OCAMLC) -pack -o $@ $(addprefix $(dir $<),$(addsuffix .cmo,$(shell cat $<)))
-%.cmx: %.mlpack
-	$(ECHO) "[PACK X] $< -> $@"
-	$(Q)$(OCAMLOPT) -pack -o $@ $(addprefix $(dir $<),$(addsuffix .cmx,$(shell cat $<)))
+
 %: %.cmo
-	$(ECHO) "[LINK]   $< -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) -linkpkg $(INCLUDES) -o $@ $<
+
 %: %.cmx
-	$(ECHO) "[LINK X] $< -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -linkpkg $(INCLUDES) -o $@ $<
 
 %.ml: %.mly
-	$(ECHO) "[YACC]   $< -> $@"
+	$(ECHO) "[YAC] $@"
 	$(Q)$(OCAMLYACC) $<
 
 %.ml: %.mll
-	$(ECHO) "[LEX]    $< -> $@"
+	$(ECHO) "[LEX] $@"
 	$(Q)$(OCAMLLEX) -q $<
-
-# Common rules for Patoline
-%.pdf: %.txp $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx $(DRIVERS_DIR)/Pdf/Pdf.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa $(SRC_DIR)/DefaultGrammar.cmx
-	$(ECHO) "[PATOLINE] $< -> $*.tml"
-	$(Q)$(PATOLINE_IN_SRC) --recompile --driver Pdf --extra-hyph-dir $(HYPHENATION_DIR) --ml --extra-fonts-dir $(FONTS_DIR) -I $(SRC_DIR) $<
-
-	$(ECHO) "[PATOLINE] $< -> $*_.tml"
-	$(Q)$(PATOLINE_IN_SRC) --recompile --driver Pdf --extra-hyph-dir $(HYPHENATION_DIR) --main-ml --extra-fonts-dir $(FONTS_DIR) -I $(SRC_DIR) $<
-
-	$(ECHO) "[OPT]    $*.tml $*_.tml -> $*.tmx"
-	$(Q)$(OCAMLOPT_NOPP) -linkpkg -I $(SRC_DIR) -I $(RBUFFER_DIR) rbuffer.cmxa -I $(TYPOGRAPHY_DIR) Typography.cmxa ParseMainArgs.cmx -I $(DRIVERS_DIR)/Pdf Pdf.cmxa -I $(FORMAT_DIR) DefaultFormat.cmxa -o $*.tmx $(SRC_DIR)/DefaultGrammar.cmx -impl $*.tml -impl $*_.tml
-
-	./$*.tmx --extra-fonts-dir $(FONTS_DIR) --extra-hyph-dir $(HYPHENATION_DIR)
-
-CLEAN += Patoline_.cmi Patoline.cmi Patoline_.cmx Patoline.cmx Patoline_.dep \
-	 Patoline_.o Patoline.o Patoline.pdf Patoline.tdx Patoline_.tml \
-	 Patoline.tmx Patoline.tml

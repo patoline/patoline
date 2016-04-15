@@ -32,15 +32,15 @@ DB_CMI:=$(DB_ML:.ml=.cmi)
 $(DB_CMX): %.cmx: %.cmo
 
 $(d)/db.cma: $(DB_CMO)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) -a -o $@ $^
 
 $(d)/db.cmxa: $(DB_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $^
 
 $(d)/db.cmxs: $(DB_CMX)
-	$(ECHO) "[LINK]   ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
 # Building everything

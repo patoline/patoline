@@ -5,21 +5,21 @@ d := $(if $(d),$(d)/,)$(mod)
 all: $(d)/pa_patoline
 
 $(d)/Subsup.cmx: $(d)/Subsup.ml
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -package decap -I $(PA_PATOLINE_DIR) -o $@ -c $<
 
 $(d)/prefixTree.cmx: $(d)/prefixTree.ml
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOINTF) -I $(PA_PATOLINE_DIR) -o $@ -c $<
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(d)/Subsup.cmx $(d)/prefixTree.cmx $(CONFIG_DIR)/patoconfig.cmxa
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -package patutil,decap,compiler-libs \
 		-I $(CONFIG_DIR) -I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -rectypes \
 		-o $@ -c $<
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa $(CONFIG_DIR)/patoconfig.cmxa
-	$(ECHO) "[OPT]    ... -> $@"
+	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -package patutil,imagelib,dynlink,str,decap,compiler-libs \
 		-I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -o $@ \
 		bigarray.cmxa unicodelib.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa \

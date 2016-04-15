@@ -35,16 +35,12 @@ PDF_PARSER_SOURCES := $(d)/pdfutil.ml $(d)/obj_lexer.ml $(d)/obj_parser.ml $(d)/
 
 $(d)/pdf_parser.a: $(d)/pdf_parser.cmxa ;
 $(d)/pdf_parser.cmxa: $(PDF_PARSER_SOURCES:.ml=.cmx) $(RAWLIB_DIR)/rawlib.cmxa
-	$(ECHO) "[BYT]    ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $(filter-out $(RAWLIB_DIR)/rawlib.cmxa,$^)
 
 $(d)/pdf_parser.cma: $(PDF_PARSER_SOURCES:.ml=.cmo) $(RAWLIB_DIR)/rawlib.cma
-	$(ECHO) "[OPT]    ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) -a -o $@ $(filter-out $(RAWLIB_DIR)/rawlib.cma,$^)
-
-$(d)/pdf_parser.p.cmxa: $(PDF_PARSER_SOURCES:.ml=.p.cmx) $(RAWLIB_DIR)/rawlib.p.cmxa
-	$(ECHO) "[OPT.p]  ... -> $@"
-	$(Q)$(OCAMLOPT) -p -a -o $@ $(filter-out $(RAWLIB_DIR)/rawlib.p.cmxa,$^)
 
 # Installing
 install: install-pdf

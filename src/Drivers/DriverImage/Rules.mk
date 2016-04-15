@@ -20,15 +20,15 @@ endif
 $(d)/DriverImage.cmx: %.cmx: %.cmo
 
 $(d)/DriverImage.cma: $(PATOBUILD_DIR)/Language.cmo $(d)/DriverImage.cmo
-	$(ECHO) "[MKLIB] ... -> $@"
+	$(ECHO) "[LNk] $@"
 	$(Q)$(OCAMLC) -a $(INCLUDES) -o $@ $^
 
 $(d)/DriverImage.cmxa: $(PATOBUILD_DIR)/Language.cmx $(d)/DriverImage.cmx
-	$(ECHO) "[OMKLIB] ... -> $@"
+	$(ECHO) "[LNk] $@"
 	$(Q)$(OCAMLOPT) -a $(INCLUDES) -o $@ $^
 
 $(d)/DriverImage.cmxs: $(PATOBUILD_DIR)/Language.cmx $(d)/DriverImage.cmx
-	$(ECHO) "[SHARED]    $< -> $@"
+	$(ECHO) "[LNk] $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
 DISTCLEAN += $(DEPENDS_$(d))

@@ -24,7 +24,7 @@ endif
 all: $(d)/patoline
 
 $(d)/patoline: $(CONFIG_DIR)/patoconfig.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
-	$(ECHO) "[OPT]    ... -> $@"
+	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -o $@ $(PATOBUILD_INCLUDES) -I +threads -thread \
 		dynlink.cmxa patutil.cmxa str.cmxa unix.cmxa rbuffer.cmxa \
 		unicodelib.cmxa threads.cmxa patoconfig.cmxa $(PAT_CMX)
@@ -32,21 +32,21 @@ $(d)/patoline: $(CONFIG_DIR)/patoconfig.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $
 PATOBUILD_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 
 $(EDITORS_DIR)/emacs/Subsup.el $(d)/Subsup.ml: $(d)/UnicodeData.txt $(d)/UnicodeScripts
-	$(ECHO) "[UNIC]   $< -> $@ $(EDITORS_DIR)/emacs/Subsup.el"
+	$(ECHO) "[GEN] $@"
 	$(Q)$(PATOBUILD_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/Subsup.el
 
 $(d)/Main.cmx: $(d)/Main.ml $(CONFIG_DIR)/patoconfig.cmxa
-	$(ECHO) "[OPT]    $<"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) -thread -rectypes -I +threads $(OFLAGS) $(PATOBUILD_INCLUDES) -o $@ -c $<
 
 $(d)/Main.cmo: $(d)/Main.ml
-	$(ECHO) "[OCAMLC] $<"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) -thread -rectypes -I +threads $(OFLAGS) $(PATOBUILD_INCLUDES) -o $@ -c $<
 
 $(d)/UnicodeScripts.cmx: $(UNICODELIB_CMX) $(UNICODELIB_DEPS) $(UNICODELIB_ML)
 
 $(d)/UnicodeScripts: $(d)/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -o $@ -package bigarray,unicodelib -linkpkg $<
 
 $(d)/Build.cmo $(d)/Build.cmx: OFLAGS += -thread

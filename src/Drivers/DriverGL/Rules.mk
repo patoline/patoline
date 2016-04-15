@@ -38,21 +38,21 @@ endif
 $(DRIVERGL_CMX): %.cmx: %.cmo
 
 $(d)/FrameBuffer.o: $(d)/FrameBuffer.c
-	$(ECHO) "[CC]     $<"
+	$(ECHO) "[GCC] $@"
 	$(Q)$(CC) $(FPIC_FLAGS) $(CFLAGS) -c $< -o $@
 
 DRIVERGL_DIR:= $(d)
 
 $(d)/DriverGL.cma: $(d)/FrameBuffer.o $(d)/GlFBO.cmo $(d)/Vec3.cmo $(d)/DriverGL.cmo
-	$(ECHO) "[MKLIB] ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLMKLIB) $(INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
 
 $(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx
-	$(ECHO) "[OMKLIB] ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLMKLIB) $(INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
 
 $(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(CESURE_DIR)/cesure.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(UNICODE_DIR)/unicodelib.cmxa
-	$(ECHO) "[SHARE] ... -> $@"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) $(INCLUDES) -shared -linkpkg -o $@ $(DRIVERGL_DIR)/FrameBuffer.o $(DRIVERGL_DIR)/GlFBO.cmx $(DRIVERGL_DIR)/Vec3.cmx $(DRIVERGL_DIR)/DriverGL.cmx
 
 

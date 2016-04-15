@@ -23,15 +23,15 @@ endif
 $(d)/Net.cmx: %.cmx: %.cmo
 
 $(d)/Net.cma: $(d)/Net.cmo
-	$(ECHO) "[MKLIB]   $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) -a -o $@ $<
 
 $(d)/Net.cmxa: $(d)/Net.cmx
-	$(ECHO) "[OMKLIB]   $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $<
 
 $(d)/Net.cmxs: $(d)/Net.cmx
-	$(ECHO) "[SHARE]   $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $<
 
 DISTCLEAN += $(DEPENDS_$(d))

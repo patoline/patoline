@@ -20,15 +20,15 @@ endif
 $(SVG_DRIVER_CMX): %.cmx: %.cmo
 
 $(d)/SVG.cma: $(SVG_DRIVER_CMO)
-	$(ECHO) "[MKLIB]   $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) -a $(INCLUDES) -o $@ $^
 
 $(d)/SVG.cmxa: $(SVG_DRIVER_CMX)
-	$(ECHO) "[OMKLIB]   $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -a $(INCLUDES) -o $@ $^
 
 $(d)/SVG.cmxs: $(SVG_DRIVER_CMX)
-	$(ECHO) "[SHARE]   $<"
+	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -shared $(INCLUDES) -o $@ $^
 
 # Rolling back changes made at the top
