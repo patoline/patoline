@@ -19,7 +19,7 @@ $(PA_CONV): INCLUDES:=$(UNICODELIB_INCLUDES)
 # Building
 UNICODELIB_MODS:= UChar UTF UTF8 UTF16 UTF32 UTFConvert PermanentMap UnicodeLibConfig UCharInfo
 
-UNICODELIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UNICODELIB_MODS))) $(wildcard $(d)/*.ml)
+UNICODELIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UNICODELIB_MODS)))
 UNICODELIB_DEPS:=$(addsuffix .depends,$(UNICODELIB_ML))
 
 $(UNICODELIB_DEPS): $(d)/UnicodeLibConfig.ml
@@ -97,14 +97,19 @@ $(d)/unicodelib.cmxs: $(UNICODELIB_CMX) $(ENCODING_CMX)
 all: $(d)/unicodelib.cmxa $(d)/unicodelib.cma $(d)/unicodelib.cmxs $(UNICODE_DATABASE)
 
 # Cleaning
-CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs $(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI) $(ENCODING_O)
+CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cm[oxi] $(d)/*.o $(d)/*.a $(d)/*.cmxs \
+	$(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI) $(ENCODING_O)
 
-DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/pa_convert $(ENCODING_ML) $(d)/UnicodeData.data $(d)/pa_UnicodeData $(d)/UnicodeLibConfig.ml
+DISTCLEAN += $(d)/*.depends $(d)/pa_convert $(ENCODING_ML) \
+	$(d)/UnicodeData.data $(d)/pa_UnicodeData $(d)/UnicodeLibConfig.ml
 
 # Installing
 install: install-unicodelib
 .PHONY: install-unicodelib
-install-unicodelib: $(d)/unicodelib.cma $(d)/unicodelib.cmxa $(d)/unicodelib.cmxs $(d)/unicodelib.a $(UNICODELIB_CMI) $(UNICODELIB_CMX) $(UNICODELIB_CMO) $(d)/META $(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI) $(UNICODE_DATABASE)
+install-unicodelib: $(d)/unicodelib.cma $(d)/unicodelib.cmxa \
+	$(d)/unicodelib.cmxs $(d)/unicodelib.a $(d)/META \
+	$(UNICODELIB_CMI) $(UNICODELIB_CMX) $(UNICODELIB_CMO) \
+	$(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI) $(UNICODE_DATABASE)
 	install -m 755 -d $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
 
