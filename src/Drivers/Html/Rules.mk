@@ -17,15 +17,15 @@ endif
 $(d)/Html.cmx: %.cmx: %.cmo
 
 $(d)/Html.cma: %.cma: %.cmo $(DRIVERS_DIR)/SVG/HtmlFonts.cmo
-	$(ECHO) "[MKLIB]    $<"
+	$(ECHO) "[MKLIB]  $<"
 	$(Q)$(OCAMLC) $(INCLUDES) -a -o $@ $(DRIVERS_DIR)/SVG/HtmlFonts.cmo $<
 
 $(d)/Html.cmxa: %.cmxa: %.cmx $(DRIVERS_DIR)/SVG/HtmlFonts.cmx
-	$(ECHO) "[OMKLIB]    $<"
+	$(ECHO) "[OMKLIB] $<"
 	$(Q)$(OCAMLOPT) $(INCLUDES) -a -o $@ $(DRIVERS_DIR)/SVG/HtmlFonts.cmx $<
 
 $(d)/Html.cmxs: %.cmxs: %.cmx $(DRIVERS_DIR)/SVG/HtmlFonts.cmx
-	$(ECHO) "[SHARE]    $<"
+	$(ECHO) "[SHARE]  $<"
 	$(Q)$(OCAMLOPT) $(INCLUDES) -shared -o $@ $(DRIVERS_DIR)/SVG/HtmlFonts.cmx $<
 
 # Rolling back changes made at the top

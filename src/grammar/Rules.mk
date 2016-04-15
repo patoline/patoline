@@ -26,12 +26,12 @@ $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
 	$(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
   $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOPP) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) -I $(<D) \
-		-I $(DRIVERS_DIR)/Pdf -I $(CONFIG_DIR) \
+	$(Q)$(OCAMLOPT_NOPP) $(PACK_TYPOGRAPHY) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) \
+		-I $(<D) -I $(CONFIG_DIR) \
 		rbuffer.cmxa sqlite3.cmxa unicodelib.cmxa patutil.cmxa fonts.cmxa \
 		zip.cmxa bigarray.cmxa imagelib.cmxa dynlink.cmxa rawlib.cmxa \
-		patoconfig.cmxa unix.cmxa Typography.cmxa Pdf.cmxa cesure.cmxa \
-		DefaultFormat.cmxa -o $@ $(@:.tmx=.cmx) -impl $<
+		patoconfig.cmxa unix.cmxa $(FONTCONFIG_CMXA) Typography.cmxa Pdf.cmxa \
+		cesure.cmxa DefaultFormat.cmxa -o $@ $(@:.tmx=.cmx) -impl $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) $(HYPHENATION_DIR)/hyph-en-us.hdict
 	$(ECHO) "[TMX]    $< -> $@"

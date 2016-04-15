@@ -636,6 +636,7 @@ let _=
   (* Tell make which ConfigFindFont (fontconfig or not) should be linked while
    * building Typograhy.cmxa. *)
   Printf.fprintf make "FINDFONT := %s\n" (if has_fontconfig then "ConfigFindFontFC" else "ConfigFindFontLeg");
+  Printf.fprintf make "FONTCONFIG_CMXA := %s\n" (if has_fontconfig then "camlfontconfig.cmxa" else "");
   close_out make;
 
   (* Generate a .META file for the driver n with internal / external dependency intd / extd *)

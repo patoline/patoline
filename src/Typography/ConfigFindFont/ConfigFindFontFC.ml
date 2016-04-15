@@ -11,9 +11,8 @@ open Fontconfig.Properties
 open Fontconfig.Pattern
 
 let findFont fontspath pat =
-  List.iter
-  (fun p -> ignore (Fontconfig.Config.app_font_add_dir p))
-  !fontspath;
+  let fn p = ignore (Fontconfig.Config.app_font_add_dir p) in
+  List.iter fn fontspath;
   Fontconfig.Pattern.get_string (find_font
     Fontconfig.Properties.(make
       [Family pat.FontPattern.family;
@@ -22,3 +21,7 @@ let findFont fontspath pat =
       ]
     )
   ) "file" 0
+
+let findFont pat =
+  let (p, ps) = PatConfig.(patoconfig.fonts_dir) in
+  findFont (p :: ps) pat
