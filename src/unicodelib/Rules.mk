@@ -20,7 +20,7 @@ $(PA_CONV): INCLUDES:=$(UNICODELIB_INCLUDES)
 UNICODELIB_MODS:= UChar UTF UTF8 UTF16 UTF32 UTFConvert PermanentMap UnicodeLibConfig UCharInfo
 
 UNICODELIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UNICODELIB_MODS)))
-UNICODELIB_DEPS:=$(addsuffix .depends,$(UNICODELIB_ML))
+UNICODELIB_DEPS:=$(addsuffix .depends,$(wildcard $(d)/*.ml))
 
 $(UNICODELIB_DEPS): $(d)/UnicodeLibConfig.ml
 
