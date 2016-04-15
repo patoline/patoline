@@ -40,13 +40,13 @@ $(d)/Main.cmx: $(d)/Main.ml $(CONFIG_DIR)/patoconfig.cmxa
 	$(Q)$(OCAMLOPT) -thread -rectypes -I +threads $(OFLAGS) $(PATOBUILD_INCLUDES) -o $@ -c $<
 
 $(d)/Main.cmo: $(d)/Main.ml
-	$(ECHO) "[OPT]    $<"
+	$(ECHO) "[OCAMLC] $<"
 	$(Q)$(OCAMLC) -thread -rectypes -I +threads $(OFLAGS) $(PATOBUILD_INCLUDES) -o $@ -c $<
 
 $(d)/UnicodeScripts.cmx: $(UNICODELIB_CMX) $(UNICODELIB_DEPS) $(UNICODELIB_ML)
 
 $(d)/UnicodeScripts: $(d)/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
-	$(ECHO) "[OCAMLOPT] $< -> $@"
+	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) -o $@ -package bigarray,unicodelib -linkpkg $<
 
 $(d)/Build.cmo $(d)/Build.cmx: OFLAGS += -thread

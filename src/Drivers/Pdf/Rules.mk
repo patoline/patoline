@@ -25,15 +25,15 @@ $(d)/Pdf.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 
 $(d)/Pdf.cma: %.cma: %.cmo
-	$(ECHO) "[MKLIB]    $< -> $@"
+	$(ECHO) "[MKLIB]  $< -> $@"
 	$(Q)$(OCAMLC) $(INCLUDES) -a -o $@ $<
 
 $(d)/Pdf.cmxa: %.cmxa: %.cmx
-	$(ECHO) "[OMKLIB]    $< -> $@"
+	$(ECHO) "[OMKLIB] $< -> $@"
 	$(Q)$(OCAMLOPT) $(INCLUDES) -a -o $@ $<
 
 $(d)/Pdf.cmxs: %.cmxs: %.cmx
-	$(ECHO) "[SHARE]    $< -> $@"
+	$(ECHO) "[SHARE]  $< -> $@"
 	$(Q)$(OCAMLOPT) $(INCLUDES) -linkpkg -shared -o $@ $<
 
 # Rolling back changes made at the top

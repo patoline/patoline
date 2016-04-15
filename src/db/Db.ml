@@ -77,7 +77,9 @@ let sessid = ref (None: (string * string * (string * string) list) option)
 let secret = ref ""
 
 let init_db table_name db_info =
+#ifdef MYSQL
   let log_name = table_name ^"_log" in
+#endif
   match db_info with
   | Memory ->
     let total_table = Hashtbl.create 1001 in

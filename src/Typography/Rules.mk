@@ -9,7 +9,7 @@ TYPOGRAPHY_DEPS_INCLUDES := -I $(d) -I $(d)/DefaultFormat $(DEPS_PACK_TYPOGRAPHY
 $(d)/%.depends $(wildcard $(d)/*/%.depends): INCLUDES:=$(TYPOGRAPHY_DEPS_INCLUDES)
 $(d)/%.cmx $(d)/%.cmo $(d)/%.cmi $(wildcard $(d)/*/%.cmx) $(wildcard $(d)/*/%.cmo) $(wildcard $(d)/*/%.cmi): INCLUDES:=$(TYPOGRAPHY_INCLUDES)
 
-SRC_$(d):=$(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) $(wildcard $(d)/*/*.ml) $(wildcard $(d)/*/*.mli)
+SRC_$(d):=$(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) $(wildcard $(d)/*/*.ml) $(wildcard $(d)/*/*.mli) $(d)/ConfigFindFont.ml
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
@@ -34,6 +34,23 @@ $(TYPOGRAPHY_CMX): %.cmx: %.cmo
 
 $(TYPOGRAPHY_CMI:.cmi=.cmo): %.cmo: %.cmi
 $(TYPOGRAPHY_CMI:.cmi=.cmx): %.cmx: %.cmi
+
+$(d)/Typography.cmxa: $(d)/patoconfig.cmxa $(d)/patoconfig.a
+$(d)/DefaultFormat.cmxa: $(d)/patoconfig.cmxa $(d)/patoconfig.a
+$(d)/Typography.cma: $(d)/patoconfig.cma $(d)/patoconfig.a
+$(d)/DefaultFormat.cma: $(d)/patoconfig.cma $(d)/patoconfig.a
+
+$(d)/patoconfig.cmxa: $(CONFIG_DIR)/patoconfig.cmxa
+	$(ECHO) "[CP]     $< -> $@"
+	$(Q)cp $< $@
+
+$(d)/patoconfig.cma: $(CONFIG_DIR)/patoconfig.cma
+	$(ECHO) "[CP]     $< -> $@"
+	$(Q)cp $< $@
+
+$(d)/patoconfig.a: $(CONFIG_DIR)/patoconfig.cmxa
+	$(ECHO) "[CP]     $< -> $@"
+	$(Q)cp $(CONFIG_DIR)/patoconfig.a $@
 
 $(d)/ConfigFindFont.ml: $(d)/ConfigFindFont/$(FINDFONT).ml
 	$(ECHO) "[CP]     $< -> $@"
@@ -77,22 +94,24 @@ DEFAULTFORMAT_ML := $(d)/DefaultFormat/Euler.ml $(d)/DefaultFormat/Numerals.ml \
   $(d)/DefaultFormat/TableOfContents.ml $(d)/DefaultFormat/PageLayout.ml \
   $(d)/DefaultFormat/DefaultFormat.ml
 DEFAULTFORMAT_CMI:= $(DEFAULTFORMAT_ML:.ml=.cmi)
+DEFAULTFORMAT_CMX:= $(DEFAULTFORMAT_ML:.ml=.cmx)
+DEFAULTFORMAT_CMO:= $(DEFAULTFORMAT_ML:.ml=.cmo)
 
-$(d)/DefaultFormat.cmxa: $(DEFAULTFORMAT_ML:.ml=.cmx)
+$(d)/DefaultFormat.cmxa: $(DEFAULTFORMAT_CMX)
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -a $^
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -a $(DEFAULTFORMAT_CMX)
 
-$(d)/DefaultFormat.cmxs: $(DEFAULTFORMAT_ML:.ml=.cmx)
+$(d)/DefaultFormat.cmxs: $(DEFAULTFORMAT_CMX)
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -shared $^
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -shared $(DEFAULTFORMAT_CMX)
 
-$(d)/DefaultFormat.cma: $(DEFAULTFORMAT_ML:.ml=.cmo)
+$(d)/DefaultFormat.cma: $(DEFAULTFORMAT_CMO)
 	$(ECHO) "[OCAMLC] $<"
-	$(Q)$(OCAMLC) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -a $^
+	$(Q)$(OCAMLC) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -a $(DEFAULTFORMAT_CMO)
 
-$(d)/DefaultFormat.p.cma: $(DEFAULTFORMAT_ML:.ml=.p.cmo)
+$(d)/DefaultFormat.p.cma: $(DEFAULTFORMAT_CMO)
 	$(ECHO) "[OPT -p] $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -p -a $^
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -p -a $(DEFAULTFORMAT_CMO)
 
 # Building everything
 all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.cmxs
