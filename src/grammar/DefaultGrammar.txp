@@ -32,7 +32,6 @@
 
 => Delimiters
 
-
 (* From Asana font *)
 \Add_left{ ( }(MathFonts.adjusted_asana_delimiters "(" [10;3346;3347;3348])
 \Add_right{ ) }(MathFonts.adjusted_asana_delimiters ")" [11;3349;3350;3351])
@@ -72,6 +71,7 @@
 
 =<
 
+\pagesBefore(1)
 => Relation symbols
 
 \Add_relation{\eq =}{=}
@@ -136,6 +136,8 @@
 \Add_relation{\triangleright ▹} ( MathFonts.asana "triangle right" 893 )
 
 =<
+
+\pagesBefore(1)
 => Addition like symbols
 
 \Add_addition_like{+}{+}
@@ -156,6 +158,7 @@
 
 =<
 
+\pagesBefore(1)
 => Product like symbols
 
 \Add_product_like{\dot \cdot ⋅ ·}{⋅}
@@ -179,6 +182,7 @@
 
 =<
 
+\pagesBefore(1)
 => Connector symbols
 
 \Add_connector{\land &&}(MathFonts.asana "∧" 753)
@@ -187,6 +191,7 @@
 
 =<
 
+\pagesBefore(1)
 => Arrow symbols
 (* Euler doesn't seem to have all the arrows we might want.
 Wouldn't it be better to take all arrows from Asana-Math??? *)
@@ -223,6 +228,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
+\pagesBefore(1)
 => Punctuation symbols
 
 \Add_punctuation{,}{,}
@@ -231,6 +237,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
+\pagesBefore(1)
 => Prefix symbols
 
 \Add_prefix{+}{+}
@@ -249,6 +256,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
+\pagesBefore(1)
 => Quantifiers
 
 \Add_quantifier{\forall ∀}{∀}
@@ -257,6 +265,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
+\pagesBefore(1)
 => Postfix and accent symbols
 
 \Add_postfix{!}{!}
@@ -269,6 +278,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
+\pagesBefore(1)
 => Lowercase Greek letters
 
 \Add_symbol{\alpha α}{α}
@@ -301,6 +311,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
+\pagesBefore(1)
 => Uppercase Greek letters
 
 \Add_symbol{\Alpha Α}{Α}
@@ -333,6 +344,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 *)
 =<
 
+\pagesBefore(1)
 => Gothic letters
 
 \Add_symbol{\frakA 𝔄}(MathFonts.euler "𝔄" 518)
@@ -386,7 +398,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
-
+\pagesBefore(1)
 => Other symbols
 
 (*\Add_symbol{\sharp}(Maths.glyphs "#")*)
@@ -438,6 +450,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
+\pagesBefore(1)
 => Black bold letters
 
 \Add_symbol{\bbA}(MathFonts.ams "bbA" 66)
@@ -479,6 +492,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
+\pagesBefore(1)
 => Calligraphic letters
 
 \Add_symbol{\calA 𝒜}(MathFonts.asana "cal A" 1904)
@@ -510,6 +524,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
+\pagesBefore(1)
 => Operators
 
 \Add_limits_operator{∑ \sum}(List.map (fun x -> vkern_percent_under (MathFonts.euler "∑" x) 0.20) [778;779])
@@ -534,6 +549,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
+\pagesBefore(1)
 => Combining symbols
 
 \Add_combining{ ⃗ }{\vec}

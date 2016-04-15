@@ -27,8 +27,6 @@ let parse_file fn =
 
 let build_cesure_file fn =
   let (pa, hy) = parse_file fn in
-  let (lpa, lhy) = (List.length pa, List.length hy) in
-  Printf.eprintf "  Read: %i patterns and %i exceptions\n%!" lpa lhy;
   let tree = List.fold_left Hyphen.insert Hyphen.empty pa in
   let tree = List.fold_left Hyphen.insert_exception tree hy in
   let fn' = (try Filename.chop_extension fn with _ -> fn) ^ ".hdict" in
