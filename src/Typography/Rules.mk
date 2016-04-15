@@ -16,16 +16,16 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-TYPOGRAPHY_MODS:= TypoLanguage FontPattern ConfigFindFont Distance \
-  Offset Box Badness Break Document Complete Maths \
-	OutputDrawing Geometry Proj3d Diagrams ProofTree Verbatim
+TYPOGRAPHY_MODS:= TypoLanguage FontPattern ConfigFindFont Distance Offset \
+	Box Badness Break Document Complete Maths OutputDrawing Geometry Proj3d \
+	Diagrams ProofTree Verbatim Typography
 
 TYPOGRAPHY_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(TYPOGRAPHY_MODS)))
 TYPOGRAPHY_CMO:=$(TYPOGRAPHY_ML:.ml=.cmo)
 TYPOGRAPHY_CMX:=$(TYPOGRAPHY_ML:.ml=.cmx)
 
 TYPOGRAPHY_MLI:=$(wildcard $(d)/*.mli) $(wildcard $(d)/*/*.mli)
-TYPOGRAPHY_CMI:=$(TYPOGRAPHY_MLI:.mli=.cmi)
+TYPOGRAPHY_CMI:=$(TYPOGRAPHY_ML:.ml=.cmi)
 
 # We cannot run ocamlc and ocamlopt simultaneously on the same input,
 # since they both overwrite the .cmi file, which can get corrupted.
@@ -56,38 +56,25 @@ $(d)/ConfigFindFont.ml: $(d)/ConfigFindFont/$(FINDFONT).ml
 	$(ECHO) "[CPY] $@"
 	$(Q)cp $< $@
 
-$(d)/Typography.cmo: $(TYPOGRAPHY_CMO)
-	$(ECHO) "[PAC] $@"
-	$(Q)$(OCAMLC) -pack -o $@ $^
-$(d)/Typography.cmx: $(TYPOGRAPHY_CMX)
-	$(ECHO) "[PAC] $@"
-	$(Q)$(OCAMLOPT) -pack -o $@ $^
-$(d)/Typography.cma: $(d)/Typography.cmo
-	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLC) -a -o $@ $<
-$(d)/Typography.cmxa: $(d)/Typography.cmx
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT) -a -o $@ $<
-$(d)/Typography.cmxs: $(d)/Typography.cmx
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT) -shared -o $@ $<
+$(d)/Typography.cma: $(TYPOGRAPHY_CMO)
+	$(ECHO) "[LNK] $@"
+	$(Q)$(OCAMLC) -a -o $@ $(TYPOGRAPHY_CMO)
 
-$(TYPOGRAPHY_CMI): %.cmi: %.mli
-	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
-$(filter-out $(d)/Break.cmo,$(TYPOGRAPHY_CMO)): %.cmo: %.ml
-	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
-$(filter-out $(d)/Break.cmx,$(TYPOGRAPHY_CMX)): %.cmx: %.ml
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
+$(d)/Typography.cmxa: $(TYPOGRAPHY_CMX)
+	$(ECHO) "[LNK] $@"
+	$(Q)$(OCAMLOPT) -a -o $@ $(TYPOGRAPHY_CMX)
+
+$(d)/Typography.cmxs: $(TYPOGRAPHY_CMX)
+	$(ECHO) "[LNK] $@"
+	$(Q)$(OCAMLOPT) -shared -o $@ $(TYPOGRAPHY_CMX)
 
 $(d)/Break.cmo: $(d)/Break.ml
 	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
+
 $(d)/Break.cmx: $(d)/Break.ml
 	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 
 # Build DefaultFormat; The variable must be ordered
 DEFAULTFORMAT_ML := $(d)/DefaultFormat/Euler.ml $(d)/DefaultFormat/Numerals.ml \
@@ -124,9 +111,10 @@ DISTCLEAN += $(d)/*.depends $(d)/DefaultFormat/*.depends \
 install: install-typography
 .PHONY: install-typography
 
-install-typography: $(d)/Typography.cmxa $(d)/Typography.cma \
-	$(d)/Typography.cmxs $(d)/Typography.a $(d)/Typography.cmi \
-  $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.cmxs $(d)/DefaultFormat.a $(DEFAULTFORMAT_CMI)
+install-typography: $(TYPOGRAPHY_CMI) $(DEFAULTFORMAT_CMI) \
+	$(d)/Typography.cmxa $(d)/Typography.cma $(d)/Typography.cmxs \
+	$(d)/Typography.a $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa \
+	$(d)/DefaultFormat.cmxs $(d)/DefaultFormat.a
 	install -m 755 -d $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 	install -p -m 644 $^ $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 	install -p -m 644 $(TYPOGRAPHY_DIR)/META $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
