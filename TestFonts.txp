@@ -1,50 +1,48 @@
-(*
-  Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
-  Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
+==============================================================================
+                     Test de toutes les fontes en vrac
+==============================================================================
 
-  This file is part of Patoline.
+\Caml(
 
-  Patoline is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+let fonts_dir = "./Fonts"
+let pangramme =
+  "Portez ce vieux whisky au juge blond qui fume sur son île intérieure, à \
+   côté de l'alcôve ovoïde, où les bûches se consument dans l'âtre, ce qui \
+   lui permet de penser à la cænogénèse de l'être dont il est question dans \
+   la cause ambiguë entendue à Moÿ, dans un capharnaüm qui, pense-t-il, \
+   diminue çà et là la qualité de son œuvre."
 
-  Patoline is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+let all_fonts =
+  let rec find : string -> string list = fun path ->
+    let files = Array.to_list (Sys.readdir path) in
+    let files = List.map (Filename.concat path) files in
+    let handle fn = if Sys.is_directory fn then find fn else [fn] in
+    List.concat (List.map handle files)
+  in
+  let is_font fn =
+    let len = String.length fn in
+    if len < 4 then false else
+    let ext = String.sub fn (len - 4) 4 in
+    (ext = ".otf" || ext = ".ttf")
+  in
+  let files = List.filter is_font (find fonts_dir) in
+  List.sort String.compare files
 
-  You should have received a copy of the GNU General Public License
-  along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
-*)
-=====================================
-Test de toutes les fontes OTF en vrac
-=====================================
+let newPar indent =
+  let param = Patoline_Format.parameters in
+  let environment env =
+    if indent then env else {env with par_indent = []}
+  in
+  newPar ~environment D.structure Complete.normal param
 
-=> Voici un document rigolo :
+let fontPar name =
+  let font = Fonts.loadFont name in
+  let feat = String.concat ", " (Fonts.font_features font) in
+  let text = (linesBefore 2) @ ((tT pangramme) :: (linesAfter 2)) in
+  newPar false [tT ("Font : " ^ name)];
+  newPar false [tT ("Features : " ^ feat)];
+  newPar true  (Document.font font text)
 
-{{
+let _ =  List.iter fontPar all_fonts
 
-let pangramme = "Portez ce vieux whisky au juge blond qui fume sur son île intérieure, à côté de l'alcôve ovoïde, où les bûches se consument dans l'âtre, ce qui lui permet de penser à la cænogénèse de l'être dont il est question dans la cause ambiguë entendue à Moÿ, dans un capharnaüm qui, pense-t-il, diminue çà et là la qualité de son œuvre."  in
-
-let dirs = [ "LatinModernRoman"; "LatinModernMono"; "Alegreya" ] in
-let fonts = List.map (fun dir -> Array.map (fun f -> "./Otf/"^dir^"/"^f) (Sys.readdir ("./Otf/"^dir))) dirs in
-
-ignore (List.map (fun fs -> Array.sort compare fs) fonts);
-
-List.iter (fun fs ->
-    Array.iter (fun f ->
-        let len = String.length f in
-        let ext = String.sub f (len - 4) 4 in
-        if ext = ".otf" then (
-            newPar textWidth parameters ( T (f^" :") :: B (fun env -> env.stdGlue) :: font f [T pangramme]);
-            let font = loadFont f in
-            let features = fontFeatures font in
-            let features = String.concat ", "  features in
-            newPar textWidth parameters [T ("Supported features : "^features)]
-        )
-    ) fs
-) fonts
-}}
-
-=<
+)
