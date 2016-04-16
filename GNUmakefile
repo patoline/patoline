@@ -161,8 +161,9 @@ all: configure testconfig
 
 configure: configure.ml
 	$(ECHO) "[OPT] -> $@"
-	$(Q)- rm -f src/Makefile.config
-	$(Q)ocamlfind ocamlopt -package bytes,unix,str,findlib unix.cmxa str.cmxa findlib.cmxa configure.ml -o configure
+	$(Q)rm -f src/Makefile.config
+	$(Q)ocamlfind ocamlopt -package bytes,unix,str,findlib unix.cmxa str.cmxa \
+		findlib.cmxa configure.ml -o configure
 
 testconfig:
 	@ if [ ! -f "src/Makefile.config" ]; then echo Run './configure [options]' before make; exit 1; fi

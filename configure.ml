@@ -1,26 +1,20 @@
-(*
-  Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
-  Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
+(* Initial checks *)
+let _ =
+  (* Check OCaml version. *)
+  let version = Scanf.sscanf Sys.ocaml_version "%u.%u" (fun i j -> (i,j)) in
+  if version < (4, 1) then
+    begin
+      Printf.eprintf "You need at least OCaml 4.01 to install Patoline.\n%!";
+      Printf.eprintf "Current version: %s\n%!" Sys.ocaml_version;
+      exit 1
+    end;
 
-  This file is part of Patoline.
-
-  Patoline is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Patoline is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
-*)
-
-(* Initialization. *)
-let _ = Findlib.init ~env_ocamlpath:"src"
-let configure_environment = Unix.environment ()
+  (* Check that the system is Unix. *)
+  if not Sys.unix then
+    begin
+      Printf.eprintf "You need a Unix system to install Patoline.\n%!";
+      exit 1
+    end
 
 (* Command-line arguments management and default configuration. *)
 let prefix         = ref "/usr/local/"
@@ -39,12 +33,6 @@ let driver_dir     = ref (Filename.concat !ocaml_lib_dir "Typography")
 let lang           = ref "EN"
 let ban_comic_sans = ref false
 let pdf_type3_only = ref false
-let driver_blist   = ref []
-
-let add_font_dir     d = fonts_dirs    := d :: !fonts_dirs
-let add_grammar_dir  d = grammars_dirs := d :: !grammars_dirs
-let add_hyphen_dir   d = hyphen_dirs   := d :: !hyphen_dirs
-let blacklist_driver d = driver_blist  := d :: !driver_blist
 
 let languages =
   let f = open_in "src/Typography/TypoLanguage.ml" in
@@ -63,54 +51,95 @@ let set_language l =
   if List.mem l languages then lang := l else
   Printf.eprintf "Unknown language %S... using default.\n" l
 
-let languages_string = String.concat ", " (List.rev languages)
-
 let spec =
-  [ ("--prefix", Arg.Set_string prefix,
-       Printf.sprintf "Set prefix (default is %S)." !prefix)
-  ; ("--bindir", Arg.Set_string bindir,
-       Printf.sprintf "Set bindir (default is %S)." !bindir)
-  ; ("--ocaml-libs", Arg.Set_string ocaml_lib_dir,
-       Printf.sprintf "Set library directory (default is %S)." !ocaml_lib_dir)
-  ; ("--ocaml-dlls", Arg.Set_string ocaml_dlls_dir,
-       Printf.sprintf "Set stubs directory (default is %S)." !ocaml_dlls_dir)
-  ; ("--fonts-dir", Arg.Set_string fonts_dir,
-       Printf.sprintf "Set font directory (default is %S)." !fonts_dir)
-  ; ("--grammars-dir", Arg.Set_string grammars_dir,
-       Printf.sprintf "Set grammar directory (default is %S)." !grammars_dir)
-  ; ("--plugins-dir", Arg.Set_string plugins_dir,
-       Printf.sprintf "Set plugins directory (default is %S)." !plugins_dir)
-  ; ("--driver-dir", Arg.Set_string driver_dir,
-       Printf.sprintf "Set driver directory (default is %S)." !driver_dir)
-  ; ("--hyphen-dir", Arg.Set_string hyphen_dir,
-       Printf.sprintf "Set hypenation dictionaries directory (default is %S)."
-       !hyphen_dir)
-  ; ("--extra-fonts-dir", Arg.String add_font_dir,
-       "Add a dirrectory in which Patoline will look for fonts.")
-  ; ("--extra-grammars-dir", Arg.String add_grammar_dir,
-       "Add a dirrectory in which Patoline will look for grammars.")
-  ; ("--extra-hyphen-dir", Arg.String add_hyphen_dir,
-       "Add a dirrectory in which Patoline will look for hyphenation dicts.")
-  ; ("--ban-comic-sans", Arg.Set ban_comic_sans,
-       "Disallows ComicSans font.")
-  ; ("--pdf-type3-only", Arg.Set pdf_type3_only,
-       "Convert all fonts to vector graphics in PDFs.")
-      (* This option improves compatibility, but may worsen font rasterizing
-         in some readers. *)
-  ; ("--lang", Arg.String set_language,
-       Printf.sprintf "Set the language for error messages (available: %s)."
-       languages_string)
-  ; ("--without", Arg.String blacklist_driver,
-       "Blacklist a driver (will not be compiled / installed).") ]
+  let open Printf in
+  [ ( "--prefix"
+    , Arg.Set_string prefix
+    , sprintf " Set the prefix (default is %S)" !prefix)
 
-let _ =
-  Arg.parse spec ignore "Usage:"
+  ; ( "--bindir"
+    , Arg.Set_string bindir
+    , sprintf " Set the bindir (default is %S)" !bindir)
 
+  ; ( "--ocaml-libs"
+    , Arg.Set_string ocaml_lib_dir
+    , sprintf " Set the library directory (default is %S)" !ocaml_lib_dir)
+
+  ; ( "--ocaml-dlls"
+    , Arg.Set_string ocaml_dlls_dir
+    , sprintf " Set the stubs directory (default is %S)" !ocaml_dlls_dir)
+
+  ; ( "--fonts-dir"
+    , Arg.Set_string fonts_dir
+    , " Set the main font directory")
+
+  ; ( "--grammars-dir"
+    , Arg.Set_string grammars_dir
+    , " Set then main grammar directory")
+
+  ; ( "--plugins-dir"
+    , Arg.Set_string plugins_dir
+    , " Set the main plugins directory")
+
+  ; ( "--driver-dir"
+    , Arg.Set_string driver_dir
+    , " Set the driver directory")
+
+  ; ( "--hyphen-dir"
+    , Arg.Set_string hyphen_dir
+    , " Set then main hypenation dictionaries directory")
+
+  ; ( "--add-fonts-dir"
+    , Arg.String (fun d -> fonts_dirs := d :: !fonts_dirs)
+    , " Add a font directory")
+
+  ; ( "--add-grammars-dir"
+    , Arg.String (fun d -> grammars_dirs := d :: !grammars_dirs)
+    , " Add a grammar directory")
+
+  ; ( "--add-hyphen-dir"
+    , Arg.String (fun d -> hyphen_dirs := d :: !hyphen_dirs)
+    , " Add an hyphenation dictionary directory")
+
+  ; ( "--ban-comic-sans"
+    , Arg.Set ban_comic_sans
+    , " Disallows ComicSans")
+
+  (* This option improves compatibility, but may worsen rasterization. *)
+  ; ( "--pdf-type3-only"
+    , Arg.Set pdf_type3_only
+    , " Convert all fonts to vector graphics in PDFs")
+
+  ; ( "--lang"
+    , Arg.String set_language
+    , Printf.sprintf " Set the language for error messages (available: %s)"
+        (String.concat ", " (List.rev languages))) ]
+
+(* Actual parsing of arguments and final variable definitions. *)
 let _ =
-  fonts_dirs    := !fonts_dir    :: !fonts_dirs;
-  grammars_dirs := !grammars_dir :: !grammars_dirs;
-  hyphen_dirs   := !hyphen_dir   :: !hyphen_dirs;
-  plugins_dirs  := !plugins_dir  :: !plugins_dirs
+  let usage = Printf.sprintf "Usage: %s [OPTIONS]\nArguments:" Sys.argv.(0) in
+  Arg.parse (Arg.align spec) ignore usage
+
+let prefix         = !prefix
+let bindir         = !bindir
+let fonts_dir      = !fonts_dir
+let grammars_dir   = !grammars_dir
+let hyphen_dir     = !hyphen_dir
+let ocaml_lib_dir  = !ocaml_lib_dir
+let ocaml_dlls_dir = !ocaml_dlls_dir
+let fonts_dirs     = !fonts_dirs
+let grammars_dirs  = !grammars_dirs
+let plugins_dir    = !plugins_dir
+let plugins_dirs   = !plugins_dirs
+let hyphen_dirs    = !hyphen_dirs
+let driver_dir     = !driver_dir
+let lang           = !lang
+let ban_comic_sans = !ban_comic_sans
+let pdf_type3_only = !pdf_type3_only
+let emacsdir       = Filename.concat prefix "share/emacs/site-lisp/patoline"
+
+(* Initialization of findlib. *)
+let _ = Findlib.init ~env_ocamlpath:"src"
 
 (* Management of local packages. *)
 type local_packages =
@@ -475,9 +504,7 @@ let all_patoline_drivers =
   ; patoline_driver_gl
   ; patoline_driver_image ]
 
-let patoline_drivers =
-  let pred d = not (List.mem d.name !driver_blist) in
-  List.filter pred all_patoline_drivers
+let patoline_drivers = all_patoline_drivers
 
 let find_driver name =
   try List.find (fun p -> name = p.name) patoline_drivers
@@ -558,8 +585,6 @@ let _=
     Printf.eprintf "Warning: fontconfig is missing, \
                     patoline will not use it to search for fonts\n";
 
-  let emacsdir = Filename.concat !prefix "share/emacs/site-lisp/patoline" in
-
   (* Generation of src/Makefile.config *)
   let make = open_out "src/Makefile.config" in
 
@@ -568,9 +593,9 @@ let _=
     (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
     (if has_mysql then "-DMYSQL " else "")
     (if has_sqlite3 then "-DSQLITE3 " else "")
-    (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
-    (if !pdf_type3_only then "-DPDF_TYPE3_ONLY " else "")
-    (if !lang <> "EN" then ("-DLANG_" ^ (!lang)) else "");
+    (if ban_comic_sans then "-DBAN_COMIC_SANS " else "")
+    (if pdf_type3_only then "-DPDF_TYPE3_ONLY " else "")
+    (if lang <> "EN" then ("-DLANG_" ^ (lang)) else "");
 
   Printf.fprintf make "CAMLZIP :=%s\n"
     (if ocamlfind_has "zip" then " " ^ (snd (ocamlfind_query "zip")) else "");
@@ -587,27 +612,27 @@ let _=
       (String.concat "," (gen_pack_line (f extern)))))
     local_packages;
 
-  Printf.fprintf make "INSTALL_FONT_DIR :=%s\n" !fonts_dir;
-  Printf.fprintf make "INSTALL_GRAMMARS_DIR :=%s\n" !grammars_dir;
-  Printf.fprintf make "INSTALL_HYPHEN_DIR :=%s\n" !hyphen_dir;
-  Printf.fprintf make "INSTALL_TYPOGRAPHY_DIR :=%s/Typography\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_DRIVERS_DIR :=%s\n" !driver_dir;
-  Printf.fprintf make "INSTALL_DLLS_DIR :=%s\n" !ocaml_dlls_dir;
+  Printf.fprintf make "INSTALL_FONT_DIR :=%s\n" fonts_dir;
+  Printf.fprintf make "INSTALL_GRAMMARS_DIR :=%s\n" grammars_dir;
+  Printf.fprintf make "INSTALL_HYPHEN_DIR :=%s\n" hyphen_dir;
+  Printf.fprintf make "INSTALL_TYPOGRAPHY_DIR :=%s/Typography\n" ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_DRIVERS_DIR :=%s\n" driver_dir;
+  Printf.fprintf make "INSTALL_DLLS_DIR :=%s\n" ocaml_dlls_dir;
   Printf.fprintf make "INSTALL_EMACS_DIR :=%s\n" emacsdir;
-  Printf.fprintf make "INSTALL_RBUFFER_DIR :=%s/rbuffer\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_UTIL_DIR :=%s/patutil\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_RAWLIB_DIR :=%s/rawlib\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_DB_DIR :=%s/db\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_UNICODELIB_DIR :=%s/unicodelib\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_LIBFONTS_DIR :=%s/patfonts\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_BIBI_DIR :=%s/bibi\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_PATOPLOT_DIR :=%s/patoplot\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_PLUGINS_DIR :=%s\n" !plugins_dir;
-  Printf.fprintf make "INSTALL_CESURE_DIR :=%s/cesure\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_RBUFFER_DIR :=%s/rbuffer\n" ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_UTIL_DIR :=%s/patutil\n" ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_RAWLIB_DIR :=%s/rawlib\n" ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_DB_DIR :=%s/db\n" ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_UNICODELIB_DIR :=%s/unicodelib\n" ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_LIBFONTS_DIR :=%s/patfonts\n" ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_BIBI_DIR :=%s/bibi\n" ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_PATOPLOT_DIR :=%s/patoplot\n" ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_PLUGINS_DIR :=%s\n" plugins_dir;
+  Printf.fprintf make "INSTALL_CESURE_DIR :=%s/cesure\n" ocaml_lib_dir;
 
-  Printf.fprintf make "INSTALL_BIN_DIR :=%s\n" !bindir;
+  Printf.fprintf make "INSTALL_BIN_DIR :=%s\n" bindir;
 
-  Printf.fprintf make "PREFIX :=%s\n" !prefix;
+  Printf.fprintf make "PREFIX :=%s\n" prefix;
 
   (* Write out the list of enabled drivers *)
   let ok_drivers = List.filter can_build_driver patoline_drivers in
@@ -732,14 +757,14 @@ let _=
   let open Printf in
   let plist oc l = List.iter (fprintf oc "%S;") l in
   let oc = open_out "src/config/patDefault.ml" in
-  fprintf oc "let fonts_dir          = %S\n" !fonts_dir;
-  fprintf oc "let plugins_dir        = %S\n" !plugins_dir;
-  fprintf oc "let grammars_dir       = %S\n" !grammars_dir;
-  fprintf oc "let hyphen_dir         = %S\n" !hyphen_dir; 
-  fprintf oc "let extra_fonts_dir    = [%a]\n" plist (List.tl !fonts_dirs);
-  fprintf oc "let extra_plugins_dir  = [%a]\n" plist (List.tl !plugins_dirs);
-  fprintf oc "let extra_grammars_dir = [%a]\n" plist (List.tl !grammars_dirs);
-  fprintf oc "let extra_hyphen_dir   = [%a]\n" plist (List.tl !hyphen_dirs);
+  fprintf oc "let fonts_dir          = %S\n" fonts_dir;
+  fprintf oc "let plugins_dir        = %S\n" plugins_dir;
+  fprintf oc "let grammars_dir       = %S\n" grammars_dir;
+  fprintf oc "let hyphen_dir         = %S\n" hyphen_dir; 
+  fprintf oc "let extra_fonts_dir    = [%a]\n" plist fonts_dirs;
+  fprintf oc "let extra_plugins_dir  = [%a]\n" plist plugins_dirs;
+  fprintf oc "let extra_grammars_dir = [%a]\n" plist grammars_dirs;
+  fprintf oc "let extra_hyphen_dir   = [%a]\n" plist hyphen_dirs;
   let drivers = List.map (fun d -> d.name) ok_drivers in
   fprintf oc "let drivers            =\n  [%a]\n" plist drivers;
   fprintf oc "let has_patonet        = %b\n" has_patonet;
