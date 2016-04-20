@@ -497,11 +497,6 @@ let all_patoline_drivers =
     ; suggests  = []
     ; internals = [ Package "rawlib"; Driver svg_driver ] }
 
-  ; { name      = "Web"
-    ; needs     = []
-    ; suggests  = []
-    ; internals = [ Package "rawlib"; Driver svg_driver ] }
-
   ; svg_driver
   ; patoline_driver_gl
   ; patoline_driver_image ]
