@@ -442,63 +442,65 @@ and driver =
 
 let patoline_driver_gl =
   { name      = "DriverGL"
-  ; needs     = [ Package "str" ; Package "imagelib"; Package "zip";
-		  Package "lablgl" ; Package "lablgl.glut"]
+  ; needs     = [ Package "str" ; Package "imagelib"; Package "zip"
+                ; Package "lablgl" ; Package "lablgl.glut" ]
   ; suggests  = []
-  ; internals = [Package "Typography" ; Package "db" ] }
+  ; internals = [ Package "db"; Package "rawlib" ] }
 
 let patoline_driver_image =
   { name      = "DriverImage"
-  ; needs     = [ Package "lablgl" ; Package "lablgl.glut" ; Package "imagelib" ]
+  ; needs     = [ Package "lablgl" ; Package "lablgl.glut"
+                ; Package "imagelib"]
   ; suggests  = []
-  ; internals = [Driver patoline_driver_gl; Package "Typography" ] }
+  ; internals = [ Driver patoline_driver_gl; Package "rawlib" ] }
 
 let svg_driver =
   { name      = "SVG"
   ; needs     = []
   ; suggests  = []
-  ; internals = [Package "Typography"; Package "db"] }
+  ; internals = [ Package "Typography"; Package "patfonts"; Package "db"
+                ; Package "rawlib" ] }
 
 let all_patoline_drivers =
   [ { name      = "None"
     ; needs     = []
     ; suggests  = []
-    ; internals = [] }
+    ; internals = [ Package "rawlib" ] }
 
   ; { name      = "Pdf"
     ; needs     = []
-    ; suggests  = [Package "zip"]
-    ; internals = [Package "Typography"] }
+    ; suggests  = [ Package "zip" ]
+    ; internals = [ Package "rawlib" ] }
 
   ; { name      = "Bin"
     ; needs     = []
     ; suggests  = []
-    ; internals = [Package "Typography"] }
+    ; internals = [ Package "rawlib" ] }
 
   ; { name      = "Html"
     ; needs     = []
     ; suggests  = []
-    ; internals = [Package "Typography"; Package "unicodelib"] }
+    ; internals = [ Package "rawlib"; Package "unicodelib" ] }
 
   ; { name      = "Patonet"
-    ; needs     = [Package "cryptokit"]
+    ; needs     = [ Package "cryptokit" ]
     ; suggests  = []
-    ; internals = [Package "Typography"; Driver svg_driver] }
+    ; internals = [ Package "rawlib"; Driver svg_driver ] }
 
   ; { name      = "DriverCairo"
-    ; needs     = [ Package "cairo"]
+    ; needs     = [ Package "cairo" ]
     ; suggests  = []
-    ; internals = [Package "Typography"] }
+    ; internals = [ Package "rawlib" ] }
 
   ; { name      = "Net"
     ; needs     = []
     ; suggests  = []
-    ; internals = [Package "Typography"; Driver svg_driver] }
+    ; internals = [ Package "rawlib"; Driver svg_driver ] }
 
   ; { name      = "Web"
     ; needs     = []
     ; suggests  = []
-    ; internals = [Package "Typography"; Driver svg_driver] }
+    ; internals = [ Package "rawlib"; Driver svg_driver ] }
 
   ; svg_driver
   ; patoline_driver_gl
