@@ -16,11 +16,11 @@ $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PDF_DRIVERS_INCLUDES)
 # cmi race condition
 $(d)/Pdf.cmx: %.cmx: %.cmo
 
-$(d)/Pdf.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
+$(d)/Pdf.cmo: %.cmo: %.ml
 	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 
-$(d)/Pdf.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
+$(d)/Pdf.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 
