@@ -23,11 +23,11 @@ endif
 
 all: $(d)/patoline
 
-$(d)/patoline: $(CONFIG_DIR)/patoconfig.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
+$(d)/patoline: $(CONFIG_DIR)/patoconfig.cmxa $(UTIL_DIR)/patutil.cmxa $(PAT_CMX)
 	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -o $@ $(PATOBUILD_INCLUDES) -I +threads -thread \
 		dynlink.cmxa patutil.cmxa str.cmxa unix.cmxa rbuffer.cmxa \
-		unicodelib.cmxa threads.cmxa patoconfig.cmxa $(PAT_CMX)
+		threads.cmxa patoconfig.cmxa $(PAT_CMX)
 
 PATOBUILD_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 

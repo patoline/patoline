@@ -224,7 +224,7 @@ let local_packages =
 
   ; { package_name = "patobuild"
     ; macro_suffix = "PATOBUILD"
-    ; local_deps   = ["Typography";"plugins"]
+    ; local_deps   = ["plugins"]
     ; extern_deps  = ["decap";"bytes";"compiler-libs"]
     ; subdirs      = []
     ; has_meta     = false }
