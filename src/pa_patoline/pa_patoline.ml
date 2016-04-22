@@ -1702,8 +1702,8 @@ let _ = set_grammar math_toplevel (parser
   let macro_name = change_layout (
     parser "\\" - m:lid ->
       if List.mem m reserved_macro then
-        give_up (m ^ " is a reserved macro"); m
-    ) no_blank
+        give_up (m ^ " is a reserved macro"); m) no_blank
+    (* FIXME: useless change layout, but do not work if removed !!! ?*)
 
   let parser macro =
     | id:macro_name ->>
@@ -1761,7 +1761,7 @@ let _ = set_grammar math_toplevel (parser
 
   let _ = set_paragraph_basic_text (fun tags ->
              parser
-               l:{p:(text_paragraph_elt tags) -> (_loc, p)}+ ->
+               l:{p:(text_paragraph_elt tags) -> (_loc, p)}+$ ->
                  match List.rev l with
                  | []   -> assert false
                  | m::l ->
@@ -1799,7 +1799,7 @@ let _ = set_grammar math_toplevel (parser
   let parser paragraph_elt =
     | verb:verbatim_environment -> (fun _ -> verb)
     (* FIXME some of the macro below could be defined using the new configure_word_macro *)
-    | "\\Caml" s:(change_layout wrapped_caml_structure blank2) -> (fun _ -> s)
+    | "\\Caml" s:wrapped_caml_structure -> (fun _ -> s)
     | "\\Title" t:simple_text_macro_argument -> (fun _ ->
          let m1 = freshUid () in
          let m2 = freshUid () in
@@ -1835,13 +1835,12 @@ let _ = set_grammar math_toplevel (parser
                        let _ = $uid:m2$.do_begin_env ()
                        let _ = $uid:m2$.do_end_env ()
                      end>>)
-    | "\\begin{" idb:lid '}' ->>
+    | "\\begin" '{' idb:lid '}' ->>
        let config = try List.assoc idb state.environment with Not_found -> [] in
         args:(macro_arguments idb Text config)
         ps:(change_layout paragraphs blank2)
-       "\\end{" ide:lid '}' ->
+	  "\\end" '{' { ide:lid -> if ide <> idb then give_up "" } '}' ->
          (fun indent_first ->
-           if idb <> ide then give_up "Non-matching begin / end";
            let m1 = freshUid () in
            let m2 = freshUid () in
            let arg =
@@ -1887,23 +1886,17 @@ let _ = set_grammar math_toplevel (parser
     | l:paragraph_basic_text -> l
     | s:symbol_def -> fun _ -> s
 
-  let _ = set_grammar paragraph (change_layout paragraph_elt blank1)
+  let _ = set_grammar paragraph (change_layout (parser e:paragraph_elt l:paragraph_elt* ->
+						fun i -> List.flatten (e i :: List.map (fun r -> r false) l)) blank1)
 
   let _ = set_grammar paragraphs (
     parser p:paragraph ps:paragraph* ->
-      (* FIXME Never indent for now. *)
-      (*
       let ps = List.flatten (List.map (fun r -> r true) ps) in
       fun indent_first -> p indent_first @ ps)
-      *)
-      let ps = List.flatten (List.map (fun r -> r false) ps) in
-      fun indent_first -> p false @ ps)
 
 (****************************************************************************
  * Sections, layout of the document.                                        *
  ****************************************************************************)
-
-let sect_re = ''\(===?=?=?=?=?=?=?\)\|\(---?-?-?-?-?-?-?\)''
 
 let numbered op cl =
   match (op.[0], cl.[0]) with
@@ -1911,10 +1904,30 @@ let numbered op cl =
   | ('-', '-') -> false
   | _          -> give_up "Non-matching section markers..."
 
-let parser text_item =
-  | op:''[-=]>'' title:text_only txt:topleveltext cl:''[-=]<'' ->
+let sect lvl = parser
+  | "==" when lvl = 0
+  | "===" when lvl = 1
+  | "====" when lvl = 2
+  | "=====" when lvl = 3
+  | "======" when lvl = 4
+  | "=======" when lvl = 5
+  | "========" when lvl = 6
+  | "=========" when lvl = 7
+let usect lvl = parser
+  | "--" when lvl = 0
+  | "---" when lvl = 1
+  | "----" when lvl = 2
+  | "-----" when lvl = 3
+  | "------" when lvl = 4
+  | "-------" when lvl = 5
+  | "--------" when lvl = 6
+  | "---------" when lvl = 7
+
+let parser text_item lvl =
+  | op:''[-=]>'' title:text_only txt:(topleveltext (lvl+1)) cl:''[-=]<'' when lvl < 8 ->
     let num = numbered op cl in
-    (fun _ lvl ->
+    (fun _ lvl' ->
+      assert(lvl' = lvl);
       let code =
         <:struct<
           let _ = newStruct ~numbered:$bool:num$ D.structure $title$
@@ -1924,30 +1937,25 @@ let parser text_item =
       in
       (true, lvl, code))
 
-  | op:RE(sect_re) title:text_only cl:RE(sect_re) txt:topleveltext ->
-    let lvlop = String.length op - 1 in
-    let lvlcl = String.length cl - 1 in
-    if lvlop <> lvlcl then give_up "Non-matching section marker length...";
-    let lvl' = lvlop in
-    let num = numbered op cl in
-    (fun _ lvl ->
-      if lvl' > lvl + 1 then give_up "Illegal section level skip...";
+  | (num,title):{_:(sect lvl)  title:text_only _:(sect lvl) -> true, title
+		|_:(usect lvl) title:text_only _:(usect lvl)-> false, title }
+      txt:(topleveltext (lvl+1))$ when lvl < 8 ->
+     (fun _ lvl' ->
+       assert (lvl' >= lvl);
       let code =
         <:struct<
-          let _ = n_go_up $int:lvl - lvl' + 1$ D.structure
+          let _ = n_go_up $int:lvl' - lvl$ D.structure
           let _ = newStruct ~numbered:$bool:num$ D.structure $title$
-          $struct:txt false lvl'$
+          $struct:txt false (lvl+1)$
         >>
       in
       (true, lvl, code))
 
-  | ps:paragraph ->
-    (*
+  | ps:paragraph when lvl < 8 ->
     (fun indent lvl -> (indent, lvl, ps indent))
-    *)
-    (fun indent lvl -> (indent, lvl, ps false)) (* FIXME Never indent for now. *)
 
-and topleveltext = l:text_item* ->
+
+and topleveltext lvl = l:(text_item lvl)* ->
   (fun indent lvl ->
     let fn (indent, lvl, ast) txt =
       let indent, lvl, ast' = txt indent lvl in
@@ -1955,7 +1963,8 @@ and topleveltext = l:text_item* ->
     in
     let _,_,r = List.fold_left fn (indent, lvl, []) l in r)
 
-and text = txt:topleveltext -> txt true 0
+
+and text = txt:(topleveltext 0) -> txt true 0
 
 (* Header, title, main Patoline entry point *********************************)
 
