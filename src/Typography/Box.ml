@@ -65,60 +65,59 @@ and marker=
   | EndLink
   | AlignmentMark
 
+and line =
+  { paragraph        : int (* L'indice du paragraphe dans le tableau *)
+  ; lastFigure       : int (* La dernière figure placée, initialement -1 *)
+  ; lineStart        : int (* Le numéro de la boite de début dans le
+                              paragraphe *)
+  ; lineEnd          : int (* Le numéro de la boite suivant la dernière boite
+                              de la ligne, ou, si la ligne est césurée, le
+                              numéro de la boite contenant la césure *)
+  ; hyphenStart      : int
+  ; hyphenEnd        : int
+  ; isFigure         : bool
+  ; layout           : frame_zipper
+  ; height           : float
+  ; paragraph_height : int
+  ; page_line        : int
+  ; min_width        : float
+  ; nom_width        : float
+  ; max_width        : float
+  ; line_y0          : float
+  ; line_y1          : float }
 
-and line= {
-  paragraph:int;                        (** L'indice du paragraphe dans le tableau *)
-  lastFigure:int;                       (** La dernière figure placée, initialement -1 *)
-  lineStart:int;                        (** Le numéro de la boite de début dans le paragraphe *)
-  lineEnd:int;                          (** Le numéro de la boite suivant la dernière boite de la ligne, ou, si la ligne est césurée, le numéro de la boite contenant la césure *)
-  hyphenStart:int;
-  hyphenEnd:int;
-  isFigure:bool;
-  layout:frame_zipper;
-  height:float;
-  paragraph_height:int;
-  page_line:int;
-  min_width:float;
-  nom_width:float;
-  max_width:float;
-  line_y0:float;
-  line_y1:float
-}
+and parameters =
+  { measure            : float
+  ; left_margin        : float
+  ; local_optimization : int
+  ; min_height_before  : float
+  ; min_height_after   : float
+  ; min_page_before    : int
+  ; min_page_after     : int
+  ; not_last_line      : bool
+  ; not_first_line     : bool
+  ; min_lines_before   : int
+  ; min_lines_after    : int
+  ; absolute           : bool }
 
-and parameters={ measure:float;
-                 left_margin:float;
-                 local_optimization:int;
-                 min_height_before:float;
-                 min_height_after:float;
-                 min_page_before:int;
-                 min_page_after:int;
-                 not_last_line:bool;
-                 not_first_line:bool;
-                 min_lines_before:int;
-                 min_lines_after:int;
-                 absolute:bool
-               }
-and placed_line=
-    { line_params:parameters;
-      line:line }
+and placed_line =
+  { line_params : parameters
+  ; line        : line }
 
+and frame_content =
+  | Placed_line of placed_line
+  | Raw         of RawContent.raw list
 
+and frame =
+  { frame_children : frame IntMap.t
+  ; frame_tags     : string list
+  ; frame_x0       : float
+  ; frame_y0       : float
+  ; frame_x1       : float
+  ; frame_y1       : float
+  ; frame_content  : frame_content list }
 
-
-
-(* Layout definitions *)
-and frame_content=Placed_line of placed_line | Raw of RawContent.raw list
-and frame={
-  frame_children:frame IntMap.t;
-  frame_tags:string list;
-  frame_x0:float;
-  frame_y0:float;
-  frame_x1:float;
-  frame_y1:float;
-  frame_content:frame_content list
-}
-
-and frame_zipper=frame*((int*frame) list)
+and frame_zipper = frame * (int * frame) list
 
 
 
