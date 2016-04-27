@@ -36,13 +36,14 @@ let is_last paragraph j=
 type figurePosition=Placed of line | Flushed | Begun
 
 
-module type Line=sig
-  type t
-  val compare:t->t->int
-  val hash:t->int
-end
+module type Line =
+  sig
+    type t
+    val compare : t -> t -> int
+    val hash    : t -> int
+  end
 
-module Make (L:Line with type t=Box.line)=(
+module Make(L : Line with type t = Box.line) =
   struct
     module LineMap=Map.Make (L)
     module ColMap=Map.Make (
@@ -739,4 +740,4 @@ module Make (L:Line with type t=Box.line)=(
               [],empty_frame,IntMap.empty,MarkerMap.empty
             )
       end
-  end)
+  end

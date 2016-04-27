@@ -118,7 +118,7 @@
 \Add_relation{\lt <}{<}
 \Add_relation{\gt >}{>}
 \Add_relation{\eqdef =:}(MathFonts.asana "\\eqdef" 799)
-\Add_relation{\defeq :=}(MathFonts.asana "\\defeq" 798)
+\Add_relation{\defeq := ≔}(MathFonts.asana "\\defeq" 798)
 \Add_relation{\bnfeq ::=}(MathFonts.asana "\\bnfeq" 1506)
 
 
