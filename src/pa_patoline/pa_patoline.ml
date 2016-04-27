@@ -1775,7 +1775,7 @@ let _ = set_grammar math_toplevel (parser
   let oparagraph_basic_text = paragraph_basic_text
   let parser paragraph_basic_text =
       p:(oparagraph_basic_text TagSet.empty) ->
-        (fun indented ->
+    (fun indented ->
          if indented then
            <:struct<
              let _ = newPar D.structure
@@ -1836,10 +1836,10 @@ let _ = set_grammar math_toplevel (parser
                        let _ = $uid:m2$.do_end_env ()
                      end>>)
     | "\\begin" '{' idb:lid '}' ->>
-       let config = try List.assoc idb state.environment with Not_found -> [] in
-        args:(macro_arguments idb Text config)
-        ps:(change_layout paragraphs blank2)
-	  "\\end" '{' { ide:lid -> if ide <> idb then give_up "" } '}' ->
+        let config = try List.assoc idb state.environment with Not_found -> [] in
+          args:(macro_arguments idb Text config)
+          ps:(change_layout paragraphs blank2)
+      "\\end" '{' STR(idb) '}' ->
          (fun indent_first ->
            let m1 = freshUid () in
            let m2 = freshUid () in
@@ -1875,7 +1875,7 @@ let _ = set_grammar math_toplevel (parser
                          $struct:ps indent_first$
                          let _ = $uid:m2$ . do_end_env ()
                         end>>)
-    | m:{ "\\[" m:math_toplevel "\\]" | "$$" m:math_toplevel "$$" } ->
+    | m:{ "\\[" math_toplevel "\\]" | "$$" math_toplevel "$$" } ->
          (fun _ ->
            <:struct<let _ = newPar D.structure
                         ~environment:(fun x -> {x with par_indent = []})
@@ -1952,7 +1952,7 @@ let parser text_item lvl =
       (true, lvl, code))
 
   | ps:paragraph when lvl < 8 ->
-    (fun indent lvl -> (indent, lvl, ps indent))
+    (fun indent lvl -> (true, lvl, ps indent))
 
 
 and topleveltext lvl = l:(text_item lvl)* ->
