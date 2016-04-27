@@ -18,9 +18,10 @@ endif
 endif
 
 # Building
-UTIL_MODS:= FilenameExtra UsualMake Util Graph
+UTIL_MODS:= FilenameExtra UsualMake Zipper Util Graph
 
 UTIL_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UTIL_MODS)))
+UTIL_MLI:=$(wildcard $(d)/*.mli)
 
 UTIL_CMO:=$(UTIL_ML:.ml=.cmo)
 UTIL_CMX:=$(UTIL_ML:.ml=.cmx)
@@ -54,7 +55,8 @@ DISTCLEAN += $(wildcard $(d)/*.depends)
 # Installing
 install: install-util
 .PHONY: install-util
-install-util: $(d)/patutil.cma $(d)/patutil.cmxa $(d)/patutil.cmxs $(d)/patutil.a $(UTIL_CMI) $(UTIL_CMX) $(UTIL_CMO) $(d)/META
+install-util: $(d)/patutil.cma $(d)/patutil.cmxa $(d)/patutil.cmxs \
+	$(d)/patutil.a $(UTIL_CMI) $(UTIL_CMX) $(UTIL_CMO) $(UTIL_MLI) $(d)/META
 	install -m 755 -d $(DESTDIR)/$(INSTALL_UTIL_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_UTIL_DIR)
 
