@@ -820,7 +820,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 				  | _ -> assert false
 				  ])]
 
-    let hand () = hfill 4. @ hspace 0. @ hfill 4.
+    let hand = hfill 4. @ hspace 0. @ hfill 4.
 
     module Env_mathpar = struct
 

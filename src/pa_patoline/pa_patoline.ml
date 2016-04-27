@@ -233,6 +233,7 @@ let freshUid () =
     | s:RE(escaped_re) ->
       String.escaped (String.sub s 1 (String.length s - 1))
     | c:char_alone -> String.make 1 c
+    | c:" " -> c
 
   let word =
     change_layout (
@@ -1406,6 +1407,7 @@ let parser any_symbol =
   | sym:(alternatives (List.map math_infix_symbol      math_prios)) -> sym.infix_value
   | sym:(alternatives (List.map math_prefix_symbol     math_prios)) -> sym.prefix_value
   | sym:(alternatives (List.map math_postfix_symbol    math_prios)) -> sym.postfix_value
+  | sym:(alternatives (List.map math_operator    math_prios)) -> CamlSym <:expr<List.hd $sym.operator_values$>>
 
 let merge_indices indices ind =
   assert(ind.down_left = None);
