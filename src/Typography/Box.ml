@@ -123,6 +123,17 @@ and frame =
 
 and frame_zipper = frame * (int * frame) list
 
+module MarkerMap = Map.Make(
+  struct
+    type t = marker
+    let compare = compare
+  end)
+
+let is_glyph  : box -> bool = function GlyphBox _ -> true | _ -> false
+let is_glue   : box -> bool = function Glue _     -> true | _ -> false
+let is_hyphen : box -> bool = function Hyphen _   ->true  | _ -> false
+
+
 
 
 
@@ -302,9 +313,6 @@ let lines_eq l0 l1=
 
 (* Fin des definitions *)
 
-
-module MarkerMap=Map.Make(struct type t=marker let compare=compare end)
-
 let empty_drawing_box=
     {
       drawing_min_width=0.;
@@ -426,16 +434,6 @@ let drawing_blit a x0 y0 b=
                           let cb=b.drawing_contents ((b.drawing_max_width-.b.drawing_min_width)*.fact) in
                             (List.map (translate x0 y0) cb)@ca)
     }
-
-
-let is_glyph=function
-    GlyphBox _->true
-  | _->false
-let is_glue=function
-    Glue _->true
-  | _->false
-let is_hyphen =function Hyphen _->true | _->false
-
 
 
 let rec box_width comp=function
