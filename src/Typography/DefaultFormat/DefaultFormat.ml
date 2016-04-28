@@ -822,6 +822,9 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 
     let hand = hfill 4. @ hspace 0. @ hfill 4.
 
+    let nothing : content list = []
+    let mathNothing : Document.environment Typography.Maths.math list = []
+
     module Env_mathpar = struct
 
       let do_begin_env () =
