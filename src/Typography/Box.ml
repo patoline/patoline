@@ -23,56 +23,60 @@ open UsualMake
 open FTypes
 open Bezier
 
-
-(* Box definition (yes, metal boxes) *)
-
-type box=
-    GlyphBox of glyph
-  | Kerning of box kerningBox
-  | Glue of drawingBox
-  | Drawing of drawingBox
-  | Hyphen of hyphenBox
-  | Marker of marker
+type box =
+  | GlyphBox    of RawContent.glyph
+  | Kerning     of box FTypes.kerningBox
+  | Glue        of drawingBox
+  | Drawing     of drawingBox
+  | Hyphen      of hyphenBox
+  | Marker      of marker
   | BeginFigure of int
   | FlushFigure of int
-  | Parameters of (parameters->parameters)
-  | Layout of (frame_zipper->frame_zipper)
+  | Parameters  of (parameters->parameters)
+  | Layout      of (frame_zipper->frame_zipper)
   | Empty
 
-and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
-                   drawing_max_width:float;
-		   drawing_width_fixed: bool; drawing_adjust_before: bool;
-		   drawing_y0:float; drawing_y1:float;
-                   drawing_badness : float -> float;
-                   drawing_break_badness : float;
-                   drawing_states:int list;
-                   drawing_contents:float -> RawContent.raw list }
+and drawingBox =
+  { drawing_min_width     : float
+  ; drawing_nominal_width : float
+  ; drawing_max_width     : float
+  ; drawing_width_fixed   : bool
+  ; drawing_adjust_before : bool
+  ; drawing_y0            : float
+  ; drawing_y1            : float
+  ; drawing_badness       : float -> float
+  ; drawing_break_badness : float
+  ; drawing_states        : int list
+  ; drawing_contents      : float -> RawContent.raw list }
 
-
-and hyphenBox= { hyphen_normal: box array; hyphenated:(box array* box array) array }
+and hyphenBox =
+  { hyphen_normal : box array
+  ; hyphenated    : (box array * box array) array }
 
 and kind =
-  Extern of string
-| Intern of string
-| Button of button_kind * string * string list
+  | Extern of string
+  | Intern of string
+  | Button of button_kind * string * string list
 
-and marker=
-    Label of string
+and marker =
+  | Label     of string
   | FigureRef of int
-  | Pageref of string
+  | Pageref   of string
   | Structure of int list
   | BeginLink of kind
   | EndLink
   | AlignmentMark
 
 and line =
-  { paragraph        : int (* L'indice du paragraphe dans le tableau *)
-  ; lastFigure       : int (* La dernière figure placée, initialement -1 *)
-  ; lineStart        : int (* Le numéro de la boite de début dans le
-                              paragraphe *)
-  ; lineEnd          : int (* Le numéro de la boite suivant la dernière boite
-                              de la ligne, ou, si la ligne est césurée, le
-                              numéro de la boite contenant la césure *)
+  (** The index of the paragraph in the array. *)
+  { paragraph        : int
+  (** The last placed figure (initially -1) *)
+  ; lastFigure       : int
+  (** The index of the first box of the line in the paragraph. *)
+  ; lineStart        : int
+  (** The index of the box next to the last box of the line, or the box with
+      the hyphenation if the line is hyphenated. *)
+  ; lineEnd          : int
   ; hyphenStart      : int
   ; hyphenEnd        : int
   ; isFigure         : bool
@@ -118,6 +122,7 @@ and frame =
   ; frame_content  : frame_content list }
 
 and frame_zipper = frame * (int * frame) list
+
 
 
 
