@@ -797,24 +797,25 @@ let compression paragraphs (parameters) (line)=comp paragraphs parameters.measur
 
 
 
-module GlMap=Map.Make (struct type t=(string*int*float*Color.color) let compare=compare end)
-let glyphCache_=ref GlMap.empty
-
-let glyphCache cur_font gl fcolor fsize=
-  let name=Fonts.uniqueName cur_font in
-  try GlMap.find (name,gl.glyph_index,fsize,fcolor) !glyphCache_ with
-      Not_found->(
-        let glyph=Fonts.loadGlyph cur_font gl in
-        let loaded={ glyph=glyph;
-                     glyph_x=0.;glyph_y=0.;
-                     glyph_kx=0.;glyph_ky=0.;
-                     glyph_order=0;
-                     glyph_color=fcolor;
-                     glyph_size=fsize } in
-        let loaded=GlyphBox loaded in
-        glyphCache_:=GlMap.add (name,gl.glyph_index,fsize,fcolor) loaded !glyphCache_;
-        loaded
-      )
+let glyphCache : Fonts.font -> glyph_id -> Color.color -> float -> box =
+  let module GMap = Map.Make(
+    struct
+      type t = string * int * float * Color.color
+      let compare = compare
+    end) in
+  let cache = ref GMap.empty in
+  let glyphCache cur_font gl glyph_color glyph_size =
+    let name = Fonts.uniqueName cur_font in
+    let key = (name, gl.glyph_index, glyph_size, glyph_color) in
+    try GMap.find key !cache with Not_found ->
+      let loaded = GlyphBox
+        { glyph   = Fonts.loadGlyph cur_font gl
+        ; glyph_x = 0.0 ; glyph_kx = 0.0
+        ; glyph_y = 0.0 ; glyph_ky = 0.0
+        ; glyph_order = 0 ; glyph_color ; glyph_size }
+      in
+      cache := GMap.add key loaded !cache; loaded
+  in glyphCache
 
 
 
