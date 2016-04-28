@@ -31,10 +31,12 @@ let add_patoline_packages ps =
   let ps = Util.split ',' ps in
   patoline_packages := !patoline_packages @ ps
 
+let no_default_grammar = ref false
+
+(* store grammar to use before parsing starts,
+   do not use once parsing is started, use add_grammar *)
 let add_patoline_grammar g =
   patoline_grammar := g :: !patoline_grammar
-
-let no_default_grammar = ref false
 
 let in_ocamldep = ref false
 
@@ -884,6 +886,20 @@ let build_grammar () =
   set_grammar math_right_delimiter (tree_to_grammar "rigt_delimiter_symbol" state.right_delimiter_symbols);
   set_grammar math_combining_symbol (tree_to_grammar "combining_symbol" state.combining_symbols)
 
+(* add grammar now, but not build yet *)
+let add_grammar g =
+  let open PatConfig in
+  let (gpath, gpaths) = patoconfig.grammars_dir in
+  let path = "." :: "_patobuild" :: gpath :: gpaths in
+  if !no_default_grammar && g = "DefaultGrammar" then () else
+    let g = findPath (g ^ ".tgy") path in
+    (*Printf.eprintf "Reading grammar %s\n%!" g;*)
+    let ch = open_in_bin g in
+    let st = input_value ch in
+    merge_states state st;
+    close_in ch;
+  (*Printf.eprintf "Done with grammar %s\n%!" g*)
+
 let parser all_left_delimiter =
   | math_left_delimiter
   | _:"\\left" math_right_delimiter
@@ -893,24 +909,6 @@ let parser all_right_delimiter =
   | math_right_delimiter
   | _:"\\right" math_left_delimiter
   | "\\right." -> invisible_delimiter
-
-let before_parse_hook () =
-  In.before_parse_hook ();
-  let open PatConfig in
-  let (gpath, gpaths) = patoconfig.grammars_dir in
-  let path = "." :: "_patobuild" :: gpath :: gpaths in
-  let add_grammar g =
-    if !no_default_grammar && g = "DefaultGrammar" then () else
-    let g = findPath (g ^ ".tgy") path in
-    (*Printf.eprintf "Reading grammar %s\n%!" g;*)
-    let ch = open_in_bin g in
-    let st = input_value ch in
-    merge_states state st;
-    close_in ch;
-  (*Printf.eprintf "Done with grammar %s\n%!" g*)
-  in
-  List.iter add_grammar !patoline_grammar;
-  build_grammar ()
 
 let symbol_paragraph _loc syms names =
   <:struct<
@@ -1821,6 +1819,7 @@ let _ = set_grammar math_toplevel (parser
 
     | "\\Include" '{' id:uid '}' -> (fun _ ->
          incr nb_includes;
+         (try add_grammar id; build_grammar () with _ -> ());
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
          <:struct< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output )(D)
                    open $uid:temp_id$>>)
@@ -1980,14 +1979,20 @@ and text = txt:(topleveltext 0) -> txt true 0
 let patoline_config : unit grammar =
   change_layout (
     parser
-    | "#FORMAT " f:uid -> set_patoline_driver f
-    | "#DRIVER " d:uid -> set_patoline_driver d
+    | "#FORMAT " f:uid ->
+       set_patoline_format f;
+       (try add_grammar f with _ -> ())
+    | "#DRIVER " d:uid ->
+       set_patoline_driver d
     | "#PACKAGES " ps:''[,a-zA-Z]+'' ->
-        add_patoline_packages ps
-    | "#GRAMMAR " g:''[a-zA-Z]+''    -> add_patoline_grammar g
+       add_patoline_packages ps
+    | "#GRAMMAR " g:''[a-zA-Z]+''    ->
+       add_grammar g
   ) no_blank
 
-let parser header = _:patoline_config*
+let parser header = _:patoline_config* ->
+  List.iter add_grammar !patoline_grammar;
+  build_grammar ()
 
 let parser title =
   | RE("==========\\(=*\\)")
