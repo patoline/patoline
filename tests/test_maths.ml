@@ -24,20 +24,20 @@ open Util
 let a =
   let env=Maths.default in
   let style=Display in
-    Ordinary  (noad (glyphs "a"))
+    Ordinary  (node (glyphs "a"))
 
 let a0=
   let env=Maths.default in
   let style=Display in
-    Ordinary  { (noad (glyphs "a")) with
-                  superscript_right=[Ordinary (noad (glyphs "0"))];
+    Ordinary  { (node (glyphs "a")) with
+                  superscript_right=[Ordinary (node (glyphs "0"))];
                   superscript_left=[];
-                  subscript_right=[Ordinary (noad (glyphs "1"))];
+                  subscript_right=[Ordinary (node (glyphs "1"))];
                   subscript_left=[] }
 
 
 let bx= (
-  Binary { bin_priority=0; bin_drawing=Normal (false, (noad (glyphs "+")), false);
+  Binary { bin_priority=0; bin_drawing=Normal (false, (node (glyphs "+")), false);
            bin_left=[a]; bin_right=[a] }
 )
 
@@ -45,19 +45,19 @@ let bx= (
 let x =
   let env=Maths.default in
   let style=Display in
-    Ordinary  { (noad (glyphs "V")) with
+    Ordinary  { (node (glyphs "V")) with
                   superscript_right=[];
                   superscript_left=[];
-                  subscript_right=[Ordinary (noad (glyphs "i"))];
+                  subscript_right=[Ordinary (node (glyphs "i"))];
                   subscript_left=[] }
 
 let integrale=
   let env=Maths.default in
   let style=Display in
-    Operator { op_limits=false; op_noad={ (noad [int env style]) with
-                                            superscript_right=[Ordinary (noad (glyphs "0"))];
+    Operator { op_limits=false; op_node={ (node [int env style]) with
+                                            superscript_right=[Ordinary (node (glyphs "0"))];
                                             superscript_left=[];
-                                            subscript_right=[Ordinary (noad (glyphs "a=0+1"))];
+                                            subscript_right=[Ordinary (node (glyphs "a=0+1"))];
                                             subscript_left=[]
                                         };
                op_left_spacing=0.5;
@@ -68,7 +68,7 @@ let integrale=
 let cos=
   let env=Maths.default in
   let style=Display in
-    Ordinary  { (noad (gl_font env style (Fonts.loadFont "Otf/lmromancaps10-regular.otf") "cos")) with
+    Ordinary  { (node (gl_font env style (Fonts.loadFont "Otf/lmromancaps10-regular.otf") "cos")) with
                   superscript_right=[];
                   superscript_left=[];
                   subscript_right=[];

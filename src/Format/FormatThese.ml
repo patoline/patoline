@@ -34,14 +34,14 @@ let mathsT t0=
   let t1=if t0.[String.length t0-1]=' ' then tT t0::[tT" "] else [tT t0] in
   let t=if t0.[0]=' ' then tT" "::t1 else t1 in
   let l=
-    Maths.Ordinary (Maths.noad (fun env st->boxify_scoped
+    Maths.Ordinary (Maths.node (fun env st->boxify_scoped
                                   { env with size=env.size*.(Maths.env_style env.mathsEnvironment st).Mathematical.mathsSize }
                                   t ))
   in
   [l]
 
 let mathsText t0=
-  [Maths.Ordinary (Maths.noad (fun env st->boxify_scoped
+  [Maths.Ordinary (Maths.node (fun env st->boxify_scoped
                                  { env with size=env.size*.(Maths.env_style env.mathsEnvironment st).Mathematical.mathsSize }
                                  t0 ))]
 

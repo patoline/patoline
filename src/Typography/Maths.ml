@@ -53,7 +53,7 @@ module type Custom =
   end
 
 type math =
-  | Ordinary   of nucleus noad
+  | Ordinary   of nucleus node
   | Glue       of drawingBox
   | Env        of (Document.environment -> Document.environment)
   | Scope      of (Document.environment -> Mathematical.style -> math list)
@@ -64,7 +64,7 @@ type math =
                     -> box list) * math list
   | Custom     of (module Custom with type u = math list)
 
-and 'a noad =
+and 'a node =
   { nucleus                 : 'a
   ; subscript_left          : math list
   ; subscript_right         : math list
@@ -80,7 +80,7 @@ and binary_type =
   (** Invisible product symbol. *)
   | Invisible
   (** Regular binary symbol, the booleans remove spacing if true. *)
-  | Normal of bool * nucleus noad * bool
+  | Normal of bool * nucleus node * bool
 
 and binary =
   { bin_priority : int
@@ -94,7 +94,7 @@ and fraction =
   ; line        : Document.environment -> style -> RawContent.path_param }
 
 and operator =
-  { op_noad           : nucleuses noad
+  { op_node           : nucleuses node
   ; op_limits         : bool
   ; op_left_contents  : math list
   ; op_right_contents : math list }
@@ -129,7 +129,7 @@ let env_style env style=match style with
   | ScriptScript'->env.(7)
 
 
-let noad n =
+let node n =
   { nucleus = n ; subscript_left = [] ; superscript_left = []
   ; subscript_right = [] ; superscript_right = []
   ; super_left_same_script = false ; super_right_same_script = false }
@@ -146,9 +146,9 @@ let bin_invisible prio left right=
 let bin prio drawing left right=
   Binary { bin_priority=prio; bin_drawing=drawing; bin_left=left; bin_right=right }
 let op_limits a b c=
-  Operator { op_noad=b; op_limits=true; op_left_contents=a; op_right_contents=c}
+  Operator { op_node=b; op_limits=true; op_left_contents=a; op_right_contents=c}
 let op_nolimits a b c=
-  Operator { op_noad=b; op_limits=false; op_left_contents=a; op_right_contents=c}
+  Operator { op_node=b; op_limits=false; op_left_contents=a; op_right_contents=c}
 (* let symbol font size c= *)
 (*   { *)
 (*     glyph_x=0.;glyph_y=0.; glyph_size=size; glyph_color=black; *)
@@ -694,8 +694,8 @@ let rec draw draw_env env_stack mlist =
 	      mathsEnv.op_limits_tolerance else
 	      mathsEnv.op_tolerance
 	  in
-	  let op_noad_choice =
-	    let ll = op.op_noad.nucleus in
+	  let op_node_choice =
+	    let ll = op.op_node.nucleus in
 	    let lc = List.map (fun left ->
 	      let left' = left env style in
 	      let left'=draw_boxes env left' in
@@ -710,20 +710,20 @@ let rec draw draw_env env_stack mlist =
 	    in
 	    fst (fn lc)
 	  in
-	  let op_noad = { op.op_noad with nucleus = op_noad_choice } in
-          let op_noad =
+	  let op_node = { op.op_node with nucleus = op_node_choice } in
+          let op_node =
             if op.op_limits && (style=Display || style=Display') then (
               let op', sup=
-                if op_noad.superscript_right=[] || op_noad.superscript_left=[] then
-                  ({ op_noad with superscript_right=[]; superscript_left=[] },
-                   op_noad.superscript_right @ op_noad.superscript_left)
+                if op_node.superscript_right=[] || op_node.superscript_left=[] then
+                  ({ op_node with superscript_right=[]; superscript_left=[] },
+                   op_node.superscript_right @ op_node.superscript_left)
                 else
-                  op_noad, []
+                  op_node, []
               in
               let op'', sub=
-                if op_noad.subscript_right=[] || op_noad.subscript_left=[] then
+                if op_node.subscript_right=[] || op_node.subscript_left=[] then
                   ({ op' with subscript_right=[]; subscript_left=[] },
-                   op_noad.subscript_right @ op_noad.subscript_left)
+                   op_node.subscript_right @ op_node.subscript_left)
                 else
                   op', []
               in
@@ -795,10 +795,10 @@ let rec draw draw_env env_stack mlist =
                            (List.map (RawContent.translate (xsub-.xoff-.(x1b+.x0b)/.2.) (y0-.y1b-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize*.env.size)) bb)
                       ) }]
 
-            ) else draw (dincr draw_env) env_stack [Ordinary op_noad]
+            ) else draw (dincr draw_env) env_stack [Ordinary op_node]
           in
 
-	  let box_op = draw_boxes env op_noad in
+	  let box_op = draw_boxes env op_node in
           let x0,y0,x1,y1=bounding_box box_op in
 	  let half = (x0 -. x1)/.2. in
 	  let dist_l = if left=[] then 0. else

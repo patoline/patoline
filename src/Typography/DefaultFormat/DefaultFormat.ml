@@ -1713,7 +1713,7 @@ module MathsFormat=struct
 
     module MathFonts = MathFonts
     let mathsText t0=
-      [Maths.Ordinary (Maths.noad (fun env st->boxify_scoped
+      [Maths.Ordinary (Maths.node (fun env st->boxify_scoped
         { env with size=env.size*.(Maths.env_style env.mathsEnvironment st).Mathematical.mathsSize }
         t0 ))]
     let mathcal a=[Maths.Scope(fun _ _-> Maths.Env (Euler.changeFont [Euler.Font `Cal]):: a)]
@@ -1763,7 +1763,7 @@ module MathsFormat=struct
 
     let oline a=
       [Maths.Ordinary
-         (Maths.noad
+         (Maths.node
             (fun envs st->
                let dr=draw_boxes envs (Maths.draw [envs] a) in
                let env=Maths.env_style envs.mathsEnvironment st in
@@ -1787,7 +1787,7 @@ module MathsFormat=struct
 
     let mnot a=
       [Maths.Ordinary
-         (Maths.noad
+         (Maths.node
             (fun envs st->
                let dr=draw_boxes envs (Maths.draw [envs] a) in
                let env=Maths.env_style envs.mathsEnvironment st in
@@ -1817,7 +1817,7 @@ module MathsFormat=struct
 
     let oDot a =
       [Maths.Ordinary
-        (Maths.noad
+        (Maths.node
           (fun envs st ->
             let env = Maths.env_style envs.mathsEnvironment st in
             let font = Lazy.force (env.Mathematical.mathsFont) in
@@ -1857,7 +1857,7 @@ module MathsFormat=struct
 
     let oDoubleDot a =
       [Maths.Ordinary
-        (Maths.noad
+        (Maths.node
           (fun envs st ->
             let env = Maths.env_style envs.mathsEnvironment st in
             let font = Lazy.force (env.Mathematical.mathsFont) in
@@ -1907,7 +1907,7 @@ module MathsFormat=struct
 
     let oHat a =
       [Maths.Ordinary
-        (Maths.noad
+        (Maths.node
           (fun envs st ->
             let env = Maths.env_style envs.mathsEnvironment st in
             let font = Lazy.force (env.Mathematical.mathsFont) in
@@ -1955,7 +1955,7 @@ module MathsFormat=struct
 
     let oRightArrow a=
       [Maths.Ordinary
-         (Maths.noad
+         (Maths.node
             (fun envs st->
                let boxes=(Maths.draw [envs] a) in
                let boxes_w=
@@ -2015,7 +2015,7 @@ module MathsFormat=struct
 
     let oLeftArrow a=
       [Maths.Ordinary
-         (Maths.noad
+         (Maths.node
             (fun envs st->
                let boxes=(Maths.draw [envs] a) in
                let boxes_w=

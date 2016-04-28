@@ -76,7 +76,7 @@ module Plot(D:Document.DocumentStructure)=struct
             (Maths.kdraw
                [ { env with mathStyle = Document.Mathematical.Script } ]
                ([Maths.Ordinary
-                    (Maths.noad
+                    (Maths.node
                        ((Maths.glyphs
                            (Printf.sprintf "%g" (minx+. !x)
                            )))) ])
@@ -105,7 +105,7 @@ module Plot(D:Document.DocumentStructure)=struct
             (Maths.kdraw
                [ { env with mathStyle = Document.Mathematical.Script } ]
                ([Maths.Ordinary
-                    (Maths.noad
+                    (Maths.node
                        ((Maths.glyphs
                            (Printf.sprintf "%g" (miny+. !y)
                            )))) ])

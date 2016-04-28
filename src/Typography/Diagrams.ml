@@ -32,7 +32,7 @@ let to_deg angle = angle *. 180. /. pi
 let to_rad angle = angle *. pi /. 180.
 let default_line_width = ref 0.1
 let ex env =
-  let l = Maths.draw [ env ] ([Maths.Ordinary (Maths.noad ((Maths.glyphs "x"))) ]) in
+  let l = Maths.draw [ env ] ([Maths.Ordinary (Maths.node ((Maths.glyphs "x"))) ]) in
   let x = List.find
     (function Box.GlyphBox x -> true | _ -> false)
     l
@@ -3017,7 +3017,7 @@ let cliptip grad info tip curve0 =
 	a =
       [Maths.Binary { Maths.bin_priority = 2 ; Maths.bin_drawing = Maths.Normal
 	  (true,
-           (Maths.noad
+           (Maths.node
               (fun env st->
 		let dr=Document.draw_boxes env
 		  (Maths.draw [{env with mathStyle = Maths.scriptStyle env.mathStyle}] a)

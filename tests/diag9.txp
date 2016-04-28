@@ -7,7 +7,7 @@ open Diagrams
 let mathsOfDiagram =
 function
 | [] -> assert false
-| B (f,_) :: _ -> begin [Maths.Ordinary (Maths.noad (fun env style -> 
+| B (f,_) :: _ -> begin [Maths.Ordinary (Maths.node (fun env style -> 
   let env = { env with Document.size=env.Document.size*.(Maths.env_style env.mathsEnvironment style).Mathematical.mathsSize }
  in
     match f env with

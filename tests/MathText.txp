@@ -28,7 +28,7 @@ let _ = newPar D.structure ~environment:(fun x -> x) Complete.normal parameters
     tT "On commence par passer en maths et" ;
     bB (fun env -> List.map (fun b -> Box.resize env.size b)
       (Maths.draw [ env ] 
-      [ Maths.Ordinary (Maths.noad (fun env st -> 
+      [ Maths.Ordinary (Maths.node (fun env st -> 
 	[Box.Drawing
 	    (Box.drawing
 	       (Box.draw_boxes (Document.boxify_scoped env b))
