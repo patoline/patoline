@@ -129,9 +129,88 @@ module MarkerMap = Map.Make(
     let compare = compare
   end)
 
+(** Helpful test functions. *)
 let is_glyph  : box -> bool = function GlyphBox _ -> true | _ -> false
 let is_glue   : box -> bool = function Glue _     -> true | _ -> false
-let is_hyphen : box -> bool = function Hyphen _   ->true  | _ -> false
+let is_hyphen : box -> bool = function Hyphen _   -> true | _ -> false
+
+(** Build a box containing one glyph, with a cache. *)
+let glyphCache : Fonts.font -> glyph_id -> Color.color -> float -> box =
+  let module GMap = Map.Make(
+    struct
+      type t = string * int * float * Color.color
+      let compare = compare
+    end) in
+  let cache = ref GMap.empty in
+  let glyphCache cur_font gl glyph_color glyph_size =
+    let name = Fonts.uniqueName cur_font in
+    let key = (name, gl.glyph_index, glyph_size, glyph_color) in
+    try GMap.find key !cache with Not_found ->
+      let loaded = GlyphBox
+        { glyph   = Fonts.loadGlyph cur_font gl
+        ; glyph_x = 0.0 ; glyph_kx = 0.0
+        ; glyph_y = 0.0 ; glyph_ky = 0.0
+        ; glyph_order = 0 ; glyph_color ; glyph_size }
+      in
+      cache := GMap.add key loaded !cache; loaded
+  in glyphCache
+
+(** Build a glyph id from a font and a unicode character. *)
+let glyph_of_uchar : Fonts.font -> UChar.t ->FTypes.glyph_id = fun font u ->
+  { glyph_index = Fonts.glyph_of_uchar font u
+  ; glyph_utf8  = UTF8.encode u }
+
+(** Build a list of boxes from a string, using stuff from kerning. *)
+let glyph_of_string subs kern font size color str =
+  let rec glyphs i gs =
+    if i >= String.length str then List.rev gs else
+      let g = glyph_of_uchar font (UTF8.look str i) in
+      glyphs (UTF8.next str i) (g :: gs)
+  in
+  let codes = subs (glyphs 0 []) in
+  let codes = kern (List.map (fun x -> GlyphID x) codes) in
+  let rec kern = function
+    | GlyphID h :: s -> (glyphCache font h color size) :: (kern s)
+    | KernID h  :: s ->
+        begin
+          match h.kern_contents with
+          | KernID h' ->
+              let k =
+                { advance_height = h.advance_height
+                ; advance_width  = h.advance_width
+                ; kern_x0 = h.kern_x0 +. h'.kern_x0
+                ; kern_y0 = h.kern_y0 +. h'.kern_y0
+                ; kern_contents = h'.kern_contents }
+              in kern (KernID k :: s)
+          | GlyphID c ->
+              let kern_contents = glyphCache font c color size in
+              let m = size /. 1000.0 in
+              let advance_height = h.advance_height *. m in
+              let advance_width  = h.advance_width  *. m in
+              let kern_x0 = h.kern_x0 *. m in
+              let kern_y0 = h.kern_y0 *. m in
+              let k =
+                { advance_height ; advance_width ; kern_x0 ; kern_y0
+                ; kern_contents }
+              in (Kerning k) :: (kern s)
+        end
+    | [] -> []
+  in kern codes
+
+(** Build a list of boxes representing a word, while taking care of building
+    an array of possible hyphenations for the word (if any). *)
+let hyphenate hyph subs kern font size color str =
+  let of_string = glyph_of_string subs kern font size color in
+  let hyphenated = hyph str in
+  if hyphenated = [||] then of_string str else
+    let hyphen_normal = Array.of_list (of_string str) in
+    let hyphenated =
+      let f (a,b) =
+        (Array.of_list (of_string a), Array.of_list (of_string b))
+      in
+      Array.map f hyphenated
+    in
+    [Hyphen { hyphen_normal ; hyphenated }]
 
 
 
@@ -791,82 +870,6 @@ let comp paragraphs m p i hi j hj=
     )
 let compression paragraphs (parameters) (line)=comp paragraphs parameters.measure
   line.paragraph line.lineStart line.hyphenStart line.lineEnd line.hyphenEnd
-
-
-
-
-let glyphCache : Fonts.font -> glyph_id -> Color.color -> float -> box =
-  let module GMap = Map.Make(
-    struct
-      type t = string * int * float * Color.color
-      let compare = compare
-    end) in
-  let cache = ref GMap.empty in
-  let glyphCache cur_font gl glyph_color glyph_size =
-    let name = Fonts.uniqueName cur_font in
-    let key = (name, gl.glyph_index, glyph_size, glyph_color) in
-    try GMap.find key !cache with Not_found ->
-      let loaded = GlyphBox
-        { glyph   = Fonts.loadGlyph cur_font gl
-        ; glyph_x = 0.0 ; glyph_kx = 0.0
-        ; glyph_y = 0.0 ; glyph_ky = 0.0
-        ; glyph_order = 0 ; glyph_color ; glyph_size }
-      in
-      cache := GMap.add key loaded !cache; loaded
-  in glyphCache
-
-
-
-let glyph_of_string substitution_ positioning_ font fsize fcolor str =
-  let rec make_codes idx codes=
-    if idx>=String.length str then List.rev codes else (
-      let c=Fonts.glyph_of_uchar font (UTF8.look str idx) in
-      make_codes (UTF8.next str idx) ({glyph_utf8=UTF8.init 1 (fun _->UTF8.look str idx); glyph_index=c}::codes)
-    )
-  in
-  let codes=make_codes (UTF8.first str) [] in
-  let codes=substitution_ codes in
-  let kerns=positioning_ (List.map (fun x->GlyphID x) codes) in
-
-  let rec kern=function
-      GlyphID h::s ->glyphCache font h fcolor fsize::kern s
-    | KernID h::s->
-        (match h.kern_contents with
-             KernID h'->kern (KernID { advance_height=h.advance_height;
-                                       advance_width=h.advance_width;
-                                       kern_x0=h.kern_x0 +. h'.kern_x0;
-                                       kern_y0=h.kern_y0 +. h'.kern_y0;
-                                       kern_contents=h'.kern_contents }::s)
-           | GlyphID c->(let y=glyphCache font c fcolor fsize in
-                         Kerning { advance_height=h.advance_height*.(fsize)/.1000.;
-                                   advance_width=h.advance_width*.(fsize)/.1000.;
-                                   kern_x0=h.kern_x0*.(fsize)/.1000.;
-                                   kern_y0=h.kern_y0*.(fsize)/.1000.;
-                                   kern_contents=y }::(kern s))
-        )
-    | []->[]
-  in
-    kern kerns
-
-let hyphenate hyph subs kern font fsize fcolor str =
-  let hyphenated = hyph str in
-  if Array.length hyphenated = 0 then
-    glyph_of_string subs kern font fsize fcolor str
-  else
-    let hyphen_normal =
-      Array.of_list (glyph_of_string subs kern font fsize fcolor str)
-    in
-    let hyphenated =
-      let f (a,b) =
-        ( Array.of_list (glyph_of_string subs kern font fsize fcolor a)
-        , Array.of_list (glyph_of_string subs kern font fsize fcolor b) )
-      in
-      Array.map f hyphenated
-    in
-    [Hyphen { hyphen_normal ; hyphenated }]
-
-
-
 
 let rec print_box chan=function
     GlyphBox x->Printf.fprintf chan "%s" (Fonts.glyphContents x.glyph)
