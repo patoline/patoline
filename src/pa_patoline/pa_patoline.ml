@@ -2154,8 +2154,8 @@ let _ =
     let module PatolineDefault = Pa_ocaml.Make(PaExt) in
     let module M = Pa_main.Start(PatolineDefault) in
     let open PaExt in
-    match !Pa_ocaml_prelude.file, !in_ocamldep, local_state = empty_state with
-    | Some s, false, false ->
+    match !Pa_ocaml_prelude.file, !in_ocamldep with
+    | Some s, false ->
        let dir = Filename.dirname s in
        let base = Filename.basename s in
        let name = chop_extension' base ^ ".tgy" in
@@ -2165,11 +2165,13 @@ let _ =
        (* Check if _patobuild/ needs to be created *)
        if not (Sys.file_exists patobuild_dir)
        then Unix.mkdir patobuild_dir 0o700;
+       if local_state <> empty_state then begin
        (* Now write the grammar *)
-       let ch = open_out_bin name in
-       output_value ch local_state;
-       close_out ch;
-       if !debug then Printf.eprintf "Written grammar %s\n%!" name;
+	 let ch = open_out_bin name in
+	 output_value ch local_state;
+	 close_out ch;
+	 if !debug then Printf.eprintf "Written grammar %s\n%!" name;
+       end;
        (* Writing the main file. *)
        if !is_main then
          write_main_file !patoline_driver !patoline_format patobuild_dir base
