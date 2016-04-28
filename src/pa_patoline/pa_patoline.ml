@@ -2162,8 +2162,8 @@ let _ =
     match !Pa_ocaml_prelude.file, !in_ocamldep with
     | Some s, false ->
        let dir = Filename.dirname s in
-       let base = Filename.basename s in
-       let name = chop_extension' base ^ ".tgy" in
+       let base = chop_extension' (Filename.basename s) in
+       let name = base ^ ".tgy" in
        let patobuild_dir = Filename.concat dir "_patobuild" in
        let name = Filename.concat patobuild_dir name in
        if !debug then Printf.eprintf "Writing grammar %s\n%!" name;
