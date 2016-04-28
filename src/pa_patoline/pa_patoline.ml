@@ -972,7 +972,8 @@ let parser macro_argument config =
 			      -> apply_string_filter config s _loc
 
 let parser simple_text_macro_argument =
-  | '{' l:(change_layout (paragraph_basic_text TagSet.empty) blank1) '}' -> l
+  | '{' l:(change_layout (paragraph_basic_text TagSet.empty) blank1)?$ '}' ->
+      (match l with Some l -> l | None -> <:expr<[]>>)
   | e:wrapped_caml_expr  -> e
   | e:wrapped_caml_array -> <:expr<$array:e$>>
   | e:wrapped_caml_list  -> <:expr<$list:e$>>
