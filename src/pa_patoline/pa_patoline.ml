@@ -210,6 +210,22 @@ let freshUid () =
  * Words.                                                                   *
  ****************************************************************************)
 
+let uchar =
+  let char_range min max = parser c:ANY ->
+    let cc = Char.code c in
+    if cc < min || cc > max then give_up "Char not in range..."; c
+  in
+  let tl  = char_range 128 191 in
+  let hd1 = char_range 0   127 in
+  let hd2 = char_range 192 223 in
+  let hd3 = char_range 224 239 in
+  let hd4 = char_range 240 247 in
+  parser
+  | c0:hd1                         -> Printf.sprintf "%c" c0
+  | c0:hd2 - c1:tl                 -> Printf.sprintf "%c%c" c0 c1
+  | c0:hd3 - c1:tl - c2:tl         -> Printf.sprintf "%c%c%c" c0 c1 c2
+  | c0:hd4 - c1:tl - c2:tl - c3:tl -> Printf.sprintf "%c%c%c%c" c0 c1 c2 c3
+
   let char_re    = "[^ \"\t\r\n\\#*/|_$>{}-]"
   let escaped_re =     "\\\\[\\#*/|_$>{}-]"
 
@@ -227,24 +243,24 @@ let freshUid () =
       (List.fold_left Charset.add Charset.empty_charset non_special) false
       (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
 
-  let character =
-    parser
-    | c:RE(char_re) -> c
-    | s:RE(escaped_re) ->
-      String.escaped (String.sub s 1 (String.length s - 1))
-    | c:char_alone -> String.make 1 c
-    | c:" " -> c
+let special_char =
+  [ ' ' ; '"' ; '\t' ; '\r' ; '\n' ; '\\' ; '#' ; '*' ; '/' ; '|' ; '_'
+  ; '$' ; '<'; '>' ; '{'; '}'; '-'; '=' ]
 
-  let word =
-    change_layout (
-        parser
-        | cs:character+ ->
-             let w = String.concat "" cs in
-             if String.length w >= 2 &&
-                  List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<";">>";"$>";]
-             then give_up (w ^ " is not a word");
-             w
-      ) no_blank
+let no_spe =
+  let f buf pos =
+    let (c,_,_) = Input.read buf pos in
+    ((), not (List.mem c special_char))
+  in
+  Decap.test ~name:"no_special" Charset.full_charset f
+
+let parser character =
+  | _:no_spe c:uchar -> c
+  | s:RE(escaped_re) -> let open String in escaped (sub s 1 (length s - 1))
+  | c:char_alone     -> String.make 1 c
+
+let word =
+  change_layout (parser cs:character+ -> String.concat "" cs) no_blank
 
   let rec rem_hyphen = function
     | []        -> []
@@ -508,22 +524,6 @@ let parser symbol_values =
 let parser lid = id:''[_a-z][_a-zA-Z0-9']*'' -> id
 let parser uid = id:''[A-Z][_a-zA-Z0-9']*''  -> id
 let parser num = n:''[0-9]+'' -> int_of_string n
-
-let uchar =
-  let char_range min max = parser c:ANY ->
-    let cc = Char.code c in
-    if cc < min || cc > max then give_up "Char not in range..."; c
-  in
-  let tl  = char_range 128 191 in
-  let hd1 = char_range 0   127 in
-  let hd2 = char_range 192 223 in
-  let hd3 = char_range 224 239 in
-  let hd4 = char_range 240 247 in
-  parser
-  | c0:hd1                         -> Printf.sprintf "%c" c0
-  | c0:hd2 - c1:tl                 -> Printf.sprintf "%c%c" c0 c1
-  | c0:hd3 - c1:tl-  c2:tl         -> Printf.sprintf "%c%c%c" c0 c1 c2
-  | c0:hd4 - c1:tl - c2:tl - c3:tl -> Printf.sprintf "%c%c%c%c" c0 c1 c2 c3
 
 let symbol ss =
   List.partition (fun s ->
