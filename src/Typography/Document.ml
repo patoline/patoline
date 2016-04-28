@@ -1249,13 +1249,10 @@ let makeGlue env x0=
         | _->stdGlue
 
 (** Converts a [string] to a list of glyphs, according to the environment. *)
-let gl_of_str env string=
-  try
-    hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
-      env.fontColor
-      string
-  with
-      Glyph_not_found _ -> []
+let gl_of_str env str =
+  try hyphenate env.hyphenate env.substitutions env.positioning env.font
+        env.size env.fontColor str
+  with Glyph_not_found _ -> []
 
 (**/**)
 let append buf nbuf x=
@@ -1287,19 +1284,21 @@ let nfkc x = x
 let boxify buf nbuf env0 l=
   let rec boxify keep_cache env = function
     | []->env
-    | B (b, cache)::s->
-      let l = match !cache with
-	  Some l when keep_cache-> l
-        | _ -> (
-            let acc= !env_accessed in
-            env_accessed:=false;
-            let l = b env in
-            (if keep_cache then (if not !env_accessed then cache := Some l else env0.fixable:=true));
-            env_accessed:=acc || !env_accessed;
-            l
-          )
-      in
-      (List.iter (append buf nbuf) l; boxify keep_cache env s)
+    | B (b, cache) :: s ->
+        let l =
+          match !cache with
+          | Some l when keep_cache -> l
+          | _                      ->
+              let acc = !env_accessed in
+              env_accessed := false;
+              let l = b env in
+              if keep_cache then
+                (if not !env_accessed then cache := Some l
+                 else env0.fixable := true);
+              env_accessed := acc || !env_accessed; l
+        in
+        List.iter (append buf nbuf) l;
+        boxify keep_cache env s
     | (C b)::s->(
         let acc= !env_accessed in
         env_accessed:=false;
@@ -1317,49 +1316,32 @@ let boxify buf nbuf env0 l=
     | T (t,cache)::T (t',_)::s->
        boxify keep_cache env (T (t^t',match !cache with Some _->cache | _->cache)::s)
     *)
-    | (T (t,cache))::s->(
-      match !cache with
-	    Some l when keep_cache ->(
-              IntMap.iter (fun _->List.iter (append buf nbuf)) l;
-              boxify keep_cache env s
-            )
-          | _ ->(
-            (* let buf=ref [|Empty|] in *)
-            (* let nbuf=ref 0 in *)
-            let t=if UTF8.validate t then t else (
-              Printf.fprintf stderr "%s\n" (TypoLanguage.message (TypoLanguage.BadEncoding t));
-              let rec count i n=if i>=String.length t then n else
-                  count (i+1) (if t.[i]>char_of_int 0x7f then n else (n+1))
-              in
-              let tt=Bytes.create (count 0 0) in
-              let rec filter i n=if i<String.length t then (
-                if t.[i]>char_of_int 0x7f then (Bytes.set tt n t.[i]; filter (i+1) (n+1))
-                else filter (i+1) n
-              )
-              in
-              filter 0 0;tt
-            )
-            in
-            let l=ref IntMap.empty in
-            let t=env.word_substitutions (nfkc t) in
-            let rec cut_str i0 i=
-              if i>=String.length t then
-                let sub=String.sub t i0 (i-i0) in
-                l:=mappend !l (gl_of_str env sub);
-              else if is_space (UTF8.look t i) then
-                let sub=String.sub t i0 (i-i0) in
-                l:=mappend !l (gl_of_str env (nfkc sub));
-                if i<>i0 || i=0 then l:=mappend !l [makeGlue env (UChar.code (UTF8.look t i))];
-                cut_str (UTF8.next t i) (UTF8.next t i)
-              else
-                cut_str i0 (UTF8.next t i)
-            in
-            cut_str 0 0;
-            if keep_cache then cache:=Some !l;
-            IntMap.iter (fun _->List.iter (append buf nbuf)) !l;
-            boxify keep_cache env s
-          )
-    )
+    | T (t,cache) :: s -> (
+        match !cache with
+	      | Some l when keep_cache ->
+           IntMap.iter (fun _->List.iter (append buf nbuf)) l;
+           boxify keep_cache env s
+        | _                      ->
+           if not (UTF8.validate t) then
+             failwith (TypoLanguage.message (TypoLanguage.BadEncoding t));
+           let l = ref IntMap.empty in
+           let t = env.word_substitutions (nfkc t) in
+           let rec cut_str i0 i =
+             if i >= String.length t then
+               let sub = String.sub t i0 (i-i0) in
+               l := mappend !l (gl_of_str env sub)
+             else if is_space (UTF8.look t i) then
+               let sub = String.sub t i0 (i-i0) in
+               l := mappend !l (gl_of_str env (nfkc sub));
+               if i <> i0 || i = 0 then
+                 l:=mappend !l [makeGlue env (UChar.code (UTF8.look t i))];
+               cut_str (UTF8.next t i) (UTF8.next t i)
+             else
+               cut_str i0 (UTF8.next t i)
+           in cut_str 0 0;
+           if keep_cache then cache := Some !l;
+           IntMap.iter (fun _->List.iter (append buf nbuf)) !l;
+           boxify keep_cache env s)
     | FileRef (file,off,size)::s -> (
         let i=try
 	  StrMap.find file !sources

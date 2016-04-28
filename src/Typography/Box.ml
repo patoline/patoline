@@ -844,14 +844,22 @@ let glyph_of_string substitution_ positioning_ font fsize fcolor str =
   in
     kern kerns
 
-let hyphenate hyph subs kern font fsize fcolor str=
-  let hyphenated=hyph str in
-    if Array.length hyphenated=0 then
-      glyph_of_string subs kern font fsize fcolor str
-    else
-      [Hyphen { hyphen_normal=Array.of_list (glyph_of_string subs kern font fsize fcolor str);
-                hyphenated=Array.map (fun (a,b)->(Array.of_list (glyph_of_string subs kern font fsize fcolor a),
-                                                  Array.of_list (glyph_of_string subs kern font fsize fcolor b))) hyphenated }]
+let hyphenate hyph subs kern font fsize fcolor str =
+  let hyphenated = hyph str in
+  if Array.length hyphenated = 0 then
+    glyph_of_string subs kern font fsize fcolor str
+  else
+    let hyphen_normal =
+      Array.of_list (glyph_of_string subs kern font fsize fcolor str)
+    in
+    let hyphenated =
+      let f (a,b) =
+        ( Array.of_list (glyph_of_string subs kern font fsize fcolor a)
+        , Array.of_list (glyph_of_string subs kern font fsize fcolor b) )
+      in
+      Array.map f hyphenated
+    in
+    [Hyphen { hyphen_normal ; hyphenated }]
 
 
 
