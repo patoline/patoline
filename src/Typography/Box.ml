@@ -237,16 +237,9 @@ let rec frame_top (t,cxt)=
       []->(t,cxt)
     | (i,t')::s->frame_top ({t' with frame_children=IntMap.add i t t'.frame_children},s)
 
-
-let empty_frame={
-  frame_children=IntMap.empty;
-  frame_tags=[];
-  frame_x0=0.;
-  frame_x1=0.;
-  frame_y0=0.;
-  frame_y1=0.;
-  frame_content=[]
-}
+let empty_frame =
+  { frame_children = IntMap.empty ; frame_tags = [] ; frame_content=[]
+  ; frame_x0 = 0.0 ; frame_x1 = 0.0 ; frame_y0 = 0.0 ; frame_y1 = 0.0 }
 
 let print_frame_struct (f,s as p) =
   let path = List.map fst s in

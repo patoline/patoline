@@ -24,6 +24,98 @@ open Document
 open Document.Mathematical
 open RawContent
 
+(** Signature of a module extending the type [math list] into a type
+    [math list t] with the necessary typeseting machinery. *)
+module type CustomT =
+  sig
+    (** Type of the extended maths. Think of the parameter ['a] as being
+        equal to [math list] (see below). *)
+    type 'a t
+
+    (** Lift a function to the type [t]. You may think if its type as if it
+        were [(math list -> box list) -> math list t -> box list t], if we
+        omit the environment and the syle parameters. *)
+    val map  : (Document.environment -> Mathematical.style -> 'a -> 'b)
+                -> Document.environment -> Mathematical.style -> 'a t -> 'b t
+
+    (** A custom drawing function for the type [t]. *)
+    val draw : Document.environment -> Mathematical.style -> box list t -> box list
+  end
+
+(** Signature of a module containing only one elemnt of type [u C.t], for a
+    module [C : CustomT]. The type [u] will actually be constrained to
+    [math list] when it is defined... See the constructor [Custom] below. *)
+module type Custom =
+  sig
+    module C : CustomT
+    type u (* Really read [math list] *)
+    val content : u C.t
+  end
+
+type math =
+  | Ordinary   of nucleus noad
+  | Glue       of drawingBox
+  | Env        of (Document.environment -> Document.environment)
+  | Scope      of (Document.environment -> Mathematical.style -> math list)
+  | Binary     of binary
+  | Fraction   of fraction
+  | Operator   of operator
+  | Decoration of (Document.environment -> Mathematical.style -> box list
+                    -> box list) * math list
+  | Custom     of (module Custom with type u = math list)
+
+and 'a noad =
+  { nucleus                 : 'a
+  ; subscript_left          : math list
+  ; subscript_right         : math list
+  ; superscript_left        : math list
+  ; superscript_right       : math list
+  ; super_left_same_script  : bool
+  ; super_right_same_script : bool }
+
+and nucleus   = Document.environment -> Mathematical.style ->  box list
+and nucleuses = nucleus list
+
+and binary_type =
+  (** Invisible product symbol. *)
+  | Invisible
+  (** Regular binary symbol, the booleans remove spacing if true. *)
+  | Normal of bool * nucleus noad * bool
+
+and binary =
+  { bin_priority : int
+  ; bin_drawing  : binary_type
+  ; bin_left     : math list
+  ; bin_right    : math list }
+
+and fraction =
+  { numerator   : math list
+  ; denominator : math list
+  ; line        : Document.environment -> style -> RawContent.path_param }
+
+and operator =
+  { op_noad           : nucleuses noad
+  ; op_limits         : bool
+  ; op_left_contents  : math list
+  ; op_right_contents : math list }
+
+(** Convenient functor to use the [Custom] constructor. *)
+module Mk_Custom(C : CustomT) =
+  struct
+    let custom x =
+      let module M =
+        struct
+          type u = math list
+          module C = C
+          let content = x
+        end
+      in Custom (module M : Custom with type u = math list)
+  end
+
+
+
+
+
 let debug_kerning = ref false
 
 let env_style env style=match style with
@@ -36,52 +128,11 @@ let env_style env style=match style with
   | ScriptScript->env.(6)
   | ScriptScript'->env.(7)
 
-(* M%odule définissant un type 'a t étendant les math
-   le paramètre 'a doit être compris comme une liste de math ('a math list) *)
-module type CustomT = sig
-    type 'a t
-    (* map sera utilisé pour déssiner les maths à l'intérieur du type et donc utilisé avec
-       le type ('a math list -> box list) -> 'a math list -> box list *)
-    val map : (Document.environment -> Mathematical.style -> 'a -> 'b) -> (Document.environment -> Mathematical.style -> 'a t -> 'b t)
-    (* puis le résultat sera desiner avec cette fonction perso *)
-    val draw : Document.environment -> Mathematical.style -> box list t -> box list
-  end
 
-(* Ce module contient juste une valeur de type u C.t pour un module C:Custom qui sera par
-   contrainte en fait de type 'a math list C.t dans la pratique, cf la definition
-   du constructeur Custom ci-dessous *)
-module type Custom = sig
-  type u
-  module C : CustomT
-  val content : u C.t
-end
-
-type ('a,'b) noad= { nucleus: 'b;
-                subscript_left:'a math list; superscript_left:'a math list; super_left_same_script: bool;
-                subscript_right:'a math list; superscript_right:'a math list; super_right_same_script: bool }
-
-and nucleus = Document.environment -> Mathematical.style ->  box list
-and nucleuses = (Document.environment -> Mathematical.style ->  box list) list
-
-and 'a binary_type =
-    Invisible
-  | Normal of bool * ('a,nucleus) noad * bool (* the boolean remove spacing at left or right when true *)
-
-and 'a binary= { bin_priority:int; bin_drawing:'a binary_type; bin_left:'a math list; bin_right:'a math list }
-and 'a fraction= { numerator:'a math list; denominator:'a math list; line:Document.environment->style->RawContent.path_param }
-and 'a operator= { op_noad:('a,nucleuses) noad ; op_limits:bool; op_left_contents:'a math list; op_right_contents:'a math list }
-and 'a math=
-    Ordinary of ('a,nucleus) noad
-  | Glue of drawingBox
-  | Env of (Document.environment->Document.environment)
-  | Scope of (Document.environment->Mathematical.style->'a math list)
-  | Binary of 'a binary
-  | Fraction of 'a fraction
-  | Operator of 'a operator
-  | Decoration of (Document.environment -> Mathematical.style -> box list -> box list)*('a math list)
-  | Custom of (module Custom with type u = 'a math list)
-
-let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=[]; superscript_right=[]; super_left_same_script = false; super_right_same_script = false }
+let noad n =
+  { nucleus = n ; subscript_left = [] ; superscript_left = []
+  ; subscript_right = [] ; superscript_right = []
+  ; super_left_same_script = false ; super_right_same_script = false }
 
 let style x = Env (fun env -> { env with mathStyle = x })
 
@@ -103,17 +154,6 @@ let op_nolimits a b c=
 (*     glyph_x=0.;glyph_y=0.; glyph_size=size; glyph_color=black; *)
 (*     glyph=Fonts.loadGlyph font { empty_glyph with glyph_index=Fonts.glyph_of_char font c} *)
 (*   } *)
-
-(* petit functeur bien utile pour utiliser Custom *)
-module Mk_Custom = functor (C : CustomT) -> struct
-  let custom x =
-    let module M = struct
-      type u = Document.environment math list
-      module C = C
-      let content = x
-    end in
-    Custom (module M : Custom with type u = Document.environment math list)
-end
 
 
 let cramp=function
@@ -815,7 +855,7 @@ let rec draw draw_env env_stack mlist =
 
       | (Custom m) :: s ->
 	(* syntaxe lourde pour OCaml 3.12 ... 4.00 serait mieux ici *)
-	let module M = (val (m) : Custom with type u = Document.environment math list) in
+	let module M = (val m : Custom with type u = math list) in
 	M.C.draw env style
 	  (M.C.map (fun env style -> draw (dincr draw_env) ({env with mathStyle = style} :: env_stack)) env style M.content)
 	@ (draw draw_env env_stack s)
@@ -1180,19 +1220,18 @@ let make_sqrt env_ style box=
   in
   p
 
-module CustomSqrt = struct
-  type 'a t = 'a
-  let map f x = f x
-  let draw = make_sqrt
-end
-
 let sqrt x =
-  let module M = Mk_Custom(CustomSqrt) in
-  [M.custom x]
+  let module M = Mk_Custom(
+    struct
+      type 'a t = 'a
+      let map f x = f x
+      let draw = make_sqrt
+    end)
+  in [M.custom x]
 
-(* Allows to modify the environment (Document.environment) in a math formula *)
+(** Allows to modify the [Document.environment] in a math formula. *)
 let math_env_set f m =
-  [Scope (fun _ _ -> (Env (fun env -> f env)) :: m)]
+  [Scope (fun _ _ -> (Env f) :: m)]
 
 (* Set the color in the math environment *)
 let mcolor col m =

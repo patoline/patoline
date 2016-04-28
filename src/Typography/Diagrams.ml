@@ -2988,7 +2988,7 @@ let cliptip grad info tip curve0 =
       end
 
       module MakeMathMatrix = struct
-	type t = Document.environment Maths.math
+	type t = Maths.math
 	let make_matrix = math_matrix
       end
       module MakeMatrix = struct
