@@ -1901,10 +1901,12 @@ let _ = set_grammar math_toplevel (parser
  * Sections, layout of the document.                                        *
  ****************************************************************************)
 
+(* Returns a couple (numbered, in_toc). *)
 let numbered op cl =
   match (op.[0], cl.[0]) with
-  | ('=', '=') -> true
-  | ('-', '-') -> false
+  | ('=', '=') -> (true , true )
+  | ('-', '-') -> (false, true )
+  | ('_', '_') -> (false, false)
   | _          -> give_up "Non-matching section markers..."
 
 let sect lvl = parser
@@ -1927,13 +1929,14 @@ let usect lvl = parser
   | "---------" when lvl = 7
 
 let parser text_item lvl =
-  | op:''[-=]>'' title:text_only txt:(topleveltext (lvl+1)) cl:''[-=]<'' when lvl < 8 ->
-    let num = numbered op cl in
+  | op:''[-=_]>'' title:text_only txt:(topleveltext (lvl+1)) cl:''[-=_]<'' when lvl < 8 ->
+    let (num, in_toc) = numbered op cl in
     (fun _ lvl' ->
       assert(lvl' = lvl);
       let code =
         <:struct<
-          let _ = newStruct ~numbered:$bool:num$ D.structure $title$
+          let _ = newStruct ~in_toc:$bool:in_toc$ ~numbered:$bool:num$
+                    D.structure $title$
           $struct:txt false (lvl+1)$
           let _ = go_up D.structure
         >>
