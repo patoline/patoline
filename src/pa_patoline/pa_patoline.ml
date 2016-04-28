@@ -18,7 +18,8 @@ let patoline_format   = ref "DefaultFormat"
 let patoline_driver   = ref "Pdf"
 let patoline_packages = ref ["Typography"]
 let patoline_grammar  = ref ["DefaultGrammar"]
-let debug = ref false
+let debug   = ref false
+let is_main = ref false
 
 let set_patoline_format f =
   patoline_format := f
@@ -72,6 +73,8 @@ let extra_spec =
     "set a filename to output quail.el like file for emacs short cur")
   ; ("--debug" , Arg.Set debug,
     "turn on debuging mode.")
+  ; ("--main"  , Arg.Set is_main,
+    "generate a main file.")
   ]
 
 #define LOCATE locate
@@ -2095,6 +2098,53 @@ let entry_points =
 
 end (* of the functor *)
 
+(* Generator for the main file. *)
+let write_main_file driver form dir name =
+  let file = Filename.concat dir (name ^ "_.tml.new") in (* FIXME name *)
+  let oc = open_out file in
+  let dcache = Filename.concat dir (name ^ ".tdx") in
+  let fmt = Format.formatter_of_out_channel oc in
+  let _loc = Location.none in
+  let ast =
+    <:struct<
+      open Typography
+      open Typography.Box
+      open Typography.Document
+      open RawContent
+      open Color
+      open DefaultFormat.MathsFormat
+
+      let _ = Distance.read_cache $string:dcache$
+
+      module D : DocumentStructure =
+        struct
+          let structure =
+            ref (Node { empty with node_tags=["intoc",""] },[])
+        end
+
+      module Driver = $uid:driver$
+
+      let _ = Arg.parse_argv (Driver.filter_options Sys.argv)
+                (Driver.driver_options @ DefaultFormat.spec) ignore "Usage :"
+
+      module Patoline_Format = $uid:form$.Format(D)
+      open Patoline_Format
+      module Patoline_Output = Patoline_Format.Output(Driver)
+      module TMP = Manuscrit.Document(Patoline_Output)(D)
+      open TMP
+
+      let _ = Patoline_Output.output Patoline_Output.outputParams
+                (fst (top !D.structure))
+                (List.fold_left (fun acc f -> f acc)
+                  Patoline_Format.defaultEnv !init_env_hook) $string:name$
+
+      let _ = Distance.write_cache $string:dcache$
+    >>
+  in
+  Format.fprintf fmt "%a\n%!" Pprintast.structure ast;
+  close_out oc;
+  if !debug then Printf.eprintf "Written main file %s\n%!" file
+
 (* Creating and running the extension *)
 let _ =
   try
@@ -2107,8 +2157,8 @@ let _ =
     match !Pa_ocaml_prelude.file, !in_ocamldep, local_state = empty_state with
     | Some s, false, false ->
        let dir = Filename.dirname s in
-       let name = Filename.basename s in
-       let name = chop_extension' name ^ ".tgy" in
+       let base = Filename.basename s in
+       let name = chop_extension' base ^ ".tgy" in
        let patobuild_dir = Filename.concat dir "_patobuild" in
        let name = Filename.concat patobuild_dir name in
        if !debug then Printf.eprintf "Writing grammar %s\n%!" name;
@@ -2119,7 +2169,10 @@ let _ =
        let ch = open_out_bin name in
        output_value ch local_state;
        close_out ch;
-       if !debug then Printf.eprintf "Written grammar %s\n%!" name
+       if !debug then Printf.eprintf "Written grammar %s\n%!" name;
+       (* Writing the main file. *)
+       if !is_main then
+         write_main_file !patoline_driver !patoline_format patobuild_dir base
     | _ -> ()
 
   with e ->
