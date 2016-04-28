@@ -410,7 +410,7 @@ let rec read_options_from_source_file f fread =
 and make_deps pre source=
   Build.sem_down Build.sem;
   let in_s=open_in source in
-  let opts=read_options_from_source_file pre in_s in
+  let opts=add_format(read_options_from_source_file pre in_s) in
   close_in in_s;
 
   let dirs_=str_dirs (!dirs@opts.directories) in
@@ -433,7 +433,12 @@ and make_deps pre source=
         (let pack=String.concat "," (List.rev opts.packages) in
          if pack<>"" then "-package "^pack else "")
         (if Filename.check_suffix source ".txp" then
-          Printf.sprintf "-pp 'pa_patoline --ocamldep %s'" (String.concat " " (List.flatten !extras_pp)) else "")
+	    let format = match opts.formats with
+                [] -> ""
+              | f::_ -> (* FIXME: what to do with multiple formats ? Compose them ? *)
+                 "--format " ^ f
+            in
+            Printf.sprintf "-pp 'pa_patoline --ocamldep %s %s'" format (String.concat " " (List.flatten !extras_pp)) else "")
         (String.concat " " dirs_)
         (includes_opt source)
         source
