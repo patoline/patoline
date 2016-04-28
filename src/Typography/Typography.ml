@@ -15,3 +15,4 @@ module Offset = Offset
 module OutputDrawing = OutputDrawing
 module Proj3d = Proj3d
 module TypoLanguage = TypoLanguage
+module Debug = Debug

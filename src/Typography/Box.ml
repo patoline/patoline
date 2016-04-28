@@ -241,20 +241,6 @@ let empty_frame =
   { frame_children = IntMap.empty ; frame_tags = [] ; frame_content=[]
   ; frame_x0 = 0.0 ; frame_x1 = 0.0 ; frame_y0 = 0.0 ; frame_y1 = 0.0 }
 
-let print_frame_struct (f,s as p) =
-  let path = List.map fst s in
-  let f = frame_top p in
-  Printf.fprintf stderr "path: ";
-  List.iter (fun i -> Printf.fprintf stderr "%d " i) path;
-  Printf.fprintf stderr "\n";
-  let rec fn ch f = 
-    Printf.fprintf ch "#%d [\n" (List.length f.frame_content);
-    IntMap.iter (fun i f ->
-      Printf.fprintf ch "%d:%a " i fn f) f.frame_children;
-    Printf.fprintf ch "]\n"
-  in
-  fn stderr (fst f)
-  
 (** Creates a new frame with the given top-left and bottom-right
     corners, appends this frame as a child of the current frame, and
     moves down to this new frame. *)
@@ -320,25 +306,6 @@ let frame_page l=
 
 let layout_page l=frame_page l.layout
 
-let layout_to_dot l file=
-  let o=open_out file in
-  let rec doit path lay=
-    IntMap.iter (fun k a->
-      if path==(List.map fst (snd l)) then(
-        Printf.fprintf o "n%s[color=red];\n"
-          (String.concat "_" (List.map string_of_int path))
-      );
-      Printf.fprintf o "n%s->n%s;\n"
-        (String.concat "_" (List.map string_of_int path))
-        (String.concat "_" (List.map string_of_int (k::path)));
-      doit (k::path) a;
-    ) lay.frame_children;
-  in
-  Printf.fprintf o "digraph {\n";
-  doit [] (fst (frame_top l));
-  Printf.fprintf o "}\n";
-  close_out o
-
 
 let all_contents frame=
   let rec collect f c=
@@ -352,15 +319,6 @@ let uselessLine=
   { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
     lastFigure=(-1); height= infinity;paragraph_height= -1; page_line= -1;layout=doc_frame,[];
     min_width=0.;nom_width=0.;max_width=0.;line_y0=infinity;line_y1= -.infinity }
-
-let sprint_linef l=
-  Printf.sprintf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; isFigure=%b; page=%d }"
-    l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height
-    l.isFigure (frame_page l.layout)
-
-let print_linef out l=Printf.fprintf out "%s\n" (sprint_linef l)
-let print_line l=print_linef stderr l
-
 
 let default_params={ measure=0.;
                      left_margin=0.;
@@ -864,70 +822,25 @@ let comp paragraphs m p i hi j hj=
 let compression paragraphs (parameters) (line)=comp paragraphs parameters.measure
   line.paragraph line.lineStart line.hyphenStart line.lineEnd line.hyphenEnd
 
-let rec print_box chan=function
-    GlyphBox x->Printf.fprintf chan "%s" (Fonts.glyphContents x.glyph)
-  | Kerning x->print_box chan x.kern_contents
-  | Glue _->Printf.fprintf chan " "
-  | Drawing _->Printf.fprintf chan "[Drawing]"
-  | Hyphen x->Array.iter (print_box chan) x.hyphen_normal
-  | Marker m->Printf.fprintf chan "[Marker %s]" (print_marker m)
-  | BeginFigure _->Printf.fprintf chan "[BeginFigure]"
-  | FlushFigure _->Printf.fprintf chan "[FlushFigure]"
-  | Parameters _ ->Printf.fprintf chan "[Parameters]"
-  | Layout _ ->Printf.fprintf chan "[Layout]"
-  | Empty ->()
-
-and print_link () l = match l with
-    Extern s -> Printf.sprintf "Extern %S" s
-  | Intern s -> Printf.sprintf "Intern %S" s
-  | Button (b,s,_) -> Printf.sprintf "Button %S" s
-
-and print_marker m=match m with
-    Label l->Printf.sprintf "Label %s" l
-  | FigureRef i->Printf.sprintf "FigureRef %d" i
-  | Pageref s->Printf.sprintf "PageRef %S" s
-  | Structure _->Printf.sprintf "Structure"
-  | BeginLink s->Printf.sprintf "BeginLink %a" print_link s
-  | EndLink->Printf.sprintf "EndLink"
-  | AlignmentMark->Printf.sprintf "AlignmentMark"
 
 
-let rec print_box_type chan=function
-    GlyphBox _->Printf.fprintf chan "GlyphBox "
-  | Kerning _->Printf.fprintf chan "Kerning "
-  | Glue _->Printf.fprintf chan "Glue "
-  | Drawing _->Printf.fprintf chan "Drawing "
-  | Hyphen _->Printf.fprintf chan "Hyphen "
-  | Marker _->Printf.fprintf chan "Marker "
-  | BeginFigure _->Printf.fprintf chan "BeginFigure "
-  | FlushFigure _->Printf.fprintf chan "FlushFigure "
-  | Parameters _ ->Printf.fprintf chan "Parameters"
-  | Layout _ ->Printf.fprintf chan "Layout"
-  | Empty ->Printf.fprintf chan "Empty "
-
-let print_text_line lines node=
-  print_linef stderr node;
-  for i=node.lineStart to node.lineEnd-1 do
-    print_box stderr (lines.(node.paragraph).(i))
-  done;
-  Printf.fprintf stderr "\n"
-
-let rec text_box=function
-    GlyphBox x->(Fonts.glyphContents x.glyph)
-  | Kerning x->text_box x.kern_contents
-  | Glue _->" "
-  | Drawing _->"[Drawing]"
-  | Hyphen x->String.concat "" (List.map (text_box) (Array.to_list x.hyphen_normal))
-  | Marker _->"[Marker]"
-  | BeginFigure _->"[BeginFigure]"
-  | FlushFigure _->"[FlushFigure]"
-  | Parameters _ ->"[Parameters]"
-  | Layout _ ->"[Layout]"
-  | Empty ->""
+let rec box_to_string = function
+  | GlyphBox gl   -> Fonts.glyphContents gl.glyph
+  | Kerning k     -> box_to_string k.kern_contents
+  | Glue _        -> " "
+  | Drawing _     -> "[Drawing]"
+  | Hyphen h      -> let bs = Array.to_list h.hyphen_normal in
+                     String.concat "" (List.map box_to_string bs)
+  | Marker _      -> "[Marker]"
+  | BeginFigure _ -> "[BeginFigure]"
+  | FlushFigure _ -> "[FlushFigure]"
+  | Parameters _  -> "[Parameters]"
+  | Layout _      -> "[Layout]"
+  | Empty         -> ""
 
 let text_line lines node=
   let rec text i=
     if i>=node.lineEnd then [] else
-      text_box (lines.(node.paragraph).(i)) :: text (i+1)
+      box_to_string (lines.(node.paragraph).(i)) :: text (i+1)
   in
     String.concat "" (text node.lineStart)

@@ -154,7 +154,7 @@ module Format (D : Document.DocumentStructure) = struct
             )
             | _->(
               Printf.fprintf stderr "Box not shown: ";
-              print_box stderr b;
+              Typography.Debug.print_box stderr b;
               Printf.fprintf stderr "\n";flush stderr;
             )
           in

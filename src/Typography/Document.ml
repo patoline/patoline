@@ -584,39 +584,6 @@ let go_up str=
 let n_go_up n str =
   for i = 1 to n do go_up str done
 
-
-(* La structure actuelle *)
-(* let str=Printf.printf "str : init\n";ref [(Node empty,[])] *)
-(* Le chemin vers le noeud courant *)
-
-(* Sortie en dot de la structure du document *)
-let doc_graph out t0=
-  Printf.fprintf out "digraph {\n";
-  let rec do_it path t=
-    let col=
-      if List.mem_assoc "structural" t.node_tags then
-        if List.mem_assoc "numbered" t.node_tags then "blue" else "red" else "black"
-    in
-    Printf.fprintf out "%s [label=\"%s\", color=\"%s\"];\n" path t.name col;
-    let mb=try fst (IntMap.min_binding t.children) with Not_found->0 in
-    List.iter (fun (i,x)->match x with
-        Paragraph par->(
-          let p=path^"_"^(string_of_int (i-mb)) in
-          Printf.fprintf out "%s[color=green,label=\"%s\"];\n" p (string_of_contents par.par_contents);
-          Printf.fprintf out "%s -> %s;\n" path p;
-        )
-      | FigureDef _-> ()
-      | Node n->(
-        let p=path^"_"^(string_of_int (i-mb)) in
-        Printf.fprintf out "%s -> %s;\n" path p;
-        do_it p n)) (IntMap.bindings t.children)
-  in
-    (match t0 with
-         Node t->do_it "x0" t
-       | _->());
-    Printf.fprintf out "}\n"
-
-
 (** {3 Environment transformations} *)
 
 let change_env t fenv=match t with
