@@ -50,12 +50,16 @@ let quail_ch =
 let quail_out mnames unames =
   if !quail_out_name <> "" then
     begin
-      let unames = List.filter (fun s -> UTF8.validate s && UTF8.length s = 1) unames in
+      let unames, others = List.partition (fun s -> UTF8.validate s && UTF8.length s = 1) unames in
+
       match unames with
       | [] -> ()
       | u::_ ->
        List.iter (fun name ->
-	 Printf.fprintf (Lazy.force quail_ch) "(\"%s\" ?%s)\n" (String.escaped name) u) mnames
+	 Printf.fprintf (Lazy.force quail_ch) "(\"%s\" ?%s)\n" (String.escaped name) u) mnames;
+       List.iter (fun name ->
+	 Printf.fprintf (Lazy.force quail_ch) "(\"%s\" ?%s)\n" (String.escaped name) u) others
+
     end
 
 let extra_spec =
