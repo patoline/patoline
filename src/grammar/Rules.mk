@@ -11,11 +11,12 @@ $(EDITORS_DIR)/emacs/quail.el: $(d)/DefaultGrammar.ttml
 
 $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
 	$(ECHO) "[PPP] $@"
-	$(Q)$(PA_PATOLINE_IN_SRC) --ascii --quail-out $(EDITORS_DIR)/emacs/quail.el --driver Pdf --no-default-grammar $< > $@
+	$(Q)$(PA_PATOLINE_IN_SRC) --main --ascii --quail-out $(EDITORS_DIR)/emacs/quail.el --driver Pdf --no-default-grammar $< > $@
 
-$(d)/DefaultGrammar_.tml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
-	$(ECHO) "[PAT] $@"
-	$(Q)$(PATOLINE_IN_SRC) --no-build-dir --main-ml --driver Pdf -o $@ $<
+TML := $(d)/_patobuild/DefaultGrammar_.tml
+$(d)/DefaultGrammar_.tml: $(d)/DefaultGrammar.ttml
+	$(ECHO) "[CPY] $@"
+	$(Q) cp $(TML) $@
 
 $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa
 	$(ECHO) "[OPT] $@"

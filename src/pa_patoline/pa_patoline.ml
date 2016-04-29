@@ -2105,11 +2105,18 @@ end (* of the functor *)
 
 (* Generator for the main file. *)
 let write_main_file driver form dir name =
-  let file = Filename.concat dir (name ^ "_.tml.new") in (* FIXME name *)
+  let full = Filename.concat dir name in
+  let fullb = Filename.concat (Filename.concat dir "_patobuild") name in
+  let file = fullb ^ "_.tml" in
   let oc = open_out file in
-  let dcache = Filename.concat dir (name ^ ".tdx") in
+  let dcache = fullb ^ ".tdx" in
   let fmt = Format.formatter_of_out_channel oc in
   let _loc = Location.none in
+  let m =
+    let c  = (String.make 1 (Char.uppercase name.[0])) in
+    let cs = String.sub name 1 (String.length name - 1) in
+    c ^ cs
+  in
   let ast =
     <:struct<
       open Typography
@@ -2132,16 +2139,17 @@ let write_main_file driver form dir name =
       let _ = Arg.parse_argv (Driver.filter_options Sys.argv)
                 (Driver.driver_options @ DefaultFormat.spec) ignore "Usage :"
 
-      module Patoline_Format = $uid:form$.Format(D)
-      open Patoline_Format
-      module Patoline_Output = Patoline_Format.Output(Driver)
-      module TMP = Manuscrit.Document(Patoline_Output)(D)
+      module Patoline_Format0 = $uid:form$.Format(D)
+      open Patoline_Format0
+      module Patoline_Format = Patoline_Format0
+      module Patoline_Output = Patoline_Format0.Output(Driver)
+      module TMP = $uid:m$.Document(Patoline_Output)(D)
       open TMP
 
       let _ = Patoline_Output.output Patoline_Output.outputParams
                 (fst (top !D.structure))
                 (List.fold_left (fun acc f -> f acc)
-                  Patoline_Format.defaultEnv !init_env_hook) $string:name$
+                  Patoline_Format.defaultEnv !init_env_hook) $string:full$
 
       let _ = Distance.write_cache $string:dcache$
     >>
@@ -2179,7 +2187,7 @@ let _ =
        end;
        (* Writing the main file. *)
        if !is_main then
-         write_main_file !patoline_driver !patoline_format patobuild_dir base
+         write_main_file !patoline_driver !patoline_format dir base
     | _ -> ()
 
   with e ->
