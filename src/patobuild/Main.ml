@@ -528,11 +528,16 @@ and patoline_rule objects (builddir:string) (hs:string list) =
             let in_s=open_in source in
             let opts=read_options_from_source_file (source::hs) in_s in
             close_in in_s;
+(*
+            FIXME: create a proper rule first to produce .tgy from .txp or later .ml
+
             (match opts.grammar with
                 Some def when def<>"DefaultGrammar" ->
                   Build.build_with_rule (patoline_rule objects) ((chg_ext def ".tgy") :: hs)
               | _->()
-            );
+              );
+*)
+
 
             let modu=chg_ext r0 extension in
 
