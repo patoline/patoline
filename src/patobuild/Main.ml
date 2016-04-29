@@ -579,7 +579,7 @@ and patoline_rule objects (builddir:string) (hs:string list) =
                    "--format " ^ f
               in
               close_in ch;
-               source, ["-pp"; "pa_patoline " ^ (if is_main then "--main " else "") ^ format ^ " --driver " ^ opts.driver ^ " " ^ (String.concat " " (List.flatten !extras_pp))])
+               source, ["-pp"; "pa_patoline " (*^ (if is_main then "--main " else "")*) ^ format ^ " --driver " ^ opts.driver ^ " " ^ (String.concat " " (List.flatten !extras_pp))])
             else
               (chg_ext pref (if is_main then "_.tml" else ".ttml"), [])
           in
