@@ -569,7 +569,7 @@ and patoline_rule objects (builddir:string) (hs:string list) =
               assert (not is_main); chg_ext ~compile:true pref ".mli", [])
             else if Sys.file_exists (chg_ext ~compile:true pref ".ml") then
               (assert (not is_main); chg_ext ~compile:true pref ".ml", [])
-            else if Sys.file_exists (chg_ext pref ".txp") then (
+            else if not is_main && Sys.file_exists (chg_ext pref ".txp") then (
               let source = chg_ext pref ".txp" in
               let ch = open_in source in
               let opts= add_format (read_options_from_source_file hs ch) in
