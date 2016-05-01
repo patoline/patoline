@@ -1956,9 +1956,9 @@ let parser text_item lvl =
        assert (lvl' >= lvl);
       let code =
         <:struct<
-          let _ = n_go_up $int:lvl' - lvl$ D.structure
           let _ = newStruct ~numbered:$bool:num$ D.structure $title$
           $struct:txt false (lvl+1)$
+          let _ = go_up D.structure
         >>
       in
       (true, lvl, code))
