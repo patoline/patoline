@@ -21,3 +21,5 @@ val add_fonts_dir    : string -> unit
 val add_plugins_dir  : string -> unit
 val add_grammars_dir : string -> unit
 val add_hyphen_dir   : string -> unit
+
+val print_config : out_channel -> unit

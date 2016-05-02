@@ -213,4 +213,8 @@ module Make(S : Spec) =
         | f :: fs -> (try read_config f with Sys_error _ -> find fs)
         | []      -> default
       in find files
+
+    let print_config oc =
+      let cfg = get_config () in
+      Config.write oc cfg
   end

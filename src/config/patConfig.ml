@@ -96,3 +96,5 @@ let add_hyphen_dir d =
   if debug then Printf.eprintf "########## Adding hyphen dir %S\n%!" d;
   let (p, ps) = patoconfig.hyphen_dir in
   patoconfig.hyphen_dir <- (p, ps @ [d])
+
+let print_config = Conf.print_config

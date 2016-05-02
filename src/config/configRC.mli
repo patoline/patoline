@@ -115,4 +115,7 @@ module Make(S : Spec) : sig
       configuration files using locations of [path]. If no configuration
       file is found, the default configuration is returned. *)
   val get_config : unit -> Config.t
+
+  (** Write the current configuration to a file. *)
+  val print_config : out_channel -> unit
 end
