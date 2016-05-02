@@ -183,7 +183,7 @@ let param_OCaml =
 		"rec";"let";"begin";"end";"while";"for";"do";"done";
 		"struct"; "sig"; "module"; "functor"; "if"; "then";
           "else"; "try"; "parser"; "in" ]
-  ; symbols = [("->", symbol "→");  ("=>", symbol "⇒")]
+  ; symbols = [("->", symbol "→");("→", symbol "→");("->>", symbol "↠");("↠", symbol "↠")]
   }
 
 let param_Python =

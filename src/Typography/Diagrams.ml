@@ -1311,7 +1311,7 @@ Doing a rectangle.\n" ;
 
 	      let coins = [| ne_orig ; nw_orig ; sw_orig ; se_orig |] in
 	      let shift = nat_mod n 4 in
-	      let _ = begin Printf.fprintf stderr "angle = %f.\n" angle ; flush stderr end in
+	      (*let _ = begin Printf.fprintf stderr "angle = %f.\n" angle ; flush stderr end in*)
 	      let nouveaux_coins = Array.mapi
 		(fun i _ ->  coins.((i + shift) mod 4))
 		coins
@@ -1323,7 +1323,7 @@ Doing a rectangle.\n" ;
 	      (* let aller = Vector.rotate (-. angle) in *)
 	      (* let retour = Vector.rotate angle in *)
 	      let center = aller center in
-	      let _ = begin Printf.fprintf stderr "center = %f,%f.\n" (fst center) (snd center) ; flush stderr end in
+	      (*let _ = begin Printf.fprintf stderr "center = %f,%f.\n" (fst center) (snd center) ; flush stderr end in*)
 
 
 	      let ne = aller nouveaux_coins.(0) in
@@ -1331,11 +1331,10 @@ Doing a rectangle.\n" ;
 	      let sw = aller nouveaux_coins.(2) in
 	      let se = aller nouveaux_coins.(3) in
 (*	      let south = Point.middle sw se in*)
-
+(*
 	      let _ = begin Printf.fprintf stderr "ne = %f,%f.\n" (fst ne) (snd ne) ; flush stderr end in
 	      let _ = begin Printf.fprintf stderr "sw = %f,%f.\n" (fst sw) (snd sw) ; flush stderr end in
-
-
+*)
 (*	      let (u1,u2) as u = Vector.normalise (1., tan (to_rad orient)) in*)
 
 	      let inter_droites (a,b,c) (a',b',c') =
@@ -1369,7 +1368,7 @@ Doing a rectangle.\n" ;
 		  (pente, -.1., oo)
 	      in
 
-	      let _ = begin Printf.fprintf stderr "orient mod 180 = %f.\n" (pmod_float orient 180.) ; flush stderr end in
+	      (*	      let _ = begin Printf.fprintf stderr "orient mod 180 = %f.\n" (pmod_float orient 180.) ; flush stderr end in*)
 
 
 	      let ga = droite (orient -. apex_angle /. 2.) (fun angle -> pmod_float angle 180. <= 90.)
