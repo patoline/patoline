@@ -2111,7 +2111,7 @@ end (* of the functor *)
 let write_main_file driver form dir name =
   let full = Filename.concat dir name in
   let fullb = Filename.concat (Filename.concat dir "_patobuild") name in
-  let file = fullb ^ "_.tml" in
+  let file = fullb ^ "_.ml" in
   let oc = open_out file in
   let dcache = fullb ^ ".tdx" in
   let fmt = Format.formatter_of_out_channel oc in
