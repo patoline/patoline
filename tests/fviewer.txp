@@ -33,6 +33,6 @@ Glyphs of the font \id([ tT name ])
   let _ =
     for i = 0 to nb_glyphs - 1 do
       let l = nthglyph i in
-      newPar D.structure Complete.normal Patoline_Format0.parameters l
+      newPar D.structure Complete.normal Patoline_Format.parameters l
     done
 )

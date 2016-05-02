@@ -2073,7 +2073,7 @@ let parser full_text =
      begin
        let t = match t with
          | None   -> []
-         | Some (tx1,t) -> t @ tx1
+         | Some (tx1,t) -> tx1 @ t
        in
        let ast = t @ tx2 in
        wrap basename _loc ast
