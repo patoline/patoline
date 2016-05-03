@@ -206,7 +206,11 @@ let more_recent source target =
 
 (* Preprocessor command. *)
 let pp_if_more_recent is_main source target =
-  if not (Sys.file_exists target) || more_recent source target then
+  (* Update if source more recent that target. *)
+  let update = not (Sys.file_exists target) || more_recent source target in
+  (* Also update if main file does not exist (only when processing main). *)
+  let main = (Filename.chop_extension target) ^ "_.ml" in
+  if update || (is_main && not (Sys.file_exists main)) then
   let pp_args =
     match pat_driver with
     | None   -> pp_args
@@ -225,11 +229,26 @@ let pp_if_more_recent is_main source target =
   if Sys.command cmd <> 0 then failwith "Preprocessor error..."
 
 (* Computing dependencies *)
-let run_dep build_dir =
-  let target = Filename.concat build_dir ".depend" in
-  let cmd = Printf.sprintf "ocamldep %s/* > %s" build_dir target in
+let run_dep build_dir target =
+  let cmd =
+    Printf.sprintf "cd %s && ocamldep *.ml *.mli > %s" build_dir target
+  in
   Printf.eprintf "[SHELL] %s\n%!" cmd;
   if Sys.command cmd <> 0 then failwith "OCamldep error..."
+
+(* Parsing dependencies. *)
+let read_dep build_dir dep_file =
+  let open Decap in
+  let file_re = "[a-zA-Z][a-zA-Z0-9_]*[.]cm[xoi]" in
+  let file = parser f:RE(file_re) -> Filename.concat build_dir f in
+  let line = parser t:file " :" ds:{' ' _:"\\\n    "? d:file}* '\n' in
+  let deps = parser line* in
+  let parse_deps fn =
+    try handle_exception (parse_file deps no_blank) fn
+    with _ ->
+      Printf.eprintf "Problem while parsing dependency file %S." fn;
+      exit 1
+  in parse_deps dep_file
 
 (* Compilation of the files. *)
 let _ =
@@ -249,6 +268,11 @@ let _ =
     let is_main = Filename.check_suffix fn ".txp" && List.mem fn files in
     pp_if_more_recent is_main fn target
   in
-  List.iter update_file (source_files ("." :: local_path));
+  List.iter update_file (source_files ("." :: local_path)); (* TODO // *)
   (* Computing dependencies. *)
-  run_dep build_dir
+  run_dep build_dir ".depend";
+  let deps = read_dep build_dir (Filename.concat build_dir ".depend") in
+  let is_cmx f = Filename.check_suffix f ".cmx" in
+  let deps = List.filter (fun (s,_) -> is_cmx s) deps in
+  (* Actually compiling. *)
+  ignore deps (* TODO *)
