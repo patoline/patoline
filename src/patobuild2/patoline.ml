@@ -205,6 +205,7 @@ let more_recent source target =
    Unix.((stat source).st_mtime > (stat target).st_mtime)
 
 (* Preprocessor command. *)
+let mutex_stdout = Mutex.create ()
 let pp_if_more_recent is_main source target =
   (* Update if source more recent that target. *)
   let update = not (Sys.file_exists target) || more_recent source target in
@@ -225,7 +226,9 @@ let pp_if_more_recent is_main source target =
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
-  Printf.eprintf "[SHELL] %s\n%!" cmd;
+  Mutex.lock mutex_stdout;
+  Printf.printf "[SHELL] %s\n%!" cmd;
+  Mutex.unlock mutex_stdout;
   if Sys.command cmd <> 0 then failwith "Preprocessor error..."
 
 (* Computing dependencies *)
@@ -233,7 +236,7 @@ let run_dep build_dir target =
   let cmd =
     Printf.sprintf "cd %s && ocamldep *.ml *.mli > %s" build_dir target
   in
-  Printf.eprintf "[SHELL] %s\n%!" cmd;
+  Printf.printf "[SHELL] %s\n%!" cmd;
   if Sys.command cmd <> 0 then failwith "OCamldep error..."
 
 (* Parsing dependencies. *)
@@ -249,6 +252,21 @@ let read_dep build_dir dep_file =
       Printf.eprintf "Problem while parsing dependency file %S." fn;
       exit 1
   in parse_deps dep_file
+
+exception No_more
+let parallel_iter nb_threads f ls =
+  let thread_fun =
+    let m = Mutex.create () in
+    let bag = ref ls in
+    let rec thread_fun () =
+      Mutex.lock m;
+      match !bag with
+      | t::ts -> bag := ts; Mutex.unlock m; f t; thread_fun ()
+      | []    -> Mutex.unlock m; Thread.exit ()
+    in thread_fun
+  in
+  let ths = Array.init nb_threads (fun _ -> Thread.create thread_fun ()) in
+  Array.iter Thread.join ths
 
 (* Compilation of the files. *)
 let _ =
@@ -268,7 +286,7 @@ let _ =
     let is_main = Filename.check_suffix fn ".txp" && List.mem fn files in
     pp_if_more_recent is_main fn target
   in
-  List.iter update_file (source_files ("." :: local_path)); (* TODO // *)
+  parallel_iter j update_file (source_files ("." :: local_path));
   (* Computing dependencies. *)
   run_dep build_dir ".depend";
   let deps = read_dep build_dir (Filename.concat build_dir ".depend") in
