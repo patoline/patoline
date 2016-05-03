@@ -42,7 +42,7 @@ module type CustomT =
     val draw : Document.environment -> Mathematical.style -> box list t -> box list
   end
 
-(** Signature of a module containing only one elemnt of type [u C.t], for a
+(** Signature of a module containing only one element of type [u C.t], for a
     module [C : CustomT]. The type [u] will actually be constrained to
     [math list] when it is defined... See the constructor [Custom] below. *)
 module type Custom =

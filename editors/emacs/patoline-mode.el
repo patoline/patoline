@@ -155,6 +155,175 @@
   "center"
   "Patoline default environment")
 
+;; Attempt at better environment handling
+;; Some code copied from auctex
+(defvar patoline-environment-list
+  (list
+   (list "document")
+   (list "enumerate") 
+   (list "itemize")
+   (list "list")
+   (list "trivlist")
+   (list "picture")
+   (list "tabular")
+   (list "tabular*")
+   (list "array")
+   (list "eqnarray")
+   (list "equation")
+   (list "minipage")
+   )
+  "Patoline environment list")
+(make-variable-buffer-local 'patoline-environment-list)
+
+;; (defcustom patoline-default-environment "itemize"
+;;   "*The default environment when creating new ones with `patoline-environment'."
+;;   :type 'string)
+(defvar patoline-default-environment "itemize" "Patoline temporary default environment")
+(make-variable-buffer-local 'patoline-default-environment)
+(setq patoline-default-environment "itemize")
+
+;; (fset 'patoline-add-environments-auto
+;;       (symbol-function 'patoline-add-environments))
+;; (defun patoline-add-environments (&rest environments)
+;;   "Add ENVIRONMENTS to the list of known environments."
+;;   (apply 'patoline-add-environments-auto environments)
+;;   t
+;;   ; (setq patoline-menu-changed t)
+;;   )
+
+(defun patoline-add-environments (environments)
+  "Add ENVIRONMENTS to the list of known environments."
+  (pcase environments
+    (`(nil) nil)
+    (`(,l . ,ll)
+     (progn (setq  patoline-environment-list (cons (list l) patoline-environment-list))
+	    (patoline-add-environments ll)))
+    ))
+
+
+(defun patoline-environment (arg)
+  "Make patoline environment (\\begin{...}-\\end{...} pair).
+With optional ARG, modify current environment.
+ 
+It may be customized with the following variables:
+ 
+`patoline-default-environment'       Your favorite environment.
+`patoline-default-style'             Your favorite document style.
+`patoline-default-options'           Your favorite document style options.
+`patoline-float'                     Where you want figures and tables to float.
+`patoline-table-label'               Your prefix to labels in tables.
+`patoline-figure-label'              Your prefix to labels in figures.
+`patoline-default-format'            Format for array and tabular.
+`patoline-default-position'          Position for array and tabular."
+ 
+  (interactive "*P")
+  (let ((environment (completing-read (concat "Environment type: (default "
+                                               patoline-default-environment
+                                               ") ")
+                                       patoline-environment-list)))
+    ;; Get default
+    (cond ((zerop (length environment))
+           (setq environment patoline-default-environment))
+          (t
+           (setq patoline-default-environment environment)))
+ 
+    (let ((entry (assoc environment patoline-environment-list)))
+      (if (null entry)
+          (progn (patoline-add-environments (list environment))
+		 (print (concat "added " environment " to the list of environments."))
+		 ))
+ 
+      (patoline-environment-menu environment)
+      ;; (if arg
+      ;; 	  (patoline-modify-environment environment)
+      ;; 	(patoline-environment-menu environment))
+      )))
+
+(defun mark-active ()
+  ;; In Emacs 18 (mark) returns nil when not active.
+  (mark))
+
+(defun patoline-looking-at-backward (regexp &optional limit)
+  ;; Return non-nil if the text before point matches REGEXP.
+  ;; Optional second argument LIMIT gives a max number of characters
+  ;; to look backward for.
+  (let ((pos (point)))
+    (save-excursion
+      (and (re-search-backward regexp
+			       (if limit (max (point-min) (- (point) limit)))
+			       t)
+	   (eq (match-end 0) pos)))))
+
+(defun patoline-insert-environment (environment &optional extra)
+  "Insert environment of type ENV, with optional argument EXTRA."
+  (if (and (mark-active) (not (eq (mark) (point))))
+      (progn 
+	(print "salut")
+	(if (< (mark) (point))
+	    (exchange-point-and-mark))
+	(or (patoline-looking-at-backward "^[ \t]*")
+	    (newline))
+	(insert "\\" "begin" "{" environment "}")
+;	(patoline-indent-line)
+	(if extra (insert extra))
+	(newline)
+	(goto-char (mark))
+	(or (patoline-looking-at-backward "^[ \t]*")
+	    (newline))
+	(insert "\\" "end" "{" environment "}")
+	(or (looking-at "[ \t]*$")
+	    (save-excursion (newline)))
+;	    (save-excursion (newline-and-indent)))
+;	(patoline-indent-line)
+	(end-of-line 0)
+	;; (or (assoc environment patoline-indent-environment-list)
+	;;     (patoline-fill-environment nil))
+	)
+    (or (patoline-looking-at-backward "^[ \t]*")
+	(newline))
+    (insert "\\" "begin" "{" environment "}")
+;    (patoline-indent-line)
+    (if extra (insert extra))
+    (newline)
+;    (newline-and-indent)
+    (newline)
+    (insert "\\" "end" "{" environment "}")
+    (or (looking-at "[ \t]*$")
+	(save-excursion (newline)))
+;	(save-excursion (newline-and-indent)))
+;    (patoline-indent-line)
+    (end-of-line 0)))
+
+(defun patoline-environment-menu (environment)
+  ;; Insert ENVIRONMENT around point or region. 
+  (let ((entry (assoc environment patoline-environment-list)))
+    (cond ((not (and entry (nth 1 entry)))
+	   (patoline-insert-environment environment))
+	  ((numberp (nth 1 entry))
+	   (let ((count (nth 1 entry))
+		 (args ""))
+	     (while (> count 0)
+	       (setq args (concat args "{" "}"))
+	       (setq count (- count 1)))
+	     (patoline-insert-environment environment args)))
+	  ((stringp (nth 1 entry))
+	   (let ((prompts (cdr entry))
+		 (args ""))
+	     (while prompts
+	       (setq args (concat args
+				  "{"
+				  (read-from-minibuffer (concat (car prompts)
+								": "))
+				  "}"))
+	       (setq prompts (cdr prompts)))
+	     (patoline-insert-environment environment args)))
+	  (t
+	   (apply (nth 1 entry) environment (nthcdr 2 entry))))))
+
+
+
+
+
 (defun patoline-env ()
   "insert environment"
   (interactive)
@@ -228,6 +397,7 @@
     (define-key patoline-mode-map "\C-c\C-c" 'patoline-compile)
 ;    (define-key patoline-mode-map "\C-c\C-e" 'patoline-make)
     (define-key patoline-mode-map "\C-c\C-a" 'patoline-env)
+    (define-key patoline-mode-map "\C-c\C-e" 'patoline-environment)
     (define-key patoline-mode-map "\C-c\C-v" 'patoline-glview)
     (define-key patoline-mode-map "\C-c\C-p" 'patoline-view)
     (define-key patoline-mode-map "\C-c\C-s" 'patoline-forward-search)
@@ -294,6 +464,8 @@
   (make-local-variable 'patoline-view-buffer)
   (make-local-variable 'patoline-view-process)
   (make-local-variable 'patoline-default-env)
+  (make-local-variable 'patoline-default-environment)
+  (make-local-variable 'patoline-environment-list)
   (if (featurep 'xemacs)
       (progn (require 'paren)
 	     (paren-set-mode 'blink-paren t))
