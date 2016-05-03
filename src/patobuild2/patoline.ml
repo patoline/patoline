@@ -205,7 +205,7 @@ let more_recent source target =
    Unix.((stat source).st_mtime > (stat target).st_mtime)
 
 (* Preprocessor command. *)
-let mutex_stdout = Mutex.create ()
+let m_stdout = Mutex.create ()
 let pp_if_more_recent is_main source target =
   (* Update if source more recent that target. *)
   let update = not (Sys.file_exists target) || more_recent source target in
@@ -226,9 +226,9 @@ let pp_if_more_recent is_main source target =
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
-  Mutex.lock mutex_stdout;
-  Printf.printf "[SHELL] %s\n%!" cmd;
-  Mutex.unlock mutex_stdout;
+  Mutex.lock m_stdout;
+  Printf.printf "[PAT] %s\n%!" cmd;
+  Mutex.unlock m_stdout;
   if Sys.command cmd <> 0 then failwith "Preprocessor error..."
 
 (* Computing dependencies *)
@@ -236,7 +236,7 @@ let run_dep build_dir target =
   let cmd =
     Printf.sprintf "cd %s && ocamldep *.ml *.mli > %s" build_dir target
   in
-  Printf.printf "[SHELL] %s\n%!" cmd;
+  Printf.printf "[DEP] %s\n%!" cmd;
   if Sys.command cmd <> 0 then failwith "OCamldep error..."
 
 (* Parsing dependencies. *)
@@ -253,17 +253,98 @@ let read_dep build_dir dep_file =
       exit 1
   in parse_deps dep_file
 
-exception No_more
 let parallel_iter nb_threads f ls =
-  let thread_fun =
-    let m = Mutex.create () in
-    let bag = ref ls in
-    let rec thread_fun () =
-      Mutex.lock m;
-      match !bag with
-      | t::ts -> bag := ts; Mutex.unlock m; f t; thread_fun ()
-      | []    -> Mutex.unlock m; Thread.exit ()
-    in thread_fun
+  let m = Mutex.create () in
+  let bag = ref ls in
+  let rec thread_fun () =
+    Mutex.lock m;
+    match !bag with
+    | t::ts -> bag := ts; Mutex.unlock m; f t; thread_fun ()
+    | []    -> Mutex.unlock m; Thread.exit ()
+  in
+  let ths = Array.init nb_threads (fun _ -> Thread.create thread_fun ()) in
+  Array.iter Thread.join ths
+
+(* Compilation function. *)
+let compile_targets nb_threads build_dir all_deps targets =
+  let files = ref (List.map (fun t -> (t, Mutex.create ())) targets) in
+  let tasks = ref targets in
+  let m_files = Mutex.create () in
+  let m_tasks = Mutex.create () in
+
+  let add_file fn =
+    Mutex.lock m_files;
+    files := (fn, Mutex.create ()) :: !files;
+    Mutex.unlock m_files
+  in
+
+  let get_task : unit -> string = fun () ->
+    Mutex.lock m_tasks;
+    match !tasks with
+    | t::ts -> tasks := ts; Mutex.unlock m_tasks; t
+    (* FIXME We need to wait on another condition. *)
+    | []    -> Mutex.unlock m_tasks; Thread.exit (); assert false
+  in
+
+  let add_tasks ts =
+    Mutex.lock m_tasks;
+    tasks := ts @ !tasks;
+    Mutex.unlock m_tasks
+  in
+
+  let do_compile t =
+    let base = Filename.chop_extension t in
+    let source_ext =
+      if Filename.check_suffix t ".cmi" then ".mli" else ".ml"
+    in
+    let source = base ^ source_ext in
+    if not (Sys.file_exists t) || more_recent source t then
+      begin
+        let packs = String.concat "," packages in
+        let args =
+          ["-package"; packs; "-I"; build_dir; "-c"] @ opt_args @
+          ["-o"; t; source]
+        in
+        let cmd = "ocamlfind ocamlopt " ^ (String.concat " " args) in
+        Mutex.lock m_stdout;
+        Printf.printf "[OPT] %s\n%!" cmd;
+        Mutex.unlock m_stdout;
+        if Sys.command cmd <> 0 then failwith "Compilation error..."
+      end
+  in
+
+  let rec thread_fun () =
+    let t = get_task () in
+    let deps = try List.assoc t all_deps with Not_found -> assert false in
+    (* Quick filter (unreliable). *)
+    let is_done f =
+      try
+        let m = List.assoc f !files in
+        if Mutex.try_lock m then (Mutex.unlock m; true) else false
+      with Not_found -> false
+    in
+    let deps = List.filter (fun f -> not (is_done f)) deps in
+    (* Obtain a task. *)
+    begin
+      if deps = [] then
+        begin
+          do_compile t;
+          add_file t
+        end
+      else
+        begin
+          Mutex.lock m_files;
+          let is_done f =
+            try List.mem_assoc f !files
+            with Not_found -> false
+          in
+          let deps = List.filter (fun f -> not (is_done f)) deps in
+          add_tasks (deps @ [t]);
+          Mutex.unlock m_files;
+        end
+    end;
+    (* Continue to work. *)
+    thread_fun ()
   in
   let ths = Array.init nb_threads (fun _ -> Thread.create thread_fun ()) in
   Array.iter Thread.join ths
@@ -283,14 +364,22 @@ let _ =
     let (_, base, ext) = decompose_filename fn in
     let target_ext = match ext with ".txp" -> ".ml" | e -> e in
     let target = Filename.concat build_dir (base ^ target_ext) in
-    let is_main = Filename.check_suffix fn ".txp" && List.mem fn files in
+    let is_main = ext = ".txp" && List.mem fn files in
     pp_if_more_recent is_main fn target
   in
   parallel_iter j update_file (source_files ("." :: local_path));
   (* Computing dependencies. *)
   run_dep build_dir ".depend";
   let deps = read_dep build_dir (Filename.concat build_dir ".depend") in
-  let is_cmx f = Filename.check_suffix f ".cmx" in
-  let deps = List.filter (fun (s,_) -> is_cmx s) deps in
+  let is_cmx_or_cmi f =
+    Filename.check_suffix f ".cmx" || Filename.check_suffix f ".cmi"
+  in
+  let deps = List.filter (fun (s,_) -> is_cmx_or_cmi s) deps in
   (* Actually compiling. *)
-  ignore deps (* TODO *)
+  let to_target fn =
+    let (_, base, ext) = decompose_filename fn in
+    let target_ext = if ext = ".txp" then "_.cmx" else ".cmx" in
+    Filename.concat build_dir (base ^ target_ext)
+  in
+  let targets = List.map to_target files in
+  compile_targets j build_dir deps targets
