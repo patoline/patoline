@@ -1685,6 +1685,12 @@ Doing a rectangle.\n" ;
 	let c = info.mainNode.Node.center in
 	Vector.of_points c v
 
+	let matrixAnchor i j anc info =
+	    let ms = info.nodes in
+	    let height = Array.length ms in
+	    let width = Array.length ms.(0) in
+	    ms.(i).(j).Node.anchor anc
+
 	let matrixLine info =
 	    let ms = info.nodes in
 	    let height = Array.length ms in
@@ -1692,6 +1698,13 @@ Doing a rectangle.\n" ;
 	    Point.middle (ms.(height - 1).(0).Node.anchor `LineWest)
 	    (ms.(height - 1).(width - 1).Node.anchor `LineEast)
 
+	let matrixFirstLine info =
+	    let ms = info.nodes in
+	    let height = Array.length ms in
+	    let width = Array.length ms.(0) in
+	    Point.middle (ms.(0).(0).Node.anchor `LineWest)
+	    (ms.(0).(width - 1).Node.anchor `LineEast)
+	      
 	let matrixBase info =
 	    let ms = info.nodes in
 	    let height = Array.length ms in
