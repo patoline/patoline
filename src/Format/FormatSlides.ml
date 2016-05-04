@@ -289,6 +289,22 @@ module Format=functor (D:Document.DocumentStructure)->(
         let display num= [tT ("Remarque "^num^"."); (tT " ")]@M.arg1
        end)
 
+    module Env_remark=Make_theorem
+      (struct
+        let refType="remark"
+        let counter="remark"
+        let counterLevel=0
+        let display num= [tT ("Remark "^num^"."); (tT " ")]
+       end)
+
+    module Env_remark_ (M:sig val arg1:content list end)=Make_theorem
+      (struct
+        let refType="remark"
+        let counter="remark"
+        let counterLevel=0
+        let display num= [tT ("Remark "^num^"."); (tT " ")]@M.arg1
+       end)
+
     module Env_lemma=Make_theorem
       (struct
         let refType="lemma"
