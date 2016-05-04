@@ -40,6 +40,9 @@ let add_patoline_grammar g =
 
 let in_ocamldep = ref false
 
+let build_dir = ref "_patobuild"
+let set_build_dir d = build_dir := d
+
 let quail_out_name=ref "" (* filename to output quail.el shortcut for emacs *)
 
 let quail_ch =
@@ -81,6 +84,8 @@ let extra_spec =
     "turn on debuging mode.")
   ; ("--main"  , Arg.Set is_main,
     "generate a main file.")
+  ; ("--build-dir", Arg.String set_build_dir,
+    "Change the build directory.")
   ]
 
 #define LOCATE locate
@@ -330,118 +335,6 @@ let parser verbatim_environment =
     >>
 
 let verbatim_environment = change_layout verbatim_environment no_blank
-
-
-(*
-  let verbatim_line =
-      "\\(^#?#?\\([^#\t\n][^\t\n]*\\)?\\)"
-
-  let string_filename = "\\\"\\([a-zA-Z0-9-_.]*\\)\\\""
-  let uid_coloring    = "[A-Z][_'a-zA-Z0-9]*"
-
-  let files_contents = Hashtbl.create 31
-
-  let verbatim_environment =
-    change_layout (
-        parser
-          RE("^###")
-          lang:{_:RE("[ \t]+") id:RE(uid_coloring)}?
-          filename:{_:RE("[ \t]+") fn:RE(string_filename)[groupe 1]}?
-          RE("[ \t]*") '\n' lines:{l:RE(verbatim_line) '\n'}+
-          RE("^###") -> (
-                    let lang = match lang with
-                        None -> <:expr<lang_default>>
-                      | Some s -> <:expr<$lid:("lang_"^s)$>>
-                    in
-                    assert(List.length lines <> 0); (* Forbid empty verbatim env *)
-
-                    (* Remove the maximum of head spaces uniformly *)
-                    let rec count_head_spaces s acc =
-                      if s.[acc] = ' '
-                      then count_head_spaces s (acc+1)
-                      else acc
-                    in
-                    let count_head_spaces s =
-                      if String.length s = 0
-                      then max_int
-                      else count_head_spaces s 0
-                    in
-                    let fn = fun acc s -> min acc (count_head_spaces s) in
-                    let sps = List.fold_left fn max_int lines in
-                    let sps = if sps = max_int then 0 else sps in
-                    let blank = Str.regexp "[ ]+" in
-                    let rec split acc pos line =
-                      try
-                        let start_blank = Str.search_forward blank line pos in
-                        let end_blank = Str.match_end () in
-                        let acc =
-                          String.sub line start_blank (end_blank - start_blank)::
-                            String.sub line pos (start_blank - pos):: acc
-                        in
-                        split acc end_blank line
-                      with
-                        Not_found ->
-                          if pos >= String.length line then List.rev acc else
-                          List.rev (String.sub line pos (String.length line - pos)::acc)
-                    in
-                    let lines = List.map (fun s ->
-                                          let s = try String.sub s sps (String.length s - sps)
-                                                  with Invalid_argument _ -> "" in
-                                          split [] 0 s) lines
-                    in
-                    begin
-                      match filename with
-                      | Some name when not !in_ocamldep ->
-                         let pos =
-                           try Hashtbl.find files_contents name
-                           with Not_found -> -1
-                         in
-                         let new_pos = (start_pos _loc).Lexing.pos_cnum in
-                         if new_pos > pos then
-                           begin
-                             Hashtbl.add files_contents name new_pos;
-                             let mode,msg = if pos >= 0 then
-                                          [Open_creat; Open_append ], "Appending to"
-                                        else
-                                          [Open_creat; Open_trunc; Open_wronly ], "Creating"
-                             in
-                             let name = if Filename.is_relative name then
-                                          match !file with
-                                            None -> name
-                                          | Some file ->
-                                             Filename.concat (Filename.dirname file) name
-                                        else name
-                             in
-                             Printf.eprintf "%s file: %s\n%!" msg name;
-                             let ch = open_out_gen mode 0o600 name in
-                             (* FIXME: not all language accept the next line: *)
-                             Printf.fprintf ch "#%d \"%s\"\n" (start_pos _loc_lines).Lexing.pos_lnum (start_pos _loc_lines).Lexing.pos_fname;
-                             List.iter (Printf.fprintf ch "%a\n" (fun ch -> List.iter (Printf.fprintf ch "%s"))) lines;
-                             close_out ch
-                           end;
-                      | _ -> ()
-                    end;
-                    let lines =
-                      List.map
-                        (fun line ->
-                         let line:Parsetree.expression list =
-                           List.map (fun s -> <:expr< $string:s$ >>) line
-                         in
-                         <:expr< String.concat "" $list:line$ >>) lines
-                    in
-                    let line_with_num =
-                      (* FIXME: the fact to have a line name and line number are orthogonal *)
-                      match filename with
-                      | None ->
-                         <:expr< line >>
-                      | Some name ->
-                         <:expr<verb_counter $string:("verb_file_"^name)$ @ line >>
-                    in
-                    <:struct<let _ =
-                     List.iter (fun line ->
-                       newPar D.structure ~environment:verbEnv Complete.normal ragged_left $line_with_num$) ($lang$ $list:lines$)>>)
-                  ) no_blank
-  *)
 
   let verbatim_generic st forbid nd =
     let line_re = "[^\n" ^ forbid ^ "]+" in
@@ -2108,10 +2001,10 @@ let entry_points =
 end (* of the functor *)
 
 (* Generator for the main file. *)
-let write_main_file driver form dir name =
+let write_main_file driver form build_dir dir name =
   let full = Filename.concat dir name in
-  let fullb = Filename.concat (Filename.concat dir "_patobuild") name in
-  let file = fullb ^ "_.tml" in
+  let fullb = Filename.concat build_dir name in
+  let file = fullb ^ "_.ml" in
   let oc = open_out file in
   let dcache = fullb ^ ".tdx" in
   let fmt = Format.formatter_of_out_channel oc in
@@ -2176,22 +2069,24 @@ let _ =
        let dir = Filename.dirname s in
        let base = chop_extension' (Filename.basename s) in
        let name = base ^ ".tgy" in
-       let patobuild_dir = Filename.concat dir "_patobuild" in
+       let build_dir = !build_dir in
+       let patobuild_dir = Filename.concat dir build_dir in
        let name = Filename.concat patobuild_dir name in
        if !debug then Printf.eprintf "Writing grammar %s\n%!" name;
-       (* Check if _patobuild/ needs to be created *)
+       (* Check if the build directory needs to be created *)
        if not (Sys.file_exists patobuild_dir)
        then Unix.mkdir patobuild_dir 0o700;
        if local_state <> empty_state then begin
-       (* Now write the grammar *)
-	 let ch = open_out_bin name in
-	 output_value ch local_state;
-	 close_out ch;
-	 if !debug then Printf.eprintf "Written grammar %s\n%!" name;
+         (* Now write the grammar *)
+         let ch = open_out_bin name in
+         output_value ch local_state;
+         close_out ch;
+         if !debug then Printf.eprintf "Written grammar %s\n%!" name;
        end;
        (* Writing the main file. *)
        if !is_main then
-         write_main_file !patoline_driver !patoline_format dir base
+         let (drv, fmt) = (!patoline_driver, !patoline_format) in
+         write_main_file drv fmt patobuild_dir dir base
     | _ -> ()
 
   with e ->

@@ -52,7 +52,6 @@ let parse_packages =
 let bin_args   = ref []
 let opt_args   = ref []
 let pp_args    = ref []
-let build_dir  = ref (Some "_patobuild")
 let local_path = ref []
 let packages   = ref ["rawlib"; "db"; "Typography"]
 let pat_format = ref None
@@ -95,14 +94,6 @@ let spec = Arg.align
   ; ( "--bin-args"
     , Arg.String (fun s -> add_bin_args (parse_args s))
     , "args Forward the given arguments to the binary." )
-
-  (* Build directory configuration. *)
-  ; ( "--build-dir"
-    , Arg.String (fun d -> build_dir := Some d)
-    , "dir Set the build directory." )
-  ; ( "--no-build-dir"
-    , Arg.Unit (fun () -> build_dir := None)
-    , " Disable the build directory." )
 
   (* Configuration of paths, packages, format and driver. *)
   ; ( "-I"
@@ -153,7 +144,6 @@ let _ =
 let bin_args   = !bin_args
 let opt_args   = !opt_args
 let pp_args    = !pp_args
-let build_dir  = !build_dir
 let local_path = !local_path
 let packages   = !packages
 let pat_format = !pat_format
@@ -162,19 +152,18 @@ let j          = !j
 let verbose    = !verbose
 let do_clean   = !do_clean
 let files      = !files
+let build_dir  = ".patobuild"
 
 (* Cleaning if required. *)
 let _ =
-  if do_clean then
-    match build_dir with
-    | None   ->
-        Printf.eprintf "Cannot clean (no build directory is set)\n%!";
-        exit 1
-    | Some d when Sys.file_exists d ->
-        if verbose > 0 then Printf.printf "Removing directory %S\n." d;
-        ignore (Sys.command ("rm -rf " ^ d))
-    | Some d ->
-        if verbose > 0 then Printf.printf "Nothing to clean.\n"
+  let d = build_dir in
+  if do_clean &&  Sys.file_exists d then
+    begin
+     if verbose > 0 then Printf.printf "Removing directory %S\n." d;
+     ignore (Sys.command ("rm -rf " ^ d))
+    end
+  else if do_clean && verbose > 0 then
+    Printf.printf "Nothing to clean.\n"
 
 let source_files path =
   let files = ref [] in
@@ -206,7 +195,7 @@ let more_recent source target =
 
 (* Preprocessor command. *)
 let m_stdout = Mutex.create ()
-let pp_if_more_recent is_main source target =
+let pp_if_more_recent build_dir is_main source target =
   (* Update if source more recent that target. *)
   let update = not (Sys.file_exists target) || more_recent source target in
   (* Also update if main file does not exist (only when processing main). *)
@@ -223,6 +212,7 @@ let pp_if_more_recent is_main source target =
     | Some f -> "--format" :: f :: pp_args
   in
   let pp_args = if is_main then "--main" :: pp_args else pp_args in
+  let pp_args = "--build-dir" :: build_dir :: pp_args in
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
@@ -282,7 +272,6 @@ let compile_targets nb_threads build_dir all_deps targets =
     Mutex.lock m_tasks;
     match !tasks with
     | t::ts -> tasks := ts; Mutex.unlock m_tasks; t
-    (* FIXME We need to wait on another condition. *)
     | []    -> Mutex.unlock m_tasks; Thread.exit (); assert false
   in
 
@@ -357,7 +346,6 @@ let _ =
       exit 0
     end;
   (* Check for builddir. *)
-  let build_dir = match build_dir with None -> "." | Some d -> d in
   if not (Sys.file_exists build_dir) then Unix.mkdir build_dir 0o700;
   (* Updating sources. *)
   let update_file fn =
@@ -365,12 +353,12 @@ let _ =
     let target_ext = match ext with ".txp" -> ".ml" | e -> e in
     let target = Filename.concat build_dir (base ^ target_ext) in
     let is_main = ext = ".txp" && List.mem fn files in
-    pp_if_more_recent is_main fn target
+    pp_if_more_recent build_dir is_main fn target
   in
   parallel_iter j update_file (source_files ("." :: local_path));
   (* Computing dependencies. *)
-  run_dep build_dir ".depend";
-  let deps = read_dep build_dir (Filename.concat build_dir ".depend") in
+  run_dep build_dir "depend";
+  let deps = read_dep build_dir (Filename.concat build_dir "depend") in
   let is_cmx_or_cmi f =
     Filename.check_suffix f ".cmx" || Filename.check_suffix f ".cmi"
   in
