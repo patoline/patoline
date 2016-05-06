@@ -182,6 +182,11 @@
 (make-variable-buffer-local 'patoline-default-environment)
 (setq patoline-default-environment "itemize")
 
+(defun patoline-item-argument ()
+  "Insert a new \item."
+  (interactive "*")
+  (insert "\\item "))
+
 ;; (fset 'patoline-add-environments-auto
 ;;       (symbol-function 'patoline-add-environments))
 ;; (defun patoline-add-environments (&rest environments)
@@ -253,6 +258,15 @@ It may be customized with the following variables:
 			       (if limit (max (point-min) (- (point) limit)))
 			       t)
 	   (eq (match-end 0) pos)))))
+
+(defun patoline-indent-line ()
+  "Indent the line containing point, as LaTeX source.
+Add `LaTeX-indent-level' indentation in each \\begin{ - \\end{ block.
+Lines starting with an item is given an extra indentation of
+`LaTeX-item-indent'."
+  (interactive)
+  nil
+)
 
 (defun patoline-insert-environment (environment &optional extra)
   "Insert environment of type ENV, with optional argument EXTRA."
@@ -398,6 +412,7 @@ It may be customized with the following variables:
 ;    (define-key patoline-mode-map "\C-c\C-e" 'patoline-make)
     (define-key patoline-mode-map "\C-c\C-a" 'patoline-env)
     (define-key patoline-mode-map "\C-c\C-e" 'patoline-environment)
+    (define-key patoline-mode-map "\e\r" 'patoline-item-argument)
     (define-key patoline-mode-map "\C-c\C-v" 'patoline-glview)
     (define-key patoline-mode-map "\C-c\C-p" 'patoline-view)
     (define-key patoline-mode-map "\C-c\C-s" 'patoline-forward-search)
@@ -456,7 +471,7 @@ It may be customized with the following variables:
   ;; Set up font-lock
   (set (make-local-variable 'font-lock-defaults) '(patoline-font-lock-keywords))
   ;; Register our indentation function
-;  (set (make-local-variable 'indent-line-function) 'patoline-indent-line)
+  (set (make-local-variable 'indent-line-function) 'patoline-indent-line)
   (set-input-method "Patoline")
   (make-local-variable 'paren-mode)
   (make-local-variable 'patoline-compile-format)
