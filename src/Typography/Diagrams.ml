@@ -1680,6 +1680,7 @@ Doing a rectangle.\n" ;
       (* 	  in *)
       (* 	  { info with mainNode = node_info })}) *)
 
+
       let mk_matrix_anchor f info =
 	let v = f info in
 	let c = info.mainNode.Node.center in
@@ -1729,6 +1730,22 @@ Doing a rectangle.\n" ;
 	    { info with
 	      mainNode = { node_info with Node.node_contents = [] };
 	      nodes = nodes })})
+
+      let mainAnchor,main_anchor_pet =
+      Pet.register "matrix main node anchor" ~depends:[main_node_pet]
+	(fun pet matrix_anchor ->
+	  { pet = pet ; transfo = (fun transfos info ->
+	    let pdf_start = 0.,0. in
+	    let node_transfos = [Node.anchor (`Vec (mk_matrix_anchor matrix_anchor info))]
+	    in 
+	    let node_info = Node.Transfo.transform node_transfos info.mainNode in
+	    let pdf_end = node_info.Node.anchor `Pdf in
+	    let v = Vector.of_points pdf_start pdf_end in
+	    let nodes = map (Node.translate v) info.nodes in
+	    { info with
+	      mainNode = { node_info with Node.node_contents = [] };
+	      nodes = nodes })})
+
 
       (* let wrap,wrap_pet =  *)
       (* 	Pet.register "matrix wrap" ~depends:[main_node_contents_pet; main_node_pet] (fun pet -> *)
