@@ -272,7 +272,6 @@ Lines starting with an item is given an extra indentation of
   "Insert environment of type ENV, with optional argument EXTRA."
   (if (and (mark-active) (not (eq (mark) (point))))
       (progn 
-	(print "salut")
 	(if (< (mark) (point))
 	    (exchange-point-and-mark))
 	(or (patoline-looking-at-backward "^[ \t]*")
