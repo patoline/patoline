@@ -1,7 +1,7 @@
 (* Number of threads used by compilation. *)
 let nb_threads = ref 1
 
-(* Thread-safe printing functions. *)
+(* Thread-safe printing functions. Be careful to always FULLY APPLY them. *)
 let fprintf : out_channel -> ('a, out_channel, unit) format -> 'a = fun och ->
   let m = Mutex.create () in
   let fprintf fmt =

@@ -6,9 +6,22 @@ let verbose = ref 0
 (* Build directory. *)
 let build_dir = ".patobuild"
 
+(* Decompose a filename into directory, basename and extension. *)
+let decompose_filename : string -> string * string * string = fun fn ->
+  let dir  = Filename.dirname  fn in
+  let base = Filename.basename fn in
+  let name = Filename.chop_extension base in 
+  let base_len = String.length base in
+  let name_len = String.length name in
+  let ext =
+    if base_len = name_len then ""
+    else String.sub base name_len (base_len - name_len)
+  in
+  (dir, name, ext)
+
 (* Type of a compilation configuration. *)
 type config =
-  { bin_args   : string list     (* Arguments to be fed to the tmx. *)
+  { bin_args   : string list     (* Arguments to be fed to the executable. *)
   ; opt_args   : string list     (* Arguments to be fed to ocamlopt. *)
   ; pp_args    : string list     (* Arguments to be fed to pa_patoline. *)
   ; packages   : string list     (* Packages (ocamlfind) to include. *)
@@ -43,41 +56,15 @@ let clean_build_dirs config =
   in
   iter clean_build_dir config.path
 
-
-
-
-let source_files path =
-  let files = ref [] in
-  let read_dir d =
-    if Sys.file_exists d then
-    let fs = Sys.readdir d in
-    let add_file fn =
-      if not (Sys.is_directory fn) then
-      if List.exists (Filename.check_suffix fn) [".ml"; ".mli"; ".txp"] then
-      files := (if d = "." then fn else Filename.concat d fn) :: !files
-    in Array.iter add_file fs
-  in
-  List.iter read_dir path; !files
-
-let decompose_filename : string -> string * string * string = fun fn ->
-  let dir  = Filename.dirname  fn in
-  let base = Filename.basename fn in
-  let name = Filename.chop_extension base in 
-  let base_len = String.length base in
-  let name_len = String.length name in
-  let ext =
-    if base_len = name_len then ""
-    else String.sub base name_len (base_len - name_len)
-  in
-  (dir, name, ext)
-
+(* Test if a file is more recent than another file. *)
 let more_recent source target =
-   Unix.((stat source).st_mtime > (stat target).st_mtime)
+  not (Sys.file_exists target) ||
+  Unix.((stat source).st_mtime > (stat target).st_mtime)
 
 (* Preprocessor command. *)
 let pp_if_more_recent config is_main source target =
   (* Update if source more recent that target. *)
-  let update = not (Sys.file_exists target) || more_recent source target in
+  let update = more_recent source target in
   (* Also update if main file does not exist (only when processing main). *)
   let main = (Filename.chop_extension target) ^ "_.ml" in
   if update || (is_main && not (Sys.file_exists main)) then
@@ -96,16 +83,32 @@ let pp_if_more_recent config is_main source target =
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
-  printf "[PAT] %s\n%!" cmd;
-  if Sys.command cmd <> 0 then failwith "Preprocessor error..."
+  command "PP" cmd
+
+(* Compute the list of all the source files in the path. *)
+let source_files path =
+  let files = ref [] in
+  let read_dir d =
+    if Sys.file_exists d then
+    let fs = Sys.readdir d in
+    let add_file fn =
+      let fn = if d = "." then fn else Filename.concat d fn in
+      if not (Sys.is_directory fn) then
+      if List.exists (Filename.check_suffix fn) [".ml"; ".mli"; ".txp"] then
+      files := fn :: !files
+    in Array.iter add_file fs;
+  in
+  List.iter read_dir path; !files
+
+
+(*
 
 (* Computing dependencies *)
 let run_dep build_dir target =
   let cmd =
     Printf.sprintf "cd %s && ocamldep *.ml *.mli > %s" build_dir target
   in
-  Printf.printf "[DEP] %s\n%!" cmd;
-  if Sys.command cmd <> 0 then failwith "OCamldep error..."
+  command "DEP" cmd
 
 (* Parsing dependencies. *)
 let read_dep build_dir dep_file =
@@ -122,7 +125,7 @@ let read_dep build_dir dep_file =
   in parse_deps dep_file
 
 (* Compilation function. *)
-let compile_targets config all_deps targets =
+let compile_targets config targets =
   let files = ref (List.map (fun t -> (t, Mutex.create ())) targets) in
   let tasks = ref targets in
   let m_files = Mutex.create () in
@@ -153,7 +156,7 @@ let compile_targets config all_deps targets =
       if Filename.check_suffix t ".cmi" then ".mli" else ".ml"
     in
     let source = base ^ source_ext in
-    if not (Sys.file_exists t) || more_recent source t then
+    if more_recent source t then
       begin
         let packs = String.concat "," config.packages in
         let args =
@@ -161,8 +164,7 @@ let compile_targets config all_deps targets =
           ["-o"; t; source]
         in
         let cmd = "ocamlfind ocamlopt " ^ (String.concat " " args) in
-        printf "[OPT] %s\n%!" cmd;
-        if Sys.command cmd <> 0 then failwith "Compilation error..."
+        command "OPT" cmd
       end
   in
 
@@ -203,6 +205,8 @@ let compile_targets config all_deps targets =
   let ths = Array.init !Parallel.nb_threads fn in
   Array.iter Thread.join ths
 
+*)
+
 (* Main compilation function. *)
 let compile config files =
   if files = [] then
@@ -210,18 +214,22 @@ let compile config files =
       if !verbose > 1 then eprintf "Nothing to do.\n%!";
       exit 0
     end;
-  (* Check for builddir. *)
-  if not (Sys.file_exists build_dir) then Unix.mkdir build_dir 0o700;
-  (* Updating sources. *)
+  (* Finding all the source files. *)
+  let sources = source_files config.path in
+  (* Updating the source files that have changed in the build directories. *)
   let update_file fn =
-    let (_, base, ext) = decompose_filename fn in
+    let (dir, base, ext) = decompose_filename fn in
+    let bdir = Filename.concat dir build_dir in
+    if not (Sys.file_exists bdir) then Unix.mkdir bdir 0o700;
     let target_ext = match ext with ".txp" -> ".ml" | e -> e in
-    let target = Filename.concat build_dir (base ^ target_ext) in
+    let target = Filename.concat bdir (base ^ target_ext) in
     let is_main = ext = ".txp" && List.mem fn files in
     pp_if_more_recent config is_main fn target
   in
-  iter update_file (source_files ("." :: config.path));
+  iter update_file sources;
   (* Computing dependencies. *)
+
+(*
   run_dep build_dir "depend";
   let deps = read_dep build_dir (Filename.concat build_dir "depend") in
   let is_cmx_or_cmi f =
@@ -231,8 +239,9 @@ let compile config files =
   (* Actually compiling. *)
   let to_target fn =
     let (_, base, ext) = decompose_filename fn in
-    let target_ext = if ext = ".txp" then "_.cmx" else ".cmx" in
+    let target_ext = if ext = ".txp" then ".tmx" else ".opt" in
     Filename.concat build_dir (base ^ target_ext)
   in
   let targets = List.map to_target files in
-  compile_targets config deps targets
+  compile_targets config targets
+*)
