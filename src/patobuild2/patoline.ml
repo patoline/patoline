@@ -144,7 +144,7 @@ let cfg =
   ; opt_args   = !opt_args
   ; pp_args    = !pp_args
   ; packages   = !packages
-  ; path       = "." :: !local_path
+  ; path       = "." :: !local_path (* FIXME remove duplicates *)
   ; pat_format = !pat_format
   ; pat_driver = !pat_driver }
 

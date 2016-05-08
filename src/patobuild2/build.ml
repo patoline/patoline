@@ -100,30 +100,45 @@ let source_files path =
   in
   List.iter read_dir path; !files
 
-
-(*
-
 (* Computing dependencies *)
-let run_dep build_dir target =
-  let cmd =
-    Printf.sprintf "cd %s && ocamldep *.ml *.mli > %s" build_dir target
+let run_deps path target =
+  let to_build_dir d =
+    if d = "." then build_dir else Filename.concat d build_dir
   in
-  command "DEP" cmd
+  let build_dirs = List.map to_build_dir path in
+  let includes = List.map (fun n -> "-I " ^ n) build_dirs in
+  let includes = String.concat " " includes in
+  let patterns =
+    List.map (fun n -> Printf.sprintf "%s/*.ml %s/*.mli" n n) build_dirs
+  in
+  let patterns = String.concat " " patterns in
+  let cmd =
+    Printf.sprintf "ocamldep -one-line %s %s > %s" includes patterns target
+  in command "DEP" cmd
 
 (* Parsing dependencies. *)
-let read_dep build_dir dep_file =
+let read_deps dep_file =
   let open Decap in
-  let file_re = "[a-zA-Z][a-zA-Z0-9_]*[.]cm[xoi]" in
-  let file = parser f:RE(file_re) -> Filename.concat build_dir f in
-  let line = parser t:file " :" ds:{' ' _:"\\\n    "? d:file}* '\n' in
+  let file = parser f:''[^ \n]+'' in
+  let line = parser t:file " :" ds:{' ' d:file}* '\n' in
   let deps = parser line* in
   let parse_deps fn =
     try handle_exception (parse_file deps no_blank) fn
     with _ ->
       Printf.eprintf "Problem while parsing dependency file %S." fn;
       exit 1
-  in parse_deps dep_file
+  in
+  let deps = parse_deps dep_file in
+  (* Hacks due to ocamldep limitations. *)
+  let is_native f = List.exists (Filename.check_suffix f) [".cmx"; ".cmi"] in
+  let deps = List.filter (fun (s,_) -> is_native s) deps in
+  let to_build_dir fn =
+    if Filename.basename fn = fn then Filename.concat build_dir fn else fn
+  in
+  List.map (fun (n,ds) -> (n, List.map to_build_dir ds)) deps
 
+
+(*
 (* Compilation function. *)
 let compile_targets config targets =
   let files = ref (List.map (fun t -> (t, Mutex.create ())) targets) in
@@ -228,14 +243,15 @@ let compile config files =
   in
   iter update_file sources;
   (* Computing dependencies. *)
+  if not (Sys.file_exists build_dir) then Unix.mkdir build_dir 0o700;
+  let depfile = Filename.concat build_dir "depend" in
+  run_deps config.path depfile;
+  let deps = read_deps depfile in
+  (* Actually compiling. *)
+  ignore deps
+
 
 (*
-  run_dep build_dir "depend";
-  let deps = read_dep build_dir (Filename.concat build_dir "depend") in
-  let is_cmx_or_cmi f =
-    Filename.check_suffix f ".cmx" || Filename.check_suffix f ".cmi"
-  in
-  let deps = List.filter (fun (s,_) -> is_cmx_or_cmi s) deps in
   (* Actually compiling. *)
   let to_target fn =
     let (_, base, ext) = decompose_filename fn in
