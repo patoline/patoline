@@ -218,9 +218,10 @@ let compile_targets config deps targets =
     end
   in
 
-  let rec thread_fun () =
+  let rec thread_fun i =
     (* Obtain a new task, and compute its dependencies. *)
     let t = get_task () in
+    if !verbose > 2 then eprintf "[%2i] got task %S\n%!" i t;
     let deps = try List.assoc t deps with Not_found -> assert false in
     (* Quick (unreliable) filter on dependencies. *)
     let deps = List.filter (fun f -> not (unsafe_exists f)) deps in
@@ -232,12 +233,17 @@ let compile_targets config deps targets =
           | None   -> () (* Already being created. *) 
           | Some m -> do_compile t; Mutex.unlock m
         end
-      else add_tasks (deps @ [t])
+      else
+        begin
+          add_tasks (deps @ [t]);
+          (* Wait for up to 250ms *)
+          ignore (Unix.select [] [] [] (Random.float 0.25))
+        end
     end;
     (* Continue to work. *)
-    thread_fun ()
+    thread_fun i
   in
-  let fn _ = Thread.create thread_fun () in
+  let fn i = Thread.create thread_fun i in
   let ths = Array.init !Parallel.nb_threads fn in
   Array.iter Thread.join ths
 
