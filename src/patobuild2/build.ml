@@ -100,11 +100,12 @@ let source_files path =
   in
   List.iter read_dir path; !files
 
+(* Transform a directory into the corresponding build directory. *)
+let to_build_dir d =
+  if d = "." then build_dir else Filename.concat d build_dir
+
 (* Computing dependencies *)
 let run_deps path target =
-  let to_build_dir d =
-    if d = "." then build_dir else Filename.concat d build_dir
-  in
   let build_dirs = List.map to_build_dir path in
   let includes = List.map (fun n -> "-I " ^ n) build_dirs in
   let includes = String.concat " " includes in
@@ -137,10 +138,8 @@ let read_deps dep_file =
   in
   List.map (fun (n,ds) -> (n, List.map to_build_dir ds)) deps
 
-
-(*
 (* Compilation function. *)
-let compile_targets config targets =
+let compile_targets config deps targets =
   let files = ref (List.map (fun t -> (t, Mutex.create ())) targets) in
   let tasks = ref targets in
   let m_files = Mutex.create () in
@@ -165,6 +164,13 @@ let compile_targets config targets =
     Mutex.unlock m_tasks
   in
 
+  let optcmd =
+    let packs = String.concat "," config.packages in
+    let includes = List.map (fun d -> "-I " ^ (to_build_dir d)) config.path in
+    let includes = String.concat " " includes in
+    Printf.sprintf "ocamlfind ocamlopt -package %s %s " packs includes
+  in
+
   let do_compile t =
     let base = Filename.chop_extension t in
     let source_ext =
@@ -173,19 +179,15 @@ let compile_targets config targets =
     let source = base ^ source_ext in
     if more_recent source t then
       begin
-        let packs = String.concat "," config.packages in
-        let args =
-          ["-package"; packs; "-I"; build_dir; "-c"] @ config.opt_args @
-          ["-o"; t; source]
-        in
-        let cmd = "ocamlfind ocamlopt " ^ (String.concat " " args) in
+        let args = ["-c"] @ config.opt_args @ ["-o"; t; source] in
+        let cmd = optcmd ^ (String.concat " " args) in
         command "OPT" cmd
       end
   in
 
   let rec thread_fun () =
     let t = get_task () in
-    let deps = try List.assoc t all_deps with Not_found -> assert false in
+    let deps = try List.assoc t deps with Not_found -> assert false in
     (* Quick filter (unreliable). *)
     let is_done f =
       try
@@ -220,8 +222,6 @@ let compile_targets config targets =
   let ths = Array.init !Parallel.nb_threads fn in
   Array.iter Thread.join ths
 
-*)
-
 (* Main compilation function. *)
 let compile config files =
   if files = [] then
@@ -247,17 +247,17 @@ let compile config files =
   let depfile = Filename.concat build_dir "depend" in
   run_deps config.path depfile;
   let deps = read_deps depfile in
-  (* Actually compiling. *)
-  ignore deps
-
-
-(*
-  (* Actually compiling. *)
+  (* Building primary targets. *)
   let to_target fn =
-    let (_, base, ext) = decompose_filename fn in
-    let target_ext = if ext = ".txp" then ".tmx" else ".opt" in
-    Filename.concat build_dir (base ^ target_ext)
+    let (dir, base, ext) = decompose_filename fn in
+    let target_ext = if ext = ".txp" then "_.cmx" else ".cmx" in
+    let bdir =
+      if dir = "." then build_dir else Filename.concat dir build_dir
+    in
+    Filename.concat bdir (base ^ target_ext)
   in
   let targets = List.map to_target files in
-  compile_targets config targets
-*)
+  (* Actually compiling. *)
+  compile_targets config deps targets;
+  (* Producing the documents. *)
+  () (* TODO *)
