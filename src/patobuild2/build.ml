@@ -147,17 +147,11 @@ let opt_command config =
 
 (* Compilation function. *)
 let compile_targets config deps targets =
-  let files = ref (List.map (fun t -> (t, Mutex.create ())) targets) in
+  (* Stack of tasks, and its mutex. *)
   let tasks = ref targets in
-  let m_files = Mutex.create () in
   let m_tasks = Mutex.create () in
 
-  let add_file fn =
-    Mutex.lock m_files;
-    files := (fn, Mutex.create ()) :: !files;
-    Mutex.unlock m_files
-  in
-
+  (* Function used to obtain a new task (i.e. a new file to produce). *)
   let get_task : unit -> string = fun () ->
     Mutex.lock m_tasks;
     match !tasks with
@@ -165,14 +159,15 @@ let compile_targets config deps targets =
     | []    -> Mutex.unlock m_tasks; Thread.exit (); assert false
   in
 
+  (* Function used to add a list of tasks on top of the task stack. *)
   let add_tasks ts =
     Mutex.lock m_tasks;
     tasks := ts @ !tasks;
     Mutex.unlock m_tasks
   in
 
+  (* The raw compilation command. *)
   let optcmd = opt_command config in
-
   let do_compile t =
     let base = Filename.chop_extension t in
     let source_ext =
@@ -187,35 +182,57 @@ let compile_targets config deps targets =
       end
   in
 
+  (* A map of mutex indexed by files. If a file is mapped, it means that it
+     it being taken care of by some thread. The thread keeps the lock on the
+     mutex while it is working. To check if a file has been generated, one
+     simply locks-unlocks the mutex. *)
+  let files = ref [] in
+  let m_files = Mutex.create () in
+
+  (* Quickly (but unreliably) check if a file has been generated. If it
+     returns true, then we know the file has been produced. *)
+  let unsafe_exists fn =
+    try
+      let m = List.assoc fn !files in
+      if Mutex.try_lock m then (Mutex.unlock m; true) else false
+    with Not_found -> false
+  in
+
+  (* Find out if a file has been generated (or is being generated), and if
+     it is the case returns None. Otherwise, insert the file with a fresh
+     locked mutex, and returns the mutex. *)
+  let lock_file fn =
+    if List.mem_assoc fn !files then None else
+    begin
+      Mutex.lock m_files;
+      let res =
+        if List.mem_assoc fn !files then None else
+        begin
+          let m = Mutex.create () in
+          Mutex.lock m;
+          files := (fn, m) :: !files;
+          Some m
+        end
+      in
+      Mutex.unlock m_files; res
+    end
+  in
+
   let rec thread_fun () =
+    (* Obtain a new task, and compute its dependencies. *)
     let t = get_task () in
     let deps = try List.assoc t deps with Not_found -> assert false in
-    (* Quick filter (unreliable). *)
-    let is_done f =
-      try
-        let m = List.assoc f !files in
-        if Mutex.try_lock m then (Mutex.unlock m; true) else false
-      with Not_found -> false
-    in
-    let deps = List.filter (fun f -> not (is_done f)) deps in
-    (* Obtain a task. *)
+    (* Quick (unreliable) filter on dependencies. *)
+    let deps = List.filter (fun f -> not (unsafe_exists f)) deps in
+    (* Actually do some work. *)
     begin
       if deps = [] then
         begin
-          do_compile t;
-          add_file t
+          match lock_file t with
+          | None   -> () (* Already being created. *) 
+          | Some m -> do_compile t; Mutex.unlock m
         end
-      else
-        begin
-          Mutex.lock m_files;
-          let is_done f =
-            try List.mem_assoc f !files
-            with Not_found -> false
-          in
-          let deps = List.filter (fun f -> not (is_done f)) deps in
-          add_tasks (deps @ [t]);
-          Mutex.unlock m_files;
-        end
+      else add_tasks (deps @ [t])
     end;
     (* Continue to work. *)
     thread_fun ()
