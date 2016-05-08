@@ -139,12 +139,20 @@ let _ =
 
 (* The data after parsing the command-line arguments. *)
 let cfg =
+  let path = "." :: !local_path in (* FIXME remove duplicates *)
+  let driver_packages =
+    match !pat_driver with
+    | None                                      -> ["Typography.Pdf"]
+    | Some d when List.mem d patoconfig.drivers -> ["Typography." ^ d]
+    | _                                         -> []
+  in
+  let packages = !packages @ driver_packages in
   let open Build in
   { bin_args   = !bin_args
   ; opt_args   = !opt_args
   ; pp_args    = !pp_args
-  ; packages   = !packages
-  ; path       = "." :: !local_path (* FIXME remove duplicates *)
+  ; packages
+  ; path
   ; pat_format = !pat_format
   ; pat_driver = !pat_driver }
 

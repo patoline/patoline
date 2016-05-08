@@ -138,6 +138,13 @@ let read_deps dep_file =
   in
   List.map (fun (n,ds) -> (n, List.map to_build_dir ds)) deps
 
+(* Produce the ocamlopt command using the configuration. *)
+let opt_command config =
+  let packs = String.concat "," config.packages in
+  let includes = List.map (fun d -> "-I " ^ (to_build_dir d)) config.path in
+  let includes = String.concat " " includes in
+  Printf.sprintf "ocamlfind ocamlopt -package %s %s " packs includes
+
 (* Compilation function. *)
 let compile_targets config deps targets =
   let files = ref (List.map (fun t -> (t, Mutex.create ())) targets) in
@@ -164,12 +171,7 @@ let compile_targets config deps targets =
     Mutex.unlock m_tasks
   in
 
-  let optcmd =
-    let packs = String.concat "," config.packages in
-    let includes = List.map (fun d -> "-I " ^ (to_build_dir d)) config.path in
-    let includes = String.concat " " includes in
-    Printf.sprintf "ocamlfind ocamlopt -package %s %s " packs includes
-  in
+  let optcmd = opt_command config in
 
   let do_compile t =
     let base = Filename.chop_extension t in
@@ -222,6 +224,22 @@ let compile_targets config deps targets =
   let ths = Array.init !Parallel.nb_threads fn in
   Array.iter Thread.join ths
 
+let rec get_cmxs deps cmx =
+  let is_cmx f = Filename.check_suffix f ".cmx" in
+  let ds = List.filter is_cmx (List.assoc cmx deps) in
+  let cmxs = List.concat (List.map (get_cmxs deps) ds) @ [cmx] in
+  let fn acc f = if List.mem f acc then acc else f::acc in
+  List.rev (List.fold_left fn [] cmxs)
+
+(* Produce the binary of the document. *)
+let produce_binary config deps main =
+  let target = (Filename.chop_extension main) ^ ".opt" in
+  let cmxs = get_cmxs deps main in
+  let args = ["-o"; target; "-linkpkg"] @ cmxs in
+  let optcmd = opt_command config in
+  let cmd = optcmd ^ (String.concat " " args) in
+  command "LNK" cmd
+
 (* Main compilation function. *)
 let compile config files =
   if files = [] then
@@ -259,5 +277,6 @@ let compile config files =
   let targets = List.map to_target files in
   (* Actually compiling. *)
   compile_targets config deps targets;
+  iter (produce_binary config deps) targets;
   (* Producing the documents. *)
   () (* TODO *)
