@@ -249,11 +249,18 @@ let compile config files =
     end;
   (* Finding all the source files. *)
   let sources = source_files config.path in
+  (* Making sure the build directories exist. *)
+  let create_build_dir dir =
+    if Sys.file_exists dir && Sys.is_directory dir then
+    let bdir = Filename.concat dir build_dir in
+    if not (Sys.file_exists bdir) then
+    Unix.mkdir bdir 0o700
+  in
+  iter create_build_dir config.path;
   (* Updating the source files that have changed in the build directories. *)
   let update_file fn =
     let (dir, base, ext) = decompose_filename fn in
     let bdir = Filename.concat dir build_dir in
-    if not (Sys.file_exists bdir) then Unix.mkdir bdir 0o700;
     let target_ext = match ext with ".txp" -> ".ml" | e -> e in
     let target = Filename.concat bdir (base ^ target_ext) in
     let is_main = ext = ".txp" && List.mem fn files in
@@ -261,7 +268,6 @@ let compile config files =
   in
   iter update_file sources;
   (* Computing dependencies. *)
-  if not (Sys.file_exists build_dir) then Unix.mkdir build_dir 0o700;
   let depfile = Filename.concat build_dir "depend" in
   run_deps config.path depfile;
   let deps = read_deps depfile in
