@@ -266,7 +266,7 @@ let produce_binary config deps main =
 (* Run a document binary. *)
 let run_binary config fn =
   let args = config.bin_args in
-  let args = if verbose = 0 then "--quiet" :: args else args in
+  let args = if !verbose = 0 then "--quiet" :: args else args in
   let cmd = String.concat " " (fn :: args) in
   command "RUN" cmd
 
