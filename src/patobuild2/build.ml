@@ -174,7 +174,8 @@ let compile_targets config deps targets =
       if Filename.check_suffix t ".cmi" then ".mli" else ".ml"
     in
     let source = base ^ source_ext in
-    if List.exists (more_recent t) deps || more_recent source t then
+    let dep_changed = List.exists (fun d -> more_recent d t) deps in
+    if dep_changed || more_recent source t then
       begin
         let args = ["-c"] @ config.opt_args @ ["-o"; t; source] in
         let cmd = optcmd ^ (String.concat " " args) in
