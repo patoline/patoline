@@ -263,6 +263,13 @@ let produce_binary config deps main =
   let cmd = optcmd ^ (String.concat " " args) in
   command "LNK" cmd
 
+(* Run a document binary. *)
+let run_binary config fn =
+  let args = config.bin_args in
+  let args = if verbose = 0 then "--quiet" :: args else args in
+  let cmd = String.concat " " (fn :: args) in
+  command "RUN" cmd
+
 (* Main compilation function. *)
 let compile config files =
   if files = [] then
@@ -308,4 +315,11 @@ let compile config files =
   compile_targets config deps targets;
   iter (produce_binary config deps) targets;
   (* Producing the documents. *)
-  () (* TODO *)
+  let to_bin fn =
+    let (dir, base, ext) = decompose_filename fn in
+    let bdir = Filename.concat dir build_dir in
+    let target_ext = match ext with ".txp" -> "_.opt" | e -> ".opt" in
+    Filename.concat bdir (base ^ target_ext)
+  in
+  let bins = List.map to_bin files in
+  iter (run_binary config) bins
