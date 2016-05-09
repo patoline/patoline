@@ -168,13 +168,13 @@ let compile_targets config deps targets =
 
   (* The raw compilation command. *)
   let optcmd = opt_command config in
-  let do_compile t =
+  let do_compile deps t =
     let base = Filename.chop_extension t in
     let source_ext =
       if Filename.check_suffix t ".cmi" then ".mli" else ".ml"
     in
     let source = base ^ source_ext in
-    if more_recent source t then
+    if List.exists (more_recent t) deps || more_recent source t then
       begin
         let args = ["-c"] @ config.opt_args @ ["-o"; t; source] in
         let cmd = optcmd ^ (String.concat " " args) in
@@ -222,16 +222,16 @@ let compile_targets config deps targets =
     (* Obtain a new task, and compute its dependencies. *)
     let t = get_task () in
     if !verbose > 2 then eprintf "[%2i] got task %S\n%!" i t;
-    let deps = try List.assoc t deps with Not_found -> assert false in
+    let all_deps = try List.assoc t deps with Not_found -> assert false in
     (* Quick (unreliable) filter on dependencies. *)
-    let deps = List.filter (fun f -> not (unsafe_exists f)) deps in
+    let deps = List.filter (fun f -> not (unsafe_exists f)) all_deps in
     (* Actually do some work. *)
     begin
       if deps = [] then
         begin
           match lock_file t with
           | None   -> () (* Already being created. *) 
-          | Some m -> do_compile t; Mutex.unlock m
+          | Some m -> do_compile all_deps t; Mutex.unlock m
         end
       else
         begin
