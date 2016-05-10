@@ -463,6 +463,7 @@ let defaultEnv:environment=
                                { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
                                  size=(if List.length b <= 2 then sqrt phi else
                                          sqrt (sqrt phi))*.env.size;
+                                 par_indent = []
                                });
                       par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
                                                                  user_positions=user_positions env2 });

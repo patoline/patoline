@@ -1645,7 +1645,7 @@ let flatten ?(initial_path=[]) env0 str=
     v
   in
 
-  let rec flatten flushes env_ path noindent tree=
+  let rec flatten flushes env_ path tree=
     match tree with
         Paragraph p -> (
           p.par_paragraph <- List.length !paragraphs;
@@ -1673,13 +1673,13 @@ let flatten ?(initial_path=[]) env0 str=
               in
               match collect_nodes p.par_contents [] [] with
                   [Paragraph _]->add_paragraph env_ tree path p
-                | [Node n]->flatten flushes env_ path noindent (Node n)
+                | [Node n]->flatten flushes env_ path (Node n)
                 | l->(
                   let rec make_node i m l=match l with
                       []->m
                     | h::s->make_node (i+1) (IntMap.add i h m) s
                   in
-                  flatten flushes env_ path noindent
+                  flatten flushes env_ path
                     (Node { empty with children=make_node 0 IntMap.empty [] })
                 )
             end
@@ -1708,10 +1708,9 @@ let flatten ?(initial_path=[]) env0 str=
         s.node_paragraph <- List.length !paragraphs;
         s.boxified_displayname <- draw_boxes env (boxify_scoped env s.displayname);
         let flushes'=ref [] in
-        let flat_children k a (is_first,indent, env1)=match a with
+        let flat_children k a (is_first, env1)=match a with
             Paragraph p->(
               let env2=flatten flushes' (p.par_env env1) ((k,tree)::path)
-                (noindent || List.mem_assoc "noindent" s.node_tags)
                 (Paragraph { p with par_contents=
                     (if is_first then (
                       (* Set up a marker to be able to obtain section page.
@@ -1725,20 +1724,15 @@ let flatten ?(initial_path=[]) env0 str=
                        bB (fun _->[Marker (Label name)])
                       ]
                      ) else [])@
-                      (if indent
-                          && not (List.mem_assoc "noindent" s.node_tags)
-                       then
                           [bB (fun env->(p.par_env env).par_indent);
                            Env (fun env->{env with par_indent=[]})]
-                       else
-                          [])
                               @ p.par_contents
                           }
               ) in
-              false,true, p.par_post_env env1 env2
+              false, p.par_post_env env1 env2
             )
           | FigureDef f as h->(
-            let env2=flatten flushes' env1 ((k,tree)::path) noindent h in
+            let env2=flatten flushes' env1 ((k,tree)::path) h in
             let num=try
                       match StrMap.find "_figure" env2.counters with
                           _,h::_->h
@@ -1747,22 +1741,16 @@ let flatten ?(initial_path=[]) env0 str=
                   Not_found ->0
             in
             flushes':=FlushFigure num::(!flushes');
-            is_first,indent,env2
+            is_first,env2
           )
           | Node h as tr->(
             let env2=h.node_env env1 in
-            let env3=flatten flushes' env2 ((k,tree)::path)
-              (noindent || List.mem_assoc "noindent" h.node_tags)
-              tr
-            in
+            let env3=flatten flushes' env2 ((k,tree)::path) tr in
             (is_first),
-            (not (List.mem_assoc "structural" h.node_tags) &&
-               not (List.mem_assoc "structure" h.node_tags)
-            ),
             h.node_post_env env1 env3
           )
         in
-        let _,_,env2=IntMap.fold flat_children s.children (true,false,env) in
+        let _,env2=IntMap.fold flat_children s.children (true,env) in
         paragraphs:=(match !paragraphs with
             []->[]
           | h::s->Array.append h (Array.of_list !flushes')::s);
@@ -1774,7 +1762,7 @@ let flatten ?(initial_path=[]) env0 str=
     | Paragraph n->n.par_env env0
     | _->env0
   in
-  let env2=flatten (ref []) env1 [] false str in
+  let env2=flatten (ref []) env1 [] str in
   let params=Array.init
     (IntMap.cardinal !figures)
     (fun i->IntMap.find i !fig_param)
