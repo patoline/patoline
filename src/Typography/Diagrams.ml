@@ -1322,8 +1322,8 @@ Doing a rectangle.\n" ;
 	      let retour v = Vector.translate center (Vector.rotate angle v) in
 	      (* let aller = Vector.rotate (-. angle) in *)
 	      (* let retour = Vector.rotate angle in *)
-	      let center = aller center in
-	      (*let _ = begin Printf.fprintf stderr "center = %f,%f.\n" (fst center) (snd center) ; flush stderr end in*)
+	      (* let center = aller center in *)
+	      (* let _ = begin Printf.fprintf stderr "center = %f,%f.\n" (fst center) (snd center) ; flush stderr end in*)
 
 
 	      let ne = aller nouveaux_coins.(0) in

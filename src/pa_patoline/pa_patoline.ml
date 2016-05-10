@@ -80,8 +80,8 @@ let extra_spec =
     "set a flag to inform parser that we are computing dependencies")
   ; ("--quail-out", (Arg.Set_string quail_out_name),
     "set a filename to output quail.el like file for emacs short cur")
-  ; ("--debug" , Arg.Set debug,
-    "turn on debuging mode.")
+  ; ("--debug-patoline" , Arg.Set debug,
+    "turn on debuging mode for pa_patoline.")
   ; ("--main"  , Arg.Set is_main,
     "generate a main file.")
   ; ("--build-dir", Arg.String set_build_dir,
@@ -672,7 +672,7 @@ let state =
   ; right_delimiter_symbols= PrefixTree.empty
   ; operator_symbols= PrefixTree.empty
   ; combining_symbols= PrefixTree.empty
-  ; reserved_symbols = PrefixTree.empty
+  ; reserved_symbols = PrefixTree.add "left" () (PrefixTree.add "right" () PrefixTree.empty)
   ; word_macros      = []
   ; math_macros      = []
   ; environment      = [] }
