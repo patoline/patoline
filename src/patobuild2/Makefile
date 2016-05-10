@@ -1,6 +1,6 @@
 all: patoline
 
-patoline: parallel.cmx build.cmx patoline.ml
+patoline: pragma.cmx parallel.cmx build.cmx patoline.ml
 	ocamlfind ocamlopt -package decap,threads -thread -I ../config \
 		-pp pa_ocaml -o patoline unix.cmxa configRC.cmx patDefault.cmx \
 		patConfig.cmx str.cmxa decap.cmxa threads.cmxa $^
@@ -8,7 +8,10 @@ patoline: parallel.cmx build.cmx patoline.ml
 parallel.cmx: parallel.ml
 	ocamlfind ocamlopt -package threads -thread -c $<
 
-build.cmx: build.ml parallel.cmx
+pragma.cmx: pragma.ml
+	ocamlfind ocamlopt -c $<
+
+build.cmx: build.ml parallel.cmx pragma.cmx
 	ocamlfind ocamlopt -package decap,threads -pp pa_ocaml -thread -c $<
 
 clean:

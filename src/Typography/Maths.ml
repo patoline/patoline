@@ -39,7 +39,8 @@ module type CustomT =
                 -> Document.environment -> Mathematical.style -> 'a t -> 'b t
 
     (** A custom drawing function for the type [t]. *)
-    val draw : Document.environment -> Mathematical.style -> box list t -> box list
+    val draw : Document.environment -> Mathematical.style -> box list t
+                -> box list
   end
 
 (** Signature of a module containing only one element of type [u C.t], for a

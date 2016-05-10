@@ -57,19 +57,24 @@ let packages   = ref ["rawlib"; "db"; "Typography"; "decap"]
 let pat_format = ref None
 let pat_driver = ref None
 let do_clean   = ref false
-let files      = ref []
+let file       = ref None
 
 let add_bin_args l = bin_args := !bin_args @ l
 let add_opt_args l = opt_args := !opt_args @ l
 let add_pp_args  l = pp_args  := !pp_args  @ l
 
 let add_file f =
+  if !file <> None then
+    begin
+      Printf.eprintf "A file has already been given...\n";
+      exit 1
+    end;
   if not (Sys.file_exists f) then
     begin
       Printf.eprintf "The file %s does not exist...\n" f;
       exit 1
     end;
-  files := !files @ [f]
+  file := Some f
  
 
 let add_local_path p = local_path := !local_path @ [p]
@@ -128,7 +133,7 @@ let spec = Arg.align
   ]
 
 let usage =
-  Printf.sprintf "Usage: %s [drivers | config | [options] [files]]"
+  Printf.sprintf "Usage: %s [drivers | formats | config | [options] [file]]"
 
 let _ =
   match Sys.argv with
@@ -168,6 +173,8 @@ let cfg =
 (* Cleaning if required. *)
 let _ = if !do_clean then Build.clean_build_dirs cfg
 
-(* Compilation of the files. *)
-let _ = Build.compile cfg !files
-
+(* Compilation of the file. *)
+let _ =
+  match !file with
+  | None    -> if !Build.verbose > 1 then Printf.eprintf "Nothing to do.\n%!"
+  | Some fn -> Build.compile cfg fn

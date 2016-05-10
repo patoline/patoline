@@ -271,13 +271,35 @@ let run_binary config fn =
   let cmd = String.concat " " (fn :: args) in
   command "RUN" cmd
 
+let extend_config config ls =
+  let set_format config f =
+    if config.pat_format <> None then config else
+    let packages = config.packages in (* TODO *)
+    { config with packages; pat_format = Some f }
+  in
+  let set_driver config f =
+    if config.pat_driver <> None then config else
+    let packages = config.packages in (* TODO *)
+    { config with packages; pat_driver = Some f }
+  in
+  let combine config (k,vo) =
+    match (k, vo) with
+    | ("FORMAT", Some f) -> set_format config f
+    | ("DRIVER", Some d) -> set_driver config d
+    | ("FORMAT", None  ) -> eprintf "Pragma FORMAT needs an argument.\n%!";
+                            config
+    | ("DRIVER", None  ) -> eprintf "Pragma FORMAT needs an argument.\n%!";
+                            config
+    | _                  -> eprintf "Unknown pragma %s\n%!" k;
+                            config
+  in
+  List.fold_left combine config ls
+
 (* Main compilation function. *)
-let compile config files =
-  if files = [] then
-    begin
-      if !verbose > 1 then eprintf "Nothing to do.\n%!";
-      exit 0
-    end;
+let compile config file =
+  (* Reading configurations in the file. *)
+  let pragmas = Pragma.pragma_from_file file in
+  let config = extend_config config pragmas in
   (* Finding all the source files. *)
   let sources = source_files config.path in
   (* Making sure the build directories exist. *)
@@ -294,7 +316,7 @@ let compile config files =
     let bdir = Filename.concat dir build_dir in
     let target_ext = match ext with ".txp" -> ".ml" | e -> e in
     let target = Filename.concat bdir (base ^ target_ext) in
-    let is_main = ext = ".txp" && List.mem fn files in
+    let is_main = ext = ".txp" && fn = file in
     pp_if_more_recent config is_main fn target
   in
   iter update_file sources;
@@ -302,7 +324,7 @@ let compile config files =
   let depfile = Filename.concat build_dir "depend" in
   run_deps config.path depfile;
   let deps = read_deps depfile in
-  (* Building primary targets. *)
+  (* Building the primary target. *)
   let to_target fn =
     let (dir, base, ext) = decompose_filename fn in
     let target_ext = if ext = ".txp" then "_.cmx" else ".cmx" in
@@ -311,16 +333,15 @@ let compile config files =
     in
     Filename.concat bdir (base ^ target_ext)
   in
-  let targets = List.map to_target files in
+  let target = to_target file in
   (* Actually compiling. *)
-  compile_targets config deps targets;
-  iter (produce_binary config deps) targets;
-  (* Producing the documents. *)
+  compile_targets config deps [target];
+  produce_binary config deps target;
+  (* Producing the document. *)
   let to_bin fn =
     let (dir, base, ext) = decompose_filename fn in
     let bdir = Filename.concat dir build_dir in
     let target_ext = match ext with ".txp" -> "_.opt" | e -> ".opt" in
     Filename.concat bdir (base ^ target_ext)
   in
-  let bins = List.map to_bin files in
-  iter (run_binary config) bins
+  run_binary config (to_bin file)
