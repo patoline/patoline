@@ -4,6 +4,7 @@ type patoconfig =
   ; mutable grammars_dir : string * string list
   ; mutable hyphen_dir   : string * string list
   ; mutable drivers      : string list
+  ; mutable formats      : string list
   ; mutable has_patonet  : bool
   ; mutable max_iter     : int
   ; mutable user_dir     : string }

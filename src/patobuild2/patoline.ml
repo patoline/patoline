@@ -134,6 +134,8 @@ let _ =
   match Sys.argv with
   | [| _ ; "drivers" |] -> let f = Printf.printf "%s\n" in
                            List.iter f patoconfig.drivers
+  | [| _ ; "formats" |] -> let f = Printf.printf "%s\n" in
+                           List.iter f patoconfig.formats
   | [| _ ; "config"  |] -> print_config stdout
   | _                   -> Arg.parse spec add_file (usage Sys.argv.(0))
 
@@ -146,7 +148,14 @@ let cfg =
     | Some d when List.mem d patoconfig.drivers -> ["Typography." ^ d]
     | _                                         -> []
   in
-  let packages = !packages @ driver_packages in
+  let format_packages =
+    match !pat_format with
+    | None                                      -> []
+    | Some "DefaultFormat"                      -> []
+    | Some f when List.mem f patoconfig.formats -> ["Typography." ^ f]
+    | _                                         -> []
+  in
+  let packages = !packages @ format_packages @ driver_packages in
   let open Build in
   { bin_args   = !bin_args
   ; opt_args   = !opt_args

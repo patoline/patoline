@@ -22,6 +22,7 @@ module Spec = struct
     ; ("extra_hyphen_dirs"  , of_list String extra_hyphen_dir  )
 
     ; ("drivers"    , of_list String drivers)
+    ; ("formats"    , of_list String formats)
     ; ("has_patonet", of_bool has_patonet   )
     ; ("max_iter"   , of_int 4              )
     ; ("user_dir"   , of_string home        ) ]
@@ -38,6 +39,7 @@ type patoconfig =
   ; mutable grammars_dir : string * string list
   ; mutable hyphen_dir   : string * string list
   ; mutable drivers      : string list
+  ; mutable formats      : string list
   ; mutable has_patonet  : bool
   ; mutable max_iter     : int
   ; mutable user_dir     : string }
@@ -57,6 +59,7 @@ let patoconfig : patoconfig =
   ; grammars_dir = (get_s "grammars_dir", get_l "extra_grammars_dirs")
   ; hyphen_dir   = (get_s "hyphen_dir"  , get_l "extra_hyphen_dirs"  )
   ; drivers      = get_l "drivers"
+  ; formats      = get_l "formats"
   ; has_patonet  = get_b "has_patonet"
   ; max_iter     = get_i "max_iter"
   ; user_dir     = get_s "user_dir" }

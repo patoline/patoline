@@ -750,6 +750,13 @@ let _=
   Printf.fprintf clean "src/Makefile.config %s\n" metas;
   close_out clean;
 
+  (* Generation of the list of formats. *)
+  let formats =
+    let fs = Array.to_list (Sys.readdir "src/Format") in
+    let fs = List.filter (fun f -> Filename.check_suffix f ".ml") fs in
+    "DefaultFormat" :: (List.map Filename.chop_extension fs)
+  in
+
   (* Generation of config. *)
   let open Printf in
   let plist oc l = List.iter (fprintf oc "%S;") l in
@@ -764,5 +771,6 @@ let _=
   fprintf oc "let extra_hyphen_dir   = [%a]\n" plist hyphen_dirs;
   let drivers = List.map (fun d -> d.name) ok_drivers in
   fprintf oc "let drivers            =\n  [%a]\n" plist drivers;
+  fprintf oc "let formats            =\n  [%a]\n" plist formats;
   fprintf oc "let has_patonet        = %b\n" has_patonet;
   close_out oc
