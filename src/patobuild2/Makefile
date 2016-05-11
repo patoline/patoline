@@ -12,7 +12,8 @@ pragma.cmx: pragma.ml
 	ocamlfind ocamlopt -c $<
 
 build.cmx: build.ml parallel.cmx pragma.cmx
-	ocamlfind ocamlopt -package decap,threads -pp pa_ocaml -thread -c $<
+	ocamlfind ocamlopt -package decap,threads -I ../config -pp pa_ocaml \
+		-thread -c $<
 
 clean:
 	rm -rf *.cm[ixo] *.o *~ patoline

@@ -1,4 +1,5 @@
 open Parallel
+open PatConfig
 
 (* Verbosity level (0 is none). *)
 let verbose = ref 0
@@ -271,16 +272,25 @@ let run_binary config fn =
   let cmd = String.concat " " (fn :: args) in
   command "RUN" cmd
 
+(* Build the configuration according to pragmas. *)
 let extend_config config ls =
   let set_format config f =
     if config.pat_format <> None then config else
-    let packages = config.packages in (* TODO *)
+    let packages =
+      if List.mem f patoconfig.formats then
+        ("Typography." ^ f) :: config.packages
+      else config.packages
+    in
     { config with packages; pat_format = Some f }
   in
-  let set_driver config f =
+  let set_driver config d =
     if config.pat_driver <> None then config else
-    let packages = config.packages in (* TODO *)
-    { config with packages; pat_driver = Some f }
+    let packages =
+      if List.mem d patoconfig.drivers then
+        ("Typography." ^ d) :: config.packages
+      else config.packages
+    in
+    { config with packages; pat_driver = Some d }
   in
   let combine config (k,vo) =
     match (k, vo) with
