@@ -1688,8 +1688,6 @@ Doing a rectangle.\n" ;
 
 	let matrixAnchor i j anc info =
 	    let ms = info.nodes in
-	    let height = Array.length ms in
-	    let width = Array.length ms.(0) in
 	    ms.(i).(j).Node.anchor anc
 
 	let matrixLine info =
@@ -1701,7 +1699,6 @@ Doing a rectangle.\n" ;
 
 	let matrixFirstLine info =
 	    let ms = info.nodes in
-	    let height = Array.length ms in
 	    let width = Array.length ms.(0) in
 	    Point.middle (ms.(0).(0).Node.anchor `LineWest)
 	    (ms.(0).(width - 1).Node.anchor `LineEast)
