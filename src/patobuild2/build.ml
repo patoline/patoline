@@ -2,7 +2,7 @@ open Parallel
 open PatConfig
 
 (* Verbosity level (0 is none). *)
-let verbose = ref 0
+let verbose = ref 1
 
 (* Build directory. *)
 let build_dir = ".patobuild"
@@ -30,12 +30,14 @@ type config =
   ; pat_format : string option   (* Patoline format. *)
   ; pat_driver : string option } (* Patoline driver. *)
 
-(* Run a command. The first argument is a short command name like "OPT". *)
-let command : string -> string -> unit = fun n cmd ->
+(* Run a command. The first argument is a short command name like "OPT", the
+   second argument is the file concerned by the command. *)
+let command : string -> string -> string -> unit = fun n fn cmd ->
   if !verbose > 0 then
     begin
       let pad = String.make (max 0 (3 - (String.length n))) ' ' in
-      printf "[%s] %s%s\n%!" n pad cmd
+      if !verbose = 1 then printf "[%s] %s%s\n%!" n pad fn
+      else printf "[%s] %s%s\n%!" n pad cmd
     end;
   if Sys.command cmd <> 0 then
     begin
@@ -43,14 +45,18 @@ let command : string -> string -> unit = fun n cmd ->
       exit 1
     end
 
+(* Transform a directory into the corresponding build directory. *)
+let to_build_dir d =
+  if d = "." then build_dir else Filename.concat d build_dir
+
 (* Remove the build directory in the given directory, if it exists. *)
 let clean_build_dirs config =
   let clean_build_dir path =
-    let d = Filename.concat path build_dir in
+    let d = to_build_dir path in
     if Sys.file_exists d then
       begin
         if !verbose > 1 then printf "Removing directory %S\n" d;
-        command "RM" ("rm -rf " ^ d)
+        command "RM" d ("rm -rf " ^ d)
       end
     else if !verbose > 1 then
       printf "Directory %S does not exist\n" d
@@ -84,7 +90,7 @@ let pp_if_more_recent config is_main source target =
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
-  command "PP" cmd
+  command "PP" source cmd
 
 (* Compute the list of all the source files in the path. *)
 let source_files path =
@@ -101,10 +107,6 @@ let source_files path =
   in
   List.iter read_dir path; !files
 
-(* Transform a directory into the corresponding build directory. *)
-let to_build_dir d =
-  if d = "." then build_dir else Filename.concat d build_dir
-
 (* Computing dependencies *)
 let run_deps path target =
   let build_dirs = List.map to_build_dir path in
@@ -116,7 +118,7 @@ let run_deps path target =
   let patterns = String.concat " " patterns in
   let cmd =
     Printf.sprintf "ocamldep -one-line %s %s > %s" includes patterns target
-  in command "DEP" cmd
+  in command "DEP" target cmd
 
 (* Parsing dependencies. *)
 let read_deps dep_file =
@@ -180,7 +182,7 @@ let compile_targets config deps targets =
       begin
         let args = ["-c"] @ config.opt_args @ ["-o"; t; source] in
         let cmd = optcmd ^ (String.concat " " args) in
-        command "OPT" cmd
+        command "OPT" source cmd
       end
   in
 
@@ -263,14 +265,14 @@ let produce_binary config deps main =
   let args = ["-o"; target; "-linkpkg"] @ cmxs in
   let optcmd = opt_command config in
   let cmd = optcmd ^ (String.concat " " args) in
-  command "LNK" cmd
+  command "LNK" main cmd
 
 (* Run a document binary. *)
 let run_binary config fn =
   let args = config.bin_args in
   let args = if !verbose = 0 then "--quiet" :: args else args in
   let cmd = String.concat " " (fn :: args) in
-  command "RUN" cmd
+  command "RUN" fn cmd
 
 (* Build the configuration according to pragmas. *)
 let extend_config config ls =
@@ -350,7 +352,7 @@ let compile config file =
   (* Producing the document. *)
   let to_bin fn =
     let (dir, base, ext) = decompose_filename fn in
-    let bdir = Filename.concat dir build_dir in
+    let bdir = to_build_dir dir in
     let target_ext = match ext with ".txp" -> "_.opt" | e -> ".opt" in
     Filename.concat bdir (base ^ target_ext)
   in
