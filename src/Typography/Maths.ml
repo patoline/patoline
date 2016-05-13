@@ -119,89 +119,94 @@ module Mk_Custom(C : CustomT) =
 
 let debug_kerning = ref false
 
-let env_style env style=match style with
-    Display->env.(0)
-  | Display'->env.(1)
-  | Text->env.(2)
-  | Text'->env.(3)
-  | Script->env.(4)
-  | Script'->env.(5)
-  | ScriptScript->env.(6)
-  | ScriptScript'->env.(7)
+let env_style env = function
+  | Display       -> env.(0)
+  | Display'      -> env.(1)
+  | Text          -> env.(2)
+  | Text'         -> env.(3)
+  | Script        -> env.(4)
+  | Script'       -> env.(5)
+  | ScriptScript  -> env.(6)
+  | ScriptScript' -> env.(7)
 
+let node nucleus =
+  { nucleus
+  ; subscript_left          = []
+  ; superscript_left        = []
+  ; subscript_right         = []
+  ; superscript_right       = []
+  ; super_left_same_script  = false
+  ; super_right_same_script = false }
 
-let node n =
-  { nucleus = n ; subscript_left = [] ; superscript_left = []
-  ; subscript_right = [] ; superscript_right = []
-  ; super_left_same_script = false ; super_right_same_script = false }
+let style mathStyle = Env (fun env -> { env with mathStyle })
 
-let style x = Env (fun env -> { env with mathStyle = x })
+let fraction numerator denominator =
+  let line env style =
+    let strokingColor = Some env.fontColor in
+    let lineWidth =
+      (env_style env.mathsEnvironment style).default_rule_thickness
+    in
+    { RawContent.default_path_param with strokingColor ; lineWidth }
+  in
+  Fraction {numerator; denominator; line}
 
-let fraction a b=Fraction {
-  numerator=a;
-  denominator=b;
-  line=(fun env style->{RawContent.default_path_param with strokingColor=Some env.fontColor; lineWidth = (env_style env.mathsEnvironment style).default_rule_thickness})
-}
-let bin_invisible prio left right=
-  Binary { bin_priority=prio; bin_drawing=Invisible; bin_left=left; bin_right=right }
-let bin prio drawing left right=
-  Binary { bin_priority=prio; bin_drawing=drawing; bin_left=left; bin_right=right }
-let op_limits a b c=
-  Operator { op_node=b; op_limits=true; op_left_contents=a; op_right_contents=c}
-let op_nolimits a b c=
-  Operator { op_node=b; op_limits=false; op_left_contents=a; op_right_contents=c}
-(* let symbol font size c= *)
-(*   { *)
-(*     glyph_x=0.;glyph_y=0.; glyph_size=size; glyph_color=black; *)
-(*     glyph=Fonts.loadGlyph font { empty_glyph with glyph_index=Fonts.glyph_of_char font c} *)
-(*   } *)
+let bin bin_priority bin_drawing bin_left bin_right =
+  Binary {bin_priority; bin_drawing; bin_left; bin_right}
 
+let bin_invisible bin_priority bin_left bin_right =
+  Binary {bin_priority; bin_drawing = Invisible; bin_left; bin_right}
 
-let cramp=function
-    Display->Display'
-  | Display'->Display'
-  | Text->Text'
-  | Text'->Text'
-  | Script->Script'
-  | Script'->Script'
-  | ScriptScript-> ScriptScript'
-  | ScriptScript'-> ScriptScript'
+let operator op_limits op_left_contents op_node op_right_contents =
+  Operator {op_limits; op_left_contents; op_node; op_right_contents}
 
-let is_cramped=function
-    Display'
-  | Text'
-  | Script'
-  | ScriptScript'-> true
-  | _->false
+let op_limits   = operator true
+let op_nolimits = operator false
 
-let nonscript=function Display | Display' | Text | Text' -> true | _->false
+let cramp = function
+  | Display       -> Display'
+  | Display'      -> Display'
+  | Text          -> Text'
+  | Text'         -> Text'
+  | Script        -> Script'
+  | Script'       -> Script'
+  | ScriptScript  -> ScriptScript'
+  | ScriptScript' -> ScriptScript'
 
-let scriptStyle=function
-    Display
-  | Text->Script
-  | Display'
-  | Text'->Script
-  | Script
-  | ScriptScript-> ScriptScript
-  | Script'
-  | ScriptScript'-> ScriptScript'
+let is_cramped = function
+  | Display' | Text' | Script' | ScriptScript' -> true
+  | _                                          -> false
 
-let apply_head f envs = match envs with
-  | [] -> []
-  | env :: rest -> (f env) :: rest
-let superStyle x = apply_head (fun env -> { env with mathStyle = scriptStyle x })
-let subStyle x = apply_head (fun env -> { env with mathStyle = cramp (scriptStyle x) })
-let numeratorStyle x = apply_head (fun env -> { env with mathStyle =
-					      (match x with
-                                                      Display -> Text | Display' -> Text'
-                                                    | _ -> scriptStyle x) })
+let nonscript = function
+  | Display | Display' | Text | Text' -> true
+  | _                                 -> false
+
+let scriptStyle = function
+  | Display  | Text          -> Script
+  | Display' | Text'         -> Script
+  | Script   | ScriptScript  -> ScriptScript
+  | Script'  | ScriptScript' -> ScriptScript'
+
+let apply_head f = function
+  | []          -> []
+  | env :: envs -> (f env) :: envs
+
+let rec last = function
+  | []   -> raise Not_found
+  | [h]  -> h
+  | _::s -> last s
+
+let set_style mathStyle =
+  apply_head (fun env -> {env with mathStyle})
+
+let superStyle x = set_style (scriptStyle x)
+let subStyle   x = set_style (cramp (scriptStyle x))
+
+let numeratorStyle x = set_style (match x with
+                                  | Display  -> Text
+                                  | Display' -> Text'
+                                  | _        -> scriptStyle x)
 let denominatorStyle = numeratorStyle
 
-
-let rec last=function
-    []->raise Not_found
-  | [h]->h
-  | _::s->last s
 
 let rec bezier_of_boxes=function
     []->[]

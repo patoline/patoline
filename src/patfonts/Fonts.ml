@@ -2,8 +2,9 @@ open FTypes
 
 exception Not_supported
 
-type font = CFF of CFF.font
-          | Opentype of Opentype.font
+type font =
+  | CFF      of CFF.font
+  | Opentype of Opentype.font
 
 let uniqueName = function
   | CFF x      -> CFF.uniqueName x

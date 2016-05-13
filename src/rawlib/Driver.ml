@@ -6,7 +6,7 @@ type page =
 
 let empty_page size = { size ; contents = [] }
 
-let make_mage : float * float -> raw list -> page = fun size contents ->
+let make_page : float * float -> raw list -> page = fun size contents ->
   { size; contents }
 
 type meta_field =

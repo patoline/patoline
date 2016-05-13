@@ -13,8 +13,9 @@
 open UsualMake
 open FTypes
 
-type font = CFF of CFF.font
-          | Opentype of Opentype.font
+type font =
+  | CFF      of CFF.font
+  | Opentype of Opentype.font
 
 val uniqueName : font -> string
 
@@ -35,7 +36,7 @@ val descender : font -> float
     and the glyph. It is your responsibility to maintain this link
     with the [glyph_id] type *)
 val glyph_of_uchar : font -> UChar.t -> int
-val glyph_of_char  : font -> char -> int
+val glyph_of_char  : font -> char    -> int
 
 
 type glyph
