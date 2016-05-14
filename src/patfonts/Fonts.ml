@@ -1,189 +1,172 @@
 open FTypes
-
-exception Not_supported
+module OpT = Opentype
 
 type font =
-  | CFF      of CFF.font
-  | Opentype of Opentype.font
+  | CFF of CFF.font
+  | OpT of OpT.font
 
 let uniqueName = function
-  | CFF x      -> CFF.uniqueName x
-  | Opentype x -> Opentype.uniqueName x
+  | CFF f -> CFF.uniqueName f
+  | OpT f -> OpT.uniqueName f
 
 let fontName ?index:(index=0) = function
-  | CFF x      -> CFF.fontName ~index:index x
-  | Opentype x -> Opentype.fontName ~index:index x
+  | CFF f -> CFF.fontName ~index:index f
+  | OpT f -> OpT.fontName ~index:index f
 
-#ifdef BAN_COMIC_SANS
-let ban_comic_sans font =
-  let low = String.lowercase (fontName font).full_name in
-  let is_substring s1 s0 i0 =
-    let rec sub i j=
-      if i>String.length s0-String.length s1 then -1 else
-        if j>=String.length s1 then i else
-          if s0.[i+j]=s1.[j] then sub i (j+1) else
-            sub (i+1) 0
-    in
-    sub i0 0
-  in
-  let comic = is_substring "comic" low 0 in
-  let sans  = is_substring "sans" low comic in
-  if comic<0 && sans<0
-    then
-      (output_string stderr (TypoLanguage.message TypoLanguage.Ban_comic_sans);
-       exit 1)
-    else ()
-#endif
+let loadFont ?offset:(offset = 0) ?size:(size = None) fn =
+  (* Check if the font file exists. *)
+  if not (Sys.file_exists fn) then
+    failwith (Printf.sprintf "Font file %S not found..." fn);
+  (* Load the font file according to its extension. *)
+  let extension_in = List.exists (Filename.check_suffix fn) in
+  if extension_in OpT.extensions then
+    OpT (OpT.loadFont ~offset ~size fn)
+  else if extension_in CFF.extensions then
+    CFF (CFF.loadFont ~offset ~size fn)
+  else
+    invalid_arg "Font format not supported (unknown extension)"
 
-(** loadFont pretends it can recognize font file types, but it
-    actually only looks at the extension in the file name *)
-let loadFont ?offset:(off = 0) ?size:(_ = 0) f =
-  let size = in_channel_length (Util.open_in_bin_cached f) in
-  let font =
-    if Filename.check_suffix f ".otf" || Filename.check_suffix f ".ttf"
-    then Opentype (Opentype.loadFont ~offset:off f ~size:size)
-    else if Filename.check_suffix f ".cff"
-    then CFF (CFF.loadFont ~offset:off f ~size:size)
-    else raise Not_supported
-  in
-#ifdef BAN_COMIC_SANS
-  ban_comic_sans font;
-#endif
-  font
+let cardinal  = function CFF f -> CFF.cardinal  f | OpT f -> OpT.cardinal  f
+let ascender  = function CFF f -> CFF.ascender  f | OpT f -> OpT.ascender  f
+let descender = function CFF f -> CFF.descender f | OpT f -> OpT.descender f
 
-let cardinal = function
-  | CFF x      -> CFF.cardinal x
-  | Opentype x -> Opentype.cardinal x
+let glyph_of_uchar : font -> UChar.t -> int = fun font c ->
+  match font with
+  | CFF f -> CFF.glyph_of_uchar f c
+  | OpT f -> OpT.glyph_of_uchar f c
 
-let ascender = function
-  | CFF x      -> CFF.ascender x
-  | Opentype x -> Opentype.ascender x
+let glyph_of_uchar : font -> UChar.t -> int =
+  let cache = Hashtbl.create 101 in
+  let glyph_of_uchar font c =
+    try Hashtbl.find cache (font, c) with Not_found ->
+    let i = glyph_of_uchar font c in
+    Hashtbl.add cache (font, c) i; i
+  in glyph_of_uchar
 
-let descender = function
-  | CFF x      -> CFF.descender x
-  | Opentype x -> Opentype.descender x
+let glyph_of_char : font -> char -> int = fun font c ->
+  glyph_of_uchar font (UChar.of_char c)
 
-let glyph_of_uchar =
-  let cache = Hashtbl.create 1001 in
-  fun f c ->
-    try Hashtbl.find cache (c,f) 
-    with Not_found ->
-      let r = match f with
-	              | CFF x      -> CFF.glyph_of_uchar x c
-	              | Opentype x -> Opentype.glyph_of_uchar x c
-      in
-      Hashtbl.add cache (c,f) r; r
+type glyph =
+  | CFFGlyph of CFF.glyph
+  | OpTGlyph of OpT.glyph
 
-let glyph_of_char f c = glyph_of_uchar f (UChar.of_char c)
+let loadGlyph font ?index:(index=0) gl =
+  match font with
+  | CFF f -> CFFGlyph (CFF.loadGlyph f ~index:index gl)
+  | OpT f -> OpTGlyph (OpT.loadGlyph f ~index:index gl)
 
-
-
-type glyph = CFFGlyph of CFF.glyph
-           | OpentypeGlyph of Opentype.glyph
-
-let loadGlyph f ?index:(index=0) g =
-  match f with
-    | CFF x      -> CFFGlyph (CFF.loadGlyph x ~index:index g)
-    | Opentype x -> OpentypeGlyph (Opentype.loadGlyph x ~index:index g)
-
-let outlines gl =
-  match gl with
-    | CFFGlyph x      -> CFF.outlines x
-    | OpentypeGlyph x -> Opentype.outlines x
+let outlines = function
+  | CFFGlyph gl -> CFF.outlines gl
+  | OpTGlyph gl -> OpT.outlines gl
 
 let glyphFont = function
-  | CFFGlyph x      -> CFF (CFF.glyphFont x)
-  | OpentypeGlyph x -> Opentype (Opentype.glyphFont x)
+  | CFFGlyph gl -> CFF (CFF.glyphFont gl)
+  | OpTGlyph gl -> OpT (OpT.glyphFont gl)
 
 let glyphNumber = function
-  | CFFGlyph x      -> CFF.glyphNumber x
-  | OpentypeGlyph x -> Opentype.glyphNumber x
+  | CFFGlyph gl -> CFF.glyphNumber gl
+  | OpTGlyph gl -> OpT.glyphNumber gl
 
 let glyphWidth = function
-  | CFFGlyph x      -> CFF.glyphWidth x
-  | OpentypeGlyph x -> Opentype.glyphWidth x
+  | CFFGlyph gl -> CFF.glyphWidth gl
+  | OpTGlyph gl -> OpT.glyphWidth gl
 
 let glyphContents = function
-  | CFFGlyph x      -> CFF.glyphContents x
-  | OpentypeGlyph x -> Opentype.glyphContents x
+  | CFFGlyph gl -> CFF.glyphContents gl
+  | OpTGlyph gl -> OpT.glyphContents gl
 
 let glyph_y0 = function
-  | CFFGlyph x      -> CFF.glyph_y0 x
-  | OpentypeGlyph x -> Opentype.glyph_y0 x
+  | CFFGlyph gl -> CFF.glyph_y0 gl
+  | OpTGlyph gl -> OpT.glyph_y0 gl
 
 let glyph_y1 = function
-  | CFFGlyph x      -> CFF.glyph_y1 x
-  | OpentypeGlyph x -> Opentype.glyph_y1 x
+  | CFFGlyph gl -> CFF.glyph_y1 gl
+  | OpTGlyph gl -> OpT.glyph_y1 gl
 
 let glyph_x0 = function
-  | CFFGlyph x      -> CFF.glyph_x0 x
-  | OpentypeGlyph x -> Opentype.glyph_x0 x
+  | CFFGlyph gl -> CFF.glyph_x0 gl
+  | OpTGlyph gl -> OpT.glyph_x0 gl
 
 let glyph_x1 = function
-  | CFFGlyph x      -> CFF.glyph_x1 x
-  | OpentypeGlyph x -> Opentype.glyph_x1 x
+  | CFFGlyph gl -> CFF.glyph_x1 gl
+  | OpTGlyph gl -> OpT.glyph_x1 gl
 
 let glyphName = function
-  | CFFGlyph x      -> CFF.glyphName x
-  | OpentypeGlyph x -> Opentype.glyphName x
+  | CFFGlyph gl -> CFF.glyphName gl
+  | OpTGlyph gl -> OpT.glyphName gl
 
 let font_features = function
-  | CFF x      -> CFF.font_features x
-  | Opentype x -> Opentype.font_features x
+  | CFF f -> CFF.font_features f
+  | OpT f -> OpT.font_features f
 
-type feature_set = CFFFeature_set of CFF.feature_set
-                 | OpentypeFeature_set of Opentype.feature_set
+type feature_set =
+  | CFFFeature_set of CFF.feature_set
+  | OpTFeature_set of OpT.feature_set
 
-let select_features f l =
-  match f with
-    | CFF x      -> CFFFeature_set (CFF.select_features x l)
-    | Opentype x -> OpentypeFeature_set (Opentype.select_features x l)
+let select_features font l =
+  match font with
+  | CFF f -> CFFFeature_set (CFF.select_features f l)
+  | OpT f -> OpTFeature_set (OpT.select_features f l)
 
 let apply_features font set glyphs =
-  match font,set with
-    | CFF x,      CFFFeature_set y      -> CFF.apply_features x y glyphs
-    | Opentype x, OpentypeFeature_set y -> Opentype.apply_features x y glyphs
-    | _                                 -> glyphs
+  match (font, set) with
+  | (CFF f, CFFFeature_set s) -> CFF.apply_features f s glyphs
+  | (OpT f, OpTFeature_set s) -> OpT.apply_features f s glyphs
+  | _                         -> glyphs
 
 let positioning =
   let cache = Hashtbl.create 101 in
-  fun f glyphs -> 
-    try Hashtbl.find cache (glyphs,f)
-    with Not_found ->
-      let r = match f with
-	              | CFF x      -> CFF.positioning x glyphs
-	              | Opentype x -> Opentype.positioning x glyphs
-      in
-      Hashtbl.add cache (glyphs,f) r; r
+  let positioning font glyphs =
+    match font with
+	  | CFF f -> CFF.positioning f glyphs
+	  | OpT f -> OpT.positioning f glyphs
+  in
+  let positioning font glyphs =
+    try Hashtbl.find cache (font, glyphs) with Not_found ->
+    let r = positioning font glyphs in
+    Hashtbl.add cache (font, glyphs) r; r
+  in positioning
 
-
-
-type fontInfo = CFFInfo of CFF.fontInfo
-              | OpentypeInfo of Opentype.fontInfo
+type fontInfo =
+  | CFFInfo of CFF.fontInfo
+  | OpTInfo of OpT.fontInfo
 
 let fontInfo =
   let cache = Hashtbl.create 101 in
-  fun f -> 
-    try Hashtbl.find cache f
-    with Not_found ->
-      let r = match f with
-	              | CFF x      -> CFFInfo (CFF.fontInfo x)
-                | Opentype x -> OpentypeInfo (Opentype.fontInfo x)
-      in
-      Hashtbl.add cache f r; r
+  let fontInfo font =
+    match font with
+	  | CFF f -> CFFInfo (CFF.fontInfo f)
+    | OpT f -> OpTInfo (OpT.fontInfo f)
+  in
+  let fontInfo font =
+    try Hashtbl.find cache font with Not_found ->
+    let i = fontInfo font in
+    Hashtbl.add cache font i; i
+  in fontInfo
 
 let subset font info b c =
-  match font, info with
-    | CFF x,      CFFInfo y      -> CFF.subset x y b c
-    | Opentype x, OpentypeInfo y -> Opentype.subset x y b c
-    | _                          -> assert false
+  match (font, info) with
+  | (CFF f, CFFInfo i) -> CFF.subset f i b c
+  | (OpT f, OpTInfo i) -> OpT.subset f i b c
+  | _                  -> assert false
 
 let setName info name =
   match info with
-    | CFFInfo f      -> CFF.setName f name
-    | OpentypeInfo f -> Opentype.setName f name
+  | CFFInfo f -> CFF.setName f name
+  | OpTInfo f -> OpT.setName f name
 
 let add_kerning info a =
   match info with
-    | CFFInfo i      ->CFF.add_kerning i a
-    | OpentypeInfo i ->Opentype.add_kerning i a
+  | CFFInfo i -> CFF.add_kerning i a
+  | OpTInfo i -> OpT.add_kerning i a
+
+let cff_only : font -> CFF.font = function
+  | CFF f           -> f
+  | OpT (OpT.CFF f) -> OpT.(f.cff_font)
+  | _               -> invalid_arg "Not a CFF font"
+
+let is_cff : font -> bool = function
+  | CFF _           -> true
+  | OpT (OpT.CFF _) -> true
+  | _               -> false
+

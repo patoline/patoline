@@ -13,9 +13,7 @@
 open UsualMake
 open FTypes
 
-type font =
-  | CFF      of CFF.font
-  | Opentype of Opentype.font
+type font
 
 val uniqueName : font -> string
 
@@ -23,7 +21,7 @@ val fontName : ?index:int -> font -> name
 
 (** Loads a font in the memory from a file name. Actual
     implementations may keep the file open *)
-val loadFont : ?offset:int -> ?size:int -> string -> font
+val loadFont : ?offset:int -> ?size:int option -> string -> font
 
 val cardinal : font -> int
 
@@ -92,3 +90,7 @@ val setName : fontInfo -> name -> unit
 
 val add_kerning : fontInfo -> (IntMap.key * int * 'a FTypes.kerningBox *
                                'b FTypes.kerningBox) list -> unit
+
+val cff_only : font -> CFF.font
+
+val is_cff : font -> bool

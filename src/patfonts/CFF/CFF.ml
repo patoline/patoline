@@ -5,6 +5,7 @@ open FTypes
 let pt_of_mm x=(72.*.x)/.25.4
 let mm_of_pt x=(25.4*.x)/.72.
 
+let extensions = [".cff"]
 
 type font= { file:string; offset:int; size:int; offSize:int;
              nameIndex:int array;
@@ -277,7 +278,7 @@ let useCharset f off glyph=
 
 
 
-let loadFont ?offset:(off=0) ?size file=
+let loadFont ?offset:(off=0) ?size:(size=None) file=
   let f=open_in_bin_cached file in
   let size=match size with None->in_channel_length f-off | Some s->s in
   seek_in f (off+2);

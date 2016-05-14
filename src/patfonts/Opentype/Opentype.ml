@@ -22,6 +22,8 @@ open UsualMake
 open Util
 open CFF
 
+let extensions = [".otf"; ".ttf"]
+
 let offsetTable=12
 let dirSize=16
 exception Table_not_found of string
@@ -84,18 +86,17 @@ let tableList file off=
   in
     getTables (off+dirSize*(numTables-1)+offsetTable) []
 
-let loadFont ?offset:(off=0) ?size:(_=0) file=
-  let f=open_in_bin_cached file in
-  let typ=Bytes.create 4 in
-    seek_in f off;
-    really_input f typ 0 4;
-    match typ with
-        "OTTO"->
-          let (a,b)=tableLookup "CFF " f off in
-          CFF {cff_font=CFF.loadFont file ~offset:(off+a) ~size:b;cff_offset=off}
-      | version->TTF { ttf_version=version;
-                       ttf_offset=off;
-                       ttf_file=file }
+let loadFont ?offset:(off=0) ?size:(size=None) file=
+  let f = open_in_bin_cached file in
+  let typ = Bytes.create 4 in
+  seek_in f off;
+  really_input f typ 0 4;
+  match typ with
+  | "OTTO"  ->
+     let (a,b)=tableLookup "CFF " f off in
+     CFF {cff_font=CFF.loadFont file ~offset:(off+a) ~size:(Some b);cff_offset=off}
+  | version ->
+     TTF { ttf_version=version; ttf_offset=off; ttf_file=file }
 
 let uniqueName font=match font with
     CFF cff->CFF.uniqueName cff.cff_font

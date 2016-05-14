@@ -804,11 +804,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   (* Type 1C (CFF) *)
   let pdftype1c font var=
     try
-      let cff=match font.font with
-        | CFF y->y
-        | Opentype (Opentype.CFF y)->y.Opentype.cff_font
-        | _->assert false
-      in
+      let cff = cff_only font.font in
       let pdffont=IntMap.find var font.pdfObjects in
       resumeObject pdffont;
       fprintf outChan "<< /Type /Font /Subtype /Type1 ";
@@ -879,16 +875,11 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   in
   (* /Type 1C (CFF) *)
 
-
-
-  StrMap.iter (fun k pdffont->
-    match pdffont.font with
-        CFF _
-      | Opentype (Opentype.CFF _)->(
-        IntMap.iter (fun k _->pdftype1c pdffont k) pdffont.pdfObjects
-      )
-      | _->IntMap.iter (fun k _->pdftype3 pdffont k) pdffont.pdfObjects
-  ) !fonts;
+  let fn k pdffont =
+    let pdftype = if is_cff pdffont.font then pdftype1c else pdftype3 in
+    IntMap.iter (fun k _-> pdftype pdffont k) pdffont.pdfObjects
+  in
+  StrMap.iter fn !fonts;
 
 #else
   StrMap.iter (fun k pdffont->
