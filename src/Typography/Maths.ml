@@ -855,16 +855,16 @@ let rec draw draw_env env_stack mlist =
                  drawing_contents=(fun _-> right)}])
               @(draw draw_env env_stack s)
         )
-      | Decoration (rebox, inside) :: s ->(
-          (rebox env style ((draw (dincr draw_env) env_stack inside))) @ (draw draw_env env_stack s)
-      )
+      | Decoration(rebox, inside) :: s ->
+          let l = rebox env style (draw (dincr draw_env) env_stack inside) in
+          l @ (draw draw_env env_stack s)
 
-      | (Custom m) :: s ->
-	(* syntaxe lourde pour OCaml 3.12 ... 4.00 serait mieux ici *)
-	let module M = (val m : Custom with type u = math list) in
-	M.C.draw env style
-	  (M.C.map (fun env style -> draw (dincr draw_env) ({env with mathStyle = style} :: env_stack)) env style M.content)
-	@ (draw draw_env env_stack s)
+      | Custom (module M) :: s ->
+          let fn env mathStyle =
+            draw (dincr draw_env) ({env with mathStyle} :: env_stack)
+          in
+          let l = M.C.draw env style (M.C.map fn  env style M.content) in
+	        l @ (draw draw_env env_stack s)
 
 let draw = draw { prio = 0; depth = 0 }
 
