@@ -48,7 +48,7 @@ let spec =
   ; ( "--extra-plugins-dir", Arg.String add_plugins_dir
     , "Adds directories to the plugins search path")
   ; ( "--quiet"            , Arg.Set quiet
-    , "Turn of compilation messages")
+    , "Turn off compilation messages")
   ;
 
 ("--at-most",Arg.Int (fun x->max_iterations:=x),

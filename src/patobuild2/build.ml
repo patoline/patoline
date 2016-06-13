@@ -2,7 +2,7 @@ open Parallel
 open PatConfig
 
 (* Verbosity level (0 is none). *)
-let verbose = ref 1
+let verbose = ref 2
 
 (* Build directory. *)
 let build_dir = ".patobuild"
@@ -55,10 +55,10 @@ let clean_build_dirs config =
     let d = to_build_dir path in
     if Sys.file_exists d then
       begin
-        if !verbose > 1 then printf "Removing directory %S\n" d;
+        if !verbose > 2 then printf "Removing directory %S\n" d;
         command "RM" d ("rm -rf " ^ d)
       end
-    else if !verbose > 1 then
+    else if !verbose > 2 then
       printf "Directory %S does not exist\n" d
   in
   iter clean_build_dir config.path
@@ -270,7 +270,7 @@ let produce_binary config deps main =
 (* Run a document binary. *)
 let run_binary config fn =
   let args = config.bin_args in
-  let args = if !verbose = 0 then "--quiet" :: args else args in
+  let args = if !verbose < 2 then "--quiet" :: args else args in
   let cmd = String.concat " " (fn :: args) in
   command "RUN" fn cmd
 
