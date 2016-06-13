@@ -923,7 +923,7 @@ let print_math_symbol _loc sym=
     with Not_found ->
       Hashtbl.add  hash_msym s !count_msym;
       mcache_buf := s::!mcache_buf;
-      let res = <:expr< ! $lid:("m" ^ !cache)$.($int:(!count_msym)$) >> in
+      let res = <:expr< $lid:("m" ^ !cache)$.($int:(!count_msym)$) >> in
       let _ = incr count_msym in
       res
   else
@@ -934,7 +934,7 @@ let print_math_symbol _loc sym=
     with Not_found ->
       Hashtbl.add  hash_sym s !count_sym;
       cache_buf := s::!cache_buf;
-      let res = <:expr< ! $lid:(!cache)$.($int:(!count_sym)$) >> in
+      let res = <:expr< $lid:(!cache)$.($int:(!count_sym)$) >> in
       let _ = incr count_sym in
       res
 
@@ -1934,22 +1934,20 @@ let wrap basename _loc ast =
     open Color
     open Driver
     open DefaultFormat.MathsFormat
-    let $lid:("cache_"^basename)$ =
-      ref ([||] : (environment -> Mathematical.style -> box list) array)
-    let $lid:("mcache_"^basename)$ =
-      ref ([||] : (environment -> Mathematical.style -> box list) list array)
+
     module Document = functor(Patoline_Output:DefaultFormat.Output)
       -> functor(D:DocumentStructure)->struct
-    module Patoline_Format = $uid:!patoline_format$ .Format(D)
-    open $uid:!patoline_format$
-    open Patoline_Format
-    let temp1 = List.map fst (snd !D.structure)
-    $struct:ast$
-    let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
+      let $lid:("cache_"^basename)$ = $array:(List.rev !cache_buf)$
+      let $lid:("mcache_"^basename)$ = $array:(List.rev !mcache_buf)$
+
+      module Patoline_Format = $uid:!patoline_format$ .Format(D)
+      open $uid:!patoline_format$
+      open Patoline_Format
+      let temp1 = List.map fst (snd !D.structure)
+      $struct:ast$
+      let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
     end
-    let _ = $lid:("cache_"^basename)$  := $array:(List.rev !cache_buf)$
-    let _ = $lid:("mcache_"^basename)$ := $array:(List.rev !mcache_buf)$
-  >>
+   >>
 
 let parser init =
   EMPTY -> (fun () ->

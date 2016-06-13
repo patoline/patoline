@@ -22,9 +22,10 @@ all: $(d)/proof
 
 $(d)/%.depends: INCLUDES:=$(PROOF_INCLUDES)
 
+# FIXME : -package bytes ... ordre pas bon dans $(PROOF_INCLUDES)
 $(d)/proof: $(d)/proof.cmx $(UNICODE_DIR)/unicodelib.cmxa $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa $(LIBFONTS_DIR)/fonts.cmxa
 	$(ECHO) "[NAT] $@"
-	$(Q)$(OCAMLOPT) $(PROOF_INCLUDES) -o $@ $(DRIVERS_DIR)/Pdf/Pdf.cmxa -linkpkg $<
+	$(Q)$(OCAMLOPT) -package bytes $(PROOF_INCLUDES) -o $@ $(DRIVERS_DIR)/Pdf/Pdf.cmxa -linkpkg $<
 
 # Installing
 install: install-proof

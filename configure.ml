@@ -18,18 +18,20 @@ let _ =
 
 (* Command-line arguments management and default configuration. *)
 let prefix         = ref "/usr/local/"
-let bindir         = ref (Filename.concat !prefix "bin/")
-let fonts_dir      = ref (Filename.concat !prefix "share/patoline/fonts")
-let grammars_dir   = ref (Filename.concat !prefix "lib/patoline/grammars")
-let hyphen_dir     = ref (Filename.concat !prefix "share/patoline/hyphen")
-let ocaml_lib_dir  = ref (Findlib.default_location ())
+let bindir         = ref ""
+let fonts_dir      = ref ""
+let grammars_dir   = ref ""
+let hyphen_dir     = ref ""
+let plugins_dir    = ref ""
+
+let ocaml_lib_dir  = ref (Findlib.default_location ()) (* what to do if prefix is given ? *)
 let ocaml_dlls_dir = ref (Filename.concat !ocaml_lib_dir "stublibs")
+let driver_dir     = ref (Filename.concat !ocaml_lib_dir "Typography")
+
 let fonts_dirs     = ref []
 let grammars_dirs  = ref []
-let plugins_dir    = ref (Filename.concat !prefix "lib/patoline/plugins")
 let plugins_dirs   = ref []
 let hyphen_dirs    = ref []
-let driver_dir     = ref (Filename.concat !ocaml_lib_dir "Typography")
 let lang           = ref "EN"
 let ban_comic_sans = ref false
 let pdf_type3_only = ref false
@@ -120,16 +122,19 @@ let _ =
   let usage = Printf.sprintf "Usage: %s [OPTIONS]\nArguments:" Sys.argv.(0) in
   Arg.parse (Arg.align spec) ignore usage
 
+let set_default ptr s =
+  if !ptr = "" then  Filename.concat !prefix s else !ptr
 let prefix         = !prefix
-let bindir         = !bindir
-let fonts_dir      = !fonts_dir
-let grammars_dir   = !grammars_dir
-let hyphen_dir     = !hyphen_dir
+let bindir         = set_default bindir "bin/"
+let fonts_dir      = set_default fonts_dir "share/patoline/fonts"
+let grammars_dir   = set_default grammars_dir "lib/patoline/grammars"
+let hyphen_dir     = set_default hyphen_dir "share/patoline/hyphen"
+let plugins_dir    = set_default plugins_dir "lib/patoline/plugins"
+
 let ocaml_lib_dir  = !ocaml_lib_dir
 let ocaml_dlls_dir = !ocaml_dlls_dir
 let fonts_dirs     = !fonts_dirs
 let grammars_dirs  = !grammars_dirs
-let plugins_dir    = !plugins_dir
 let plugins_dirs   = !plugins_dirs
 let hyphen_dirs    = !hyphen_dirs
 let driver_dir     = !driver_dir
@@ -175,14 +180,14 @@ let local_packages =
   ; { package_name = "rbuffer"
     ; macro_suffix = "RBUFFER"
     ; local_deps   = []
-    ; extern_deps  = []
+    ; extern_deps  = ["bytes"]
     ; subdirs      = []
     ; has_meta     = true }
 
   ; { package_name = "patfonts"
     ; macro_suffix = "FONTS"
     ; local_deps   = ["patutil"; "unicodelib"]
-    ; extern_deps  = []
+    ; extern_deps  = ["bytes"]
     ; subdirs      = ["CFF";"Opentype";"unicodeRanges"]
     ; has_meta     = true }
 
@@ -196,7 +201,7 @@ let local_packages =
   ; { package_name = "db"
     ; macro_suffix = "DB"
     ; local_deps   = ["patutil"]
-    ; extern_deps  = ["mysql"]
+    ; extern_deps  = ["mysql";"bytes"]
     ; subdirs      = []
     ; has_meta     = true }
 
@@ -239,14 +244,14 @@ let local_packages =
   ; { package_name = "cesure"
     ; macro_suffix = "CESURE"
     ; local_deps   = ["unicodelib"]
-    ; extern_deps  = ["decap"]
+    ; extern_deps  = ["decap";"bytes"]
     ; subdirs      = []
     ; has_meta     = false }
 
   ; { package_name = "proof"
     ; macro_suffix = "PROOF"
     ; local_deps   = ["rawlib"] (* Pdf Driver added by hand *)
-    ; extern_deps  = []
+    ; extern_deps  = ["bytes"]
     ; subdirs      = []
     ; has_meta     = false }
 
@@ -468,7 +473,7 @@ let all_patoline_drivers =
     ; internals = [ Package "rawlib" ] }
 
   ; { name      = "Pdf"
-    ; needs     = []
+    ; needs     = [ Package "bytes" ]
     ; suggests  = [ Package "zip" ]
     ; internals = [ Package "rawlib" ] }
 
@@ -483,7 +488,7 @@ let all_patoline_drivers =
     ; internals = [ Package "rawlib"; Package "unicodelib" ] }
 
   ; { name      = "Patonet"
-    ; needs     = [ Package "cryptokit" ]
+    ; needs     = [ Package "cryptokit"; Package "bytes" ]
     ; suggests  = []
     ; internals = [ Package "rawlib"; Driver svg_driver ] }
 
@@ -493,7 +498,7 @@ let all_patoline_drivers =
     ; internals = [ Package "rawlib" ] }
 
   ; { name      = "Net"
-    ; needs     = []
+    ; needs     = [ Package "bytes" ]
     ; suggests  = []
     ; internals = [ Package "rawlib"; Driver svg_driver ] }
 
@@ -764,7 +769,7 @@ let _=
   fprintf oc "let fonts_dir          = %S\n" fonts_dir;
   fprintf oc "let plugins_dir        = %S\n" plugins_dir;
   fprintf oc "let grammars_dir       = %S\n" grammars_dir;
-  fprintf oc "let hyphen_dir         = %S\n" hyphen_dir; 
+  fprintf oc "let hyphen_dir         = %S\n" hyphen_dir;
   fprintf oc "let extra_fonts_dir    = [%a]\n" plist fonts_dirs;
   fprintf oc "let extra_plugins_dir  = [%a]\n" plist plugins_dirs;
   fprintf oc "let extra_grammars_dir = [%a]\n" plist grammars_dirs;

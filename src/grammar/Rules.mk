@@ -11,7 +11,7 @@ $(EDITORS_DIR)/emacs/quail.el: $(d)/DefaultGrammar.ml
 
 $(d)/DefaultGrammar.ml: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
 	$(ECHO) "[PPP] $@"
-	$(Q)$(PA_PATOLINE_IN_SRC) --build-dir . --main --no-default-grammar \
+	$(Q)$(PA_PATOLINE_IN_SRC) --build-dir . --main --no-default-grammar --ascii \
 		--quail-out $(EDITORS_DIR)/emacs/quail.el $< > $@
 
 $(d)/DefaultGrammar_.ml: $(d)/DefaultGrammar.ml
@@ -30,11 +30,8 @@ $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.ml $(d)/DefaultGrammar.cmx \
   $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa
 	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(PACK_TYPOGRAPHY) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) \
-		-I $(<D) -I $(CONFIG_DIR) \
-		rbuffer.cmxa sqlite3.cmxa unicodelib.cmxa patutil.cmxa fonts.cmxa \
-		zip.cmxa bigarray.cmxa imagelib.cmxa dynlink.cmxa rawlib.cmxa \
-		patoconfig.cmxa unix.cmxa $(FONTCONFIG_CMXA) Typography.cmxa Pdf.cmxa \
-		cesure.cmxa DefaultFormat.cmxa -o $@ $(@:.tmx=.cmx) $<
+		-I $(<D) -I $(CONFIG_DIR) -linkpkg $(FONTCONFIG_CMXA) Pdf.cmxa \
+		-o $@ $(@:.tmx=.cmx) $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) \
 	$(HYPHENATION_DIR)/hyph-en-us.hdict

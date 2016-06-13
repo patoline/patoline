@@ -24,7 +24,7 @@ $(d)/pdf_parser.cmx: $(d)/pdf_parser.cmo
 
 # Building stuff
 all: $(d)/pdf_parser.cmxa $(d)/pdf_parser.a $(d)/pdf_parser.cmi
-$(d)/%.depends $(d)/%.cmx $(d)/%.cmo: INCLUDES:=-I $(d) -package $(CAMLZIP),rawlib
+$(d)/%.depends $(d)/%.cmx $(d)/%.cmo: INCLUDES:=-I $(d) -package $(CAMLZIP),rawlib,bytes
 
 $(d)/pdf_parser.cmi: $(d)/pdf_parser.cmx ;
 

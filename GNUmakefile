@@ -142,6 +142,7 @@ export OCAML OCAMLC OCAMLOPT OCAMLDEP OCAMLMKLIB
 
 # Useful directories, to be referenced from other Rules.ml
 FONTS_DIR := Fonts
+TOOLS_DIR := Tools
 FORMAT_DIR := Format
 HYPHENATION_DIR := Hyphenation
 EDITORS_DIR := editors
@@ -258,3 +259,9 @@ INCLUDES:=
 %.ml: %.mll
 	$(ECHO) "[LEX] $@"
 	$(Q)$(OCAMLLEX) -q $<
+
+FILE_TO_STRING := $(TOOLS_DIR)/file_to_string
+
+$(FILE_TO_STRING): $(FILE_TO_STRING).ml
+	$(ECHO) "[BYT] $@"
+	$(Q)$(OCAMLFIND) $(OCAMLC) -package bytes $< -o $@
