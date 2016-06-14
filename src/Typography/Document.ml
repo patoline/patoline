@@ -1066,7 +1066,7 @@ let lref ?refType name=
       Not_found ->
 	let refType=match refType with Some x->x | None-> "Default" in
 	if !pass_number <> 0 then Printf.eprintf "Unknown label %S of labelType %S (%d)\n%!" name refType !pass_number;
-	[]
+	color Color.red [tT "??"]
   )]
 
 let generalRef t x = lref ~refType:t x
