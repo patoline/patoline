@@ -919,7 +919,7 @@ let print_math_symbol _loc sym=
     try
       let nom = "m" ^ (!cache) in
       let index = Hashtbl.find hash_msym s in
-      <:expr< ! $lid:nom$.($int:index$) >>
+      <:expr< $lid:nom$.($int:index$) >>
     with Not_found ->
       Hashtbl.add  hash_msym s !count_msym;
       mcache_buf := s::!mcache_buf;
@@ -930,7 +930,7 @@ let print_math_symbol _loc sym=
     if !cache = "" then s else (* FIXME: not very clean *)
     try
       let r = Hashtbl.find hash_sym s in
-      <:expr< ! $lid:(!cache)$.($int:r$) >>
+      <:expr< $lid:(!cache)$.($int:r$) >>
     with Not_found ->
       Hashtbl.add  hash_sym s !count_sym;
       cache_buf := s::!cache_buf;
