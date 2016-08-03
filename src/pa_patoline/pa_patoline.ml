@@ -376,7 +376,7 @@ let verbatim_environment = change_layout verbatim_environment no_blank
  ****************************************************************************)
 
 type math_prio =
-  | AtomM | Accent | LInd | Ind | IProd | Prod
+  | AtomM | Accent | LInd | Ind | IApply | IProd | Prod
   | Sum | Operator | Rel | Neg | Conj | Impl | Punc
 
 let math_prios = [ AtomM ; Accent ; LInd ; Ind ; IProd ; Prod ; Sum
@@ -391,7 +391,8 @@ let next_prio = function
   | Operator -> Sum
   | Sum -> Prod
   | Prod -> IProd
-  | IProd -> Ind
+  | IProd -> IApply
+  | IApply -> Ind
   | Ind -> LInd
   | LInd -> Accent
   | Accent -> AtomM
@@ -586,6 +587,16 @@ let invisible_product =
     infix_macro_names = [];
     infix_value = Invisible;
     infix_space = 3;
+    infix_no_left_space = false;
+    infix_no_right_space = false;
+  }
+
+let invisible_apply =
+  { infix_prio = Prod;
+    infix_utf8_names = [];
+    infix_macro_names = [];
+    infix_value = Invisible;
+    infix_space = 5;
     infix_no_left_space = false;
     infix_no_right_space = false;
   }
@@ -1318,6 +1329,12 @@ let merge_indices indices ind =
     up_right = if ind.up_right <> None then ind.up_right else indices.up_right}
 
 
+let no_space_before = test Charset.full_charset (fun buf pos ->
+  ((), pos <> 0 && not (List.mem (Input.get buf (pos - 1)) [ ' ' ; '\t' ; '\r' ])))
+
+let space_before = test Charset.full_charset (fun buf pos ->
+  ((), pos = 0 || List.mem (Input.get buf (pos - 1)) [ ' ' ; '\t' ; '\r' ]))
+
 let parser math_aux prio =
   | m:(math_prefix (next_prio prio)) when prio <> AtomM -> m
 
@@ -1347,29 +1364,30 @@ let parser math_aux prio =
 	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>)
 
   | l:(math_aux prio) st:{ s:(math_infix_symbol prio) i:with_indices -> (s,i)
-			 | s:(empty invisible_product) when prio = IProd -> (s,no_ind) }
+			 | space_before when prio = IProd  -> (invisible_product, no_ind)
+			 | no_space_before when prio = IApply -> (invisible_apply  , no_ind) }
     r:(math_aux (next_prio prio)) when prio <> AtomM ->
      let s,ind = st in
      (fun indices ->
-         let indices = merge_indices indices ind in
-	 let nsl = s.infix_no_left_space in
-	 let nsr = s.infix_no_right_space in
-	 let sp = s.infix_space in
-	 let l = l no_ind and r = r (if s.infix_value = Invisible then indices else no_ind) in
-	 if s.infix_value = SimpleSym "over" then begin
-	   if indices <> no_ind then give_up "indices on fraction";
-	   <:expr< [Maths.fraction $l$ $r$] >>
-	 end else begin
-	   let inter =
-	     if s.infix_value = Invisible then
-	       <:expr<Maths.Invisible>>
-	     else
-         let v = print_math_deco_sym _loc_st s.infix_value indices in
-	       <:expr<Maths.Normal ($bool:nsl$, $v$, $bool:nsr$)>>
-	   in
-	   <:expr<[Maths.Binary { bin_priority= $int:sp$ ; bin_drawing = $inter$
+       let sp = s.infix_space in
+       let nsl = s.infix_no_left_space in
+       let nsr = s.infix_no_right_space in
+       let indices = merge_indices indices ind in
+       let l = l no_ind and r = r (if s.infix_value = Invisible then indices else no_ind) in
+       if s.infix_value = SimpleSym "over" then begin
+	 if indices <> no_ind then give_up "indices on fraction";
+	 <:expr< [Maths.fraction $l$ $r$] >>
+       end else begin
+	 let inter =
+	   if s.infix_value = Invisible then
+	     <:expr<Maths.Invisible>>
+	   else
+             let v = print_math_deco_sym _loc_st s.infix_value indices in
+	     <:expr<Maths.Normal ($bool:nsl$, $v$, $bool:nsr$)>>
+	 in
+	 <:expr<[Maths.Binary { bin_priority= $int:sp$ ; bin_drawing = $inter$
                           ; bin_left = $l$ ; bin_right= $r$ }]>>
-	 end)
+       end)
 
   (* Les règles commençant avec un { forment un conflict avec les arguments
    des macros. Je pense que c'est l'origine de nos problèmes de complexité. *)
