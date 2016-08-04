@@ -128,9 +128,10 @@ endif
 # Compilers and various tools
 OCAML    := ocaml
 OCAMLC   := ocamlfind ocamlc $(if $(OCPP),-pp '$(OCPP)',)
-OCAMLOPT_NOPP := ocamlfind ocamlopt -g -intf-suffix .cmi
+OCAMLOPT_SIMPLE := ocamlfind ocamlopt
+OCAMLOPT_NOPP := $(OCAMLOPT_SIMPLE) -intf-suffix .cmi
 OCAMLOPT_NOINTF := $(OCAMLOPT_NOPP) $(if $(OCPP),-pp '$(OCPP)',)
-OCAMLOPT := $(OCAMLOPT_NOINTF) -intf-suffix .cmi
+OCAMLOPT := $(OCAMLOPT_NOINTF)
 OCAMLDEP := ocamlfind ocamldep $(if $(OCPP),-pp '$(OCPP)',) $(OCAMLDEPEXTRAS)
 OCAMLMKLIB := ocamlfind ocamlmklib
 OCAMLDOC := ocamlfind ocamldoc $(if $(OCPP),-pp '$(OCPP)',)

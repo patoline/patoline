@@ -22,7 +22,7 @@ TYPOGRAPHY_CMXA := \
 
 $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ml $(TYPOGRAPHY_CMXA)
 	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT_NOPP) $(PACK_FORMAT) -c -o $@ $<
+	$(Q)$(OCAMLOPT_SIMPLE) $(PACK_FORMAT) -c -o $@ $<
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.ml $(d)/DefaultGrammar.cmx \
   $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa \
