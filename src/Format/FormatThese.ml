@@ -208,6 +208,7 @@ let postprocess_tree tree=
 
                      { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures)
                           (if List.length b>=4 then Regular else Caps) env) with
+		       par_indent = [];
                        hyphenate=(fun _->[||]);
                          size=(if List.length b=1 then sqrt phi else
                                  if List.length b <= 2 then sqrt (sqrt phi) else
