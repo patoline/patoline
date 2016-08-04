@@ -8,10 +8,11 @@ PATOBUILD2_DEPS_INCLUDES := -I $(d) -I $(CONFIG_DIR) -package decap,threads -pp 
 $(d)/%.depends: INCLUDES := $(PATOBUILD2_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES := $(PATOBUILD2_INCLUDES)
 
-PATOBUILD2_MODS := pragma parallel build patoline
+# FIXME twice patoline otherwise patoline.ml.depends is not build ...
+# silly error ?
+PATOBUILD2_MODS := pragma parallel build patoline patoline
 
 PATOBUILD2_ML  := $(addsuffix .ml,$(addprefix $(d)/,$(PATOBUILD2_MODS)))
-PATOBUILD2_CMX := $(PATOBUILD2_ML:.ml=.cmx)
 
 # Compute ML dependencies
 SRC_$(d) := $(addsuffix .depends,$(PATOBUILD2_ML)))
@@ -21,6 +22,11 @@ ifneq ($(MAKECMDGOALS),distclean)
 -include $(SRC_$(d))
 endif
 endif
+
+PATOBUILD2_CMX := $(PATOBUILD2_ML:.ml=.cmx)
+PATOBUILD2_CMO := $(PATOBUILD2_ML:.ml=.cmo)
+
+$(PATOBUILD2_CMX): %.cmx: %.cmo
 
 all: $(d)/patoline2
 

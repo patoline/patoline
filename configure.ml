@@ -234,6 +234,13 @@ let local_packages =
     ; subdirs      = []
     ; has_meta     = false }
 
+  ; { package_name = "patobuild2"
+    ; macro_suffix = "PATOBUILD"
+    ; local_deps   = ["plugins"]
+    ; extern_deps  = ["decap";"bytes";"compiler-libs"]
+    ; subdirs      = []
+    ; has_meta     = false }
+
   ; { package_name = "Drivers"
     ; macro_suffix = "DRIVERS"
     ; local_deps   = ["rawlib";"db"]
