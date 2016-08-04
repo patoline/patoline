@@ -1426,7 +1426,7 @@ let parser math_aux prio =
        print_math_deco _loc_id e indices
      )
   | m:(math_aux Accent) sym:math_combining_symbol when prio = Accent ->
-    (fun indices -> <:expr<$lid:sym$ $m indices$>>)
+     print_math_deco _loc <:expr<$lid:sym$ $m no_ind$>>
 
   | m:(math_aux Accent) s:math_accent_symbol when prio = Accent ->
     let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s.symbol_value no_ind$] >> in
