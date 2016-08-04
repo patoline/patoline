@@ -1328,13 +1328,6 @@ let merge_indices indices ind =
     down_right = if ind.down_right <> None then ind.down_right else indices.down_right;
     up_right = if ind.up_right <> None then ind.up_right else indices.up_right}
 
-
-let no_space_before = test Charset.full_charset (fun buf pos ->
-  ((), pos <> 0 && not (List.mem (Input.get buf (pos - 1)) [ ' ' ; '\t' ; '\r' ])))
-
-let space_before = test Charset.full_charset (fun buf pos ->
-  ((), pos = 0 || List.mem (Input.get buf (pos - 1)) [ ' ' ; '\t' ; '\r' ]))
-
 let parser math_aux prio =
   | m:(math_prefix (next_prio prio)) when prio <> AtomM -> m
 
@@ -1364,8 +1357,8 @@ let parser math_aux prio =
 	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>)
 
   | l:(math_aux prio) st:{ s:(math_infix_symbol prio) i:with_indices -> (s,i)
-			 | space_before when prio = IProd  -> (invisible_product, no_ind)
-			 | no_space_before when prio = IApply -> (invisible_apply  , no_ind) }
+			 | BLANK when prio = IProd  -> (invisible_product, no_ind)
+			 | - when prio = IApply -> (invisible_apply  , no_ind) }
     r:(math_aux (next_prio prio)) when prio <> AtomM ->
      let s,ind = st in
      (fun indices ->
