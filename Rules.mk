@@ -113,7 +113,6 @@ OCAMLMKLIB := ocamlfind ocamlmklib
 OCAMLDOC := ocamlfind ocamldoc $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLYACC := ocamlyacc
 OCAMLLEX := ocamllex
-DYPGEN := dypgen
 
 export OCAML OCAMLC OCAMLOPT OCAMLDEP OCAMLMKLIB
 

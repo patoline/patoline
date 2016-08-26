@@ -67,8 +67,7 @@ let _=
       seek_in fi offset;
       let fo_=Printf.sprintf "%s.tmp" Sys.argv.(i) in
       let fo=open_out fo_ in
-      (if Filename.check_suffix Sys.argv.(i) ".dyp" ||
-          Filename.check_suffix Sys.argv.(i) ".c"
+      (if Filename.check_suffix Sys.argv.(i) ".c"
        then (
          Printf.fprintf fo "/*\n";
          let _=output fo license 0 (String.length license) in
