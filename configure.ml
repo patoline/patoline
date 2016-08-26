@@ -159,7 +159,7 @@ let local_packages =
   [ { package_name = "patutil"
     ; macro_suffix = "UTIL"
     ; local_deps   = ["rbuffer"; "unicodelib"]
-    ; extern_deps  = ["bytes"]
+    ; extern_deps  = ["bytes";"decap"]
     ; subdirs      = []
     ; has_meta     = true }
 

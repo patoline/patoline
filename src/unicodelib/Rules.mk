@@ -52,7 +52,7 @@ $(ENCODING_CMX): %.cmx: %.cmo
 
 $(PA_CONV): $(d)/pa_convert.ml
 	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml \
+	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(UNICODELIB_INCLUDES) -pp pa_ocaml \
 		-package compiler-libs -o $@ ocamlcommon.cmxa unix.cmxa str.cmxa \
 		decap.cmxa decap_ocaml.cmxa $<
 
