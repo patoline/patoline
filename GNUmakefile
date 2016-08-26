@@ -89,6 +89,13 @@ export OCAMLPATH
 OCAMLFIND_IGNORE_DUPS_IN=$(shell ocamlfind printconf destdir)
 export OCAMLFIND_IGNORE_DUPS_IN
 
+# Many targets are created by redirecting stdout. Yet, when the command
+# fails, the target is nevertheless created as a zero-length file. On
+# subsequent calls to make, the target is not considered anymore. The
+# following ensures that targets are always removed when their rules
+# fail.
+.DELETE_ON_ERROR:
+
 # Main rule prerequisites are expected to be extended by each Rules.mk
 # We just declare it here to make it the (phony) default target.
 all: configure testconfig

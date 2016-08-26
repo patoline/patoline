@@ -25,10 +25,10 @@ $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ml $(TYPOGRAPHY_CMXA)
 	$(Q)$(OCAMLOPT_SIMPLE) $(PACK_FORMAT) -c -o $@ $<
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.ml $(d)/DefaultGrammar.cmx \
-  $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa \
-	$(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
-  $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa
-	$(ECHO) "[NAT] $@"
+                         $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa \
+                         $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
+                         $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(PACK_TYPOGRAPHY) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) \
 		-I $(<D) -I $(CONFIG_DIR) -linkpkg $(FONTCONFIG_CMXA) Pdf.cmxa \
 		-o $@ $(@:.tmx=.cmx) $<
