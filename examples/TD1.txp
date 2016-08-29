@@ -34,12 +34,12 @@ let unit = []
 \begin{genumerate}{ \bold{Ex &I} –\hspace(0.2)}
 
 \item On considère la suite réelle $(u_n)_{n≥1}$ définie par
-$\displayStyle{u_{n} :=  (1 + {1}\over{n})^{n}}$ pour tout entier $n ≥ 1$.
+\(u_{n} :=  (1 + {1}\over{n})^{n}\) pour tout entier $n ≥ 1$.
 
 \begin{genumerate}{ &a) \hspace(0.2)}
    \item Montrer que $(u_n)$ converge et déterminer sa limite.
 
-   \item Établir que pour tout réel $x > -1$ on a $\displayStyle{{x}\over{x + 1} ≤ ln(1 + x) ≤ x}$.
+   \item Établir que pour tout réel $x > -1$ on a \({{x}\over{x + 1} ≤ ln(1 + x) ≤ x\).
 
    \item En déduire que la suite $(u_n)$ est croissante.
 
@@ -47,7 +47,7 @@ $\displayStyle{u_{n} :=  (1 + {1}\over{n})^{n}}$ pour tout entier $n ≥ 1$.
 
 
 \item Soit $(u_n)_{n \in \bbN}$ la suite réelle définie par $u_0 := 2$
-et $\displayStyle{u_{n + 1} := {1 \over 2} (u_n + {2 \over u_n})}$ pour tout $n \in \bbN$.
+et \({u_{n + 1} := {1 \over 2} (u_n + {2 \over u_n})\) pour tout $n \in \bbN$.
 
 \begin{genumerate}{ &a)\hspace(0.2)}
    \item Montrer que $(u_n)_{n \in \bbN}$ est bien définie et qu'elle est décroissante.
@@ -56,13 +56,13 @@ et $\displayStyle{u_{n + 1} := {1 \over 2} (u_n + {2 \over u_n})}$ pour tout $n 
 
    \item En déduire que la suite $(u_n)_{n \in \bbN}$ converge vers $\sqrt{2}$.
 
-   \item Calculer $\displayStyle{ {u_{n + 1} - \sqrt{2}} \over
-     {u_{n + 1} + \sqrt{2}}}$ en fonction de $u_{n}$ pour tout $n \in \bbN$, puis retrouver le résultat précédent.
+   \item Calculer \({ {u_{n + 1} - \sqrt{2}} \over
+     {u_{n + 1} + \sqrt{2}}\) en fonction de $u_{n}$ pour tout $n \in \bbN$, puis retrouver le résultat précédent.
 \end{genumerate}
 
 \item
 Soit $(u_n)_{n \in \bbN}$ la suite réelle définie par $u_{0} := 1$
-et $\displayStyle{ u_{n + 1} = {3 u_{n}}\over{1 + u_{n}^{2}}}$ pour tout $n \in \bbN$.
+et \({ u_{n + 1} = {3 u_{n}}\over{1 + u_{n}^{2}}\) pour tout $n \in \bbN$.
 
 \begin{genumerate}{ &a)\hspace(0.2)}
    \item Montrer que pour tout entier $n \geq 0$ on a $1 \leq u_{n} \leq 2$.
@@ -80,7 +80,7 @@ et $\displayStyle{ u_{n + 1} = {3 u_{n}}\over{1 + u_{n}^{2}}}$ pour tout $n \in 
 //Moyenne arithmético-géométrique// :
 Étant donné des réels $0 < a ≤ b$, on considère les suites réelles $(a_n)_{n ∈ \bbN}$ et $(b_n)_{n ∈ \bbN}$
 définies par $a_{0} := a$, $b_{0} := b$ ainsi que $a_{n + 1} := \sqrt{a_{n} b_{n}}$ et
-$\displayStyle{b_{n + 1} := {1}\over{2} (a_{n} + b_{n})}$ pour tout $n \in \bbN$.
+\({b_{n + 1} := {1}\over{2} (a_{n} + b_{n})\) pour tout $n \in \bbN$.
 
 \begin{genumerate}{ &a)\hspace(0.2)}
    \item Montrer que pour tout $n \in \bbN$ on a $0 < a_{n} \leq b_{n}$.
