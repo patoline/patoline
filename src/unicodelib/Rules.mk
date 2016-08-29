@@ -37,7 +37,7 @@ endif
 ### Generation of the configuration file
 $(d)/UnicodeLibConfig.ml:
 	$(ECHO) "[GEN] $@"
-	$(Q) echo 'let datafile = "$(INSTALL_UNICODELIB_DIR)/UnicodeData.data"' > $@
+	$(Q) echo 'let unicodelib_path = "$(INSTALL_UNICODELIB_DIR)"' > $@
 ###
 
 ### To be used at build time to generate 8bit-enconding to UTF-X converters
@@ -47,6 +47,12 @@ ENCODING_CMO  := $(ENCODING_ML:.ml=.cmo)
 ENCODING_CMX  := $(ENCODING_ML:.ml=.cmx)
 ENCODING_CMI  := $(ENCODING_ML:.ml=.cmi)
 ENCODING_O    := $(ENCODING_ML:.ml=.o)
+
+# During compilation, the map file UnicodeData.data won't be available
+# at its system-wide path. Ensure with the following variable that we pick
+# the version in the current directory.
+UNICODELIB_PATH := $(d)
+export UNICODELIB_PATH
 
 $(ENCODING_CMX): %.cmx: %.cmo
 

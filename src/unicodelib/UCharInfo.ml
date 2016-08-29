@@ -96,8 +96,14 @@ type char_description =
   ; titlecase             : UChar.t option
   }
 
+let datafile_name () =
+  Filename.concat (try
+      Sys.getenv "UNICODELIB_PATH"
+    with Not_found -> UnicodeLibConfig.unicodelib_path)
+    "UnicodeData.data"
+
 let get_char_descr_from_file : UChar.t -> char_description = fun u ->
-  let m = PermanentMap.open_map UnicodeLibConfig.datafile in
+  let m = PermanentMap.open_map (datafile_name ()) in
   let d = PermanentMap.get m u in
   PermanentMap.close_map m; d
 
