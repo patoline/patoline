@@ -105,7 +105,8 @@ endif
 # Compilers and various tools
 OCAML    := ocaml
 OCAMLC   := ocamlfind ocamlc $(if $(OCPP),-pp '$(OCPP)',)
-OCAMLOPT_NOPP := ocamlfind ocamlopt -g -intf-suffix .cmi
+OCAMLOPT_SIMPLE := ocamlfind ocamlopt
+OCAMLOPT_NOPP := $(OCAMLOPT_SIMPLE) -intf-suffix .cmi
 OCAMLOPT_NOINTF := $(OCAMLOPT_NOPP) $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLOPT := $(OCAMLOPT_NOINTF) -intf-suffix .cmi
 OCAMLDEP := ocamlfind ocamldep $(if $(OCPP),-pp '$(OCPP)',) $(OCAMLDEPEXTRAS)
@@ -118,6 +119,7 @@ export OCAML OCAMLC OCAMLOPT OCAMLDEP OCAMLMKLIB
 
 # Useful directories, to be referenced from other Rules.ml
 FONTS_DIR := Fonts
+TOOLS_DIR := Tools
 FORMAT_DIR := Format
 HYPHENATION_DIR := Hyphenation
 EDITORS_DIR := editors
@@ -205,3 +207,9 @@ INCLUDES:=
 %.ml: %.mll
 	$(ECHO) "[LEX] $@"
 	$(Q)$(OCAMLLEX) -q $<
+
+FILE_TO_STRING := $(TOOLS_DIR)/file_to_string
+
+$(FILE_TO_STRING): $(FILE_TO_STRING).ml
+	$(ECHO) "[BYT] $@"
+	$(Q)$(OCAMLFIND) $(OCAMLC) -package bytes $< -o $@

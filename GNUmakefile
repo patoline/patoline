@@ -60,34 +60,8 @@ ifeq "$(strip $(filter $(soon_gmake),$(firstword $(sort $(MAKE_VERSION) $(soon_g
   $(warning $(soon_gmake_message))
 endif
 
-# Compilers and various tools
-OCAML    := ocaml
-OCAMLC   := ocamlfind ocamlc $(if $(OCPP),-pp '$(OCPP)',)
-OCAMLOPT_NOPP := ocamlfind ocamlopt -g -intf-suffix .cmi
-OCAMLOPT_NOINTF := $(OCAMLOPT_NOPP) $(if $(OCPP),-pp '$(OCPP)',)
-OCAMLOPT := $(OCAMLOPT_NOINTF) -intf-suffix .cmi
-OCAMLDEP := ocamlfind ocamldep $(if $(OCPP),-pp '$(OCPP)',) $(OCAMLDEPEXTRAS)
-OCAMLMKLIB := ocamlfind ocamlmklib
-OCAMLDOC := ocamlfind ocamldoc $(if $(OCPP),-pp '$(OCPP)',)
-OCAMLYACC := ocamlyacc
-OCAMLLEX := ocamllex
-DYPGEN := dypgen
-
-export OCAML OCAMLC OCAMLOPT OCAMLDEP OCAMLMKLIB
-
-# Useful directories, to be referenced from other Rules.ml
-FONTS_DIR := Fonts
-FORMAT_DIR := Format
-HYPHENATION_DIR := Hyphenation
-EDITORS_DIR := editors
-
-# Environment variable for ocamlfind to search for local package
-# and ignore duplicate definition due to previous installation
-OCAMLPATH_SAVE := $(OCAMLPATH)
-OCAMLPATH = $(SRC_DIR):$(OCAMLPATH_SAVE)
-export OCAMLPATH
-OCAMLFIND_IGNORE_DUPS_IN=$(shell ocamlfind printconf destdir)
-export OCAMLFIND_IGNORE_DUPS_IN
+# Declare common phony targets
+.PHONY: all clean distclean install doc test check
 
 # Many targets are created by redirecting stdout. Yet, when the command
 # fails, the target is nevertheless created as a zero-length file. On
@@ -122,61 +96,3 @@ ifneq "$(wildcard src/Makefile.config)" ""
   include Rules.mk
 endif
 endif
-
-# Phony targets
-.PHONY: install doc test clean distclean
-
-install: install-bindir
-install-bindir:
-	install -m 755 -d $(DESTDIR)/$(INSTALL_BIN_DIR)
-
-# Prevent make from removing intermediate build targets
-.SECONDARY:	$(CLEAN) $(DISTCLEAN)
-
-# Common rules for OCaml
-Q=@
-ifeq "$(strip $(Q))" "@"
-  ECHO=@echo
-else
-  ECHO=@\#
-endif
-
-# Force INCLUDES to be an immediate variable
-INCLUDES:=
-
-%.ml.depends: %.ml
-	$(ECHO) "[DEP] $@"
-	$(Q)$(OCAMLDEP) $(INCLUDES) -I $(<D) $< > $@
-
-%.mli.depends: %.mli
-	$(ECHO) "[DEP] $@"
-	$(Q)$(OCAMLDEP) $(INCLUDES) $< > $@
-
-%.cmi: %.mli %.ml.depends
-	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
-
-%.cmo: %.ml %.ml.depends
-	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
-%.cmx: %.cmo
-
-%.cmx: %.ml %.ml.depends
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ -c $<
-
-%: %.cmo
-	$(ECHO) "[LNK] $@"
-	$(Q)$(OCAMLC) -linkpkg $(INCLUDES) -o $@ $<
-
-%: %.cmx
-	$(ECHO) "[LNK] $@"
-	$(Q)$(OCAMLOPT) -linkpkg $(INCLUDES) -o $@ $<
-
-%.ml: %.mly
-	$(ECHO) "[YAC] $@"
-	$(Q)$(OCAMLYACC) $<
-
-%.ml: %.mll
-	$(ECHO) "[LEX] $@"
-	$(Q)$(OCAMLLEX) -q $<
