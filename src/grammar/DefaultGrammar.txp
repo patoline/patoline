@@ -65,8 +65,8 @@
 \Add_right{ \rrangle ⟫ }(MathFonts.adjusted_asana_delimiters "rrangle" [1113;3223;3224;3225])
 
 (* From Euler font *)
-\Add_left{ \langle < ⟨}(MathFonts.adjusted_euler_delimiters "\\langle" [1803;1807(*;1809*);1811;1813])
-\Add_right{ \rangle > ⟩}(MathFonts.adjusted_euler_delimiters "\\rangle" [1804;1808(*;1810*);1812;1814])
+\Add_left{ \langle ⟨ }(MathFonts.adjusted_euler_delimiters "\\langle" [1803;1807(*;1809*);1811;1813])
+\Add_right{ \rangle ⟩ }(MathFonts.adjusted_euler_delimiters "\\rangle" [1804;1808(*;1810*);1812;1814])
 
 
 =<
