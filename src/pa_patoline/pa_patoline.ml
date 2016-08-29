@@ -798,7 +798,7 @@ let build_grammar () =
 let add_grammar g =
   let open PatConfig in
   let (gpath, gpaths) = patoconfig.grammars_dir in
-  let path = "." :: "_patobuild" :: gpath :: gpaths in
+  let path = "." :: "_patobuild" :: ".patobuild" :: gpath :: gpaths in
   if !no_default_grammar && g = "DefaultGrammar" then () else
     let g = findPath (g ^ ".tgy") path in
     (*Printf.eprintf "Reading grammar %s\n%!" g;*)

@@ -11,7 +11,7 @@ let build_dir = ".patobuild"
 let decompose_filename : string -> string * string * string = fun fn ->
   let dir  = Filename.dirname  fn in
   let base = Filename.basename fn in
-  let name = Filename.chop_extension base in 
+  let name = Filename.chop_extension base in
   let base_len = String.length base in
   let name_len = String.length name in
   let ext =
@@ -67,6 +67,9 @@ let clean_build_dirs config =
 let more_recent source target =
   not (Sys.file_exists target) ||
   Unix.((stat source).st_mtime > (stat target).st_mtime)
+
+let add_pp_args config args =
+  { config with pp_args = args @ config.pp_args }
 
 (* Preprocessor command. *)
 let pp_if_more_recent config is_main source target =
@@ -234,7 +237,7 @@ let compile_targets config deps targets =
       if deps = [] then
         begin
           match lock_file t with
-          | None   -> () (* Already being created. *) 
+          | None   -> () (* Already being created. *)
           | Some m -> do_compile all_deps t; Mutex.unlock m
         end
       else
