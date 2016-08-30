@@ -1,0 +1,5 @@
+(* The following should fail because of an unclosed curly bracket (the
+most external one. *)
+par : \(x \mapsto sh(x)= {{e^x-e^{-x}}  \over 2\).
+
+Montrer que pour tout réel $x$ non nul : \(cosh(x)={{sh(2x)} \over {2sh(x)}\).
