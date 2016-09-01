@@ -643,7 +643,7 @@ let _=
 
   Printf.fprintf make "PREFIX :=%s\n" prefix;
 
-  Printf.fprintf make "CFLAGS := $(CFLAGS) -I %s\n" ocaml_lib_dir;
+  Printf.fprintf make "CFLAGS := $(CFLAGS) -I %s\n" (Findlib.ocaml_stdlib ());
 
   (* Write out the list of enabled drivers *)
   let ok_drivers = List.filter can_build_driver patoline_drivers in
