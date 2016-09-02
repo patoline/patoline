@@ -65,11 +65,17 @@ let line_per_line : 'a -> (string -> content list) -> string list -> unit =
     in
     List.iteri draw_line lines
 
+(* Parameter type for the word handler bellow. *)
+type param =
+  { keywords : string list
+  ; separators : string list
+  ; symbols  : (string * content) list }
+
 (* [handle_spaces w_to_c line] builds a line using the function [w_to_c] to
    build words (i.e. sections without spaces) and takes care of the spaces
    (one text space is as wide as any other character). *)
-let handle_spaces : (string -> content list) -> string -> content list =
-  fun w_to_c l ->
+let handle_spaces : param -> (string -> content list) -> string -> content list =
+  fun param w_to_c l ->
     let len = String.length l in
     let rec l_to_a pos =
       if pos >= len then []
@@ -81,8 +87,16 @@ let handle_spaces : (string -> content list) -> string -> content list =
         else glue_space !nbsp :: l_to_a pos
       else
         let nbnsp = ref 1 in
-        while pos + !nbnsp < len && l.[pos + !nbnsp] <> ' ' do incr nbnsp done;
-        let str = String.sub l pos !nbnsp in
+	let sep_at pos =
+	  List.exists (fun sep ->
+	    let s = try String.sub l pos (String.length sep) with _ -> "" in
+	    s = sep) param.separators
+	in
+        while pos + !nbnsp < len &&
+	  not (List.mem (String.sub l pos !nbnsp) param.separators) &&
+	  not (sep_at (pos + !nbnsp)) &&
+	  l.[pos + !nbnsp] <> ' ' do incr nbnsp done;
+	let str = String.sub l pos !nbnsp in
         let pos = pos + !nbnsp in
         w_to_c str @ l_to_a pos
     in l_to_a 0
@@ -119,11 +133,6 @@ let symbol : string -> content = fun s ->
   in
   fit_on_grid (C f)
 
-(* Parameter type for the word handler bellow. *)
-type param =
-  { keywords : string list
-  ; symbols  : (string * content) list }
-
 exception Found_symbol of int * string * content
 
 (* [handle_word par w] build the contents corresponding to the word [w]. The
@@ -135,7 +144,7 @@ let handle_word : param -> string -> content list = fun par w ->
   let find_special str start =
     let test_special str i =
       let test_eq (s,cs) =
-        let t = try String.sub str i (String.length s) with _ -> "" in
+        let t = try String.sub str i (String.length s); with _ -> "" in
         if t = s then raise (Found_symbol (i, s, cs))
       in
       List.iter test_eq par.symbols
@@ -169,11 +178,17 @@ let verb_text : (string -> content list) -> string -> content list =
     [Scoped (f, build s)]
 
 
+let param_Default =
+  { keywords = []
+  ; separators = []
+  ; symbols = []
+  }
 
 let param_SML =
   { keywords = ["fun";"as";"fn";"*";"(";")";",";";";"val";
 		"and";"type";"|";"=";"case";"of";
 		"datatype";"let";"rec";"end"]
+  ; separators = ["*";"(";")";",";";"]
   ; symbols = [("->", symbol "→");  ("=>", symbol "⇒")]
   }
 
@@ -183,19 +198,21 @@ let param_OCaml =
 		"rec";"let";"begin";"end";"while";"for";"do";"done";
 		"struct"; "sig"; "module"; "functor"; "if"; "then";
           "else"; "try"; "parser"; "in" ]
+  ; separators = ["*";"(";")";",";";"]
   ; symbols = [("->", symbol "→");("→", symbol "→");("->>", symbol "↠");("↠", symbol "↠")]
   }
 
 let param_Python =
   { keywords = ["def";"(";")";"*";";";",";"|";"=";":";
 		"while";"for";"if";"else";"return";"try";"except";"break"]
+  ; separators = ["*";"(";")";",";";"]
   ; symbols  = [] }
 
 let lang_Default lines =
-  List.map (handle_spaces (fun s -> [tT s])) lines
+  List.map (handle_spaces param_Default (fun s -> [tT s])) lines
 
 let lines_to_contents param lines =
-  List.map (handle_spaces (handle_word param)) lines
+  List.map (handle_spaces param (handle_word param)) lines
 
 let lang_OCaml = lines_to_contents param_OCaml
 let lang_SML = lines_to_contents param_SML

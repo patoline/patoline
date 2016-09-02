@@ -547,13 +547,13 @@ let defaultEnv:environment=
     let verb_default fn lines =
       let open Verbatim in
       lines_to_file lines fn;
-      let build_line = handle_spaces (fun s -> [tT s]) in
+      let build_line = handle_spaces param_Default (fun s -> [tT s]) in
       line_per_line D.structure build_line lines
 
     let verb_Lang param fn lines =
       let open Verbatim in
       lines_to_file lines fn;
-      let build_line = handle_spaces (handle_word param) in
+      let build_line = handle_spaces param (handle_word param) in
       line_per_line D.structure build_line lines
 
     let verb_OCaml = verb_Lang Verbatim.param_OCaml
