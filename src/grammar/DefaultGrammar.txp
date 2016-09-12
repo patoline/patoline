@@ -566,6 +566,11 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Configure_math_macro{\hspace}{ syntax = caml; name = mathSpace; }
 \Configure_math_macro{\mathSpace}{ syntax = caml; }
 \Configure_math_macro{\mathsText}{ syntax = text; }
+\Configure_math_macro{\mathsc}{ syntax = math; }
+\Configure_math_macro{\mathbb}{ syntax = math; }
+\Configure_math_macro{\mathbf}{ syntax = math; }
+\Configure_math_macro{\mathrm}{ syntax = math; }
+\Configure_math_macro{\mathsize}{ syntax = caml math; }
 
 \Configure_word_macro{\vspaceBefore}{ syntax = caml; eat_right; eat_left; }
 \Configure_word_macro{\vspaceAfter}{ syntax = caml; eat_right; eat_left; }
