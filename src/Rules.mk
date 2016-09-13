@@ -22,8 +22,8 @@ CONFIG_DIR := $(d)/config
 
 # Visit subdirectories
 MODULES := unicodelib rbuffer patutil patfonts rawlib db Typography \
-	Drivers Pdf cesure Format bibi plot proof plugins patobuild \
-	patobuild2 grammar pa_patoline config
+	Drivers Pdf cesure Format bibi plot proof patobuild grammar config \
+	pa_patoline
 
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 

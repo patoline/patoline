@@ -12,12 +12,10 @@ module Spec = struct
   (* Default Patoline configuration. *)
   let spec =
     [ ("fonts_dir"          , of_string fonts_dir   )
-    ; ("plugins_dir"        , of_string plugins_dir )
     ; ("grammars_dir"       , of_string grammars_dir)
     ; ("hyphen_dir"         , of_string hyphen_dir  )
 
     ; ("extra_fonts_dirs"   , of_list String extra_fonts_dir   )
-    ; ("extra_plugins_dirs" , of_list String extra_plugins_dir )
     ; ("extra_grammars_dirs", of_list String extra_grammars_dir)
     ; ("extra_hyphen_dirs"  , of_list String extra_hyphen_dir  )
 
@@ -35,7 +33,6 @@ module Conf = Make(Spec)
 
 type patoconfig =
   { mutable fonts_dir    : string * string list
-  ; mutable plugins_dir  : string * string list
   ; mutable grammars_dir : string * string list
   ; mutable hyphen_dir   : string * string list
   ; mutable drivers      : string list
@@ -55,7 +52,6 @@ let patoconfig : patoconfig =
   let get_i k = to_int (Config.get k cfg) in
   let get_l k = to_list String (Config.get k cfg) in
   { fonts_dir    = (get_s "fonts_dir"   , get_l "extra_fonts_dirs"   )
-  ; plugins_dir  = (get_s "plugins_dir" , get_l "extra_plugins_dirs" )
   ; grammars_dir = (get_s "grammars_dir", get_l "extra_grammars_dirs")
   ; hyphen_dir   = (get_s "hyphen_dir"  , get_l "extra_hyphen_dirs"  )
   ; drivers      = get_l "drivers"
@@ -76,7 +72,6 @@ let findPath (path, paths) fname =
   in find (List.rev (path :: paths))
 
 let findFont    fn = findPath patoconfig.fonts_dir fn
-let findPlugin  fn = findPath patoconfig.plugins_dir fn
 let findGrammar fn = findPath patoconfig.grammars_dir fn
 let findHyphen  fn = findPath patoconfig.hyphen_dir fn
 
@@ -84,11 +79,6 @@ let add_fonts_dir d =
   if debug then Printf.eprintf "########## Adding fonts dir %S\n%!" d;
   let (p, ps) = patoconfig.fonts_dir in
   patoconfig.fonts_dir <- (p, ps @ [d])
-
-let add_plugins_dir d =
-  if debug then Printf.eprintf "########## Adding plugins dir %S\n%!" d;
-  let (p, ps) = patoconfig.plugins_dir in
-  patoconfig.plugins_dir <- (p, ps @ [d])
 
 let add_grammars_dir d =
   if debug then Printf.eprintf "########## Adding grammars dir %S\n%!" d;

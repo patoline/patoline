@@ -45,8 +45,6 @@ let spec =
     , "Adds directories to the font search path")
   ; ( "--extra-hyph-dir"   , Arg.String add_hyphen_dir
     , "Adds directories to the search path for hyphenation dictionaries")
-  ; ( "--extra-plugins-dir", Arg.String add_plugins_dir
-    , "Adds directories to the plugins search path")
   ; ( "--quiet"            , Arg.Set quiet
     , "Turn off compilation messages")
   ;

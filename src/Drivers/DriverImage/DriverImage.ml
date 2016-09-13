@@ -20,7 +20,6 @@
 open FTypes
 open Driver
 open Util
-open Language
 
 let format = ref "png"
 let width = ref None
@@ -28,15 +27,28 @@ let height = ref None
 let saa = ref DriverGL.No_SAA
 
 let filter_options = DriverGL.filter_options
-let driver_options = [
-  ("--format",Arg.String (fun s -> format := s), message (Language.Image IFormat));
-  ("--width",Arg.Int (fun i -> width := Some i), message (Language.Image Width));
-  ("--height",Arg.Int (fun i -> height := Some i), message (Language.Image Height));
-  ("--rgb",Arg.Unit (fun () -> saa := DriverGL.RGB_SAA), message (Language.Image RGB));
-  ("--bgr",Arg.Unit (fun () -> saa := DriverGL.BGR_SAA), message (Language.Image BGR));
-  ("--vrgb",Arg.Unit (fun () -> saa := DriverGL.VRGB_SAA), message (Language.Image VRGB));
-  ("--vbgr",Arg.Unit (fun () -> saa := DriverGL.VBGR_SAA), message (Language.Image VBGR));
-]
+let driver_options =
+  [ ( "--format"
+    , Arg.String (fun s -> format := s)
+    , "specify the image format" )
+  ; ( "--width"
+    , Arg.Int (fun i -> width := Some i)
+    , "specify image width" )
+  ; ( "--height"
+    , Arg.Int (fun i -> height := Some i)
+    , "specify image height" )
+  ; ( "--rgb"
+    , Arg.Unit (fun () -> saa := DriverGL.RGB_SAA)
+    , "subpixel antialiasing for RGB screen" )
+  ; ( "--bgr"
+    , Arg.Unit (fun () -> saa := DriverGL.BGR_SAA)
+    , "subpixel antialiasing for BGR screen" )
+  ; ( "--vrgb"
+    , Arg.Unit (fun () -> saa := DriverGL.VRGB_SAA)
+    , "subpixel antialiasing for VRGB screen" )
+  ; ( "--vbgr"
+    , Arg.Unit (fun () -> saa := DriverGL.VBGR_SAA)
+    , "subpixel antialiasing for VBGR screen" ) ]
  
 let filename file = try (Filename.chop_extension file)^"_img_dir" with _->file^"_img_dir"
 

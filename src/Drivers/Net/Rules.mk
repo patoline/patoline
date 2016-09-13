@@ -39,7 +39,7 @@ DISTCLEAN += $(DEPENDS_$(d))
 # Installing patonet.ml as a plugin
 install: install-patonetml
 .PHONY: install-patonetml
-install-patonetml: install-plugins
+install-patonetml:
 	install -m 644 $(DRIVERS_DIR)/Net/patonet.c $(DESTDIR)/$(INSTALL_PLUGINS_DIR)
 
 

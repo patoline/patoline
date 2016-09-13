@@ -2,8 +2,8 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-IMAGE_DRIVER_INCLUDES:=-I $(d) $(PACK_DRIVER_DriverImage) -I $(PATOBUILD_DIR)
-IMAGE_DRIVER_DEPS_INCLUDES:=-I $(d) $(DEPS_PACK_DRIVER_DriverImage) -I $(PATOBUILD_DIR)
+IMAGE_DRIVER_INCLUDES:=-I $(d) $(PACK_DRIVER_DriverImage)
+IMAGE_DRIVER_DEPS_INCLUDES:=-I $(d) $(DEPS_PACK_DRIVER_DriverImage)
 
 $(d)/%.ml.depends: INCLUDES += $(IMAGE_DRIVER_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(IMAGE_DRIVER_INCLUDES)
@@ -19,15 +19,15 @@ endif
 # cmi race condition
 $(d)/DriverImage.cmx: %.cmx: %.cmo
 
-$(d)/DriverImage.cma: $(PATOBUILD_DIR)/Language.cmo $(d)/DriverImage.cmo
+$(d)/DriverImage.cma: $(d)/DriverImage.cmo
 	$(ECHO) "[LNk] $@"
 	$(Q)$(OCAMLC) -a $(INCLUDES) -o $@ $^
 
-$(d)/DriverImage.cmxa: $(PATOBUILD_DIR)/Language.cmx $(d)/DriverImage.cmx
+$(d)/DriverImage.cmxa: $(d)/DriverImage.cmx
 	$(ECHO) "[LNk] $@"
 	$(Q)$(OCAMLOPT) -a $(INCLUDES) -o $@ $^
 
-$(d)/DriverImage.cmxs: $(PATOBUILD_DIR)/Language.cmx $(d)/DriverImage.cmx
+$(d)/DriverImage.cmxs: $(d)/DriverImage.cmx
 	$(ECHO) "[LNk] $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $^
 

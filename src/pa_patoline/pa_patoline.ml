@@ -493,15 +493,18 @@ let string_filter : (string, string -> Location.t -> Parsetree.expression) Hasht
 
 let apply_string_filter config s _loc =
   try Hashtbl.find string_filter config.filter_name s _loc with Not_found ->
-    Printf.eprintf "Unknown string filter: %S\n%!" config.filter_name; exit 1
+    Printf.eprintf "Unknown string filter: %S (%a)\n%!"
+      config.filter_name print_location _loc; exit 1
 
 let apply_expr_filter config s _loc =
   try Hashtbl.find expr_filter config.filter_name s _loc with Not_found ->
-    Printf.eprintf "Unknown expression filter: %S\n%!" config.filter_name; exit 1
+    Printf.eprintf "Unknown expression filter: %S (%a)\n%!"
+      config.filter_name print_location _loc; exit 1
 
 let apply_struct_filter config s _loc =
   try Hashtbl.find struct_filter config.filter_name s _loc with Not_found ->
-    Printf.eprintf "Unknown structure filter: %S\n%!" config.filter_name; exit 1
+    Printf.eprintf "Unknown structure filter: %S (%a)\n%!"
+      config.filter_name print_location _loc; exit 1
 
 let _ =
   Hashtbl.add string_filter "" (fun s _loc -> <:expr<$string:s$ >>)

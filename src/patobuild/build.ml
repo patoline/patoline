@@ -32,7 +32,8 @@ type config =
 
 (* Run a command. The first argument is a short command name like "OPT", the
    second argument is the file concerned by the command. *)
-let command : string -> string -> string -> unit = fun n fn cmd ->
+let command : ?fail:bool -> string -> string -> string -> unit =
+  fun ?fail:(fail=true) n fn cmd ->
   if !verbose > 0 then
     begin
       let pad = String.make (max 0 (3 - (String.length n))) ' ' in
@@ -42,7 +43,7 @@ let command : string -> string -> string -> unit = fun n fn cmd ->
   if Sys.command cmd <> 0 then
     begin
       eprintf "Command failure...\n%!";
-      exit 1
+      if fail then exit 1
     end
 
 (* Transform a directory into the corresponding build directory. *)
@@ -93,7 +94,7 @@ let pp_if_more_recent config is_main source target =
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
-  command "PP" source cmd
+  command ~fail:false "PP" source cmd
 
 (* Compute the list of all the source files in the path. *)
 let source_files path =

@@ -210,7 +210,7 @@ function gotoSlide(n){
 *)
   let patonet =
     let open PatConfig in
-    let paths = "." :: (snd patoconfig.plugins_dir) in
+    let paths = ["."] in
     let pato = FilenameExtra.findPath "patonet.c" paths in
     let patof=open_in pato in
     let s=Bytes.create (in_channel_length patof) in

@@ -22,7 +22,6 @@ let bindir         = ref ""
 let fonts_dir      = ref ""
 let grammars_dir   = ref ""
 let hyphen_dir     = ref ""
-let plugins_dir    = ref ""
 
 let ocaml_lib_dir  = ref (Findlib.default_location ()) (* what to do if prefix is given ? *)
 let ocaml_dlls_dir = ref (Filename.concat !ocaml_lib_dir "stublibs")
@@ -30,7 +29,6 @@ let driver_dir     = ref (Filename.concat !ocaml_lib_dir "Typography")
 
 let fonts_dirs     = ref []
 let grammars_dirs  = ref []
-let plugins_dirs   = ref []
 let hyphen_dirs    = ref []
 let lang           = ref "EN"
 let ban_comic_sans = ref false
@@ -79,10 +77,6 @@ let spec =
     , Arg.Set_string grammars_dir
     , " Set then main grammar directory")
 
-  ; ( "--plugins-dir"
-    , Arg.Set_string plugins_dir
-    , " Set the main plugins directory")
-
   ; ( "--driver-dir"
     , Arg.Set_string driver_dir
     , " Set the driver directory")
@@ -129,13 +123,11 @@ let bindir         = set_default bindir "bin/"
 let fonts_dir      = set_default fonts_dir "share/patoline/fonts"
 let grammars_dir   = set_default grammars_dir "lib/patoline/grammars"
 let hyphen_dir     = set_default hyphen_dir "share/patoline/hyphen"
-let plugins_dir    = set_default plugins_dir "lib/patoline/plugins"
 
 let ocaml_lib_dir  = !ocaml_lib_dir
 let ocaml_dlls_dir = !ocaml_dlls_dir
 let fonts_dirs     = !fonts_dirs
 let grammars_dirs  = !grammars_dirs
-let plugins_dirs   = !plugins_dirs
 let hyphen_dirs    = !hyphen_dirs
 let driver_dir     = !driver_dir
 let lang           = !lang
@@ -229,14 +221,7 @@ let local_packages =
 
   ; { package_name = "patobuild"
     ; macro_suffix = "PATOBUILD"
-    ; local_deps   = ["plugins"]
-    ; extern_deps  = ["decap";"bytes";"compiler-libs"]
-    ; subdirs      = []
-    ; has_meta     = false }
-
-  ; { package_name = "patobuild2"
-    ; macro_suffix = "PATOBUILD"
-    ; local_deps   = ["plugins"]
+    ; local_deps   = []
     ; extern_deps  = ["decap";"bytes";"compiler-libs"]
     ; subdirs      = []
     ; has_meta     = false }
@@ -259,13 +244,6 @@ let local_packages =
     ; macro_suffix = "PROOF"
     ; local_deps   = ["rawlib"] (* Pdf Driver added by hand *)
     ; extern_deps  = ["bytes"]
-    ; subdirs      = []
-    ; has_meta     = false }
-
-  ; { package_name = "plugins"
-    ; macro_suffix = "PLUGINS"
-    ; local_deps   = ["Format"]
-    ; extern_deps  = ["unix"]
     ; subdirs      = []
     ; has_meta     = false }
 
@@ -636,7 +614,6 @@ let _=
   Printf.fprintf make "INSTALL_LIBFONTS_DIR :=%s/patfonts\n" ocaml_lib_dir;
   Printf.fprintf make "INSTALL_BIBI_DIR :=%s/bibi\n" ocaml_lib_dir;
   Printf.fprintf make "INSTALL_PATOPLOT_DIR :=%s/patoplot\n" ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_PLUGINS_DIR :=%s\n" plugins_dir;
   Printf.fprintf make "INSTALL_CESURE_DIR :=%s/cesure\n" ocaml_lib_dir;
 
   Printf.fprintf make "INSTALL_BIN_DIR :=%s\n" bindir;
@@ -776,11 +753,9 @@ let _=
   let plist oc l = List.iter (fprintf oc "%S;") l in
   let oc = open_out "src/config/patDefault.ml" in
   fprintf oc "let fonts_dir          = %S\n" fonts_dir;
-  fprintf oc "let plugins_dir        = %S\n" plugins_dir;
   fprintf oc "let grammars_dir       = %S\n" grammars_dir;
   fprintf oc "let hyphen_dir         = %S\n" hyphen_dir;
   fprintf oc "let extra_fonts_dir    = [%a]\n" plist fonts_dirs;
-  fprintf oc "let extra_plugins_dir  = [%a]\n" plist plugins_dirs;
   fprintf oc "let extra_grammars_dir = [%a]\n" plist grammars_dirs;
   fprintf oc "let extra_hyphen_dir   = [%a]\n" plist hyphen_dirs;
   let drivers = List.map (fun d -> d.name) ok_drivers in

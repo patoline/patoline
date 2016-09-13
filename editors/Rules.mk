@@ -11,16 +11,25 @@ $(d)/emacs/%.depends: INCLUDES += -I $(UNICODE_DIR)
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
 -include $(d)/emacs/SubstKey.ml.depends
+-include $(d)/emacs/UnicodeScripts.ml.depends
 endif
 endif
 
 $(d)/emacs/SubstKey.cmx: INCLUDES += -I $(UNICODE_DIR)
-
 $(d)/emacs/SubstKey: $(d)/emacs/SubstKey.cmx $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -package str,unicodelib $< -linkpkg -o $@
 
-# $(d)/emacs/SubSuper.el is built by src/Patoline/Rules.mk
+$(d)/emacs/UnicodeScripts.cmx: INCLUDES += -I $(UNICODE_DIR)
+$(d)/emacs/UnicodeScripts: $(d)/emacs/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
+	$(ECHO) "[NAT] $@"
+	$(Q)$(OCAMLOPT) -package bigarray,unicodelib $< -linkpkg -o $@
+
+
+$(d)/emacs/Subsup.el $(d)/emacs/Subsup.ml: $(UNICODE_DATA_TXT) $(d)/emacs/UnicodeScripts
+	$(ECHO) "[GEN] $@"
+	$(Q)$(lastword $^) $< $@ $(EDITORS_DIR)/emacs/Subsup.el
+
 $(d)/emacs/Subsup2.el: $(d)/emacs/Subsup.el $(d)/emacs/quail.el $(d)/emacs/SubstKey
 	$(ECHO) "[GEN] $@"
 	$(Q)$(lastword $^) $(EDITORS_DIR)/emacs/quail.el $< > $@
@@ -30,7 +39,9 @@ $(d)/emacs/patoline-input.el: $(d)/emacs/patoline-input.pre $(d)/emacs/quail.el 
 	$(ECHO) "[GEN] $@"
 	$(Q)cat $^ > $@
 
-CLEAN += $(d)/emacs/Subsup2.el $(d)/emacs/SubstKey $(d)/emacs/patoline-input.el $(d)/emacs/*.cmo $(d)/emacs/*.cmi $(d)/emacs/*.o $(d)/emacs/*.cmx
+CLEAN += $(d)/emacs/*.cm[iox] $(d)/emacs/*.o $(d)/emacs/UnicodeScripts \
+				 $(d)/emacs/SubstKey $(d)/emacs/Subsup2.el \
+				 $(d)/emacs/patoline-input.el $(d)/emacs/Subsup.el
 DISTCLEAN += $(d)/emacs/*.depends
 
 # Installing

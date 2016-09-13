@@ -2,18 +2,20 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-PATOBUILD_INCLUDES := -I $(d) $(PACK_PATOBUILD) -I $(CONFIG_DIR)
-PATOBUILD_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PATOBUILD) -I $(CONFIG_DIR)
-$(d)/%.depends: INCLUDES += $(PATOBUILD_DEPS_INCLUDES)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATOBUILD_INCLUDES)
+PATOBUILD_INCLUDES      := -I $(d) -I $(CONFIG_DIR) -package decap,threads -pp pa_ocaml -thread
+PATOBUILD_DEPS_INCLUDES := -I $(d) -I $(CONFIG_DIR) -package decap,threads -pp pa_ocaml
 
-PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx $(d)/Main.cmx
+$(d)/%.depends: INCLUDES := $(PATOBUILD_DEPS_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES := $(PATOBUILD_INCLUDES)
 
-# $(PAT_CMX): OCAMLOPT := $(OCAMLOPT_NOINTF)
-$(PAT_CMX): %.cmx: %.cmo
+# FIXME twice patoline otherwise patoline.ml.depends is not build ...
+# silly error ?
+PATOBUILD_MODS := pragma parallel build patoline patoline
+
+PATOBUILD_ML  := $(addsuffix .ml,$(addprefix $(d)/,$(PATOBUILD_MODS)))
 
 # Compute ML dependencies
-SRC_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
+SRC_$(d) := $(addsuffix .depends,$(PATOBUILD_ML)))
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
@@ -21,48 +23,28 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
+PATOBUILD_CMX := $(PATOBUILD_ML:.ml=.cmx)
+PATOBUILD_CMO := $(PATOBUILD_ML:.ml=.cmo)
+
+$(PATOBUILD_CMX): %.cmx: %.cmo
+
 all: $(d)/patoline
 
-$(d)/patoline: $(CONFIG_DIR)/patoconfig.cmxa $(UTIL_DIR)/patutil.cmxa $(PAT_CMX)
-	$(ECHO) "[NAT] $@"
-	$(Q)$(OCAMLOPT) -o $@ $(PATOBUILD_INCLUDES) -I +threads -thread \
-		dynlink.cmxa patutil.cmxa str.cmxa unix.cmxa rbuffer.cmxa \
-		threads.cmxa patoconfig.cmxa $(PAT_CMX)
-
-PATOBUILD_UNICODE_SCRIPTS := $(d)/UnicodeScripts
-
-$(EDITORS_DIR)/emacs/Subsup.el $(d)/Subsup.ml: $(d)/UnicodeData.txt $(d)/UnicodeScripts
-	$(ECHO) "[GEN] $@"
-	$(Q)$(PATOBUILD_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/Subsup.el
-
-$(d)/Main.cmx: $(d)/Main.ml $(CONFIG_DIR)/patoconfig.cmxa
+$(d)/patoline: $(PATOBUILD_CMX)
 	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT) -thread -rectypes -I +threads $(OFLAGS) $(PATOBUILD_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) -o $@ $(PATOBUILD_INCLUDES) -package decap,threads \
+		unix.cmxa patoconfig.cmxa str.cmxa decap.cmxa threads.cmxa $^
 
-$(d)/Main.cmo: $(d)/Main.ml
-	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLC) -thread -rectypes -I +threads $(OFLAGS) $(PATOBUILD_INCLUDES) -o $@ -c $<
-
-$(d)/UnicodeScripts.cmx: $(UNICODELIB_CMX) $(UNICODELIB_DEPS) $(UNICODELIB_ML)
-
-$(d)/UnicodeScripts: $(d)/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
-	$(ECHO) "[NAT] $@"
-	$(Q)$(OCAMLOPT) -o $@ -package bigarray,unicodelib -linkpkg $<
-
-$(d)/Build.cmo $(d)/Build.cmx: OFLAGS += -thread
-
-CLEAN += $(d)/*.o $(d)/*.cm[iox] $(EDITORS_DIR)/emacs/Subsup.el $(d)/UnicodeScripts
-
+CLEAN     += $(d)/*.o $(d)/*.cm[iox]
 DISTCLEAN += $(d)/*.depends $(d)/patoline
 
 # Installing
-install: install-patoline-bin install-patoline-lib
+install: install-patobuild
 
-.PHONY: install-patoline-bin install-patoline-lib
-install-patoline-bin: install-bindir $(d)/patoline
-	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
-install-patoline-lib: install-typography $(d)/Build.cmi
-	install -m 644 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
+.PHONY: install-patobuild
+install-patobuild: $(d)/patoline
+	install -m 755 -d $(DESTDIR)/$(INSTALL_BIN_DIR)
+	install -m 755 -p $^ $(DESTDIR)/$(INSTALL_BIN_DIR)
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
