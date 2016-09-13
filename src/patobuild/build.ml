@@ -98,7 +98,7 @@ let pp_if_more_recent config is_main source target =
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
-  if not (run_command "PP" source cmd) then
+  if not (run_command "PPP" source cmd) then
     eprintf "\027[93mFailed to parse file %S...\027[39m\n%!" source
 
 (* Compute the list of all the source files in the path. *)
