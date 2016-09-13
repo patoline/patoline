@@ -692,6 +692,22 @@ let parser mathlid = id:''[a-z][a-zA-Z0-9']*'' ->
   if PMap.mem id state.reserved_symbols then give_up "symbol";
   id
 
+let reserved_uid = [ "Include" ; "Caml"; "Configure_math_macro"
+		   ; "Configure_word_macro"; "Configure_environment"
+		   ; "Verbose_Changes"; "Save_Grammar"
+		   ; "Add_relation" ; "Add_addition_like"
+		   ; "Add_product_like" ; "Add_connector"
+		   ; "Add_arrow" ; "Add_punctuation"
+		   ; "Add_quantifier" ; "Add_prefix"
+		   ; "Add_postfix" ; "Add_accent"
+		   ; "Add_symbol" ; "Add_operator"
+		   ; "Add_limits_operator" ; "Add_left"
+		   ; "Add_right" ; "Add_combining"
+		   ]
+let parser macrouid = id:{uid | "item" -> "Item" } ->
+  if List.mem id reserved_uid then give_up "reserved uid";
+  id
+
 let empty_state =
   { verbose          = false
   ; infix_symbols    = PrefixTree.empty
@@ -1712,42 +1728,32 @@ let _ = set_grammar math_toplevel (parser
     | verb:verbatim_environment -> (fun _ -> verb)
     (* FIXME some of the macro below could be defined using the new configure_word_macro *)
     | "\\Caml" s:wrapped_caml_structure -> (fun _ -> s)
-    | "\\Title" t:simple_text_macro_argument -> (fun _ ->
-         let m1 = freshUid () in
-         let m2 = freshUid () in
-         <:struct<
-           module $uid:m1$ =
-             struct
-               let arg1 = $t$
-             end
-           module $uid:m2$ = Title($uid:m1$)
-           let _ = $uid:m2$.do_begin_env ()
-           let _ = $uid:m2$.do_end_env ()
-         >>)
-
     | "\\Include" '{' id:uid '}' -> (fun _ ->
          incr nb_includes;
          (try add_grammar id; build_grammar () with _ -> ());
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
          <:struct< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output )(D)
                    open $uid:temp_id$>>)
-    | "\\TableOfContents" -> (fun _ ->
-         let m = freshUid () in
-         <:struct<
-           module $uid:m$ = TableOfContents
-           let _ = $uid:m$.do_begin_env ()
-           let _ = $uid:m$.do_end_env ()
-         >>)
-    | "\\item" -> (fun _ ->
+    | "\\" id:macrouid ts:simple_text_macro_argument*$ -> (fun _ ->
          let m1 = freshUid () in
-         let m2 = freshUid () in
-         let _Item = "Item" in
-         <:struct< module $uid:m1$ =
-                     struct
-                       module $uid:m2$ = $uid:_Item$
-                       let _ = $uid:m2$.do_begin_env ()
-                       let _ = $uid:m2$.do_end_env ()
-                     end>>)
+	 if ts <> [] then
+	   let m2 = freshUid () in
+	   let str = List.flatten (List.map (fun t -> <:struct< let arg1 = $t$ >>) ts) in
+           <:struct<
+             module $uid:m2$ =
+               struct
+                 $struct:str$
+               end
+             module $uid:m1$ = $uid:id$($uid:m2$)
+             let _ = $uid:m1$.do_begin_env ()
+             let _ = $uid:m1$.do_end_env ()
+           >>
+	 else
+           <:struct<
+             module $uid:m1$ = $uid:id$
+             let _ = $uid:m1$.do_begin_env ()
+             let _ = $uid:m1$.do_end_env ()
+           >>)
     | "\\begin" '{' idb:lid '}' ->>
         let config = try List.assoc idb state.environment with Not_found -> [] in
           args:(macro_arguments idb Text config)
