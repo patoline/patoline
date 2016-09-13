@@ -31,19 +31,23 @@ type config =
   ; pat_driver : string option } (* Patoline driver. *)
 
 (* Run a command. The first argument is a short command name like "OPT", the
-   second argument is the file concerned by the command. *)
-let command : ?fail:bool -> string -> string -> string -> unit =
-  fun ?fail:(fail=true) n fn cmd ->
+   second argument is the file concerned by the command. The return value is
+   true if everything went well, false otherwise. *)
+let run_command : string -> string -> string -> bool = fun n fn cmd ->
   if !verbose > 0 then
     begin
       let pad = String.make (max 0 (3 - (String.length n))) ' ' in
       if !verbose = 1 then printf "[%s] %s%s\n%!" n pad fn
       else printf "[%s] %s%s\n%!" n pad cmd
     end;
-  if Sys.command cmd <> 0 then
+  Sys.command cmd = 0
+
+(* Same as run_command, but exits the program in case of failure. *)
+let command : string -> string -> string -> unit = fun n fn cmd ->
+  if not (run_command n fn cmd) then
     begin
       eprintf "Command failure...\n%!";
-      if fail then exit 1
+      exit 1
     end
 
 (* Transform a directory into the corresponding build directory. *)
@@ -94,7 +98,8 @@ let pp_if_more_recent config is_main source target =
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
-  command ~fail:false "PP" source cmd
+  if not (run_command "PP" source cmd) then
+    eprintf "\027[93mFailed to parse file %S...\027[39m\n%!" source
 
 (* Compute the list of all the source files in the path. *)
 let source_files path =
