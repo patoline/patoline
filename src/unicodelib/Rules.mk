@@ -70,7 +70,7 @@ $(ENCODING_ML): %.ml: $(PA_CONV)
 
 ### Parsing and data generation for UnicodeData.txt
 $(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml
-	$(ECHO) "[BYT] $@"
+	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml -package compiler-libs -c $<
 
 $(d)/pa_UnicodeData: $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx

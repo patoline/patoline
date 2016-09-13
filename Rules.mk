@@ -180,11 +180,11 @@ INCLUDES:=
 	$(Q)$(OCAMLDEP) $(INCLUDES) $< > $@
 
 %.cmi: %.mli %.ml.depends
-	$(ECHO) "[BYTE] $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 
 %.cmo: %.ml %.ml.depends
-	$(ECHO) "[BYTE] $@"
+	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 %.cmx: %.cmo
 
@@ -201,7 +201,7 @@ INCLUDES:=
 	$(Q)$(OCAMLOPT) -linkpkg $(INCLUDES) -o $@ $<
 
 %.ml: %.mly
-	$(ECHO) "[YACC] $@"
+	$(ECHO) "[YAC] $@"
 	$(Q)$(OCAMLYACC) $<
 
 %.ml: %.mll
@@ -211,5 +211,5 @@ INCLUDES:=
 FILE_TO_STRING := $(TOOLS_DIR)/file_to_string
 
 $(FILE_TO_STRING): $(FILE_TO_STRING).ml
-	$(ECHO) "[BYT] $@"
+	$(ECHO) "[GEN] $@"
 	$(Q)$(OCAMLFIND) $(OCAMLC) -package bytes $< -o $@
