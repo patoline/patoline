@@ -40,16 +40,16 @@ let defaultPageMaster = PageLayout.(
   })
 
 include FormatThese.Format(D)
-(* let defaultEnv =  *)
-(*     let fsize=3.7 *. 11. /. 12. in *)
-(*     { defaultEnv *)
-(*     with hyphenate=DefaultFormat.hyphenate_dict "hyph-fr.hdict" ; *)
-(* 	 new_page=PageLayout.new_page defaultPageMaster ; *)
-(* 	 normalMeasure=(fst a4) -. defaultPageMaster.marginLeft -. defaultPageMaster.marginLeft ; *)
-(* 	 size=fsize; *)
-(* 	 lead=13./.10.*.fsize; *)
-(* 	 normalLead=13./.10.*.fsize;	  *)
-(* 		 } *)
+let defaultEnv =
+    (* let fsize=3.7 *. 11. /. 12. in *)
+    { defaultEnv
+    with hyphenate=DefaultFormat.hyphenate_dict "hyph-fr.hdict" ;
+	 (* new_page=PageLayout.new_page defaultPageMaster ; *)
+	 (* normalMeasure=(fst a4) -. defaultPageMaster.marginLeft -. defaultPageMaster.marginLeft ; *)
+	 (* size=fsize; *)
+	 (* lead=13./.10.*.fsize; *)
+	 (* normalLead=13./.10.*.fsize; *)
+		 }
 			  
     module Env_preuve = Env_gproof (struct
       let arg1 = italic [tT "Démonstration.";bB (fun env->let w=env.size in [glue w w w])]

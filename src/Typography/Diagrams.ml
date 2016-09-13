@@ -1552,13 +1552,11 @@ Doing a rectangle.\n" ;
       let default_matrix_node_anchor = `Base
       let default_matrix_node_style env =
 	Node.([mainAnchor `Center ; anchor default_matrix_node_anchor ; rectangle env])
-      let default_main_node_style env =
-	Node.([mainAnchor `Center ; anchor `Pdf ; rectangle env])
-
       let between_centers disty distx _ i j =
 	(float_of_int j *. distx), -. (float_of_int i *. disty)
 
-      let default env = { mainNode = Node.default ; common = default_matrix_node_style env ; nodes = [||] ;
+      let default env = { mainNode = Node.default ;
+			  common = default_matrix_node_style env ; nodes = [||] ;
 			placement = (between_centers 15. 15.)}
 
       (* let to_gentities { mainNode = main ; nodes = nodes } = (Node.to_gentity main, map Node.to_gentity nodes) *)
@@ -1708,7 +1706,14 @@ Doing a rectangle.\n" ;
 	    let height = Array.length ms in
 	    let width = Array.length ms.(0) in
 	    Point.middle (ms.(height - 1).(0).Node.anchor `BaseWest)
-	    (ms.(height - 1).(width - 1).Node.anchor `BaseEast)
+	    (ms.(height - 1).(width - 1).Node.anchor `BaseEast)	    
+	      
+	let matrixCenter info =
+	    let ms = info.nodes in
+	    let height = Array.length ms in
+	    let width = Array.length ms.(0) in
+	    Point.middle (ms.(0).(0).Node.anchor `NorthWest)
+	    (ms.(height - 1).(width - 1).Node.anchor `SouthEast)	    
 
       let mainNode,main_node_pet =
       Pet.register "matrix main node" ~depends:[make_placement_pet]
