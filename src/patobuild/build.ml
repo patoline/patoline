@@ -28,7 +28,9 @@ type config =
   ; packages   : string list     (* Packages (ocamlfind) to include. *)
   ; path       : string list     (* Source directories. *)
   ; pat_format : string option   (* Patoline format. *)
-  ; pat_driver : string option } (* Patoline driver. *)
+  ; pat_driver : string option
+  ; run_binary : bool
+  } (* Patoline driver. *)
 
 (* Run a command. The first argument is a short command name like "OPT", the
    second argument is the file concerned by the command. The return value is
@@ -359,10 +361,13 @@ let compile config file =
   compile_targets config deps [target];
   produce_binary config deps target;
   (* Producing the document. *)
-  let to_bin fn =
-    let (dir, base, ext) = decompose_filename fn in
-    let bdir = to_build_dir dir in
-    let target_ext = match ext with ".txp" -> "_.opt" | e -> ".opt" in
-    Filename.concat bdir (base ^ target_ext)
-  in
-  run_binary config (to_bin file)
+  if config.run_binary then
+    begin
+      let to_bin fn =
+        let (dir, base, ext) = decompose_filename fn in
+        let bdir = to_build_dir dir in
+        let target_ext = match ext with ".txp" -> "_.opt" | e -> ".opt" in
+        Filename.concat bdir (base ^ target_ext)
+      in
+      run_binary config (to_bin file)
+    end

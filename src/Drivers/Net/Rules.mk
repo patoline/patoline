@@ -36,12 +36,6 @@ $(d)/Net.cmxs: $(d)/Net.cmx
 
 DISTCLEAN += $(DEPENDS_$(d))
 
-# Installing patonet.ml as a plugin
-install: install-patonetml
-.PHONY: install-patonetml
-install-patonetml:
-	install -m 644 $(DRIVERS_DIR)/Net/patonet.c $(DESTDIR)/$(INSTALL_PLUGINS_DIR)
-
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
