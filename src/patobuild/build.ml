@@ -305,6 +305,10 @@ let extend_config config ls =
     in
     { config with packages; pat_driver = Some d }
   in
+  let add_package config p =
+    let packages = p :: config.packages in
+    { config with packages; }
+  in
   let combine config (k,vo) =
     match (k, vo) with
     | ("FORMAT", Some f) -> set_format config f
@@ -313,6 +317,9 @@ let extend_config config ls =
                             config
     | ("DRIVER", None  ) -> eprintf "Pragma FORMAT needs an argument.\n%!";
                             config
+    | ("PACKAGE", Some p) -> add_package config p
+    | ("PACKAGE", None  ) -> eprintf "Pragma PACKAGE needs an argument.\n%!";
+                             config
     | _                  -> eprintf "Unknown pragma %s\n%!" k;
                             config
   in
