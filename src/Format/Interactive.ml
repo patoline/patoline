@@ -30,9 +30,9 @@ let read_file file =
   let len = in_channel_length ch in
   let str = Bytes.create len in
   let _ = input ch str 0 len in
-  let res = strip str in
+  (*let res = strip str in*)
   close_in ch;
-  res
+  str
 
 
 let arrow = tT ">>" :: hspace(1.0)
@@ -200,7 +200,7 @@ type eval_fun = string option -> (result -> unit) -> string -> string
 
 let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
       ?nb_lines ?err_lines ?(init_text="") ?(lang=lang_Default)
-      ?(extra:eval_fun option) ?resultData ?data ?filename name =
+      ?(extra:eval_fun option) ?resultData ?data ?filename ?(influence=[]) name =
 
     let name' = name^"_target" in
     let name'' = name^"_target2" in
@@ -254,13 +254,13 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
       | Edit(n, t) when name = n ->
 	data.write t;
 	eval t
-      | _ -> Unchanged)
+      | _ -> eval (data.read ()))
       ascii
       (fun () ->
         let s, lines = update () in
         (button ~btype:(Editable(s, init_text))
            name
-	   [name';name'']
+	   (name'::name''::influence)
            [bB(fun env ->
 	     let env = interEnv env in
 	     List.map (fun x-> Drawing (snd x))
@@ -280,7 +280,7 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
 			   par_env=(fun e -> e);
 			   par_post_env=(fun env1 env2 ->
 			     { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
-			   par_parameters=ragged_left;
+ 			   par_parameters=ragged_left;
 			   par_badness=badness;
 			   par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
 			in up (newChildAfter acc para)) (Node empty, []) (lang codeLines)
@@ -380,9 +380,9 @@ let test_ocaml ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") fi
       err, "" ) else (
     let cmd = Printf.sprintf "cd %s; ocamlbuild -quiet %s" dir exec in
     let _ = Sys.command cmd in
-(*    Printf.eprintf "running: %s\n%!" cmd;*)
+    (*    Printf.eprintf "running: %s\n%!" cmd;*)
     let cmd = Printf.sprintf "cd %s; ulimit -t 5; ./%s 2>%s >%s" dir exec tmpfile3 tmpfile2 in
-(*    Printf.eprintf "running: %s\n%!" cmd;*)
+    (*    Printf.eprintf "running: %s\n%!" cmd;*)
     let _ = Sys.command cmd in
     let err = read_file tmpfile3 in
     if err <> "" then writeR FailTest else writeR Ok;

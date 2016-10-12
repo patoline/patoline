@@ -1266,9 +1266,9 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 (*	    Printf.printf "link: x0 = %f, y0 = %f, x1 = %f, y1 = %f\n" l.link_x0 l.link_y0 l.link_x1 l.link_y1;*)
 	    flush stdout;
 	    overlay_rect color (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
-      ) l;
+	) l;
       Glut.swapBuffers ();
-    )
+			)
   in
 
   let passive_motion_cb ~x ~y =
@@ -1555,6 +1555,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	     with
 	     | Glut.BadEnum _ -> () (* because lablGL does no handle GLUT_SPECIAL_CTRL_L and alike *)
 	     | e ->
+		Printf.fprintf stderr "Uncaucht exception: %S.\n%!" (Printexc.to_string e);
                clearCache ();
 	       Gl.flush ();
 	       Array.iter (function None -> () | Some win -> Glut.destroyWindow ~win:win.winId) all_win; raise e);
