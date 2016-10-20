@@ -20,13 +20,13 @@
 
 type roman_digit  = { i : string ; v : string }
 
-let roman ?(capital=true) n = 
+let roman ?(capital=true) n =
   if n <= 0 || n > 3888 then raise (Invalid_argument "roman");
   let s = if capital then
       [| { i = "I"; v = "V" } ; { i = "X"; v = "L" }  ; { i = "C"; v = "D" } ; { i = "M"; v = "" } |]
     else
-      [| { i = "i"; v = "v" } ; { i = "x"; v = "l" }  ; { i = "c"; v = "d" } ; { i = "m"; v = "" } |] 
-  in 
+      [| { i = "i"; v = "v" } ; { i = "x"; v = "l" }  ; { i = "c"; v = "d" } ; { i = "m"; v = "" } |]
+  in
   let digit s = function
     | 1 -> s.i, 0
     | 2 -> s.i ^ s.i, 0
@@ -39,7 +39,7 @@ let roman ?(capital=true) n =
     | 9 -> s.i, 1
     | _ -> "", 0
   in
-  let rec fn l n = 
+  let rec fn l n =
     let d, carry = digit s.(l) (n mod 10) in
     let l = l + 1 in
     let d = if carry = 1 then d ^ s.(l).i else d in
@@ -49,15 +49,12 @@ let roman ?(capital=true) n =
   in
   fn 0 n
 
-let alphabetic  ?(capital=true) n = 
+let alphabetic  ?(capital=true) n =
   if n <= 0 then raise (Invalid_argument "alphabetic");
-  let start = (if capital then Char.code 'A' else Char.code 'a') - 1in
+  let start = (if capital then Char.code 'A' else Char.code 'a') - 1 in
   let rec fn n =
     let d = String.make 1 (Char.chr (start + n mod 26)) in
     let n = n / 26 in
     if n = 0 then d else fn n ^ d
   in
   fn n
-
-    
-    

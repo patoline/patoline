@@ -90,7 +90,7 @@ let decode_slave fd =
     Printf.eprintf "decode_slave starts\n%!";
     let c = int_of_char (input_char fd) in
     let fin = 0x80 land c <> 0 in
-    let _rsv1 = 0x40 land c <> 0in
+    let _rsv1 = 0x40 land c <> 0 in
     let _rsv2 = 0x20 land c <> 0 in
     let _rsv3 = 0x10 land c <> 0 in
     let _opcode = 0x0f land c in
