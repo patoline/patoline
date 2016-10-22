@@ -170,7 +170,7 @@ let kill_son sock =
       Printf.eprintf "kill son %d %d\n%!" son.num son.pid;
       (try Unix.close fd with _ -> ());
       (try Unix.close son.served_sock with _ -> ());
-      (try Unix.kill son.pid 2 with _ -> ());
+      (try Unix.kill son.pid Sys.sigterm with _ -> ());
       false)
     else true
   ) !sonsBySock
@@ -203,7 +203,7 @@ let set_prefix_url str =
   let l = String.length str in
   if l > 0 && str.[l - 1] <> '/' then
       prefix_url := str ^"/"
-    else 
+    else
       prefix_url := str
 
 let driver_options =
@@ -1410,6 +1410,10 @@ in
 
       let conn_num = ref 0 in
 
+      Sys.(set_signal sigterm (Signal_handle (fun _ ->
+        List.iter (fun (_,son) ->
+          Unix.kill son.pid Sys.sigterm) !sonsBySock)));
+
       while true do
 	Printf.eprintf "in main loop (%d addresses, %d sons)\n%!" (List.length master_sockets) (List.length !sonsBySock);
 	(try while (fst (Unix.waitpid [WNOHANG] (-1)) <> 0) do () done with _ -> ());
@@ -1463,6 +1467,7 @@ in
 	      try
 		Util.close_in_cache ();
 		Unix.close fd2;
+                Sys.(set_signal sigterm Signal_default);
 		close_all_other conn_sock;
 		Printf.eprintf "Connection started: %d\n%!" num;
 		serve fd1 num conn_sock;
