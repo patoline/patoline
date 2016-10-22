@@ -147,6 +147,9 @@ let str_addr addr = Unix.(match addr with
     ADDR_UNIX s -> s
   | ADDR_INET(a,p) -> string_of_inet_addr a^":"^string_of_int p)
 
+let str_sessid = function
+  | None -> ""
+  | Some(sessid,groupid) -> sessid ^":"^ groupid
 (*connection as another patonet (at most one is enough to build
 any graph) as a follower*)
 
@@ -1256,8 +1259,9 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
             in
             Buffer.add_string data (Printf.sprintf "\"time\"=%g," t);
             let son_descr = List.map (fun (fd,son) ->
-              Printf.sprintf "  { \"addr\" = %S, \"num\" = %d, \"pid\" = %d, \"slide\" = %d, \"state\" = %d }"
-                (str_addr son.addr) son.num son.pid son.slide son.state) !sonsBySock in
+              Printf.sprintf
+                "  { \"sessid\" = %s, \"addr\" = %S, \"num\" = %d, \"pid\" = %d, \"slide\" = %d, \"state\" = %d }"
+                (str_sessid son.sessid) (str_addr son.addr) son.num son.pid son.slide son.state) !sonsBySock in
             let son_descr = String.concat ",\n" son_descr in
             Buffer.add_string data (Printf.sprintf "\"sons\"=[\n%s\n]" son_descr);
             Buffer.add_char data '}';
