@@ -177,6 +177,8 @@ let kill_son sock =
 let get_reg=Str.regexp "GET \\([^ ]*\\) .*"
 let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 
+let prefix_url = ref ""
+
 let rmaster=Str.regexp "\\(/[0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let slave=Str.regexp "/?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let logged=Str.regexp "/?\\([a-zA-Z0-9]+\\)[?]key=\\([a-z0-9]+\\)\\(&group=\\([-a-zA-Z0-9_]+\\)\\(&friends=\\([-a-zA-Z0-9_+,]+\\)\\)?\\)?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
@@ -196,14 +198,22 @@ let ping=Str.regexp "ping"
 let filter_options argv = argv
 let static_folder = ref ""
 
+let set_prefix_url str =
+  let l = String.length str in
+  if l > 0 && str.[l - 1] <> '/' then
+      prefix_url := str ^"/"
+    else 
+      prefix_url := str
+
 let driver_options =
   SVG.driver_options @
   [("--master"       , Arg.Set_string master_page   ,"Set the master page");
    ("--port"         , Arg.Set_int port_num         ,"Set the port number to listen to");
    ("--static-folder", Arg.Set_string static_folder ,"Set the folder containing static css, html, etc.");
+   ("--url-prefix"   , Arg.String set_prefix_url    ,"Set a prefix added to a few url. Usefull when redirecting using the prefix of the url.");
   ]
 
-let websocket  =
+let websocket () =
   Printf.sprintf
 "var websocket;
 setInterval(function () {
@@ -250,9 +260,9 @@ function start_socket(){
    }
    if(websocket){delete websocket.onclose;delete websocket.onmessage;delete websocket.onerror;websocket.close();};
    if(location.protocol==\"https:\")
-      websocket=new WebSocket(\"wss://\"+location.host+\"/tire\"+\"_\"+current_slide+\"_\"+current_state);
+      websocket=new WebSocket(\"wss://\"+location.host+\"/%stire\"+\"_\"+current_slide+\"_\"+current_state);
    else
-      websocket=new WebSocket(\"ws://\"+location.host+\"/tire\"+\"_\"+current_slide+\"_\"+current_state);
+      websocket=new WebSocket(\"ws://\"+location.host+\"/%stire\"+\"_\"+current_slide+\"_\"+current_state);
    websocket.onclose=websocket_close;
    websocket.onmessage = websocket_msg;
    websocket.onerror = websocket_err;
@@ -283,7 +293,7 @@ function websocket_send(data){
     websocket.send(data);
   }
 }
-"
+" !prefix_url !prefix_url
 
 type change =
   Ping
@@ -348,17 +358,17 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   in
   let extraheader =
     if use_codemirror then
-      "<link rel=\"stylesheet\" href=\"/static/codemirror/lib/codemirror.css\">
-       <script src=\"/static/codemirror/lib/codemirror.js\"></script>
-       <script src=\"/static/codemirror/addon/edit/matchbrackets.js\"></script>
-       <script src=\"/static/codemirror/addon/mode/loadmode.js\"></script>
-       <script src=\"/static/codemirror/mode/meta.js\"></script>
+      "<link rel=\"stylesheet\" href=\"static/codemirror/lib/codemirror.css\">
+       <script src=\"static/codemirror/lib/codemirror.js\"></script>
+       <script src=\"static/codemirror/addon/edit/matchbrackets.js\"></script>
+       <script src=\"static/codemirror/addon/mode/loadmode.js\"></script>
+       <script src=\"static/codemirror/mode/meta.js\"></script>
     " else ""
   in
 
   let editor_init =
     if use_codemirror then "
-      CodeMirror.modeURL = \"/static/codemirror/mode/%N/%N.js\";
+      CodeMirror.modeURL = \"static/codemirror/mode/%N/%N.js\";
       var textArea = document.getElementById('edit_'+name);
       var editor = CodeMirror.fromTextArea(textArea,
          { lineNumbers: true, matchBrackets: true,
@@ -787,7 +797,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 
   let page,css=SVG.basic_html
     ~extraheader
-    ~script:websocket
+    ~script:(websocket ())
     ~onload
     ~keyboard:keyboard
     cache structure pages ""
@@ -947,6 +957,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       remain := !remain - 4096;
      done;
     output_string ouc "\r\n";
+    Printf.eprintf "Content-Length: %d sent\r\n" len;
     flush ouc
   in
 

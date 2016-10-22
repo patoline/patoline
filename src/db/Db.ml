@@ -150,10 +150,11 @@ let init_db table_name db_info =
       match !dbptr with None -> () | Some db -> Mysql.disconnect db; dbptr := None; Printf.eprintf "Disconnected from db\n%!")::!interaction_start_hook;
       (
      (* FIXME: new sql ? *)
-(*    let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
+    let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
       `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `VALUE` text,
       `createtime` DATETIME NOT NULL,
-      `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);" table_name in*)
+      `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);" table_name in
+     let _r = Mysql.exec (db ()) sql in
      let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
       `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `time` DATETIME NOT NULL);" log_name in
      let _r = Mysql.exec (db ()) sql in
