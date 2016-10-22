@@ -1445,7 +1445,7 @@ in
                 if son.sessid <> None then (
                   try
                     List.iter (fun (fd,son') ->
-                      if son'.sessid = son.sessid && son' != son then (
+                      if son'.sessid = son.sessid && son.addr = son'.addr && son' != son then (
                         Printf.eprintf "Killing old son: %d %d\n%!"
                           son'.num son'.pid;
                         kill_son fd)) !sonsBySock
@@ -1453,7 +1453,11 @@ in
                     Not_found -> ())
               )
             | ["addr"; addr] ->
-               son.addr <- Unix.ADDR_INET(inet_addr_of_string addr, 0)
+               let port = match son.addr with
+                 | Unix.ADDR_UNIX _ -> 0
+                 | Unix.ADDR_INET(_,p) -> p
+               in
+               son.addr <- Unix.ADDR_INET(inet_addr_of_string addr, port)
             | "change"::sessid::groupid::dest ->
               Printf.eprintf "before push\n";
               push sock sessid groupid dest;
