@@ -156,6 +156,7 @@ type son =
     pid: int;
     num: int; (*internal number, just for printing and debugging*)
     served_sock: Unix.file_descr;
+    addr: Unix.sockaddr;
     mutable sessid: (string * string) option;
     mutable slide:int;
     mutable state:int
@@ -1255,8 +1256,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
             in
             Buffer.add_string data (Printf.sprintf "\"time\"=%g," t);
 	    let son_descr = List.map (fun (fd,son) ->
-	      Printf.sprintf "  { \"num\" = %d, \"pid\" = %d, \"slide\" = %d, \"state\" = %d }"
-		son.num son.pid son.slide son.state) !sonsBySock in
+	      Printf.sprintf "  { \"addr\" = %S, \"num\" = %d, \"pid\" = %d, \"slide\" = %d, \"state\" = %d }"
+		(str_addr son.addr) son.num son.pid son.slide son.state) !sonsBySock in
 	    let son_descr = String.concat ",\n" son_descr in
             Buffer.add_string data (Printf.sprintf "\"sons\"=[\n%s\n]" son_descr);
             Buffer.add_char data '}';
@@ -1469,7 +1470,7 @@ in
 	      with _ -> exit 0);
 	    Unix.close fd1;
 	    sonsBySock := (fd2,{ fd = in_channel_of_descr fd2;
-			   pid = pid; num = num;
+			   pid = pid; num = num; addr;
 			   served_sock = conn_sock;
 			   sessid = None; slide = 0; state = 0})::!sonsBySock))
           with e ->
