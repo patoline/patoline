@@ -1349,7 +1349,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
           let ls = List.fold_left (fun acc s ->
             match Util.split '=' s with
               [key;v] -> (key,v)::acc
-            | _ -> acc) [] ls
+            | _ -> acc) [] (List.rev ls)
           in
           (try sessid := Some (List.assoc "SESSID" ls, List.assoc "GROUPID" ls, Db.friends_from_string (List.assoc "FRIENDS" ls))
            with Not_found -> ());
