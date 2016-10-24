@@ -16,8 +16,17 @@ let _ =
       exit 1
     end
 
+(* Obtaining opam prefix. *)
+let prefix =
+  try
+    let (cin, cout, cerr) as chs =
+      Unix.open_process_full "opam config var prefix" (Unix.environment ())
+    in
+    let l = input_line cin in ignore (Unix.close_process_full chs); l
+  with _ -> "/usr/local/"
+
 (* Command-line arguments management and default configuration. *)
-let prefix         = ref "/usr/local/"
+let prefix         = ref prefix
 let bindir         = ref ""
 let fonts_dir      = ref ""
 let grammars_dir   = ref ""
@@ -134,6 +143,11 @@ let lang           = !lang
 let ban_comic_sans = !ban_comic_sans
 let pdf_type3_only = !pdf_type3_only
 let emacsdir       = Filename.concat prefix "share/emacs/site-lisp/patoline"
+
+let _ =
+  Printf.printf "Using prefix: %s\n" prefix;
+  Printf.printf "Using bindir: %s\n" bindir;
+  Printf.printf "\n%!"
 
 (* Initialization of findlib. *)
 let _ = Findlib.init ~env_ocamlpath:"src"
