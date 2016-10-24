@@ -54,9 +54,11 @@ DISTCLEAN += $(wildcard $(d)/*.depends)
 # Installing
 install: install-db
 .PHONY: install-db
-install-db: $(d)/db.cma $(d)/db.cmxa $(d)/db.cmxs $(d)/db.a $(DB_CMI) $(DB_CMX) $(DB_CMO) $(d)/META
-	install -m 755 -d $(DESTDIR)/$(INSTALL_DB_DIR)
-	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_DB_DIR)
+install-db: $(d)/db.cma $(d)/db.cmxa $(d)/db.cmxs $(d)/db.a $(DB_CMI) \
+	  $(DB_CMX) $(DB_CMO) $(d)/META
+	$(ECHO) "[INS] db"
+	- $(OCAMLFIND) remove db
+	$(Q)$(OCAMLFIND) install db $^
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

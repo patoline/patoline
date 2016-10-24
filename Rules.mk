@@ -103,8 +103,9 @@ ifneq "$(wildcard src/Makefile.config)" ""
 endif
 
 # Compilers and various tools
-OCAML    := ocaml
-OCAMLC   := ocamlfind ocamlc $(if $(OCPP),-pp '$(OCPP)',)
+OCAML := ocaml
+OCAMLFIND := ocamlfind
+OCAMLC := ocamlfind ocamlc $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLOPT_SIMPLE := ocamlfind ocamlopt
 OCAMLOPT_NOPP := $(OCAMLOPT_SIMPLE) -intf-suffix .cmi
 OCAMLOPT_NOINTF := $(OCAMLOPT_NOPP) $(if $(OCPP),-pp '$(OCPP)',)

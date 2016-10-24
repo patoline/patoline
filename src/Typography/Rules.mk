@@ -27,6 +27,8 @@ TYPOGRAPHY_CMX:=$(TYPOGRAPHY_ML:.ml=.cmx)
 TYPOGRAPHY_MLI:=$(wildcard $(d)/*.mli) $(wildcard $(d)/*/*.mli)
 TYPOGRAPHY_CMI:=$(TYPOGRAPHY_MLI:.mli=.cmi)
 TYPOGRAPHY_ALL_CMI:=$(TYPOGRAPHY_ML:.ml=.cmi)
+TYPOGRAPHY_ALL_CMX:=$(TYPOGRAPHY_ML:.ml=.cmx)
+TYPOGRAPHY_ALL_CMO:=$(TYPOGRAPHY_ML:.ml=.cmo)
 
 # We cannot run ocamlc and ocamlopt simultaneously on the same input,
 # since they both overwrite the .cmi file, which can get corrupted.
@@ -113,6 +115,8 @@ install: install-typography
 .PHONY: install-typography
 
 install-typography: $(TYPOGRAPHY_ALL_CMI) $(DEFAULTFORMAT_CMI) \
+  $(TYPOGRAPHY_ALL_CMO) $(DEFAULTFORMAT_CMO) \
+  $(TYPOGRAPHY_ALL_CMX) $(DEFAULTFORMAT_CMX) \
 	$(d)/Typography.cmxa $(d)/Typography.cma $(d)/Typography.cmxs \
 	$(d)/Typography.a $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa \
 	$(d)/DefaultFormat.cmxs $(d)/DefaultFormat.a

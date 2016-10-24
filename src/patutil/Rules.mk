@@ -56,9 +56,10 @@ DISTCLEAN += $(wildcard $(d)/*.depends)
 install: install-util
 .PHONY: install-util
 install-util: $(d)/patutil.cma $(d)/patutil.cmxa $(d)/patutil.cmxs \
-	$(d)/patutil.a $(UTIL_CMI) $(UTIL_CMX) $(UTIL_CMO) $(UTIL_MLI) $(d)/META
-	install -m 755 -d $(DESTDIR)/$(INSTALL_UTIL_DIR)
-	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_UTIL_DIR)
+	  $(d)/patutil.a $(UTIL_CMI) $(UTIL_CMX) $(UTIL_CMO) $(UTIL_MLI) $(d)/META
+	$(ECHO) "[INS] patutil"
+	- $(OCAMLFIND) remove patutil
+	$(Q)$(OCAMLFIND) install patutil $^
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

@@ -113,11 +113,12 @@ DISTCLEAN += $(d)/*.depends $(d)/pa_convert $(ENCODING_ML) \
 install: install-unicodelib
 .PHONY: install-unicodelib
 install-unicodelib: $(d)/unicodelib.cma $(d)/unicodelib.cmxa \
-	$(d)/unicodelib.cmxs $(d)/unicodelib.a $(d)/META \
-	$(UNICODELIB_CMI) $(UNICODELIB_CMX) $(UNICODELIB_CMO) \
-	$(ENCODING_CMO) $(ENCODING_CMX) $(ENCODING_CMI) $(UNICODE_DATABASE)
-	install -m 755 -d $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
-	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_UNICODELIB_DIR)
+	  $(d)/unicodelib.cmxs $(d)/unicodelib.a $(UNICODELIB_CMI) \
+		$(UNICODELIB_CMX) $(UNICODELIB_CMO) $(ENCODING_CMO) $(ENCODING_CMX) \
+		$(ENCODING_CMI) $(UNICODE_DATABASE) $(d)/META
+	$(ECHO) "[INS] unicodelib"
+	- $(OCAMLFIND) remove unicodelib
+	$(Q)$(OCAMLFIND) install unicodelib $^
 
 $(ENCODING_CMO): %.cmo: $(UNICODE_CMO)
 $(ENCODING_CMX): %.cmx: $(UNICODE_CMX)

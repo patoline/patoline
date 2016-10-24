@@ -91,9 +91,11 @@ DISTCLEAN += $(wildcard $(d)/*.depends) \
 install: install-libfonts
 .PHONY: install-libfonts
 
-install-libfonts: $(d)/fonts.cmxa $(d)/fonts.cmxs $(d)/fonts.cma $(d)/fonts.a $(LIBFONTS_CMI) $(LIBFONTS_CMO) $(LIBFONTS_CMX) $(d)/META
-	install -m 755 -d $(DESTDIR)/$(INSTALL_LIBFONTS_DIR)
-	install -p -m 644 $^ $(DESTDIR)/$(INSTALL_LIBFONTS_DIR)
+install-libfonts: $(d)/fonts.cmxa $(d)/fonts.cmxs $(d)/fonts.cma \
+	  $(d)/fonts.a $(LIBFONTS_CMI) $(LIBFONTS_CMO) $(LIBFONTS_CMX) $(d)/META
+	$(ECHO) "[INS] patfonts"
+	- $(OCAMLFIND) remove patfonts
+	$(Q)$(OCAMLFIND) install patfonts $^
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

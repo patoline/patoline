@@ -33,7 +33,7 @@ $(d)/Patonet.cmxs: $(d)/Hammer.cmx $(d)/Patonet.cmx
 	$(ECHO) "[SHR] $@"
 	$(Q)$(OCAMLOPT) $(INCLUDES) $(OFLAGS) -linkpkg -shared -o $@ $^
 
-$(d)/Hammer.ml: $(d)/Hammer.js ./Tools/file_to_string
+$(d)/Hammer.ml: $(d)/Hammer.js $(FILE_TO_STRING)
 	$(ECHO) "[GEN] $@"
 	$(Q)$(FILE_TO_STRING) $< > $@
 

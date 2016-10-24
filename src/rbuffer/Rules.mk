@@ -57,9 +57,12 @@ DISTCLEAN += $(wildcard $(d)/*.depends)
 # Installing
 install: install-rbuffer
 .PHONY: install-rbuffer
-install-rbuffer: $(d)/rbuffer.cma $(d)/rbuffer.cmxa $(d)/rbuffer.cmxs $(d)/rbuffer.a $(RBUFFER_CMI) $(RBUFFER_MLI) $(RBUFFER_CMX) $(RBUFFER_CMO) $(d)/META
-	install -m 755 -d $(DESTDIR)/$(INSTALL_RBUFFER_DIR)
-	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_RBUFFER_DIR)
+install-rbuffer: $(d)/rbuffer.cma $(d)/rbuffer.cmxa $(d)/rbuffer.cmxs \
+	  $(d)/rbuffer.a $(RBUFFER_CMI) $(RBUFFER_MLI) $(RBUFFER_CMX) \
+	  $(RBUFFER_CMO) $(d)/META
+	$(ECHO) "[INS] rbuffer"
+	- $(OCAMLFIND) remove rbuffer
+	$(Q)$(OCAMLFIND) install rbuffer $^
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

@@ -55,8 +55,9 @@ DISTCLEAN += $(wildcard $(d)/*.depends)
 install: install-rawlib
 .PHONY: install-rawlib
 install-rawlib: $(d)/rawlib.cma $(d)/rawlib.cmxa $(d)/rawlib.cmxs $(d)/rawlib.a $(RAWLIB_CMI) $(RAWLIB_CMX) $(RAWLIB_CMO) $(d)/META
-	install -m 755 -d $(DESTDIR)/$(INSTALL_RAWLIB_DIR)
-	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_RAWLIB_DIR)
+	$(ECHO) "[INS] rawlib"
+	- $(OCAMLFIND) remove rawlib
+	$(Q)$(OCAMLFIND) install rawlib $^
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
