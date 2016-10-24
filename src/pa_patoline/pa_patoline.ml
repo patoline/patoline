@@ -2014,7 +2014,9 @@ let extra_expressions = patoline_quotations :: extra_expressions
 (* Adding the new entry points *)
 
 let entry_points =
-  (".txp", Implementation (full_text, blank2)) :: entry_points
+  [ (".txp", Implementation (full_text, blank2))
+  ; (".ml", Implementation ((parser _:header structure), blank2))
+  ; (".mli", Interface     ((parser _:header signature), blank2)) ]
 
 end (* of the functor *)
 
