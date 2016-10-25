@@ -720,13 +720,9 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
 	) lines normals);
 
-    | Link(link) -> (
-      List.iter fn link.link_contents
-    )
+    | Link(link) -> List.iter fn link.link_contents
 
-    | States (s) ->
-      if List.mem !cur_state s.states_states then
-	List.iter fn s.states_contents
+    | States (s) -> List.iter fn s.states_contents
 
     | Image i ->
       Gl.enable `texture_2d;
@@ -1411,6 +1407,11 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	  try
 	    match cmd.[0] with
 	      'r' -> to_revert := true; to_redraw := true;
+            | 'g' -> (
+              match split ' ' cmd with
+		[_;l;s] ->
+		  goto (int_of_string l) (int_of_string s)
+	      | _ -> raise Exit)
 	    | 'e' -> (
 	      match split ' ' cmd with
 		[_;l;c] ->

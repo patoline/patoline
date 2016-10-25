@@ -178,16 +178,17 @@ let ascii =
   [Scoped(verbEnv, [tT str] @ bold [tT str])]
 
 let mk_length lines nb = match nb with
-  | None -> lines
+  | None -> [lines]
   | Some nb ->
-    let nb = if nb < 0 then List.length lines + nb else nb in
-    let rec fn lines nb =
+    let nb0 = if nb <= 0 then List.length lines + nb else nb in
+    let rec fn (acc:string list) (accs: string list list) lines nb =
       match nb,lines with
-      | 0, _ -> []
-      | n, [] -> ""::fn [] (n-1)
-      | n, l::lines -> l::fn lines (n-1)
+      | 0, [] -> List.rev (List.rev acc::accs)
+      | 0, lines -> fn [] (List.rev acc::accs) lines nb0
+      | n, [] -> fn (""::acc) accs [] (n-1)
+      | n, l::lines -> fn (l::acc) accs lines (n-1)
     in
-    fn lines nb
+    fn [] [] lines nb0
 
 let interEnv x =
     { (envFamily x.fontMonoFamily x)
@@ -201,9 +202,6 @@ type eval_fun = string option -> (result -> unit) -> string -> string
 let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
       ?nb_lines ?err_lines ?(init_text="") ?(lang=lang_Default)
       ?(extra:eval_fun option) ?resultData ?data ?filename ?(influence=[]) name =
-
-    let name' = name^"_target" in
-    let name'' = name^"_target2" in
 
     let data =
       match data with
@@ -249,7 +247,18 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
       s, Util.split '\n' s'
     in
 
-    dynamic name'
+    let s, lines = update () in
+    let pieces = mk_length lines nb_lines in
+    let mk_states pieces f =
+      match pieces with
+      | [] | [_] -> f 0 []
+      | _ -> altStates (List.mapi (fun i _ -> [i], f i [i] ) pieces)
+    in
+
+    let name' = List.mapi (fun i _ -> name^"_target_"^string_of_int i) pieces in
+    let name'' = List.mapi (fun i _ -> name^"_target2_"^string_of_int i) pieces in
+
+    mk_states pieces (fun index states -> dynamic (List.nth name' index)
       (function
       | Edit(n, t) when name = n ->
 	data.write t;
@@ -260,20 +269,23 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
         let s, lines = update () in
         (button ~btype:(Editable(s, init_text))
            name
-	   (name'::name''::influence)
+	   (name' @ name'' @ influence)
            [bB(fun env ->
 	     let env = interEnv env in
 	     List.map (fun x-> Drawing (snd x))
 	       (IntMap.bindings
 		  (let d,_,_ = OutputDrawing.minipage' env
-		     (let i = ref 0 in
+		     (let i = ref (match nb_lines with None -> 0 | Some n -> n * index)  in
 		      let next () =
 			incr i;
  			let line = string_of_int !i in
 			let miss = 3 - String.length line in
 			[glue_space miss;tT line;glue_space 1]
 		      in
-		      let codeLines = mk_length lines nb_lines in
+		      let codeLines = try List.nth (mk_length lines nb_lines) index with _ ->
+                        let rec fn acc = function 0 -> acc | n -> fn (""::acc) (n-1) in
+                        fn [] (match nb_lines with None -> 1 | Some n -> n)
+                      in
 		      let acc = List.fold_left (fun acc line ->
 			let para=Paragraph
 			  {par_contents=next () @ line;
@@ -288,7 +300,7 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
 		      let resultLines = match extra with None -> []
 			| Some f ->
 			  let str = dataO.read () in
-			  mk_length (Util.split '\n' str) err_lines
+			  List.nth (mk_length (Util.split '\n' str) err_lines) 0
 		      in
        		      (List.fold_left (fun acc line ->
 			let para=Paragraph
@@ -302,7 +314,7 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
 			   par_parameters=ragged_left;
 			   par_badness=badness;
 			   par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
-			in up (newChildAfter acc para)) (top acc) (lang_Default resultLines))) in d)))]))
+			in up (newChildAfter acc para)) (top acc) (lang_Default resultLines))) in d)))])))
 
 let ocaml_dir () =
   let sessid = match !Db.sessid with
