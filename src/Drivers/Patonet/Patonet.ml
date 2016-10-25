@@ -1049,8 +1049,16 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
          sessid := Some(login,group,friends)
     in
 
+    let reject_unlogged () =
+      if !no_guest then begin
+        match !sessid with
+        | Some (s,g,_) when g = "guest" -> raise Exit
+        | None -> raise Exit
+        | _ -> ()
+      end
+    in
+
     let check_guest () =
-      if !no_guest then raise Exit;
       match !sessid with
       | Some (s,g,_) when g != "guest" ->
          Printf.eprintf "Cancel sessid: %s from %s\n%!" s g;
@@ -1210,7 +1218,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
         Printf.eprintf "serve %d: %S %S\n%!" num get x;
         if x.[0]='\r' then (
           if Str.string_match svg get 0 then (
-            let _ = check_guest () in
+            let _ = reject_unlogged () in
             Printf.eprintf "serve %d: get %S\n%!" num get;
             let i=int_of_string (Str.matched_group 1 get) in
             let j=int_of_string (Str.matched_group 2 get) in
@@ -1242,6 +1250,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
             )
 
           ) else if Str.string_match slave get 0 then (
+            let _ = reject_unlogged () in
             let _ = check_guest () in
             Printf.eprintf "serve %d: slave (%s)\n%!" num get;
             http_send ~sessid:(read_sessid_fs ()) 200 "text/html" [page]  ouc;
@@ -1275,6 +1284,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
             process_req master "" [] reste
 
           ) else if Str.string_match tire get 0 || get="/tire" then (
+            let _ = reject_unlogged () in
             let slide, state =if get = "/tire" then -1, -1 else
                 read_slide_state get
             in
@@ -1308,12 +1318,13 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
             | e-> Printf.eprintf "erreur %d websocket \"%s\"\n%!" num (Printexc.to_string e);
 
           ) else if Str.string_match css_reg get 0 then (
-
+            let _ = reject_unlogged () in
             Printf.eprintf "serve %d: css\n%!" num;
             serve_css ouc;
             process_req master "" [] reste
 
           ) else if Str.string_match otf get 0 then (
+            let _ = reject_unlogged () in
             let otf = Str.matched_group 1 get in
 
             Printf.eprintf "serve %d: otf\n%!" num;
@@ -1321,12 +1332,15 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
             process_req master "" [] reste
 
           ) else if !static_folder <> "" && Str.string_match static_reg get 0 then (
+            let _ = reject_unlogged () in
+
             let filename = Str.matched_group 1 get in
             Printf.eprintf "serve static: %S\n%!" filename;
 
             serve_static_file !static_folder filename ouc;
             process_req master "" [] reste
           ) else (
+            let _ = reject_unlogged () in
             let name = String.sub get 1 (String.length get-1) in
 
             (try
