@@ -177,7 +177,23 @@ let ascii =
   done;
   [Scoped(verbEnv, [tT str] @ bold [tT str])]
 
-let mk_length lines nb = match nb with
+let strip_empty lines =
+  let is_empty s =
+    try
+      for i = 0 to String.length s - 1 do
+        if not (List.mem s.[i] [' ';'\t';'\n';'\r']) then raise Exit
+      done;
+      true
+    with Exit -> false
+  in
+  let rec fn = function
+    | s::l when is_empty s -> fn l
+    | l -> l
+  in
+  List.rev (fn (List.rev (fn lines)))
+
+let mk_length lines nb =
+  match nb with
   | None -> [lines]
   | Some nb ->
     let nb0 = if nb <= 0 then List.length lines + nb else nb in
@@ -188,7 +204,7 @@ let mk_length lines nb = match nb with
       | n, [] -> fn (""::acc) accs [] (n-1)
       | n, l::lines -> fn (l::acc) accs lines (n-1)
     in
-    fn [] [] lines nb0
+    fn [] [] (strip_empty lines) nb0
 
 let interEnv x =
     { (envFamily x.fontMonoFamily x)
