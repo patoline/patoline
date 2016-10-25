@@ -209,12 +209,15 @@ let set_prefix_url str =
     else
       prefix_url := str
 
+let no_guest = ref false
+
 let driver_options =
   SVG.driver_options @
   [("--master"       , Arg.Set_string master_page   ,"Set the master page");
    ("--port"         , Arg.Set_int port_num         ,"Set the port number to listen to");
    ("--static-folder", Arg.Set_string static_folder ,"Set the folder containing static css, html, etc.");
    ("--url-prefix"   , Arg.String set_prefix_url    ,"Set a prefix added to a few url. Usefull when redirecting using the prefix of the url.");
+   ("--no-guest"     , Arg.Set no_guest             ,"Only logged user can access the presentation.");
   ]
 
 let websocket () =
@@ -1046,7 +1049,9 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
          sessid := Some(login,group,friends)
     in
 
-    let check_guest () = match !sessid with
+    let check_guest () =
+      if !no_guest then raise Exit;
+      match !sessid with
       | Some (s,g,_) when g != "guest" ->
          Printf.eprintf "Cancel sessid: %s from %s\n%!" s g;
          let s = make_sessid () in
@@ -1367,12 +1372,12 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
   try
     process_req false "" [] []
   with
-    | e->
+    | e ->
       (match !sessid with
         None ->
           Printf.fprintf fouc "quit ? %d\n%!" (Unix.getpid ());
       | Some(sessid,_,_) ->
-        Printf.fprintf fouc "quit %s %d\n%!" sessid (Unix.getpid ()));
+         Printf.fprintf fouc "quit %s %d\n%!" sessid (Unix.getpid ()));
       Printf.eprintf "erreur %d : \"%s\"\n%!" num (Printexc.to_string e);
       exit 0;
 in
