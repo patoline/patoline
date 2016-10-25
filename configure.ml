@@ -1,48 +1,39 @@
+(* Color stuff for warning and errors. *)
+let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m"
+let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m"
+
 (* Initial checks *)
 let _ =
   (* Check OCaml version. *)
   let version = Scanf.sscanf Sys.ocaml_version "%u.%u" (fun i j -> (i,j)) in
   if version < (4, 1) then
     begin
-      Printf.eprintf "You need at least OCaml 4.01 to install Patoline.\n%!";
-      Printf.eprintf "Current version: %s\n%!" Sys.ocaml_version;
+      Printf.printf (red "You need at least OCaml 4.01 for Patoline.\n%!");
+      Printf.printf (red "Current version: %s\n%!") Sys.ocaml_version;
       exit 1
     end;
 
   (* Check that the system is Unix. *)
   if not Sys.unix then
     begin
-      Printf.eprintf "You need a Unix system to install Patoline.\n%!";
+      Printf.printf (red "You need a Unix system to install Patoline.\n%!");
       exit 1
     end
 
-(* Obtaining opam prefix. *)
-let prefix =
+(* Obtain the value of an opam variable (if installed) or use default. *)
+let get_config name default =
   try
-    let (cin, cout, cerr) as chs =
-      Unix.open_process_full "opam config var prefix" (Unix.environment ())
-    in
-    let l = input_line cin in ignore (Unix.close_process_full chs); l
-  with _ -> "/usr/local/"
+    let open Unix in
+    let env = environment () in
+    let cmd = Printf.sprintf "opam config var %s" name in
+    let (ch,_,_) as chs = open_process_full cmd env in
+    let l = input_line ch in
+    match close_process_full chs with
+    | WEXITED 0 -> l
+    | _         -> default
+  with _ -> default
 
-(* Command-line arguments management and default configuration. *)
-let prefix         = ref prefix
-let bindir         = ref ""
-let fonts_dir      = ref ""
-let grammars_dir   = ref ""
-let hyphen_dir     = ref ""
-
-let ocaml_lib_dir  = ref (Findlib.default_location ()) (* what to do if prefix is given ? *)
-let ocaml_dlls_dir = ref (Filename.concat !ocaml_lib_dir "stublibs")
-let driver_dir     = ref (Filename.concat !ocaml_lib_dir "Typography")
-
-let fonts_dirs     = ref []
-let grammars_dirs  = ref []
-let hyphen_dirs    = ref []
-let lang           = ref "EN"
-let ban_comic_sans = ref false
-let pdf_type3_only = ref false
-
+(* List of supported languages. *)
 let languages =
   let f = open_in "src/Typography/TypoLanguage.ml" in
   let buf = Bytes.create (in_channel_length f) in
@@ -55,102 +46,110 @@ let languages =
     else make_str (i+1) acc
   in make_str 0 []
 
+(* Default configurations. *)
+let default_prefix   = get_config "prefix"   "/usr/local"
+let default_bindir   = get_config "bin"      "/usr/local/bin"
+let default_libdir   = get_config "lib"      "/usr/local/lib/ocaml"
+let default_stublibs = get_config "stublibs" "/usr/local/lib/ocaml/stublibs"
+let default_share    = get_config "share"    "/usr/local/share"
+
+let default_lang           = "EN"
+let default_ban_comic_sans = false
+let default_type3_only = false
+
+(* Command-line arguments parsing. *)
+let prefix     = ref ""
+let bindir     = ref ""
+let libdir     = ref ""
+let stublibs   = ref ""
+let share      = ref ""
+let lang       = ref "EN"
+let type3_only = ref false
+
 let set_language l =
-  let l = String.uppercase l in
   if List.mem l languages then lang := l else
-  Printf.eprintf "Unknown language %S... using default.\n" l
+  Printf.printf (yel "Unknown language %S... using default.\n%!") l
 
 let spec =
   let open Printf in
   [ ( "--prefix"
     , Arg.Set_string prefix
-    , sprintf " Set the prefix (default is %S)" !prefix)
+    , sprintf "dir Set the prefix (default is %s)." default_prefix)
 
   ; ( "--bindir"
     , Arg.Set_string bindir
-    , sprintf " Set the bindir (default is %S)" !bindir)
+    , sprintf "dir Set the bindir (default is %s)." default_bindir)
 
-  ; ( "--ocaml-libs"
-    , Arg.Set_string ocaml_lib_dir
-    , sprintf " Set the library directory (default is %S)" !ocaml_lib_dir)
+  ; ( "--libdir"
+    , Arg.Set_string libdir
+    , sprintf "dir Set the library directory (default is %s)." default_libdir)
 
-  ; ( "--ocaml-dlls"
-    , Arg.Set_string ocaml_dlls_dir
-    , sprintf " Set the stubs directory (default is %S)" !ocaml_dlls_dir)
+  ; ( "--stublibs"
+    , Arg.Set_string stublibs
+    , sprintf "dir Set the stubs directory (default is %s)." default_stublibs)
 
-  ; ( "--fonts-dir"
-    , Arg.Set_string fonts_dir
-    , " Set the main font directory")
-
-  ; ( "--grammars-dir"
-    , Arg.Set_string grammars_dir
-    , " Set then main grammar directory")
-
-  ; ( "--driver-dir"
-    , Arg.Set_string driver_dir
-    , " Set the driver directory")
-
-  ; ( "--hyphen-dir"
-    , Arg.Set_string hyphen_dir
-    , " Set then main hypenation dictionaries directory")
-
-  ; ( "--add-fonts-dir"
-    , Arg.String (fun d -> fonts_dirs := d :: !fonts_dirs)
-    , " Add a font directory")
-
-  ; ( "--add-grammars-dir"
-    , Arg.String (fun d -> grammars_dirs := d :: !grammars_dirs)
-    , " Add a grammar directory")
-
-  ; ( "--add-hyphen-dir"
-    , Arg.String (fun d -> hyphen_dirs := d :: !hyphen_dirs)
-    , " Add an hyphenation dictionary directory")
-
-  ; ( "--ban-comic-sans"
-    , Arg.Set ban_comic_sans
-    , " Disallows ComicSans")
+  ; ( "--share"
+    , Arg.Set_string share
+    , sprintf "dir Set the share directory (default is %s)." default_share)
 
   (* This option improves compatibility, but may worsen rasterization. *)
-  ; ( "--pdf-type3-only"
-    , Arg.Set pdf_type3_only
-    , " Convert all fonts to vector graphics in PDFs")
+  ; ( "--type3-only"
+    , Arg.Set type3_only
+    , " Convert all fonts to vector graphics in PDFs.")
 
   ; ( "--lang"
     , Arg.String set_language
-    , Printf.sprintf " Set the language for error messages (available: %s)"
-        (String.concat ", " (List.rev languages))) ]
+    , Printf.sprintf "s Set the language for error messages (available: %s)."
+        (String.concat ", " (List.rev languages)))
+  ]
 
-(* Actual parsing of arguments and final variable definitions. *)
 let _ =
   let usage = Printf.sprintf "Usage: %s [OPTIONS]\nArguments:" Sys.argv.(0) in
   Arg.parse (Arg.align spec) ignore usage
 
-let set_default ptr s =
-  if !ptr = "" then  Filename.concat !prefix s else !ptr
-let prefix         = !prefix
-let bindir         = set_default bindir "bin/"
-let fonts_dir      = set_default fonts_dir "share/patoline/fonts"
-let grammars_dir   = set_default grammars_dir "lib/patoline/grammars"
-let hyphen_dir     = set_default hyphen_dir "share/patoline/hyphen"
+(* Fixing the value of variables. *)
+let prefix   = if !prefix = "" then default_prefix else !prefix
 
-let ocaml_lib_dir  = !ocaml_lib_dir
-let ocaml_dlls_dir = !ocaml_dlls_dir
-let fonts_dirs     = !fonts_dirs
-let grammars_dirs  = !grammars_dirs
-let hyphen_dirs    = !hyphen_dirs
-let driver_dir     = !driver_dir
-let lang           = !lang
-let ban_comic_sans = !ban_comic_sans
-let pdf_type3_only = !pdf_type3_only
-let emacsdir       = Filename.concat prefix "share/emacs/site-lisp/patoline"
+let set_default value default default_suffix =
+  if value <> "" then value else
+    if prefix = default_prefix then default
+    else Filename.concat prefix default_suffix
+
+let bindir     = set_default !bindir   default_bindir   "bin"
+let libdir     = set_default !libdir   default_libdir   "lib/ocaml"
+let stublibs   = set_default !stublibs default_stublibs "lib/ocaml/stublibs"
+let share      = set_default !share    default_share    "share"
+let lang       = !lang
+let type3_only = !type3_only
 
 let _ =
-  Printf.printf "Using prefix: %s\n" prefix;
-  Printf.printf "Using bindir: %s\n" bindir;
+  Printf.printf "Using prefix   %s\n" prefix;
+  Printf.printf "Using bindir   %s\n" bindir;
+  Printf.printf "Using libdir   %s\n" libdir;
+  Printf.printf "Using stublibs %s\n" stublibs;
+  Printf.printf "Using share    %s\n" share;
   Printf.printf "\n%!"
 
-(* Initialization of findlib. *)
-let _ = Findlib.init ~env_ocamlpath:"src"
+(* Initialisation of findlib, and configuration verification. *)
+let _ =
+  Findlib.init ~env_ocamlpath:"src" ();
+  let findlib_dir = Findlib.default_location () in
+  if libdir <> findlib_dir then
+    begin
+      let open Printf in
+      printf (yel "The findlib default location is %s\n%!") findlib_dir;
+      printf (yel "but the selected libdir is %s\n\n%!") libdir
+    end
+
+
+
+
+(* More variables *)
+let fonts_dir      = Filename.concat share  "patoline/fonts"
+let grammars_dir   = Filename.concat prefix "lib/patoline/grammars"
+let hyphen_dir     = Filename.concat share  "patoline/hyphen"
+let driver_dir     = Filename.concat libdir "Typography"
+let emacsdir       = Filename.concat share  "emacs/site-lisp/patoline"
 
 (* Management of local packages. *)
 type local_packages =
@@ -541,7 +540,7 @@ let rec can_build_driver d =
   if List.exists (fun x->x.name==d.name) patoline_drivers && missing = []
   then true
   else (
-    Printf.eprintf "Warning: driver %s not build because %s are missing\n"
+    Printf.printf "Warning: driver %s not build because %s are missing\n"
       d.name
       (String.concat ", " (List.filter (fun s -> String.length s > 0) (List.map (function
       | Package pack  ->
@@ -575,27 +574,26 @@ let _=
   let has_fontconfig = ocamlfind_has "fontconfig" in
 
   if not has_mysql then
-    Printf.eprintf "Warning: package mysql missing, \
+    Printf.printf "Warning: package mysql missing, \
                     Patonet will not support Mysql storage\n";
 
   if not has_sqlite3 then
-    Printf.eprintf "Warning: package sqlite3 missing, \
+    Printf.printf "Warning: package sqlite3 missing, \
                     Patonet and Bibi will not support sqlite storage\n";
 
   if not has_fontconfig then
-    Printf.eprintf "Warning: fontconfig is missing, \
+    Printf.printf "Warning: fontconfig is missing, \
                     patoline will not use it to search for fonts\n";
 
   (* Generation of src/Makefile.config *)
   let make = open_out "src/Makefile.config" in
 
-  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s%s%s\n"
+  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s%s\n"
     (if Sys.word_size = 32  then "-DINT32 " else "")
     (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
     (if has_mysql then "-DMYSQL " else "")
     (if has_sqlite3 then "-DSQLITE3 " else "")
-    (if ban_comic_sans then "-DBAN_COMIC_SANS " else "")
-    (if pdf_type3_only then "-DPDF_TYPE3_ONLY " else "")
+    (if type3_only then "-DPDF_TYPE3_ONLY " else "")
     (if lang <> "EN" then ("-DLANG_" ^ (lang)) else "");
 
   Printf.fprintf make "CAMLZIP :=%s\n"
@@ -616,19 +614,19 @@ let _=
   Printf.fprintf make "INSTALL_FONT_DIR :=%s\n" fonts_dir;
   Printf.fprintf make "INSTALL_GRAMMARS_DIR :=%s\n" grammars_dir;
   Printf.fprintf make "INSTALL_HYPHEN_DIR :=%s\n" hyphen_dir;
-  Printf.fprintf make "INSTALL_TYPOGRAPHY_DIR :=%s/Typography\n" ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_TYPOGRAPHY_DIR :=%s/Typography\n" libdir;
   Printf.fprintf make "INSTALL_DRIVERS_DIR :=%s\n" driver_dir;
-  Printf.fprintf make "INSTALL_DLLS_DIR :=%s\n" ocaml_dlls_dir;
+  Printf.fprintf make "INSTALL_DLLS_DIR :=%s\n" stublibs;
   Printf.fprintf make "INSTALL_EMACS_DIR :=%s\n" emacsdir;
-  Printf.fprintf make "INSTALL_RBUFFER_DIR :=%s/rbuffer\n" ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_UTIL_DIR :=%s/patutil\n" ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_RAWLIB_DIR :=%s/rawlib\n" ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_DB_DIR :=%s/db\n" ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_UNICODELIB_DIR :=%s/unicodelib\n" ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_LIBFONTS_DIR :=%s/patfonts\n" ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_BIBI_DIR :=%s/bibi\n" ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_PATOPLOT_DIR :=%s/patoplot\n" ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_CESURE_DIR :=%s/cesure\n" ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_RBUFFER_DIR :=%s/rbuffer\n" libdir;
+  Printf.fprintf make "INSTALL_UTIL_DIR :=%s/patutil\n" libdir;
+  Printf.fprintf make "INSTALL_RAWLIB_DIR :=%s/rawlib\n" libdir;
+  Printf.fprintf make "INSTALL_DB_DIR :=%s/db\n" libdir;
+  Printf.fprintf make "INSTALL_UNICODELIB_DIR :=%s/unicodelib\n" libdir;
+  Printf.fprintf make "INSTALL_LIBFONTS_DIR :=%s/patfonts\n" libdir;
+  Printf.fprintf make "INSTALL_BIBI_DIR :=%s/bibi\n" libdir;
+  Printf.fprintf make "INSTALL_PATOPLOT_DIR :=%s/patoplot\n" libdir;
+  Printf.fprintf make "INSTALL_CESURE_DIR :=%s/cesure\n" libdir;
 
   Printf.fprintf make "INSTALL_BIN_DIR :=%s\n" bindir;
 
@@ -769,9 +767,9 @@ let _=
   fprintf oc "let fonts_dir          = %S\n" fonts_dir;
   fprintf oc "let grammars_dir       = %S\n" grammars_dir;
   fprintf oc "let hyphen_dir         = %S\n" hyphen_dir;
-  fprintf oc "let extra_fonts_dir    = [%a]\n" plist fonts_dirs;
-  fprintf oc "let extra_grammars_dir = [%a]\n" plist grammars_dirs;
-  fprintf oc "let extra_hyphen_dir   = [%a]\n" plist hyphen_dirs;
+  fprintf oc "let extra_fonts_dir    = []\n";
+  fprintf oc "let extra_grammars_dir = []\n";
+  fprintf oc "let extra_hyphen_dir   = []\n";
   let drivers = List.map (fun d -> d.name) ok_drivers in
   fprintf oc "let drivers            =\n  [%a]\n" plist drivers;
   fprintf oc "let formats            =\n  [%a]\n" plist formats;
