@@ -29,6 +29,7 @@ $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.ml $(d)/DefaultGrammar.cmx \
                          $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
                          $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa
 	$(ECHO) "[OPT] $@"
+	rm $(GRAMMAR_DIR)/DefaultGrammar_.cmi #fix for deps
 	$(Q)$(OCAMLOPT_NOPP) $(PACK_TYPOGRAPHY) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) \
 		-I $(<D) -I $(CONFIG_DIR) -linkpkg $(FONTCONFIG_CMXA) Pdf.cmxa \
 		-o $@ $(@:.tmx=.cmx) $<
@@ -40,9 +41,9 @@ $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) \
 		--extra-hyph-dir $(HYPHENATION_DIR) --driver Pdf
 
 # Cleaning
-CLEAN += $(d)/DefaultGrammar.tgx $(d)/DefaultGrammar_.ml $(d)/DefaultGrammar.ml \
-	 $(d)/DefaultGrammar.pdf $(d)/DefaultGrammar.tdx  $(d)/DefaultGrammar.tmx \
-	 $(d)/DefaultGrammar.cmi $(d)/DefaultGrammar.cmx $(d)/DefaultGrammar.o \
+CLEAN += $(d)/DefaultGrammar.tgx  $(d)/DefaultGrammar_.ml  $(d)/DefaultGrammar.ml \
+	 $(d)/DefaultGrammar.pdf  $(d)/DefaultGrammar.tdx  $(d)/DefaultGrammar.tmx \
+	 $(d)/DefaultGrammar.cmi  $(d)/DefaultGrammar.cmx  $(d)/DefaultGrammar.o \
 	 $(d)/DefaultGrammar_.cmi $(d)/DefaultGrammar_.cmx $(d)/DefaultGrammar_.o \
 	 $(d)/DefaultGrammar_.dep $(d)/DefaultGrammar.tdep $(d)/DefaultGrammar.tgy \
 	 $(EDITORS_DIR)/emacs/quail.el

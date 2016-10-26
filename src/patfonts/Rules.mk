@@ -45,7 +45,7 @@ LIBFONTS_CMI:=$(LIBFONTS_MLI:.mli=.cmi) $(d)/FBezier.cmi $(d)/FTypes.cmi $(d)/Is
 $(LIBFONTS_CMX): %.cmx: %.cmo
 
 $(LIBFONTS_MLI:.mli=.cmo): %.cmo: %.cmi
-$(LIBFONTS_MLI:.mli=.cmx): %.cmx: %.cmi
+$(LIBFONTS_MLI:.mli=.cmx): %.cmx: %.cmo
 
 $(filter-out $(LIBFONTS_MLI:.mli=.cmi), $(LIBFONTS_CMI)): %.cmi: %.cmo;
 

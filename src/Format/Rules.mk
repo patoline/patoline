@@ -27,7 +27,7 @@ $(PCMX_$(d)): $(TYPOGRAPHY_DIR)/Typography.cmxa
 # Other formats
 OTHER_FORMATS := $(d)/FormatArticle.ml $(d)/FormatLivre.ml $(d)/FormatThese.ml \
   $(d)/FormatLetter.ml $(d)/FormatSlides.ml $(d)/LMFormat.ml $(d)/FormatWeb.ml \
-  $(d)/FormatMemoire.ml $(d)/Interactive.ml 
+  $(d)/FormatMemoire.ml $(d)/Interactive.ml
 
 $(OTHER_FORMATS:.ml=.cmxa): %.cmxa: %.cmx
 	$(ECHO) "[LNK] $@"
@@ -42,7 +42,7 @@ $(CMO_$(d)): %.cmo: %.ml
 	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -c $<
 
-$(CMX_$(d)): %.cmx: %.ml
+$(CMX_$(d)): %.cmx: %.ml %.cmo
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -c $<
 

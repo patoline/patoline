@@ -19,6 +19,7 @@ LIBFONTS_DIR := $(d)/patfonts
 CESURE_DIR := $(d)/cesure
 UNICODE_DIR := $(d)/unicodelib
 CONFIG_DIR := $(d)/config
+GRAMMAR_DIR := $(d)/grammar
 
 # Visit subdirectories
 MODULES := unicodelib rbuffer patutil patfonts rawlib db Typography \

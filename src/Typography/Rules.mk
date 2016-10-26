@@ -36,7 +36,7 @@ TYPOGRAPHY_ALL_CMO:=$(TYPOGRAPHY_ML:.ml=.cmo)
 $(TYPOGRAPHY_CMX): %.cmx: %.cmo
 
 $(TYPOGRAPHY_CMI:.cmi=.cmo): %.cmo: %.cmi
-$(TYPOGRAPHY_CMI:.cmi=.cmx): %.cmx: %.cmi
+$(TYPOGRAPHY_CMI:.cmi=.cmx): %.cmx: %.cmo
 
 $(d)/Typography.cmxa: $(d)/patoconfig.cmxa $(d)/patoconfig.a
 $(d)/DefaultFormat.cmxa: $(d)/patoconfig.cmxa $(d)/patoconfig.a
@@ -105,7 +105,7 @@ all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cma $(d)/Defaul
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.a $(d)/*.cmxs $(d)/*.cmo $(d)/*.cmx \
 	$(d)/*.cmi $(d)/*.o $(d)/DefaultFormat/*.cmo $(d)/DefaultFormat/*.cmx \
- 	$(d)/DefaultFormat/*.cmi $(d)/DefaultFormat/*.o $(d)/_tags
+	$(d)/DefaultFormat/*.cmi $(d)/DefaultFormat/*.o $(d)/_tags
 
 DISTCLEAN += $(d)/*.depends $(d)/DefaultFormat/*.depends \
 	$(d)/ConfigFindFont.ml $(d)/ConfigFindFont/*.depends

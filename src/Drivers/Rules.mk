@@ -28,7 +28,7 @@ $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmo): %.cmo: %.ml
 	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) -o $@ -c $<
 
-$(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.ml
+$(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.ml %.cmo
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) -o $@ -c $<
 
@@ -72,7 +72,7 @@ install-drivers: install-typography \
   $(DRIVERS_CMXA) $(DRIVERS_CMXA:.cmxa=.a) $(DRIVERS_CMXA:.cmxa=.cmi) $(DRIVERS_CMXA:.cmxa=.cmxs)
 	install -d -m 755 $(DESTDIR)/$(INSTALL_DRIVERS_DIR)
 	install -p -m 644 $(DRIVERS_CMXA)  $(DRIVERS_CMXA:.cmxa=.a) $(LIB_DRIVERS_A)  $(DRIVERS_CMXA:.cmxa=.cmi) \
-	  $(DRIVERS_CMXA:.cmxa=.cmxs) $(DESTDIR)/$(INSTALL_DRIVERS_DIR) 
+	  $(DRIVERS_CMXA:.cmxa=.cmxs) $(DESTDIR)/$(INSTALL_DRIVERS_DIR)
 
 # Visit subdirectories
 $(foreach mod,$(DRIVERS),$(eval -include $(d)/$$(mod)/Rules.mk))

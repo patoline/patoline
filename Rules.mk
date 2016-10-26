@@ -107,6 +107,7 @@ OCAML := ocaml
 OCAMLFIND := ocamlfind
 OCAMLC := ocamlfind ocamlc $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLOPT_SIMPLE := ocamlfind ocamlopt
+OCAMLC_SIMPLE := ocamlfind ocamlc
 OCAMLOPT_NOPP := $(OCAMLOPT_SIMPLE) -intf-suffix .cmi
 OCAMLOPT_NOINTF := $(OCAMLOPT_NOPP) $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLOPT := $(OCAMLOPT_NOINTF) -intf-suffix .cmi

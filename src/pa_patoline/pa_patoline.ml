@@ -324,7 +324,7 @@ let parser verbatim_environment =
       let f s tl = <:expr<$string:s$ :: $tl$>> in
       List.fold_right f (List.map remhsp lines) <:expr<[]>>
     in
-    let mode = "verb_" ^ match mode with None -> "default" | Some m -> m in
+    let mode = "verbs_" ^ match mode with None -> "default" | Some m -> m in
     let file =
       match file with
       | None -> <:expr<None>>
