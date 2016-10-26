@@ -1037,16 +1037,21 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     Random.self_init ();
     reset_cache ();
 
-    let set_sessid (login,group,friends) = match !sessid with
+    let set_sessid (login,group,friends) =
+      let friends = Db.friends_from_string friends in
+      match !sessid with
       | Some(s,g,fs) when s = login && g = group && fs = friends->
          Printf.eprintf "Reuse sessid: %s from %s\n%!" s g;
+         fs
       | None ->
          Printf.eprintf "Set sessid: %s from %s\n%!" login group;
-         sessid := Some(login,group,friends)
+         sessid := Some(login,group,friends);
+         friends
       | Some(s,g,_) ->
          Printf.eprintf "Cancel sessid: %s from %s\n%!" s g;
          Printf.eprintf "Set sessid: %s from %s\n%!" login group;
-         sessid := Some(login,group,friends)
+         sessid := Some(login,group,friends);
+         friends
     in
 
     let reject_unlogged () =
@@ -1235,13 +1240,13 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
             let login = Str.matched_group 1 get in
             let md5 = Str.matched_group 2 get in
             let groupid = try Str.matched_group 4 get with Not_found -> "guest" in
-            let friends_str = try Str.matched_group 6 get with Not_found -> "" in
-            let friends = Db.friends_from_string friends_str in
-            let key = login ^ "+" ^ groupid ^ friends_str ^ !secret in
+            let friends = try Str.matched_group 6 get with Not_found -> "" in
+            let key = login ^ "+" ^ groupid ^ friends ^ !secret in
             let md5' = Digest.to_hex(Digest.string key) in
-            Printf.eprintf "serve %d: logged '%s' from '%s' friends '%s' (%s = %s) %s\n%!" num login groupid friends_str md5 md5' key;
+            Printf.eprintf "serve %d: logged '%s' from '%s' friends '%s' (%s = %s) %s\n%!"
+              num login groupid friends md5 md5' key;
             if md5 = md5' then (
-              let _ = set_sessid (login, groupid, friends) in
+              let friends = set_sessid (login, groupid, friends) in
               http_send ~sessid:(login,groupid, friends) 200 "text/html" [page] ouc;
               process_req false "" [] reste
             ) else (
@@ -1370,7 +1375,9 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
               [key;v] -> (key,v)::acc
             | _ -> acc) [] (List.rev ls)
           in
-          (try sessid := Some (List.assoc "SESSID" ls, List.assoc "GROUPID" ls, Db.friends_from_string (List.assoc "FRIENDS" ls))
+          (try ignore(set_sessid (List.assoc "SESSID" ls,
+                                  List.assoc "GROUPID" ls,
+                                  List.assoc "FRIENDS" ls))
            with Not_found -> ());
           process_req master get hdr reste)
         else if a = "X-Real-IP" || a = "X-Forwarded-For" then (
