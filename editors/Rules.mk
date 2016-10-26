@@ -15,12 +15,16 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-$(d)/emacs/SubstKey.cmx: INCLUDES += -I $(UNICODE_DIR)
+$(d)/emacs/SubstKey.cmx: INCLUDES += -I $(UNICODE_DIR) -I $(EDITORS_DIR)/emacs
+$(d)/emacs/SubstKey.cmo: INCLUDES += -I $(UNICODE_DIR) -I $(EDITORS_DIR)/emacs
+$(d)/emacs/SubstKey.cmx: $(d)/emacs/SubstKey.cmo
 $(d)/emacs/SubstKey: $(d)/emacs/SubstKey.cmx $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -package str,unicodelib $< -linkpkg -o $@
 
-$(d)/emacs/UnicodeScripts.cmx: INCLUDES += -I $(UNICODE_DIR)
+$(d)/emacs/UnicodeScripts.cmx: INCLUDES += -I $(UNICODE_DIR) -I $(EDITORS_DIR)/emacs
+$(d)/emacs/UnicodeScripts.cmo: INCLUDES += -I $(UNICODE_DIR) -I $(EDITORS_DIR)/emacs
+$(d)/emacs/UnicodeScripts.cmx: $(d)/emacs/UnicodeScripts.cmo
 $(d)/emacs/UnicodeScripts: $(d)/emacs/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -package bigarray,unicodelib $< -linkpkg -o $@

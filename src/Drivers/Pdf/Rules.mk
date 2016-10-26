@@ -13,14 +13,11 @@ PDF_DRIVERS_DEPS_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(DRIVERS_INCLUDES) $(
 $(d)/%.ml.depends: INCLUDES += $(PDF_DRIVERS_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PDF_DRIVERS_INCLUDES)
 
-# cmi race condition
-$(d)/Pdf.cmx: %.cmx: %.cmo
-
 $(d)/Pdf.cmo: %.cmo: %.ml
 	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 
-$(d)/Pdf.cmx: %.cmx: %.ml
+$(d)/Pdf.cmx: %.cmx: %.ml %.cmo
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 

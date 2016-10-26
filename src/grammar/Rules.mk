@@ -29,7 +29,7 @@ $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.ml $(d)/DefaultGrammar.cmx \
                          $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
                          $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa
 	$(ECHO) "[OPT] $@"
-	rm $(GRAMMAR_DIR)/DefaultGrammar_.cmi #fix for deps
+	$(Q)rm $(GRAMMAR_DIR)/DefaultGrammar_.cmi 2>/dev/null || true #fix for deps
 	$(Q)$(OCAMLOPT_NOPP) $(PACK_TYPOGRAPHY) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) \
 		-I $(<D) -I $(CONFIG_DIR) -linkpkg $(FONTCONFIG_CMXA) Pdf.cmxa \
 		-o $@ $(@:.tmx=.cmx) $<

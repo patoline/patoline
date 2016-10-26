@@ -16,6 +16,10 @@ endif
 
 all: $(d)/cesure $(d)/cesure.cmxa $(d)/cesure.cma
 
+$(d)/cesure.cmo $(d)/hyphen.cmo: $(UNICODE_DIR)/UnicodeLibConfig.cmo
+$(d)/cesure.cmx: $(d)/cesure.cmo $(UNICODE_DIR)/UnicodeLibConfig.cmx
+$(d)/hyphen.cmx: $(d)/hyphen.cmo $(UNICODE_DIR)/UnicodeLibConfig.cmx
+
 $(d)/cesure.cma: $(d)/hyphen.cmo $(UNICODE_DIR)/unicodelib.cma
 	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(CESURE_INCLUDES) -a -o $@ decap.cma $<

@@ -54,8 +54,6 @@ ENCODING_O    := $(ENCODING_ML:.ml=.o)
 UNICODELIB_PATH := $(d)
 export UNICODELIB_PATH
 
-$(ENCODING_CMX): %.cmx: %.cmo
-
 $(PA_CONV): $(d)/pa_convert.ml
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(UNICODELIB_INCLUDES) -pp pa_ocaml \
@@ -69,7 +67,7 @@ $(ENCODING_ML): %.ml: $(PA_CONV)
 ###
 
 ### Parsing and data generation for UnicodeData.txt
-$(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml
+$(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml $(d)/pa_UnicodeData.cmo
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml -package compiler-libs -c $<
 
@@ -120,8 +118,9 @@ install-unicodelib: $(d)/unicodelib.cma $(d)/unicodelib.cmxa \
 	- $(OCAMLFIND) remove unicodelib
 	$(Q)$(OCAMLFIND) install unicodelib $^
 
-$(ENCODING_CMO): %.cmo: $(UNICODE_CMO)
-$(ENCODING_CMX): %.cmx: $(UNICODE_CMX)
+$(ENCODING_CMO): $(UNICODELIB_CMO)
+$(ENCODING_CMX): $(UNICODELIB_CMX) $(ENCODING_CMO)
+$(UNICODELIB_CMX): $(UNICODELIB_CMO)
 
 
 
