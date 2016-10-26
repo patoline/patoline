@@ -211,26 +211,14 @@ let param_Python =
 let lang_Default lines =
   List.map (handle_spaces param_Default (fun s -> [tT s])) lines
 
-let lines_to_contents param lines =
-  List.map (handle_spaces param (handle_word param)) lines
+let line_to_contents param = handle_spaces param (handle_word param)
+let lines_to_contents param lines = List.map (line_to_contents param) lines
+
 
 let lang_OCaml = lines_to_contents param_OCaml
 let lang_SML = lines_to_contents param_SML
 let lang_Python = lines_to_contents param_Python
 
-  (*
-let verb_OCaml = verb_Lang
-let verb_SML = verb_Lang param_SML
-let verb_Python = verb_Lang param_Python
-let verb_default fn lines =
-  lines_to_file lines fn;
-  let build_line = handle_spaces (fun s -> [tT s]) in
-  lines
-
-let verb_Lang param fn lines =
-  lines_to_file lines fn;
-  let build_line = handle_spaces (handle_word param) in
-  lines
-
-
-  *)
+let verb_OCaml = verb_text (line_to_contents param_OCaml)
+let verb_SML = verb_text (line_to_contents param_SML)
+let verb_Python = verb_text (line_to_contents param_Python)
