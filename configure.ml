@@ -1,6 +1,6 @@
 (* Color stuff for warning and errors. *)
-let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m"
-let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m"
+let warn  fmt = Printf.printf ("\027[33m" ^^ fmt ^^ "\027[0m")
+let error fmt = Printf.printf ("\027[31m" ^^ fmt ^^ "\027[0m")
 
 (* Initial checks *)
 let _ =
@@ -8,15 +8,15 @@ let _ =
   let version = Scanf.sscanf Sys.ocaml_version "%u.%u" (fun i j -> (i,j)) in
   if version < (4, 1) then
     begin
-      Printf.printf (red "You need at least OCaml 4.01 for Patoline.\n%!");
-      Printf.printf (red "Current version: %s\n%!") Sys.ocaml_version;
+      error "You need at least OCaml 4.01 for Patoline.\n%!";
+      error "Current version: %s\n%!" Sys.ocaml_version;
       exit 1
     end;
 
   (* Check that the system is Unix. *)
   if not Sys.unix then
     begin
-      Printf.printf (red "You need a Unix system to install Patoline.\n%!");
+      error "You need a Unix system to install Patoline.\n%!";
       exit 1
     end
 
@@ -68,7 +68,7 @@ let type3_only = ref false
 
 let set_language l =
   if List.mem l languages then lang := l else
-  Printf.printf (yel "Unknown language %S... using default.\n%!") l
+  warn "Unknown language %S... using default.\n%!" l
 
 let spec =
   let open Printf in
@@ -136,9 +136,8 @@ let _ =
   let findlib_dir = Findlib.default_location () in
   if libdir <> findlib_dir then
     begin
-      let open Printf in
-      printf (yel "The findlib default location is %s\n%!") findlib_dir;
-      printf (yel "but the selected libdir is %s\n\n%!") libdir
+      warn "The findlib default location is %s\n%!" findlib_dir;
+      warn "but the selected libdir is %s\n\n%!" libdir
     end
 
 
@@ -164,7 +163,7 @@ let local_packages =
   [ { package_name = "patutil"
     ; macro_suffix = "UTIL"
     ; local_deps   = ["rbuffer"; "unicodelib"]
-    ; extern_deps  = ["bytes";"decap"]
+    ; extern_deps  = ["bytes"; "decap"]
     ; subdirs      = []
     ; has_meta     = true }
 
@@ -178,7 +177,7 @@ let local_packages =
   ; { package_name = "unicodelib"
     ; macro_suffix = "UNICODELIB"
     ; local_deps   = []
-    ; extern_deps  = ["bytes"; "decap"; "sqlite3"; "compiler-libs" ]
+    ; extern_deps  = ["bytes"; "decap"; "sqlite3"; "compiler-libs"]
     ; subdirs      = []
     ; has_meta     = true }
 
@@ -193,7 +192,7 @@ let local_packages =
     ; macro_suffix = "FONTS"
     ; local_deps   = ["patutil"; "unicodelib"]
     ; extern_deps  = ["bytes"]
-    ; subdirs      = ["CFF";"Opentype";"unicodeRanges"]
+    ; subdirs      = ["CFF"; "Opentype"; "unicodeRanges"]
     ; has_meta     = true }
 
   ; { package_name = "bibi"
@@ -206,13 +205,14 @@ let local_packages =
   ; { package_name = "db"
     ; macro_suffix = "DB"
     ; local_deps   = ["patutil"]
-    ; extern_deps  = ["mysql";"bytes"]
+    ; extern_deps  = ["mysql"; "bytes"]
     ; subdirs      = []
     ; has_meta     = true }
 
   ; { package_name = "Typography"
     ; macro_suffix = "TYPOGRAPHY"
-    ; local_deps = ["patutil";"patfonts";"unicodelib";"cesure";"rawlib";"db"]
+    ; local_deps   = ["patutil"; "patfonts"; "unicodelib"; "cesure";
+                         "rawlib"; "db"]
     ; extern_deps  = ["zip"; "fontconfig"; "imagelib"; "bytes"]
     ; subdirs      = ["DefaultFormat"]
     ; has_meta     = true }
@@ -227,7 +227,7 @@ let local_packages =
   (* FAKE: no META yet *)
   ; { package_name = "Format"
     ; macro_suffix = "FORMAT"
-    ; local_deps   = ["Typography";"cesure";"rawlib";"db"]
+    ; local_deps   = ["Typography"; "cesure"; "rawlib"; "db"]
     ; extern_deps  = ["bytes"]
     ; subdirs      = []
     ; has_meta     = false }
@@ -268,7 +268,7 @@ let is_local_package name =
 let find_local_package name =
   try List.find (fun p -> name = p.package_name) local_packages
   with Not_found ->
-    Printf.printf "Did not find local package \"%s\"...\n%!" name;
+    error "Did not find local package \"%s\"...\n%!" name;
     raise Not_found
 
 let packages_local names =
@@ -366,7 +366,7 @@ let package_min_version min_version package alias =
     true
   else
     (
-      Printf.printf "%s is too old: version %s requested, but %s has been found\n"
+      error "%s is too old: version %s requested, but %s has been found\n"
         package min_version installed;
       false
     )
@@ -385,7 +385,7 @@ let patoline_uses_packages =
             let fontconfig_min_version = "0~20131103" in
             if Findlib.package_property [] alias "version" = "0.1" then
               begin
-                Printf.printf "Update fontconfig to version %s\n"
+                error "Update fontconfig to version %s\n"
                 fontconfig_min_version; false
               end
             else package_min_version fontconfig_min_version package alias
@@ -419,7 +419,7 @@ let ocamlfind_query =
       let res = List.fold_left f (false, "") names in
       Hashtbl.add checked pack res;
       if fst res then Printf.printf " found (%s)\n" (snd res)
-      else Printf.printf " not found\n";
+      else warn " not found\n";
       res
   in query
 
@@ -509,7 +509,7 @@ let patoline_drivers = all_patoline_drivers
 let find_driver name =
   try List.find (fun p -> name = p.name) patoline_drivers
   with Not_found ->
-    Printf.printf "Did not find driver \"%s\"...\n%!" name;
+    error "Did not find driver \"%s\"...\n%!" name;
     raise Not_found
 
 let includes_driver ?(subdir_only=true) name =
@@ -540,7 +540,7 @@ let rec can_build_driver d =
   if List.exists (fun x->x.name==d.name) patoline_drivers && missing = []
   then true
   else (
-    Printf.printf "Warning: driver %s not build because %s are missing\n"
+    warn "Driver %s not build because %s are missing\n"
       d.name
       (String.concat ", " (List.filter (fun s -> String.length s > 0) (List.map (function
       | Package pack  ->
@@ -574,16 +574,14 @@ let _=
   let has_fontconfig = ocamlfind_has "fontconfig" in
 
   if not has_mysql then
-    Printf.printf "Warning: package mysql missing, \
-                    Patonet will not support Mysql storage\n";
+    warn "Package mysql missing, Patonet will not support Mysql storage\n";
 
   if not has_sqlite3 then
-    Printf.printf "Warning: package sqlite3 missing, \
-                    Patonet and Bibi will not support sqlite storage\n";
+    warn "Package sqlite3 missing, Patonet and Bibi will not support \
+            sqlite storage\n";
 
   if not has_fontconfig then
-    Printf.printf "Warning: fontconfig is missing, \
-                    patoline will not use it to search for fonts\n";
+    warn "Fontconfig is missing, it will not be used to search for fonts\n";
 
   (* Generation of src/Makefile.config *)
   let make = open_out "src/Makefile.config" in
