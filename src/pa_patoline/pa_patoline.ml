@@ -254,7 +254,7 @@ let uchar =
          else c, str', pos'
        else
          give_up "")
-      (List.fold_left Charset.add Charset.empty_charset non_special) false
+      (List.fold_left Charset.add Charset.empty non_special) false
       (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
 
 let special_char =
@@ -266,7 +266,7 @@ let no_spe =
     let (c,_,_) = Input.read buf pos in
     ((), not (List.mem c special_char))
   in
-  Decap.test ~name:"no_special" Charset.full_charset f
+  Decap.test ~name:"no_special" Charset.full f
 
 let parser character =
   | _:no_spe c:uchar -> c
@@ -788,7 +788,7 @@ let tree_to_grammar : ?filter:('a -> bool) -> string -> 'a PMap.tree -> 'a gramm
     in
     let charset =
       let f acc (c,_) = Charset.add acc c in
-      List.fold_left f Charset.empty_charset l
+      List.fold_left f Charset.empty l
     in
     black_box fn charset false name
 
@@ -861,7 +861,7 @@ let math_list _loc l =
 let dollar        = Pa_lexing.single_char '$'
 
 let no_brace =
-  Decap.test ~name:"no_brace" Charset.full_charset (fun buf pos ->
+  Decap.test ~name:"no_brace" Charset.full (fun buf pos ->
     let c,buf,pos = Input.read buf pos in
     if c <> '{' then ((), true) else ((), false))
 
