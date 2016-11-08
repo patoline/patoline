@@ -1,0 +1,10 @@
+\Caml(open ProofTree)
+
+\begin{proofTree}
+\Caml(let _ =
+  ax     <$ Γ ⊢ t : A⇒B $>;
+  ax     <$ Γ ⊢ u : A   $>;
+  binary ~name:<$⇒_e$> <$ Γ ⊢ t u : B $>
+)
+$$ \id(display_proof ()) $$
+\end{proofTree}

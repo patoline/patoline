@@ -385,3 +385,41 @@ let ternarySP c p p' p'' = SubProof([p;p';p''], c, None)
 let ternarySPN n c p p' p'' = SubProof([p;p';p''], c, Some n)
 let n_arySP c l = SubProof(l, c, None)
 let n_arySPN c l n = SubProof(l, c, Some n)
+
+module Env_proofTree =
+  struct
+    let stack = Stack.create ()
+
+
+    let hyp h =
+      Stack.push (Hyp h) stack
+
+    let ax ?name h =
+      Stack.push (Rule([], h, name)) stack
+
+    let unary ?name h =
+      let p = Stack.pop stack in
+      Stack.push (Rule([p], h, name)) stack
+
+    let binary ?name h =
+      let p2 = Stack.pop stack in
+      let p1 = Stack.pop stack in
+      Stack.push (Rule([p1;p2], h, name)) stack
+
+    let ternary ?name h =
+      let p3 = Stack.pop stack in
+      let p2 = Stack.pop stack in
+      let p1 = Stack.pop stack in
+      Stack.push (Rule([p1;p2;p3], h, name)) stack
+
+    let display_proof () =
+      let p = Stack.pop stack in
+      proofTree p
+
+
+    let do_begin_env () = ()
+
+    let do_end_env   () =
+      if not (Stack.is_empty stack) then
+        Printf.eprintf "The proof stack is not empty..."
+  end
