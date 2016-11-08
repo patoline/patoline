@@ -28,6 +28,7 @@ $(d)/bibi.cma: %.cma: %.cmo $(TYPOGRAPHY_DIR)/Typography.cma
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -a $<
 
 $(d)/bibi.cmi: $(d)/bibi.cmo ;
+$(d)/bibi.cmx: $(d)/bibi.cmo
 
 # Installing
 install: install-bibi
