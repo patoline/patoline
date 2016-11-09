@@ -388,6 +388,14 @@ let n_arySPN c l n = SubProof(l, c, Some n)
 
 module Env_proofTree =
   struct
+    module Stack =
+      struct
+        include Stack
+
+        let pop s =
+          try Stack.pop s with Empty -> Hyp []
+      end
+
     let stack = Stack.create ()
 
 
@@ -396,6 +404,9 @@ module Env_proofTree =
 
     let ax ?name h =
       Stack.push (Rule([], h, name)) stack
+
+    let leaf ?name h =
+      Stack.push (SubProof([], h, name)) stack
 
     let unary ?name h =
       let p = Stack.pop stack in
@@ -417,9 +428,14 @@ module Env_proofTree =
       proofTree p
 
 
-    let do_begin_env () = ()
+    let do_begin_env () =
+      Stack.clear stack
+
 
     let do_end_env   () =
       if not (Stack.is_empty stack) then
-        Printf.eprintf "The proof stack is not empty..."
+        begin
+          Printf.eprintf "The proof stack is not empty...";
+          Stack.clear stack
+        end
   end
