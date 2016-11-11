@@ -672,7 +672,7 @@ type grammar_state =
   ; mutable environment      : (string * config list) list }
 
 let new_grammar str =
-  let res = declare_grammar str in set_grammar res (fail ()); res
+  let res = declare_grammar str in set_grammar res (fail ("empty grammar: " ^str)); res
 
 let state =
   { verbose          = false
@@ -1387,7 +1387,7 @@ let parser math_aux prio =
        let indices = merge_indices indices ind in
        let l = l no_ind and r = r (if s.infix_value = Invisible then indices else no_ind) in
        if s.infix_value = SimpleSym "over" then begin
-   if indices <> no_ind then give_up ();
+	 if indices <> no_ind then give_up "indices on fraction";
 	 <:expr< [Maths.fraction $l$ $r$] >>
        end else begin
 	 let inter =
@@ -1760,8 +1760,13 @@ let _ = set_grammar math_toplevel (parser
     | "\\begin" '{' idb:lid '}' ->>
         let config = try List.assoc idb state.environment with Not_found -> [] in
           args:(macro_arguments idb Text config)
-          ps:(change_layout paragraphs blank2)
-      "\\end" '{' STR(idb) '}' ->
+          ps:(change_layout paragraphs blank2) {
+      "\\end" '{' { STR(idb) |
+                    ERROR(Printf.sprintf
+                            "\\begin{%s} mismatch at %s" idb (string_location _loc_idb)) }
+              '}'
+      |  ERROR(Printf.sprintf "\\begin{%s} unclosed at %s" idb (string_location _loc_idb)) }
+      ->
          (fun indent_first ->
            let m1 = freshUid () in
            let m2 = freshUid () in
@@ -2030,7 +2035,11 @@ let write_main_file driver form build_dir dir name =
   let fmt = Format.formatter_of_out_channel oc in
   let _loc = Location.none in
   let m =
+#ifversion >= 4.03
+    let c  = (String.make 1 (Char.uppercase_ascii name.[0])) in
+#else
     let c  = (String.make 1 (Char.uppercase name.[0])) in
+#endif
     let cs = String.sub name 1 (String.length name - 1) in
     c ^ cs
   in
