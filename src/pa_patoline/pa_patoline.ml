@@ -227,7 +227,7 @@ let freshUid () =
 let uchar =
   let char_range min max = parser c:ANY ->
     let cc = Char.code c in
-    if cc < min || cc > max then give_up "Char not in range..."; c
+    if cc < min || cc > max then give_up (); c
   in
   let tl  = char_range 128 191 in
   let hd1 = char_range 0   127 in
@@ -250,10 +250,10 @@ let uchar =
        let c,str',pos' = Input.read str pos in
        if List.mem c non_special then
          let c',_,_ = Input.read str' pos' in
-         if c' = c then give_up ""
+         if c' = c then give_up ()
          else c, str', pos'
        else
-         give_up "")
+         give_up ())
       (List.fold_left Charset.add Charset.empty non_special) false
       (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
 
@@ -300,7 +300,7 @@ let parser verbatim_environment =
   _:''[ \t]*'' "\n"
   lines:{l:verbatim_line "\n"}+
   ''^###'' ->
-    if lines = [] then give_up "Empty verbatim environment.";
+    if lines = [] then give_up ();
 
     (* Uniformly remove head spaces. *)
     let nb_hspaces l =
@@ -672,7 +672,7 @@ type grammar_state =
   ; mutable environment      : (string * config list) list }
 
 let new_grammar str =
-  let res = declare_grammar str in set_grammar res (fail ("empty grammar: " ^str)); res
+  let res = declare_grammar str in set_grammar res (fail ()); res
 
 let state =
   { verbose          = false
@@ -692,7 +692,7 @@ let state =
   ; environment      = [] }
 
 let parser mathlid = id:''[a-z][a-zA-Z0-9']*'' ->
-  if PMap.mem id state.reserved_symbols then give_up "symbol";
+  if PMap.mem id state.reserved_symbols then give_up ();
   id
 
 let reserved_uid = [ "Include" ; "Caml"; "Configure_math_macro"
@@ -708,7 +708,7 @@ let reserved_uid = [ "Include" ; "Caml"; "Configure_math_macro"
 		   ; "Add_right" ; "Add_combining"
 		   ]
 let parser macrouid = id:{uid | "item" -> "Item" } ->
-  if List.mem id reserved_uid then give_up "reserved uid";
+  if List.mem id reserved_uid then give_up ();
   id
 
 let empty_state =
@@ -784,7 +784,7 @@ let tree_to_grammar : ?filter:('a -> bool) -> string -> 'a PMap.tree -> 'a gramm
       try
 	let (n,v) = PMap.longest_prefix ~filter line t in
 	(v, buf, pos+n)
-      with Not_found -> give_up "Not a valid symbol."
+      with Not_found -> give_up ()
     in
     let charset =
       let f acc (c,_) = Charset.add acc c in
@@ -1342,7 +1342,7 @@ let merge_indices indices ind =
   assert(ind.down_left = None);
   assert(ind.up_left = None);
   if (indices.down_right <> None && ind.down_right <> None) ||
-     (indices.up_right <> None && ind.up_right <> None) then give_up "doubles indices";
+     (indices.up_right <> None && ind.up_right <> None) then give_up ();
   { indices with
     down_right = if ind.down_right <> None then ind.down_right else indices.down_right;
     up_right = if ind.up_right <> None then ind.up_right else indices.up_right}
@@ -1387,7 +1387,7 @@ let parser math_aux prio =
        let indices = merge_indices indices ind in
        let l = l no_ind and r = r (if s.infix_value = Invisible then indices else no_ind) in
        if s.infix_value = SimpleSym "over" then begin
-	 if indices <> no_ind then give_up "indices on fraction";
+   if indices <> no_ind then give_up ();
 	 <:expr< [Maths.fraction $l$ $r$] >>
        end else begin
 	 let inter =
@@ -1405,7 +1405,7 @@ let parser math_aux prio =
    des macros. Je pense que c'est l'origine de nos problèmes de complexité. *)
   | '{' m:(math_aux Punc) '}' when prio = AtomM -> m
   | '{' s:any_symbol ind:with_indices '}' when prio = AtomM ->
-      if s = Invisible then give_up "";
+      if s = Invisible then give_up ();
       let f indices =
         let indices = merge_indices indices ind in
         let md = print_math_deco_sym _loc_s s indices in
@@ -1450,7 +1450,7 @@ let parser math_aux prio =
   | m:(math_aux Accent) s:math_accent_symbol when prio = Accent ->
     let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s.symbol_value no_ind$] >> in
     let rd indices =
-      if indices.up_right <> None then give_up "double indices";
+      if indices.up_right <> None then give_up ();
       { indices with up_right = Some s; up_right_same_script = true }
     in
     (fun indices -> m (rd indices))
@@ -1458,7 +1458,7 @@ let parser math_aux prio =
   | m:(math_aux Ind) s:Subsup.subscript when prio = Ind ->
     let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
     let rd indices =
-      if indices.down_right <> None then give_up "double indices";
+      if indices.down_right <> None then give_up ();
       { indices with down_right = Some s }
     in
     (fun indices -> m (rd indices))
@@ -1466,7 +1466,7 @@ let parser math_aux prio =
   | m:(math_aux Ind) s:Subsup.superscript when prio = Ind ->
     let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
     let rd indices =
-      if indices.up_right <> None then give_up "double indices";
+      if indices.up_right <> None then give_up ();
       { indices with up_right = Some s }
     in
     (fun indices -> m (rd indices))
@@ -1474,10 +1474,10 @@ let parser math_aux prio =
   | m:(math_aux Ind) - h:right_indices - r:(math_aux Accent) when prio = Ind ->
      (fun indices -> match h with
      | Down ->
- 	if indices.down_right <> None then give_up "double indices";
+ 	if indices.down_right <> None then give_up ();
         m { indices with down_right = Some (r no_ind) }
      | Up ->
-	if indices.up_right <> None then give_up "double indices";
+	if indices.up_right <> None then give_up ();
 	m { indices with up_right = Some (r no_ind) }
      )
 
@@ -1485,20 +1485,20 @@ let parser math_aux prio =
      let s = <:expr<[Maths.Ordinary (Maths.node $print_math_symbol _loc s$) ]>> in
      (fun indices -> match h with
      | Down ->
- 	if indices.down_right <> None then give_up "double indices";
+ 	if indices.down_right <> None then give_up ();
         m { indices with down_right = Some s }
      | Up ->
-	if indices.up_right <> None then give_up "double indices";
+	if indices.up_right <> None then give_up ();
 	m { indices with up_right = Some s }
      )
 
   | m:(math_aux Accent) - h:left_indices - r:(math_aux LInd) when prio = LInd ->
      (fun indices -> match h with
      | Down ->
-	if indices.down_left <> None then give_up "double indices";
+	if indices.down_left <> None then give_up ();
         r { indices with down_left = Some (m no_ind) }
      | Up ->
-	if indices.up_left <> None then give_up "double indices";
+	if indices.up_left <> None then give_up ();
         r { indices with up_left = Some (m no_ind) }
      )
 
@@ -1506,10 +1506,10 @@ let parser math_aux prio =
      let s = <:expr<[Maths.Ordinary (Maths.node $print_math_symbol _loc s$) ]>> in
      (fun indices -> match h with
      | Down ->
-	if indices.down_left <> None then give_up "double indices";
+	if indices.down_left <> None then give_up ();
         r { indices with down_left = Some s }
      | Up ->
-	if indices.up_left <> None then give_up "double indices";
+	if indices.up_left <> None then give_up ();
         r { indices with up_left = Some s }
      )
 
@@ -1542,33 +1542,33 @@ and with_indices =
   | i:with_indices h:right_indices - r:(math_aux Accent) ->
      begin
        match h with
-       | Down -> if i.down_right <> None then give_up "double indices";
+       | Down -> if i.down_right <> None then give_up ();
 	               { i with down_right = Some (r no_ind) }
-       | Up   -> if i.up_right <> None then give_up "double indices";
+       | Up   -> if i.up_right <> None then give_up ();
 	               { i with up_right = Some (r no_ind) }
      end
 
   | i:with_indices s:Subsup.superscript ->
       let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
-      if i.up_right <> None then give_up "double indices";
+      if i.up_right <> None then give_up ();
       { i with up_right = Some s }
 
   | i:with_indices s:Subsup.subscript ->
       let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
-      if i.down_right <> None then give_up "double indices";
+      if i.down_right <> None then give_up ();
       { i with down_right = Some s }
 
 (*  | (m,mp):math_aux - (s,h):indices - (o,i):math_operator ->
      (* FIXME TODO: decap bug: this loops ! *)
      (* Anyway, it is a bad way to write the grammar ... a feature od decap ? *)
-     if (mp >= Ind && s = Left) then give_up "can not be used as indice";
-     if (s = Right) then give_up "No indice/exponent allowed here";
+     if (mp >= Ind && s = Left) then give_up ();
+     if (s = Right) then give_up ();
      let i = match h with
        | Down ->
-	  if i.down_left <> None then give_up "double indices";
+	  if i.down_left <> None then give_up ();
 	 { i with down_left = Some (m no_ind) }
        | Up ->
-	  if i.up_left <> None then give_up "double indices";
+	  if i.up_left <> None then give_up ();
 	 { i with up_left = Some (m no_ind) }
      in
     (o, i)*)
@@ -1616,7 +1616,7 @@ and math_declaration =
 let _ = set_grammar math_toplevel (parser
   | m:(math_aux Punc) -> m no_ind
   | s:any_symbol i:with_indices ->
-      if s = Invisible then give_up "...";
+      if s = Invisible then give_up ();
       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s i$]>>)
 
 
@@ -1633,7 +1633,7 @@ let _ = set_grammar math_toplevel (parser
   let macro_name = change_layout (
     parser "\\" - m:lid ->
       if List.mem m reserved_macro then
-        give_up (m ^ " is a reserved macro"); m) no_blank
+        give_up (); m) no_blank
     (* FIXME: useless change layout, but do not work if removed !!! ?*)
 
   let parser macro =
@@ -1826,7 +1826,7 @@ let numbered op cl =
   | ('=', '=') -> (true , true )
   | ('-', '-') -> (false, true )
   | ('_', '_') -> (false, false)
-  | _          -> give_up "Non-matching section markers..."
+  | _          -> give_up ()
 
 let sect lvl = parser
   | "==" when lvl = 0
@@ -1998,7 +1998,7 @@ let parser directive =
        | "FORMAT"  -> patoline_format := a
        | "DRIVER"  -> patoline_driver := a
        | "PACKAGE" -> patoline_packages := a :: !patoline_packages
-       | _ -> give_up ("Unknown directive #"^n));
+       | _ -> give_up ());
     [])
 let extra_structure = directive :: extra_structure
 
