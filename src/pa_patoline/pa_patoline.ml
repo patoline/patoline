@@ -243,14 +243,14 @@ let uchar =
   let char_re    = "[^ \"\t\r\n\\#*/|_$>{}-]"
   let escaped_re =     "\\\\[\\#*/|_$>{}-]"
 
-  let non_special = ['>';'*';'/';'|';'-';'_']
+  let non_special = ['>';'*';'/';'|';'-';'_';'<']
   let char_alone =
     black_box
       (fun str pos ->
        let c,str',pos' = Input.read str pos in
        if List.mem c non_special then
          let c',_,_ = Input.read str' pos' in
-         if c' = c then give_up ()
+         if List.mem c' non_special then give_up ()
          else c, str', pos'
        else
          give_up ())
