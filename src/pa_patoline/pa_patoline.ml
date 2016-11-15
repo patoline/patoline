@@ -557,7 +557,7 @@ let _ =
 let parser config =
   | "eat_right"                           -> EatR
   | "eat_left"                            -> EatL
-  | "name" "=" ms:{u:uid - "."}* - id:lid -> Name (ms,id)
+  | "name" "=" ms:{u:uid - "." -}* id:lid -> Name (ms,id)
   | "syntax" "=" l:arg_descriptions       -> Syntax l
 
 let parser configs = "{" cs:{config ';'} * "}"   -> cs
@@ -672,7 +672,8 @@ type grammar_state =
   ; mutable environment      : (string * config list) list }
 
 let new_grammar str =
-  let res = declare_grammar str in set_grammar res (fail ("empty grammar: " ^str)); res
+  let res = declare_grammar str in set_grammar res
+                                (parser ERROR("empty grammar: " ^str)); res
 
 let state =
   { verbose          = false
@@ -1377,7 +1378,7 @@ let parser math_aux prio =
 
   | l:(math_aux prio) st:{ s:(math_infix_symbol prio) i:with_indices -> (s,i)
 			 | BLANK when prio = IProd  -> (invisible_product, no_ind)
-			 | - when prio = IApply -> (invisible_apply  , no_ind) }
+			 | - when prio = IApply ->  (invisible_apply  , no_ind) }
     r:(math_aux (next_prio prio)) when prio <> AtomM ->
      let s,ind = st in
      (fun indices ->
@@ -1387,7 +1388,7 @@ let parser math_aux prio =
        let indices = merge_indices indices ind in
        let l = l no_ind and r = r (if s.infix_value = Invisible then indices else no_ind) in
        if s.infix_value = SimpleSym "over" then begin
-	 if indices <> no_ind then give_up "indices on fraction";
+	 if indices <> no_ind then give_up ();
 	 <:expr< [Maths.fraction $l$ $r$] >>
        end else begin
 	 let inter =
@@ -1618,7 +1619,6 @@ let _ = set_grammar math_toplevel (parser
   | s:any_symbol i:with_indices ->
       if s = Invisible then give_up ();
       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s i$]>>)
-
 
 (****************************************************************************
  * Text content of paragraphs and macros (mutually recursive).              *
