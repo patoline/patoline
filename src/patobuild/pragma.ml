@@ -7,7 +7,7 @@ let pragma_from_line : string -> pragma option = fun l ->
   if len < 4 || sub l 0 2 <> "(*" || sub l (len - 2) 2 <> "*)" then None else
   let l = trim (sub l 2 (len - 4)) in
   let len = length l in
-  if l.[0] <> '#' || len < 3 then None else
+  if len < 3 || l.[0] <> '#' then None else
   if not (contains l ' ') then Some (String.sub l 1 (len - 1), None) else
   let i = index l ' ' in
   let k = String.sub l 1 (i-1) in
