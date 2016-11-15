@@ -133,7 +133,7 @@ let run_deps path target =
 
 (* Parsing dependencies. *)
 let read_deps dep_file =
-  let open Decap in
+  let open Earley in
   let file = parser f:''[^ \n]+'' in
   let line = parser t:file " :" ds:{' ' d:file}* '\n' in
   let deps = parser line* in

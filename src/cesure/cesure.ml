@@ -1,6 +1,6 @@
 let pattern     = parser | ''[^- \t\n\r{}]+''
 let hyphenation = parser | x:pattern xs:{"-" pattern}* -> x::xs
-let hyphenation = Decap.change_layout hyphenation  Decap.no_blank
+let hyphenation = Earley.change_layout hyphenation Earley.no_blank
 
 let patt = parser | "\\patterns" "{" pattern* "}"
 let hyph = parser | "\\hyphenation" "{" hyphenation* "}"
@@ -22,8 +22,8 @@ let blank str pos =
   in fn `Ini (str, pos) (str, pos)
 
 let parse_file fn =
-  let parse = Decap.parse_file cesure_file blank in
-  Decap.handle_exception parse fn
+  let parse = Earley.parse_file cesure_file blank in
+  Earley.handle_exception parse fn
 
 let build_cesure_file fn =
   let (pa, hy) = parse_file fn in

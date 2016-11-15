@@ -163,7 +163,7 @@ let local_packages =
   [ { package_name = "patutil"
     ; macro_suffix = "UTIL"
     ; local_deps   = ["rbuffer"; "unicodelib"]
-    ; extern_deps  = ["bytes"; "decap"]
+    ; extern_deps  = ["bytes"; "earley"; "earley.str"]
     ; subdirs      = []
     ; has_meta     = true }
 
@@ -177,7 +177,7 @@ let local_packages =
   ; { package_name = "unicodelib"
     ; macro_suffix = "UNICODELIB"
     ; local_deps   = []
-    ; extern_deps  = ["bytes"; "decap"; "sqlite3"; "compiler-libs"]
+    ; extern_deps  = ["bytes"; "earley"; "earley.str"; "pa_ocaml"; "sqlite3"; "compiler-libs"]
     ; subdirs      = []
     ; has_meta     = true }
 
@@ -235,7 +235,7 @@ let local_packages =
   ; { package_name = "patobuild"
     ; macro_suffix = "PATOBUILD"
     ; local_deps   = []
-    ; extern_deps  = ["decap";"bytes";"compiler-libs"]
+    ; extern_deps  = ["earley";"earley.str";"bytes";"compiler-libs"]
     ; subdirs      = []
     ; has_meta     = false }
 
@@ -249,7 +249,7 @@ let local_packages =
   ; { package_name = "cesure"
     ; macro_suffix = "CESURE"
     ; local_deps   = ["unicodelib"]
-    ; extern_deps  = ["decap";"bytes"]
+    ; extern_deps  = ["earley"; "earley.str";"bytes"]
     ; subdirs      = []
     ; has_meta     = false }
 

@@ -1,4 +1,4 @@
-open Decap
+open Earley
 open Pa_ocaml_prelude
 
 #define LOCATE locate

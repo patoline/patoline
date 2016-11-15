@@ -2,8 +2,8 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-PATOBUILD_INCLUDES      := -I $(d) -I $(CONFIG_DIR) -package decap,threads -pp pa_ocaml -thread
-PATOBUILD_DEPS_INCLUDES := -I $(d) -I $(CONFIG_DIR) -package decap,threads -pp pa_ocaml
+PATOBUILD_INCLUDES      := -I $(d) -I $(CONFIG_DIR) -package earley,threads -pp pa_ocaml -thread
+PATOBUILD_DEPS_INCLUDES := -I $(d) -I $(CONFIG_DIR) -package earley,threads -pp pa_ocaml
 
 $(d)/%.depends: INCLUDES := $(PATOBUILD_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES := $(PATOBUILD_INCLUDES)
@@ -32,8 +32,8 @@ all: $(d)/patoline
 
 $(d)/patoline: $(PATOBUILD_CMX)
 	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT) -o $@ $(PATOBUILD_INCLUDES) -package decap,threads \
-		unix.cmxa patoconfig.cmxa str.cmxa decap.cmxa threads.cmxa $^
+	$(Q)$(OCAMLOPT) -o $@ $(PATOBUILD_INCLUDES) -package earley,earley.str,threads \
+		unix.cmxa patoconfig.cmxa str.cmxa earley.cmxa earleyStr.cmxa threads.cmxa $^
 
 CLEAN     += $(d)/*.o $(d)/*.cm[iox]
 DISTCLEAN += $(d)/*.depends $(d)/patoline

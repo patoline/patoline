@@ -1,4 +1,4 @@
-open Decap
+open Earley
 open UsualMake
 open FilenameExtra
 open Pa_ocaml_prelude
@@ -266,7 +266,7 @@ let no_spe =
     let (c,_,_) = Input.read buf pos in
     ((), not (List.mem c special_char))
   in
-  Decap.test ~name:"no_special" Charset.full f
+  Earley.test ~name:"no_special" Charset.full f
 
 let parser character =
   | _:no_spe c:uchar -> c
@@ -411,7 +411,7 @@ let parser symbol =
   | s:''[^ \t\r\n{}]+'' -> s
 
 let symbols =
-  let space_blank = blank_regexp ''[ ]*'' in
+  let space_blank = EarleyStr.blank_regexp ''[ ]*'' in
   change_layout (
     parser
     | "{" ss:symbol* "}" -> ss
@@ -540,7 +540,7 @@ let _ =
 		flush stderr ; "Arabic")
     end in
     let caml = "("^nb_kind^",(fun num_sec -> <<" ^ prefix ^ "\\caml( [tT num_sec] )" ^ suffix ^ ">>))" in
-    Decap.parse_string Pa_ocaml_prelude.expression blank2 caml)
+    Earley.parse_string Pa_ocaml_prelude.expression blank2 caml)
 
 let _ =
   Hashtbl.add struct_filter "diagram" (fun s _loc ->
@@ -861,7 +861,7 @@ let math_list _loc l =
 let dollar        = Pa_lexing.single_char '$'
 
 let no_brace =
-  Decap.test ~name:"no_brace" Charset.full (fun buf pos ->
+  Earley.test ~name:"no_brace" Charset.full (fun buf pos ->
     let c,buf,pos = Input.read buf pos in
     if c <> '{' then ((), true) else ((), false))
 

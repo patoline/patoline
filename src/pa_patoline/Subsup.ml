@@ -1,4 +1,4 @@
-open Decap
+open Earley
 let parser subscript =
 |"\226\177\188" -> "j"
 |"\226\130\156" -> "t"

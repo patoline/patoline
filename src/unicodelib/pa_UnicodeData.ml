@@ -232,8 +232,8 @@ let file_contents =
   parser
   | l:{single | range }* EOF
 
-let blank = Decap.blank_regexp "[ \t]*"
-let parse = Decap.parse_file file_contents blank
+let blank = EarleyStr.blank_regexp "[ \t]*"
+let parse = Earley.parse_file file_contents blank
 
 let flatten_data ld =
   let rec flatten_data ld acc =
@@ -257,7 +257,7 @@ let _ =
   let outfile = Sys.argv.(2) in
 
   (* Parsing and preparing the data *)
-  let data = Decap.handle_exception parse infile in
+  let data = Earley.handle_exception parse infile in
   let data = flatten_data data in
 
   (* Adding the data to the permanent map *)
