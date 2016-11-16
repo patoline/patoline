@@ -1,6 +1,6 @@
 (* #FORMAT FormatSlides *)
-(* #PACKAGES mysql *)
-(* #PACKAGES Typography.Interactive *)
+(* #PACKAGE mysql *)
+(* #PACKAGE Typography.Interactive *)
 
 \Caml(
 open Diagrams
