@@ -216,7 +216,7 @@ let interEnv x =
 type eval_fun = string option -> (result -> unit) -> string -> string
 
 let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
-      ?nb_lines ?err_lines ?(init_text="") ?(lang=lang_Default)
+      ?nb_lines ?err_lines ?(init_text="") ?(lang=lang_Default) ?(lang_result=lang_Default)
       ?(extra:eval_fun option) ?resultData ?data ?filename ?(influence=[]) name =
 
     let data =
@@ -330,7 +330,7 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
 			   par_parameters=ragged_left;
 			   par_badness=badness;
 			   par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
-			in up (newChildAfter acc para)) (top acc) (lang_Default resultLines))) in d)))])))
+			in up (newChildAfter acc para)) (top acc) (lang_result resultLines))) in d)))])))
 
 let ocaml_dir () =
   let sessid = match !Db.sessid with
