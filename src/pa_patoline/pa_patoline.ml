@@ -776,6 +776,10 @@ let math_combining_symbol = new_grammar "combining"
 let math_punctuation_symbol = new_grammar "punctuation"
 let math_relation_symbol = new_grammar "relation"
 
+let macro_char : Charset.t =
+  Charset.union (Charset.range 'a' 'z') (Charset.range 'A' 'Z')
+let is_macro_char : char -> bool = Charset.mem macro_char
+
 let tree_to_grammar : ?filter:('a -> bool) -> string -> 'a PMap.tree -> 'a grammar =
   fun ?(filter=fun x -> true) name t ->
     let PMap.Node(_,l) = t in
@@ -785,6 +789,15 @@ let tree_to_grammar : ?filter:('a -> bool) -> string -> 'a PMap.tree -> 'a gramm
       try
         let (n,v) = PMap.longest_prefix ~filter line t in
         (* Printf.eprintf "Symbol found : [%s]\n%!" (String.sub line 0 n); *)
+        if n > 1 && line.[0] = '\\' then
+          begin
+            let is_macro = ref true in
+            for i = 1 to n-1 do
+              is_macro := !is_macro && is_macro_char line.[i]
+            done;
+            let len = String.length line in
+            if !is_macro && len >= n && is_macro_char line.[n] then give_up ()
+          end;
         (v, buf, pos+n)
       with Not_found -> give_up ()
     in
