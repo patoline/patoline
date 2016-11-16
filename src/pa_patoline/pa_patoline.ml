@@ -2011,7 +2011,10 @@ let parser patoline_quotations _ =
   | "<<" par:text_only     ">>" -> par
   | "<$" mat:math_toplevel "$>" -> mat
 
-let _ = List.iter Pa_lexing.add_reserved_symb ["<<"; ">>"; "<$"; "$>"]
+let _ =
+  let reserved = ["<<"; ">>"; "<$"; "$>"; "<<$"; "$>>"] in
+  List.iter Pa_lexing.add_reserved_symb reserved
+
 let extra_expressions = patoline_quotations :: extra_expressions
 
 (* Entry points and extension creation **************************************)
