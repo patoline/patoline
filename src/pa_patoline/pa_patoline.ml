@@ -783,8 +783,9 @@ let tree_to_grammar : ?filter:('a -> bool) -> string -> 'a PMap.tree -> 'a gramm
       let line = Input.line buf in
       let line = String.sub line pos (String.length line - pos) in
       try
-	let (n,v) = PMap.longest_prefix ~filter line t in
-	(v, buf, pos+n)
+        let (n,v) = PMap.longest_prefix ~filter line t in
+        (* Printf.eprintf "Symbol found : [%s]\n%!" (String.sub line 0 n); *)
+        (v, buf, pos+n)
       with Not_found -> give_up ()
     in
     let charset =
