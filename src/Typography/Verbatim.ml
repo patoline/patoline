@@ -111,7 +111,7 @@ let fit_on_grid : content -> content = fun c ->
   let f env =
     let charw = boxwidth env [tT "a"] in
     let symw  = boxwidth env [c] in
-    let extra = (ceil (symw /. charw)) *. charw -. symw in
+    let extra = (ceil ((symw -. 0.15 *. charw)  /. charw)) *. charw -. symw in
     let sp = hspace (extra /. 2.0) in
     sp @ (c :: sp)
   in C f
