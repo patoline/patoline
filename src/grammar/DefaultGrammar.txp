@@ -47,9 +47,9 @@
 \Add_right{\rceil ⌉}(MathFonts.adjusted_asana_delimiters "\\rceil" [975;3331;3332;3333])
 \Add_left{\lfloor ⌊}(MathFonts.adjusted_asana_delimiters "\\lfloor" [976;3334;3335;3336])
 \Add_right{\rfloor ⌋}(MathFonts.adjusted_asana_delimiters "\\rfloor" [977;3337;3338;3339])
-\Add_left{\left_white_square_bracket \llbracket ⟦}(
+\Add_left{\left_white_square_bracket \llbracket [| ⟦}(
 	  MathFonts.fix_asana_delimiters "\\left_white_square_bracket" [3320;3321;3322;3323])
-\Add_right{\right_white_square_bracket \rrbracket ⟧}(
+\Add_right{\right_white_square_bracket \rrbracket |] ⟧}(
 	  MathFonts.fix_asana_delimiters "\\left_white_square_bracket" [3324;3325;3326;3327])
 \Add_left{\orig_left_white_square_bracket} (List.map (MathFonts.asana "\\left_white_square_bracket")
 					   [3320;3321;3322;3323])
