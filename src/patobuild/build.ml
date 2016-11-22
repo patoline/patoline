@@ -306,7 +306,7 @@ let extend_config config ls =
     { config with packages; pat_driver = Some d }
   in
   let add_package config p =
-    let packages = p :: config.packages in
+    let packages = config.packages @ [p] in
     { config with packages; }
   in
   let combine config (k,vo) =
