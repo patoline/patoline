@@ -56,6 +56,20 @@ type result =
 | DoNotCompile
 | NotTried
 
+let result_coding = {
+  encode = (function
+  | Ok -> "Ok"
+  | FailTest -> "FailTest"
+  | DoNotCompile -> "DoNotCompile"
+  | NotTried -> "NotTried");
+  decode = (function
+  | "Ok" -> Ok
+  | "FailTest" -> FailTest
+  | "DoNotCompile" -> DoNotCompile
+  | "NotTried" -> NotTried
+  | _ -> DoNotCompile);
+}
+
 let scoreBar ?(vertical=false) envDiagram height width data =
   let open Diagrams in
   let module EnvDiagram = (val envDiagram : Diagrams.EnvDiagram) in
@@ -135,7 +149,7 @@ let checkBox ?(global=false) ?(scale=0.75) ?(destinations=[]) data contents =
     (fun () -> [bB (fun env -> drawCheckBox ~scale env (data.read ()))]))))
 
 let dataCheckBox ?(global=false) ?(scale=0.75) ?(destinations=[]) ?(init_value=false) name contents =
-  let data = db.create_data ~global name init_value in
+  let data = db.create_data ~coding:bool_coding ~global name init_value in
   checkBox ~global ~scale ~destinations data contents
 
 let drawRadio ?(scale=0.5) env checked =
@@ -221,7 +235,7 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
 
     let data =
       match data with
-	None -> db.create_data ~log ~global name init_text
+	None -> db.create_data ~coding:string_coding ~log ~global name init_text
       | Some d -> d
     in
     (match filename with
@@ -232,7 +246,7 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
 
     let dataR =
       match resultData with
-	None -> db.create_data ~global (name^"_results") NotTried
+	None -> db.create_data ~coding:result_coding ~global (name^"_results") NotTried
       | Some d -> d
     in
 
@@ -241,7 +255,7 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
       | Some f ->  f filename (fun _ -> ()) init_text
     in
 
-    let dataO = db.create_data ~global (name^"_ouput") init_res in
+    let dataO = db.create_data ~coding:string_coding ~global (name^"_ouput") init_res in
 
     let eval t =
       match extra with

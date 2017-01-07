@@ -58,9 +58,29 @@ let dummyData = {
   distribution = (fun ?group _ -> raise DummyData) ;
 }
 
+type 'a coding = {
+  encode : 'a -> string;
+  decode : string -> 'a;
+}
+
+let default_coding = {
+  encode = (fun v -> base64_encode (Marshal.to_string v []));
+  decode = (fun s -> Marshal.from_string (base64_decode s) 0);
+}
+
+let string_coding = {
+  encode = (fun v -> base64_encode v);
+  decode = (fun s -> base64_decode s);
+}
+
+let bool_coding = {
+  encode = (fun v -> if v then "true" else "false");
+  decode = (fun s -> s = "true");
+}
+
 type db = {
   db : unit -> database;
-  create_data : 'a.( ?log:bool -> ?global:bool -> string -> 'a -> 'a data);
+  create_data : 'a.( ?log:bool -> ?global:bool -> ?coding:'a coding -> string -> 'a -> 'a data);
   disconnect : unit -> unit;
 }
 
@@ -81,11 +101,11 @@ let init_db table_name db_info =
   let log_name = table_name ^"_log" in
 #endif
   match db_info with
-  | Memory ->
+  | Memory -> (* The model does not nor use the provided coding, not needed *)
     let total_table = Hashtbl.create 1001 in
     { db = (fun () -> MemoryDb);
       disconnect = (fun () -> ());
-      create_data = fun ?(log=false) ?(global=false) name vinit ->
+      create_data = fun ?(log=false) ?(global=false) ?(coding=default_coding) name vinit ->
 	let table = Hashtbl.create 1001 in
 	let sessid () = match !sessid with None -> ("", "", []) | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs in
 	let read = fun () ->
@@ -166,10 +186,10 @@ let init_db table_name db_info =
       disconnect = (fun () ->
 	match !dbptr with None -> ()
 	| Some db -> Mysql.disconnect db);
-      create_data = fun ?(log=false) ?(global=false) name vinit ->
+      create_data = fun ?(log=false) ?(global=false) ?(coding=default_coding) name vinit ->
 	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
 	Hashtbl.add created name ();
-	let v = base64_encode (Marshal.to_string vinit []) in
+	let v = coding.encode vinit in
 	let sessid () = match !sessid with
 	    None -> "", "guest", []
 	  | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs
@@ -219,7 +239,10 @@ let init_db table_name db_info =
             let r = Mysql.exec (db ()) sql in
 	    (*Printf.eprintf "Sent request\n%!";*)
             match Mysql.errmsg (db ()), Mysql.fetch r with
-    	    | None, Some row -> (match row.(0) with None -> vinit | Some n -> Marshal.from_string (base64_decode n) 0)
+    	    | None, Some row ->
+               (match row.(0) with
+               | None -> vinit
+               | Some n -> coding.decode n)
             | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; vinit
             | _ -> assert false
             with
@@ -231,7 +254,7 @@ let init_db table_name db_info =
 	    let sessid, groupid, friends = init () in
 	    let fn (sessid, groupid) =
               try
-		let v = base64_encode (Marshal.to_string v []) in
+		let v = coding.encode v in
 		let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
 					 table_name v name sessid groupid in
 		let _r = Mysql.exec (db ()) sql in
@@ -287,7 +310,7 @@ let init_db table_name db_info =
 	      try while true do
 		  match Mysql.fetch r with
 		    None -> raise Exit
-		  | Some row -> l := (Marshal.from_string (base64_decode (f row.(0))) 0, f' row.(1))::!l
+		  | Some row -> l := (coding.decode (f row.(0)), f' row.(1))::!l
 		done; []
 	      with Exit -> !l
 	    in
