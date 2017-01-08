@@ -80,7 +80,7 @@ let bool_coding = {
 
 type db = {
   db : unit -> database;
-  create_data : 'a.( ?log:bool -> ?global:bool -> ?coding:'a coding -> string -> 'a -> 'a data);
+  create_data : 'a.( ?log:bool -> ?global:bool -> 'a coding -> string -> 'a -> 'a data);
   disconnect : unit -> unit;
 }
 
@@ -105,7 +105,7 @@ let init_db table_name db_info =
     let total_table = Hashtbl.create 1001 in
     { db = (fun () -> MemoryDb);
       disconnect = (fun () -> ());
-      create_data = fun ?(log=false) ?(global=false) ?(coding=default_coding) name vinit ->
+      create_data = fun ?(log=false) ?(global=false) coding name vinit ->
 	let table = Hashtbl.create 1001 in
 	let sessid () = match !sessid with None -> ("", "", []) | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs in
 	let read = fun () ->
@@ -186,7 +186,7 @@ let init_db table_name db_info =
       disconnect = (fun () ->
 	match !dbptr with None -> ()
 	| Some db -> Mysql.disconnect db);
-      create_data = fun ?(log=false) ?(global=false) ?(coding=default_coding) name vinit ->
+      create_data = fun ?(log=false) ?(global=false) coding name vinit ->
 	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
 	Hashtbl.add created name ();
 	let v = coding.encode vinit in
