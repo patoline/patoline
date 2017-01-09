@@ -197,8 +197,8 @@ let init_db table_name db_info =
 	let init () =
 	  let sessid, groupid, friends = sessid () in
 	  let fn (sessid, grouid) =
-            let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
-				     table_name sessid groupid name in
+            let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
+				     table_name sessid name in
             let r = Mysql.exec (db ()) sql in
             match Mysql.errmsg (db ()), Mysql.fetch r with
             | None, Some row ->
@@ -233,8 +233,8 @@ let init_db table_name db_info =
 	let read () =
 	  try
             let sessid, groupid, _  = init () in
-            let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
-	      table_name sessid groupid name in
+            let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
+	      table_name sessid name in
 	    (*Printf.eprintf "Sending request %s\n%!" sql;*)
             let r = Mysql.exec (db ()) sql in
 	    (*Printf.eprintf "Sent request\n%!";*)
@@ -255,8 +255,8 @@ let init_db table_name db_info =
 	    let fn (sessid, groupid) =
               try
 		let v = coding.encode v in
-		let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
-					 table_name v name sessid groupid in
+		let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s',`groupid`='%s' WHERE `key` = '%s' AND `sessid` = '%s';"
+					 table_name v groupid name sessid in
 		let _r = Mysql.exec (db ()) sql in
 		(match Mysql.errmsg (db ()) with
 		| None -> ()
