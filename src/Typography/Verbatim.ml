@@ -51,6 +51,8 @@ let glue_space : int -> content = fun n ->
 	  [glue w w w]
   in bB f
 
+let lines_skip = ref 2
+
 (* [line_per_line f lines] builds each line of [lines] using [f] and display
    each of them using the verbatim font. *)
 let line_per_line : 'a -> (string -> content list) -> string list -> unit =
@@ -59,8 +61,8 @@ let line_per_line : 'a -> (string -> content list) -> string list -> unit =
     let len = List.length lines in
     let draw_line i l =
       let cs = f l in
-      let cs = if i = 0 then linesBefore 2 @ cs else cs in
-      let cs = if i = len - 1 then linesAfter 2 @ cs else cs in
+      let cs = if i = 0 then linesBefore !lines_skip @ cs else cs in
+      let cs = if i = len - 1 then linesAfter !lines_skip @ cs else cs in
       newPar str ~environment:verbEnv Complete.normal par cs
     in
     List.iteri draw_line lines
