@@ -281,6 +281,12 @@ window.onbeforeunload = function() {
     }
 };
 function websocket_send(data){
+  if (websocket) {
+    console.log(\"websocket state:\", websocket.readyState);
+  }
+  else {
+    console.log(\"websocket unitialized\");
+  }
   if (!websocket || websocket.readyState != 1) {
     if (!websocket || websocket.readyState != 0) start_socket();
     function do_send(interval, tries) {
@@ -288,6 +294,7 @@ function websocket_send(data){
         var timer = setInterval(function () {
           clearInterval(timer);
           if (websocket && websocket.readyState == 1) {
+             console.log(\"sending\",tries);
              websocket.send(data);
           } else if (websocket && websocket.readyState == 0) {
              do_send(interval * 2, tries - 1);
@@ -297,6 +304,7 @@ function websocket_send(data){
     };
     do_send(200,7);
   } else {
+    console.log(\"sending in else\");
     websocket.send(data);
   }
 }
