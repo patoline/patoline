@@ -294,7 +294,7 @@ let init_db table_name db_info =
 	    let sql = Printf.sprintf
               "SELECT `value`,COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`"
 	      table_name name group in
-	    let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` `key` = %s %s"
+	    let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s"
               table_name name group in
 	    (*Printf.eprintf "total: %s\n%!" sql';*)
 
