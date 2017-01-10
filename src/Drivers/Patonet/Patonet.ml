@@ -94,11 +94,11 @@ let decode_slave fd =
     let _rsv2 = 0x20 land c <> 0 in
     let _rsv3 = 0x10 land c <> 0 in
     let _opcode = 0x0f land c in
-(*    Printf.eprintf "First char: '%s' %x %d fin:%b rsv1:%b rsv2:%b rsv3:%b opcode:%d\n%!"
-      (Char.escaped (char_of_int c)) c c fin _rsv1 _rsv2 _rsv3 _opcode;*)
+    Printf.eprintf "First char: '%s' %x %d fin:%b rsv1:%b rsv2:%b rsv3:%b opcode:%d\n%!"
+      (Char.escaped (char_of_int c)) c c fin _rsv1 _rsv2 _rsv3 _opcode;
     let c0 = int_of_char (input_char fd) in
     let mask = c0 land 0x80 <> 0 and c0 = c0 land 0x7f in
-(*    Printf.eprintf "Second char: %x %d\n%!" c0 c0;*)
+    Printf.eprintf "Second char: %x %d\n%!" c0 c0;
     let length =
       if c0 <= 125 then c0
       else if c0 = 126 then
@@ -118,7 +118,7 @@ let decode_slave fd =
           (c4 lsl 24) lor (c5 lsl 16) lor (c6 lsl 8) lor c7
       else 0
     in
-    (*    Printf.eprintf "Length : %d, mask : %b\n%!" length mask;*)
+    Printf.eprintf "Length : %d, mask : %b\n%!" length mask;
     let mask_array = [|0;0;0;0|] in
     if mask then (
       mask_array.(0) <- int_of_char (input_char fd);
