@@ -294,7 +294,7 @@ function websocket_send(data){
         var timer = setInterval(function () {
           clearInterval(timer);
           if (websocket && websocket.readyState == 1) {
-             console.log(\"sending\",tries);
+             console.log(\"sending\",tries,\"==>\",data);
              websocket.send(data);
           } else if (websocket && websocket.readyState == 0) {
              do_send(interval * 2, tries - 1);
@@ -304,7 +304,7 @@ function websocket_send(data){
     };
     do_send(200,7);
   } else {
-    console.log(\"sending in else\");
+    console.log(\"sending in else\",\"==>\",data);
     websocket.send(data);
   }
 }
