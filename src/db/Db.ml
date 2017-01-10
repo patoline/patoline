@@ -287,13 +287,15 @@ let init_db table_name db_info =
 	let distribution ?group () =
 	  try
 	    let _ = init () in
-	    let group, agroup = match group with
-		None -> "", ""
-	      | Some g -> Printf.sprintf "WHERE `groupid` = '%s' " g, Printf.sprintf "AND `groupid` = '%s' " g
+	    let group = match group with
+		None -> ""
+	      | Some g -> Printf.sprintf "AND `groupid` = '%s' " g
 	    in
-	    let sql = Printf.sprintf "SELECT `value`,COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`"
-	      table_name name agroup in
-	    let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` %s" table_name group in
+	    let sql = Printf.sprintf
+              "SELECT `value`,COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`"
+	      table_name name group in
+	    let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` `key` = %s %s"
+              table_name name group in
 	    (*Printf.eprintf "total: %s\n%!" sql';*)
 
 	    let f = function None -> "" | Some s -> s in
