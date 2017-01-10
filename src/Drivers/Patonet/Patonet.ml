@@ -227,6 +227,7 @@ setInterval(function () {
   websocket_send('ping');
 }, 50000);
 function websocket_msg(evt){
+     console.log('websocket message');
      var st=JSON.parse(evt.data);
      var ch = st.change;
      if (ch == 'Ping') {
@@ -255,9 +256,11 @@ function websocket_msg(evt){
      }
 };
 function websocket_err(evt){
+  console.log('websocket error');
   websocket=null;
 };
 function websocket_close(evt){
+  console.log('websocket close');
   websocket=null;
 };
 function start_socket(){
