@@ -273,16 +273,16 @@ function start_socket(){
       websocket=new WebSocket(\"wss://\"+location.host+\"/%stire\"+\"_\"+current_slide+\"_\"+current_state);
    else
       websocket=new WebSocket(\"ws://\"+location.host+\"/%stire\"+\"_\"+current_slide+\"_\"+current_state);
-   // websocket.onclose=websocket_close;
+   websocket.onclose=websocket_close;
    websocket.onmessage = websocket_msg;
    websocket.onerror = websocket_err;
 };
-//window.onbeforeunload = function() {
-//    if (websocket) {
-//     websocket.onclose = function () {}; // disable onclose handler first
-//      websocket.close()
-//    }
-//};
+window.onbeforeunload = function() {
+    if (websocket) {
+     websocket.onclose = function () {}; // disable onclose handler first
+      websocket.close()
+    }
+};
 function websocket_send(data){
   if (websocket) {
     console.log(\"websocket state:\", websocket.readyState);

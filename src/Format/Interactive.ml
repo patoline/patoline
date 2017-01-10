@@ -286,7 +286,7 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
     in
 
     let name' = List.mapi (fun i _ -> name^"_target_"^string_of_int i) pieces in
-    let name'' = List.mapi (fun i _ -> name^"_target2_"^string_of_int i) pieces in
+    let name'' = name^"_target2" in
 
     mk_states pieces (fun index states -> dynamic (List.nth name' index)
       (function
@@ -299,7 +299,7 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
         let s, lines = update () in
         (button ~btype:(Editable(s, init_text))
            name
-	   (name' @ name'' @ influence)
+	   (name' @ name'' :: influence)
            [bB(fun env ->
 	     let env = interEnv env in
 	     List.map (fun x-> Drawing (snd x))
