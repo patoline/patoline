@@ -393,8 +393,10 @@ let test_ocaml ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") fi
   in
   let ch = open_out (Filename.concat dir filename) in
   output_string ch prefix;
+  output_string ch "\n;;\n";
   output_string ch (Printf.sprintf "# 1 \"%s\"\n" (if delete_all then "" else filename));
   output_string ch prg;
+  output_string ch "\n;;\n";
   output_string ch suffix;
   close_out ch;
   let tmpfile2 = Filename.temp_file "demo" ".txt" in
@@ -447,8 +449,10 @@ let test_python ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") f
   let tmpfile = Filename.temp_file "demo" ".ml" in
   let ch = open_out tmpfile in
   output_string ch prefix;
+  output_string ch "\n\n";
   output_string ch "# 1 \"\"\n";
   output_string ch prg;
+  output_string ch "\n\n";
   output_string ch suffix;
   close_out ch;
   let tmpfile2 = Filename.temp_file "demo" ".txt" in
