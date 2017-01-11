@@ -1484,7 +1484,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	      send_events ds (Click(name))
 	    | Button(Editable(current,init),name,ds) ->
 	       let editor = try Sys.getenv "EDITOR" with Not_found -> "emacs" in
-	       let filename, ch = Filename.open_temp_file "tmp" ".txt" in
+	       let filename, ch = Filename.open_temp_file "" name in
 	       output_string ch current;
 	       close_out ch;
 	       ignore (Sys.command (editor ^ " " ^ filename));
