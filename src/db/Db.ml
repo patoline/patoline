@@ -278,8 +278,8 @@ let init_db table_name db_info =
 	let reset () =
 	  try
 	    let sessid, groupid, _ = init () in
-            let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
-	      table_name name sessid groupid in
+            let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s';"
+	      table_name name sessid in
 	    let _r = Mysql.exec (db ()) sql in
 	    ()
 	  with Exit -> ()
