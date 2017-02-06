@@ -1242,3 +1242,16 @@ let math_env_set f m =
 (* Set the color in the math environment *)
 let mcolor col m =
   math_env_set (fun env -> { env with fontColor = col }) m
+
+(* Scale down maths to fit the width of the page if necessary. *)
+let fit x =
+  let fn env =
+    let bx = draw_boxes env (draw [env] x) in
+    let (x0,y0,x1,y1) = bounding_box bx in
+    let mw = x1 -. x0 in
+    let pw = env.normalMeasure in
+    let sz = env.size in
+    let size = if mw <= pw then sz else sz *. pw /. mw in
+    {env with size}
+  in
+  Env fn :: x
