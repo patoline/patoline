@@ -53,7 +53,7 @@ let img file =
 \begin{slide}
 \begin{itemize}
 
-\Caml(let count = db.create_data ~global:true "count" 0)
+\Caml(let count = db.create_data ~global:true default_coding "count" 0)
 \item \button("test")(["cible"]){Un bouton} qui a été cliqué
 \dynamic("cible")(function ev ->
   	  (match ev with
@@ -61,7 +61,7 @@ let img file =
            | _ -> Unchanged)){0123456789 fois}(
 	   fun () -> <<\caml(let c = count.read () in [tT (string_of_int c)]) fois !>>)
 
-\Caml(let count2 = db.create_data ~global:false "count2" 0)
+\Caml(let count2 = db.create_data ~global:false default_coding "count2" 0)
 \item \button("test")(["cible2"]){Un autre bouton} qui a été cliqué
 \dynamic("cible2")(function ev ->
   	  (match ev with
@@ -75,9 +75,9 @@ let img file =
 
 \begin{center}
 \Caml(
-let aPos = db.create_data ~global:false "Apos" (10.0,10.0)
-let bPos = db.create_data ~global:false "Bpos" (-10.0,-10.0)
-let cPos = db.create_data ~global:false "Cpos" (10.0,-10.0)
+let aPos = db.create_data ~global:false default_coding "Apos" (10.0,10.0)
+let bPos = db.create_data ~global:false default_coding "Bpos" (-10.0,-10.0)
+let cPos = db.create_data ~global:false default_coding "Cpos" (10.0,-10.0)
 )
 \dynamic("figure")(
 	function ev ->
@@ -118,7 +118,7 @@ type sondage =
 | No_opinion
 | No_answer
 
-let sonde = db.create_data ~global:false "sondage" No_answer
+let sonde = db.create_data ~global:false default_coding "sondage" No_answer
 
 let box name s =
  dynamic name
@@ -129,7 +129,7 @@ let box name s =
 
 \Caml(
 let destinations = ["qui_res"]
-let questions = Array.init 5 (fun i -> db.create_data ("box"^string_of_int i) false)
+let questions = Array.init 5 (fun i -> db.create_data default_coding ("box"^string_of_int i) false)
 )
 
 \begin{slide}
@@ -162,7 +162,7 @@ let questions = Array.init 5 (fun i -> db.create_data ("box"^string_of_int i) fa
 \Caml(
 type value = No_opinion | Not_clicked | Null | Fun_but | Fun_yes
 let values = [|Not_clicked ; Null; Fun_but; Fun_yes; No_opinion|]
-let data = db.create_data "Sondage" Not_clicked
+let data = db.create_data default_coding "Sondage" Not_clicked
 let radios = radioButtons ~destinations:["histo"] data values
 )
 
