@@ -10,7 +10,7 @@ open DefaultFormat
 
 let caml x = x
 
-let db_info = Mysql Mysql.(
+let db_info = Mysql.(
     { defaults with
       dbhost = Some "localhost";
       dbname = Some "demo";
@@ -69,7 +69,7 @@ let img file =
            | _ -> Unchanged)){0123456789 fois}(
 	   fun () -> <<\caml(let c = count2.read () in [tT (string_of_int c)]) fois !>>)
 
-\item Chercher la différence entre ces deux boutons ! indication~: ouvrez deux fois la présentation.
+\item Chercher la différence entre ces deux boutons ! indication : ouvrez deux fois la présentation.
 
 \item Et une figure dont on peut bouger les sommets :
 
@@ -214,7 +214,7 @@ let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
 \begin{slide}
 
 \begin{block}{
-Un petit programme éditable, the program is compiled and executed (beware of security issues)~:
+Un petit programme éditable, the program is compiled and executed (beware of security issues) :
 }
 \caml(
   editableText ~nb_lines:7 ~lang:Verbatim.lang_OCaml ~extra:(test_ocaml ~run:true) ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML"

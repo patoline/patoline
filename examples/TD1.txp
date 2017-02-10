@@ -153,7 +153,7 @@ Déterminer la nature des séries numériques suivantes:
 \begin{center}
 \( \ser{(-1)^{n} \frac{2 n}{4 n^{2} - 3}}{n}{0} \) ,
 \( \ser{\frac{sin(\sqrt{n})}{n \sqrt{n}}}{n}{1} \) ,
-\( \ser{\frac{(-1)^{n}}{n - ln{n}}}{n}{1} \) ,
+\( \ser{\frac{(-1)^{n}}{n - ln(n)}}{n}{1} \) ,
 \( \ser{\frac{cos(n) + (-1)^{n} n^{2}}{n^{3}}}{n}{1} \) et
 \( \ser{\frac{sin(n)}{n}}{n}{1} \) .
 \end{center}
