@@ -6,7 +6,7 @@ all: $(d)/pa_patoline
 
 $(d)/Subsup.cmx: $(d)/Subsup.ml
 	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -package earley,pa_ocaml -I $(PA_PATOLINE_DIR) -o $@ -c $<
+	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -package earley,earley_ocaml -I $(PA_PATOLINE_DIR) -o $@ -c $<
 
 $(d)/prefixTree.cmx: $(d)/prefixTree.ml
 	$(ECHO) "[OPT] $@"
@@ -14,13 +14,13 @@ $(d)/prefixTree.cmx: $(d)/prefixTree.ml
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(d)/Subsup.cmx $(d)/prefixTree.cmx $(CONFIG_DIR)/patoconfig.cmxa
 	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -package patutil,earley,earley.str,pa_ocaml,compiler-libs \
+	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -package patutil,earley,earley.str,earley_ocaml,compiler-libs \
 		-I $(CONFIG_DIR) -I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -rectypes \
 		-o $@ -c $<
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa $(CONFIG_DIR)/patoconfig.cmxa
 	$(ECHO) "[NAT] $@"
-	$(Q)$(OCAMLOPT) -package patutil,imagelib,dynlink,str,earley,earley.str,pa_ocaml,compiler-libs \
+	$(Q)$(OCAMLOPT) -package patutil,imagelib,dynlink,str,earley,earley.str,earley_ocaml,compiler-libs \
 		-I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -o $@ \
 		bigarray.cmxa unicodelib.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa \
 		str.cmxa ocamlcommon.cmxa earley.cmxa earleyStr.cmxa earley_ocaml.cmxa \

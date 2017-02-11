@@ -57,7 +57,7 @@ export UNICODELIB_PATH
 $(PA_CONV): $(d)/pa_convert.ml
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(UNICODELIB_INCLUDES) -pp pa_ocaml \
-		-package compiler-libs -o $@ ocamlcommon.cmxa unix.cmxa str.cmxa \
+		-package compiler-libs -o $@ unix.cmxa str.cmxa \
 		earley.cmxa earleyStr.cmxa earley_ocaml.cmxa $<
 
 $(ENCODING_ML): %.ml: $(PA_CONV)
@@ -74,7 +74,7 @@ $(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml $(d)/pa_UnicodeData.cmo
 $(d)/pa_UnicodeData: $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -package compiler-libs -linkpkg \
-		$(UNICODELIB_INCLUDES) -o $@ ocamlcommon.cmxa $^
+		$(UNICODELIB_INCLUDES) -o $@ $^
 
 UNICODE_DATA_TXT := $(d)/data/UnicodeData.txt
 UNICODE_DATABASE := $(d)/UnicodeData.data
