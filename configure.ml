@@ -177,7 +177,7 @@ let local_packages =
   ; { package_name = "unicodelib"
     ; macro_suffix = "UNICODELIB"
     ; local_deps   = []
-    ; extern_deps  = ["bytes"; "earley"; "earley.str"; "pa_ocaml"; "sqlite3"; "compiler-libs"]
+    ; extern_deps  = ["bytes"; "earley"; "earley.str"; "earley_ocaml"; "sqlite3"; "compiler-libs"]
     ; subdirs      = []
     ; has_meta     = true }
 
@@ -653,7 +653,7 @@ let _=
   )
   ok_drivers;
 
-  (* Enable compilation of pa_patoline if pa_ocaml is installed *)
+  (* Enable compilation of pa_patoline if earley_ocaml is installed *)
   Printf.fprintf make "PA_PATOLINE := %s\n" "src/patobuild/pa_patoline";
 
   (* Tell make which ConfigFindFont (fontconfig or not) should be linked while
