@@ -214,4 +214,4 @@ FILE_TO_STRING := $(TOOLS_DIR)/file_to_string
 
 $(FILE_TO_STRING): $(FILE_TO_STRING).ml
 	$(ECHO) "[GEN] $@"
-	$(Q)$(OCAMLFIND) $(OCAMLC) -package bytes $< -o $@
+	$(Q)$(OCAMLC) -package bytes $< -o $@
