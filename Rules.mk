@@ -102,6 +102,13 @@ ifneq "$(wildcard src/Makefile.config)" ""
   include src/Makefile.config
 endif
 
+# Useful directories, to be referenced from other Rules.ml
+FONTS_DIR := Fonts
+TOOLS_DIR := Tools
+FORMAT_DIR := Format
+HYPHENATION_DIR := Hyphenation
+EDITORS_DIR := editors
+
 # Compilers and various tools
 OCAML := ocaml
 OCAMLFIND := ocamlfind
@@ -116,15 +123,9 @@ OCAMLMKLIB := ocamlfind ocamlmklib
 OCAMLDOC := ocamlfind ocamldoc $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLYACC := ocamlyacc
 OCAMLLEX := ocamllex
+FILE_TO_STRING := $(TOOLS_DIR)/file_to_string
 
 export OCAML OCAMLC OCAMLOPT OCAMLDEP OCAMLMKLIB
-
-# Useful directories, to be referenced from other Rules.ml
-FONTS_DIR := Fonts
-TOOLS_DIR := Tools
-FORMAT_DIR := Format
-HYPHENATION_DIR := Hyphenation
-EDITORS_DIR := editors
 
 # Environment variable for ocamlfind to search for local package
 # and ignore duplicate definition due to previous installation
@@ -210,8 +211,6 @@ INCLUDES:=
 %.ml: %.mll
 	$(ECHO) "[LEX] $@"
 	$(Q)$(OCAMLLEX) -q $<
-
-FILE_TO_STRING := $(TOOLS_DIR)/file_to_string
 
 $(FILE_TO_STRING): $(FILE_TO_STRING).ml
 	$(ECHO) "[GEN] $@"
