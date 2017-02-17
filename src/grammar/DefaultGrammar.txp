@@ -102,6 +102,7 @@
 \Add_relation{\notidentical \nequiv ≢}{≢}
 \Add_relation{\almostequal ≈}{≈}
 \Add_relation{≅ \cong \iso}{≅}
+\Add_relation{≆ \ncong \niso}{≆}
 \Add_relation{≃ \simeq \equi}{≃}
 \Add_relation{\notalmostequal ≉}{≉}
 \Add_relation{∼ \sim}{∼}
