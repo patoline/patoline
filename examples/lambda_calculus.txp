@@ -1,0 +1,210 @@
+(* #PACKAGE bindlib *)
+\Caml(
+
+open Diagrams
+
+(* Low level AST (output of the parser). *)
+type p_term =
+  | P_Var of string                   (* x      *)
+  | P_Abs of string * p_term          (* λx t   *)
+  | P_App of p_term * p_term          (* t u    *)
+  | P_Sub of p_term * string * p_term (* t[x≔u] *)
+  | P_Par of p_term                   (* (t)    *)
+
+(* Parser with three priorities: atom, application and function. *)
+let parser term (prio : [`Atm | `App | `Fun]) =
+  | x:lvar                       when prio = `Atm -> P_Var(x)
+  | "λ" x:lvar "." t:(term `Fun) when prio = `Fun -> P_Abs(x,t)
+  | t:(term `App) u:(term `Atm)  when prio = `App -> P_App(t,u)
+  | t:(term `Atm) (x,u):subs     when prio = `Atm -> P_Sub(t,x,u)
+  | "(" t:(term `Fun) ")"        when prio = `Atm -> P_Par(t)
+  | t:(term `App)                when prio = `Fun -> t
+  | t:(term `Atm)                when prio = `App -> t
+and lvar = {#[a-z]+#}[group.(0)]
+and subs = "[" x:lvar "≔" u:(term `Fun) "]"
+
+(* Main parsing function. *)
+let parse_p_term s =
+  let open Earley in
+  let blank = blank_regexp {#[ ]*#} in
+  let parse = parse_string ~filename:s (term `Fun) blank in
+  handle_exception parse s
+
+open Bindlib
+
+(* High level AST (with bindlib variables and binders). *)
+type term =
+  | Var of term var
+  | Abs of (term, term) binder
+  | App of term * term
+  | Sub of (term, term) binder * term
+  | Par of term
+
+(* Convenient short names. *)
+type tbox = term bindbox
+type tvar = term var
+
+(* Injection of a variable into a term. *)
+let inj_var : tvar -> term = fun x -> Var(x)
+
+(* Smart constructors. *)
+let var : string -> tbox =
+  fun x -> box_of_var (new_var inj_var x)
+
+let abs : string -> (tvar -> tbox) -> tbox =
+  fun x f -> box_apply (fun b -> Abs(b)) (vbind inj_var x f)
+
+let app : tbox -> tbox -> tbox =
+  box_apply2 (fun t u -> App(t,u))
+
+let sub : string -> (tvar -> tbox) -> tbox -> tbox =
+  fun x f u -> box_apply2 (fun b u -> Sub(b,u)) (vbind inj_var x f) u
+
+let par : tbox -> tbox =
+  box_apply (fun t -> Par(t))
+
+(* Conversion to the high level AST. *)
+let convert_box : p_term -> tbox =
+  let rec convert env t =
+    match t with
+    | P_Var(x)     -> (try List.assoc x env with Not_found -> var x)
+    | P_Abs(x,t)   -> abs x (fun v -> convert ((x, box_of_var v) :: env) t)
+    | P_App(t,u)   -> app (convert env t) (convert env u)
+    | P_Sub(t,x,u) -> let fn v = convert ((x, box_of_var v) :: env) t in
+                      sub x fn (convert env u)
+    | P_Par(t)     -> par (convert env t)
+  in
+  convert []
+
+let convert : p_term -> term =
+  fun t -> unbox (convert_box t)
+
+(* Parsing function to the high level AST. *)
+let parse_term : string -> term =
+  fun s -> convert (parse_p_term s)
+
+(* Call-by-name head reduction step on a term, if possible. *)
+let hstep : term -> term option =
+  let rec unwrap t =
+    match t with
+    | Par(t) -> unwrap t
+    | _      -> t
+  in
+  let is_atom t =
+    match t with
+    | Abs(_) -> false
+    | App(_) -> false
+    | _      -> true
+  in
+  let rec hstep t =
+    match unwrap t with
+    | Var(x)   -> None
+    | Abs(b)   -> None
+    | App(t,u) -> begin
+                    match (hstep t, unwrap t) with
+                    | (Some(t), _     ) when is_atom t -> Some(App(t,u))
+                    | (Some(t), _     ) -> Some(App(Par(t),u))
+                    | (None   , Abs(b)) -> Some(subst b u)
+                    (* | (None   , Abs(b)) -> Some(Sub(b,u)) FIXME *)
+                    | (None   , _     ) -> None
+                  end
+    | Sub(b,u) -> Some(subst b u)
+    | Par(_)   -> assert false
+  in hstep
+
+let reducts : int -> term -> term list * bool = fun nbmax t ->
+  let rec reducts nbmax acc t =
+    if nbmax <= 0 then (List.rev acc, false) else
+    match hstep t with
+    | None    -> (List.rev acc, true)
+    | Some(t) -> reducts (nbmax-1) (t::acc) t
+  in reducts nbmax [t] t
+
+(* Printing function for the high level AST. *)
+let print_term : out_channel -> term -> unit =
+  let rec print ch t =
+    match t with
+    | Var(x)   -> output_string ch (name_of x)
+    | Abs(b)   -> let (x,t) = unbind inj_var b in
+                  Printf.fprintf ch "λ%s.%a" (name_of x) print t
+    | App(t,u) -> Printf.fprintf ch "%a %a" print t print u
+    | Sub(b,u) -> let (x,t) = unbind inj_var b in
+                  Printf.fprintf ch "%a[%s≔%a]" print t (name_of x) print u
+    | Par(t)   -> Printf.fprintf ch "(%a)" print t
+  in print
+
+(* Math printing utilities. *)
+type maths = Maths.math list
+
+let str : string -> maths =
+  fun s -> [Maths.Ordinary (Maths.node (Maths.glyphs s))]
+
+let deq : string -> maths -> maths =
+  let deq = Maths.node (MathFonts.asana "\\defeq" 798) in
+  let deq = Normal(false, deq, false) in
+  fun x t -> [Maths.bin 2 deq (str x) t]
+
+(* Conversion to maths. *)
+let to_maths : term -> maths =
+  let rec t2m t =
+    match t with
+    | Var(x)   -> str (name_of x)
+    | Abs(b)   -> let (x,t) = unbind inj_var b in
+                  (str "λ") @ (str (name_of x)) @ (str ".") @ (t2m t)
+    | App(t,u) -> (t2m t) @ (str " ") @ (t2m u)
+    | Sub(b,u) -> let (x,t) = unbind inj_var b in
+                  (t2m t) @ (str "[") @ (deq (name_of x) (t2m u)) @ (str "]")
+    | Par(t)   -> (str "(") @ (t2m t) @ (str ")")
+  in t2m
+
+(* Term macro. *)
+let term : string -> maths =
+  fun s -> to_maths (parse_term s)
+
+let reds nbmax name my_term =
+  let fn i t =
+    match i with
+    | 0 ->  [ name ; <$=$> ; to_maths t ]
+    | _ ->  [ []   ; <$≻$> ; to_maths t ]
+  in
+  let (l, finite) = reducts nbmax my_term in
+  let l = List.mapi fn l in
+  if finite then l else (l @ [[[] ; <$≻$> ; <$⋯$>]])
+)
+
+\Configure_math_macro{\term}{ syntax = string; }
+
+-- Examples of term of the $λ$-calculus --
+
+$$ \term{x} $$
+$$ \term{λx.x} $$
+$$ \term{λx.x x} $$
+$$ \term{λx.λy.x} $$
+$$ \term{(λx.x x) (λx.x x)} $$
+$$ \term{t u v} $$
+$$ \term{t[x≔y z]} $$
+$$ \term{t[x≔y z] v u} $$
+
+-- Reduction of a term of the $λ$-calculus --
+
+\begin{center}
+\diagram(
+let t = parse_term "(λx.x x x) (λx.x x x)"
+let _ = array [`East ; `East ; `West] (reds 3 <$Ω₃$> t)
+)
+\end{center}
+
+\begin{center}
+\diagram(
+let t = parse_term "(λx.x (x x)) (λx.x (x x))"
+let _ = array [`East ; `East ; `West] (reds 2 <$Ω_{-3}$> t)
+)
+\end{center}
+
+
+\begin{center}
+\diagram(
+let t = parse_term "(λx.λy.x) t (λz.z)"
+let _ = array [`East ; `East ; `West] (reds 10 <$E$> t)
+)
+\end{center}
