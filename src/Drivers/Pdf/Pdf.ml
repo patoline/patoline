@@ -40,28 +40,27 @@ type pdfFont= { font:Fonts.font;
                 mutable revFontGlyphs:(Fonts.glyph) IntMap.t }
 
 
+type state_data =
+  { strokingColor      : color option
+  ; nonStrokingColor   : color option
+  ; strokingOpacity    : int
+  ; nonstrokingOpacity : int
+  ; lineWidth          : float
+  ; lineJoin           : lineJoin
+  ; lineCap            : lineCap
+  ; dashPattern        : float list }
 
-type state=
-    { mutable strokingColor:color option;
-      mutable nonStrokingColor:color option;
-      mutable strokingOpacity:int;
-      mutable nonstrokingOpacity:int;
-      mutable lineWidth:float;
-      mutable lineJoin:lineJoin;
-      mutable lineCap:lineCap;
-      mutable dashPattern:float list
-    }
-let default_state={
-  strokingColor=None;
-  nonStrokingColor=None;
-  strokingOpacity=0;
-  nonstrokingOpacity=0;
-  lineWidth=1.;
-  lineJoin=Miter_join;
-  lineCap=Butt_cap;
-  dashPattern=[]
-}
+let initial_state =
+  { strokingColor      = None
+  ; nonStrokingColor   = None
+  ; strokingOpacity    = 0
+  ; nonstrokingOpacity = 0
+  ; lineWidth          = 1.0
+  ; lineJoin           = Miter_join
+  ; lineCap            = Butt_cap
+  ; dashPattern        = [] }
 
+type state = state_data ref
 
 #ifdef CAMLZIP
 let stream buf=
@@ -137,7 +136,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     if i>=Array.length x then true else
       if x.(i) < infinity && x.(i)> -.infinity then are_valid x (i+1) else false
   in
-  let writePath buf pt_of_mm paths params=
+  let writePath buf pt_of_mm paths params =
     List.iter (fun path->
       if Array.length path > 0 then (
         let (x0,y0)=path.(0) in
@@ -261,7 +260,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     let xline=ref 0. in
 
     (* Dessins *)
-    let state=ref default_state in
+    let state = ref initial_state in
     let opacitiesCounter=ref 0 in
     let sopacities=ref (FloatMap.singleton 1. 0) in
     let nsopacities=ref (FloatMap.singleton 1. 0) in
@@ -276,8 +275,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       if !isText then (
         currentFont:=(-1);
         currentSize:=(-.infinity);
-        (!state).nonStrokingColor<-None;
-        (!state).strokingColor<-None;
+        state := {!state with nonStrokingColor = None; strokingColor = None};
         Rbuffer.add_string pageBuf " ET "; isText:=false
       );
       xt:=0.; yt:=0.
@@ -298,10 +296,10 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
             )
         in
         if alpha <> (!state).strokingOpacity then (
-          (!state).strokingOpacity<-alpha;
+          state := {!state with strokingOpacity = alpha};
           Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
         );
-        (!state).strokingColor<-Some col;
+        state := {!state with strokingColor = Some col};
         Rbuffer.add_string pageBuf (sprintf "%f %f %f RG " r g b);
       )
     in
@@ -321,17 +319,17 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
             )
         in
         if alpha <> (!state).nonstrokingOpacity then (
-          (!state).nonstrokingOpacity<-alpha;
+          state := {!state with nonstrokingOpacity = alpha};
           Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
         );
-        (!state).nonStrokingColor<-Some col;
+        state := {!state with nonStrokingColor = Some col};
         Rbuffer.add_string pageBuf (sprintf "%f %f %f rg " r g b);
       )
     in
     let set_line_join j=
       if j<> (!state).lineJoin then (
         close_text ();
-        (!state).lineJoin<-j;
+        state := {!state with lineJoin = j};
         Rbuffer.add_string pageBuf (
           match j with
               Miter_join->" 0 j "
@@ -344,7 +342,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     let set_line_cap c=
       if c<> (!state).lineCap then (
         close_text ();
-        (!state).lineCap<-c;
+        state := {!state with lineCap = c};
         Rbuffer.add_string pageBuf (
           match c with
               Butt_cap->" 0 J "
@@ -354,17 +352,17 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         )
       )
     in
-    let set_line_width w=
+    let set_line_width w =
       if w <> (!state).lineWidth then (
-        close_text ();
-        (!state).lineWidth<-w;
+        close_text (); (* FIXME is this line required? *)
+        state := {!state with lineWidth = w};
         Rbuffer.add_string pageBuf (sprintf "%f w " w);
       )
     in
     let set_dash_pattern l=
       if l<> (!state).dashPattern then (
         close_text ();
-        (!state).dashPattern<-l;
+        state := {!state with dashPattern = l};
         match l with
             []->(Rbuffer.add_string pageBuf "[] 0 d ")
           | _::_->(
@@ -374,7 +372,8 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
           )
       )
     in
-    let rec output_contents=function
+    let rec output_contents c =
+      match c with
       | Animation a ->
 	List.iter output_contents (a.anim_contents.(a.anim_default))
       | Glyph gl->(
