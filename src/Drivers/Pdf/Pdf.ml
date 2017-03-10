@@ -1067,7 +1067,7 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
     fprintf outChan "\nendstream\n";
     endObject ();
 
-    let markinfo="<< /Marked true /UserProperties false /Suspects false >>" in
+    let markinfo="<< /Marked true /UserProperties null /Suspects null >>" in
     let outputIntents="/OutputIntents [ << /Info (none) /Type /OutputIntent /S /GTS_PDFX /OutputConditionIdentifier (Blurb.com) /RegistryName (http://www.color.org/) >> ]"
     in
 
