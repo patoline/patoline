@@ -204,6 +204,16 @@ let param_OCaml =
   ; symbols = [("->", symbol "→");("→", symbol "→");("->>", symbol "↠");("↠", symbol "↠")]
   }
 
+let param_PML =
+  { keywords = ["type"; "val"; "rec"; "let"; "fix"; "case"; "of"; "fun"]
+  ; separators = ["*";"(";")";",";";"]
+  ; symbols = [("->", symbol "→");("→", symbol "→");("=>", symbol "⇒");("⇒", symbol "⇒");
+               ("✂", symbol "✂"); ("⟨", symbol "⟨"); ("⟩", symbol "⟩");
+               ("∀", symbol "∀"); ("∃", symbol "∃");("∈", symbol "∈");
+               ("τ", symbol "τ");("ι", symbol "ι");("ο", symbol "ο");("≡", symbol "≡")
+              ]
+  }
+
 let param_Python =
   { keywords = ["def";"(";")";"*";";";",";"|";"=";":";
 		"while";"for";"if";"else";"return";"try";"except";"break"]
@@ -219,8 +229,10 @@ let lines_to_contents param lines = List.map (line_to_contents param) lines
 
 let lang_OCaml = lines_to_contents param_OCaml
 let lang_SML = lines_to_contents param_SML
+let lang_PML = lines_to_contents param_PML
 let lang_Python = lines_to_contents param_Python
 
 let verb_OCaml = verb_text (line_to_contents param_OCaml)
 let verb_SML = verb_text (line_to_contents param_SML)
+let verb_PML = verb_text (line_to_contents param_PML)
 let verb_Python = verb_text (line_to_contents param_Python)

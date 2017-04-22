@@ -556,12 +556,14 @@ let defaultEnv:environment=
 
     let verbs_OCaml  = verbs_Lang Verbatim.param_OCaml
     let verbs_SML    = verbs_Lang Verbatim.param_SML
+    let verbs_PML    = verbs_Lang Verbatim.param_PML
     let verbs_Python = verbs_Lang Verbatim.param_Python
 
     let verbatim    = Verbatim.verb_text (fun s -> [tT s])
 
     let verb_OCaml  = Verbatim.(verb_text (line_to_contents param_OCaml))
     let verb_SML    = Verbatim.(verb_text (line_to_contents param_SML))
+    let verb_PML    = Verbatim.(verb_text (line_to_contents param_PML))
     let verb_Python = Verbatim.(verb_text (line_to_contents param_Python))
 
     let env_stack=ref []
