@@ -79,6 +79,7 @@ svg text{pointer-events:none;}
 svg path{pointer-events:none;}
 svg rect{pointer-events:none;}
 svg a text{pointer-events:all;}
+svg[id='svg_svg'] { width:100%; height:auto; }
 svg .button text{pointer-events:all;}
 svg .editable text{pointer-events:all;}
 svg .dragable text{pointer-events:all;}
