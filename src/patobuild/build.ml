@@ -78,10 +78,33 @@ let more_recent source target =
 let add_pp_args config args =
   { config with pp_args = args @ config.pp_args }
 
+let driver_changed config target =
+  let new_driver = match config.pat_driver with
+    | None -> "Pdf" | Some d -> d
+  in
+  let driver_file = (Filename.chop_extension target) ^ "_.driver" in
+  let record_driver res =
+    if res then
+      begin
+        let ch = open_out driver_file in
+        Printf.fprintf ch "%s\n" new_driver;
+        close_out ch
+      end;
+    res
+  in
+  try
+    let ch = open_in driver_file in
+    let driver = input_line ch in
+    close_in ch;
+    record_driver (driver <> new_driver)
+  with _ -> record_driver true
+
 (* Preprocessor command. *)
 let pp_if_more_recent config is_main source target =
   (* Update if source more recent that target. *)
-  let update = more_recent source target in
+  let update = more_recent source target
+               || (is_main && driver_changed config target)
+  in
   (* Also update if main file does not exist (only when processing main). *)
   let main = (Filename.chop_extension target) ^ "_.ml" in
   if update || (is_main && not (Sys.file_exists main)) then
