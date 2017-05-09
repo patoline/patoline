@@ -137,7 +137,7 @@ let init_db table_name db_info =
 	  let res = Hashtbl.create 101 in
 	  Hashtbl.iter (fun k v ->
 	    let old = try Hashtbl.find res v with Not_found -> 0 in
-	    Hashtbl.add res v (old + 1)) table;
+	    Hashtbl.replace res v (old + 1)) table;
 	  total, Hashtbl.fold (fun v n acc -> (v,n)::acc) res [];
 	in
 	{name; read; write; reset; distribution};
