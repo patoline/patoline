@@ -235,10 +235,28 @@ let draw ?fontCache ?dynCache prefix w h contents=
                 (round (255.0 *. b))
                 (args.lineWidth)
                 a
-            );
+                               );
         | None->
           Rbuffer.add_string svg_buf "stroke=\"none\" "
       );
+
+      (match args.dashPattern with
+       | [] -> ()
+       | l ->
+          Rbuffer.add_string svg_buf "stroke-dasharray=\"";
+          Rbuffer.add_string svg_buf (String.concat "," (List.map string_of_float l));
+          Rbuffer.add_string svg_buf "\" ");
+
+      (match args.lineCap with
+       | Butt_cap -> ()
+       | Round_cap -> Rbuffer.add_string svg_buf "stroke-linecap=\"round\" "
+       | Proj_square_cap -> Rbuffer.add_string svg_buf "stroke-linecap=\"square\" ");
+
+      (match args.lineJoin with
+       | Miter_join -> ()
+       | Round_join -> Rbuffer.add_string svg_buf "stroke-linejoin=\"round\" "
+       | Bevel_join -> Rbuffer.add_string svg_buf "stroke-linejoin=\"bevel\" ");
+
       Rbuffer.add_string svg_buf "d=\"";
       Rbuffer.add_buffer svg_buf buf;
       Rbuffer.add_string svg_buf "\" />\n";
