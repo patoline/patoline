@@ -196,7 +196,7 @@ let move=Str.regexp "move_\\([0-9]*\\)_\\([0-9]*\\)"
 let refresh=Str.regexp "refresh_\\([0-9]*\\)_\\([0-9]*\\)"
 let click=Str.regexp "click_\\([0-9]*\\)_\\([0-9]*\\) "
 let edit=Str.regexp "edit_\\([0-9]*\\)_\\([0-9]*\\) "
-let drag=Str.regexp "drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*\\) "
+let drag=Str.regexp "drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*\\)\\(_release\\)? "
 let ping=Str.regexp "ping"
 
 let filter_options argv = argv
@@ -521,17 +521,19 @@ function start_drag(name,dest,ev) {
   var y0 =ev.pageY;
   var x  = x0;
   var y  = y0;
-  function do_drag() {
+  function do_drag(release) {
     var dx = scale * (x - x0); var dy = scale * (y0 - y);
-    if (dx != 0 || dy != 0) {
-      websocket_send('drag_'+(current_slide)+'_'+(current_state)+'_'+dx+'_'+dy+' '+message);
+    if (dx != 0 || dy != 0 || release) {
+      if (release) rmsg = '_release'; else rmsg = '';
+      console.log('rmsg: '+rmsg);
+      websocket_send('drag_'+(current_slide)+'_'+(current_state)+'_'+dx+'_'+dy+rmsg+' '+message);
       x0 = x; y0 = y;
   }}
-  var timer = setInterval(do_drag,200);
+  var timer = setInterval(function () {do_drag(false);},200);
   function stop_drag(e) {
     clearInterval(timer);
     x = e.pageX; y = e.pageY;
-    do_drag();
+    do_drag(true);
     window.onmousemove = null;
     window.onmouseup = null;
   }
@@ -1212,6 +1214,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
           let match_end = Str.match_end () in
           let dx = float_of_string (Str.matched_group 3 get)
           and dy = float_of_string (Str.matched_group 4 get) in
+          let release = try ignore (Str.matched_group 5 get); true with _ -> false in
           let slide, state = read_slide_state get in
           let rest =String.sub get match_end (String.length get - match_end) in
 
@@ -1221,7 +1224,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
               name::dest -> name,dest
             | _ -> failwith "Bad click"
           in
-          update slide state (Drag(name,(dx,dy))) dest;
+          update slide state (Drag(name,(dx,dy),release)) dest;
           process_req master "" [] reste
         ) else if Str.string_match ping get 0 then (
           Printf.eprintf "ping\n";

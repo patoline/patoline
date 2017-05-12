@@ -123,7 +123,7 @@ and animation =
 (* Dynamic. *)
 and event =
   | Click of string
-  | Drag of string * (float * float)
+  | Drag of string * (float * float) * bool (* true: release button *)
   | Edit of string * string
 and action =
   | Unchanged
@@ -348,7 +348,7 @@ let paths_bounding_box x0 y0 x1 y1 ps =
       x0' := min !x0' xa; y0' := min !y0' ya;
       x1' := max !x1' xb; y1' := max !y1' yb;
     done
-  in 
+  in
   List.iter f ps; (!x0', !y0', !x1', !y1')
 
 (* Compute the bounding box of a glyph. *)
@@ -483,7 +483,7 @@ let rec print_raw ch = function
       let x = gl.glyph_x and y = gl.glyph_y and sz = gl.glyph_size in
       Printf.fprintf ch "Glyph %s (%f,%f) size %f\n" glyph x y sz
   | Path (_,ps) ->
-      let f p = 
+      let f p =
         let f (x,y) =
           let sx = List.map string_of_float (Array.to_list x) in
           let sy = List.map string_of_float (Array.to_list y) in

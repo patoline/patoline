@@ -988,8 +988,8 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let send_events ds ev =
     let rec fn acc evs = match ev, evs with
       | _, [] -> (ds, ev)::(List.rev acc)
-      | Drag(n1,(x1,y1)), ((ds',Drag(n2,(x2,y2)))::evs) when n1 == n2 && ds == ds' ->
-	List.rev_append acc ((ds, Drag(n1,(x1+.x2,y1+.y2)))::evs)
+      | Drag(n1,(x1,y1),false), ((ds',Drag(n2,(x2,y2),r2))::evs) when n1 == n2 && ds == ds' ->
+	List.rev_append acc ((ds, Drag(n1,(x1+.x2,y1+.y2), r2))::evs)
       | Click(n1) as e1, ((ds', Click(n2))::evs) when n1 == n2 && ds == ds' ->
 	List.rev_append acc ((ds, e1)::evs)
       | Edit(n1,_) as e1, ((ds', Edit(n2,_))::evs) when n1 == n2 && ds == ds' ->
@@ -1216,7 +1216,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	  motion_ref := Some (x0,y0,x, y,buttons,links);
 	  let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
 	  List.iter (function (name,ds) ->
-	    send_events ds (Drag(name,(x,y)))) buttons;
+	    send_events ds (Drag(name,(x,y),false))) buttons;
 	));
   in
 
@@ -1459,7 +1459,6 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	  let dx = x - x' and dy = y - y' in
 	  if (dx * dx + dy * dy <= 9) then links else []
       in
-      motion_ref := None;
       List.iter
 	  (fun l ->
 	    match l.link_kind with
@@ -1495,8 +1494,16 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	       close_in ch;
 	       send_events ds (Edit(name, buf))
 	    | Button(Dragable,name,ds) ->
-	      ()
-	  ) links
+               match !motion_ref with
+                 None -> ()
+               | Some (x0,y0,x', y',buttons,links) ->
+                  let dx = x - x' and dy = y - y' in
+	          let mx = float dx and my = float dy in
+	          let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
+	          send_events ds (Drag(name,(x,y),true))
+	  ) links;
+            motion_ref := None;
+
 
     | b, Glut.UP ->
       Printf.fprintf stderr "Unbound button: %s\n%!" (Glut.string_of_button b)
