@@ -154,6 +154,7 @@ any graph) as a follower*)
 type son =
   {
     fd: in_channel; (* connection to the son process *)
+    df: out_channel;
     pid: int;
     num: int; (*internal number, just for printing and debugging*)
     served_sock: Unix.file_descr;
@@ -358,19 +359,6 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
   let imgs = StrMap.add "favicon.ico" duck_ico imgs in
   let imgs = StrMap.add "hammer.js" Hammer._Hammer_js imgs in
-
-  let read_slide_state get =
-    let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
-    let state=max 0 (int_of_string (Str.matched_group 2 get)) in
-
-    let slide=min asked_slide (Array.length slides-1) in
-    let state=if asked_slide>slide then
-        (Array.length slides.(slide)-1)
-      else
-        min state (Array.length slides.(slide)-1)
-    in
-    slide, state
-  in
 
   let codemirror = Filename.concat !static_folder "codemirror/lib" in
   let use_codemirror = !static_folder <> "" &&
@@ -864,7 +852,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     Rbuffer.contents buf;
   in
 
-  let pushto ?(change=Ping) a fd =
+  let pushto ?(change=Ping) num a =
     let a = Unix.out_channel_of_descr a in
     try
       let slide, state, change, change_list = match change with
@@ -895,8 +883,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
           change change_list
       );
     with
-      e->
-        kill_son fd
+      e-> log_son num "unexpected exception in pushto: %s" (Printexc.to_string e)
   in
 
   let affected num slide state dest =
@@ -919,9 +906,12 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
   let push from s groupid dest = (*from avoids to send back to the expeditor*)
     sessid := Some(s,groupid,[]); (* dirty ... very hard to fix *)
     List.iter (fun (fd,son) ->
-        if fd <> from && in_group son groupid && affected son.num son.slide son.state dest then
-        pushto ~change:(Dynamics(son.slide,son.state, dest)) son.served_sock fd
-    ) !sonsBySock
+        if fd <> from && in_group son groupid then (
+          log_father "to [son%d] change" son.num;
+          output_value son.df dest;
+          flush son.df
+      )) !sonsBySock
+
   in
 
 
@@ -1036,12 +1026,28 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     Unix.clear_nonblock fd;
     let websocket = ref false in
     let inc=Unix.in_channel_of_descr fd in
+    let finc=Unix.in_channel_of_descr fdfather in
     let ouc=Unix.out_channel_of_descr fd in
     let fouc=Unix.out_channel_of_descr fdfather in
     let sessid = Db.sessid in
     sessid := None;
     Random.self_init ();
     reset_cache ();
+    let cur_slide = ref 0 and cur_state = ref 0 in
+
+    let read_slide_state get =
+      let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
+      let state=max 0 (int_of_string (Str.matched_group 2 get)) in
+
+      let slide=min asked_slide (Array.length slides-1) in
+      let state=if asked_slide>slide then
+                  (Array.length slides.(slide)-1)
+                else
+                  min state (Array.length slides.(slide)-1)
+      in
+      cur_slide := slide; cur_state := state;
+      slide, state
+  in
 
     let set_sessid (login,group,friends) =
       let friends = Db.friends_from_string friends in
@@ -1117,33 +1123,36 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       if affected num slide state priv then
         begin
           log_son num "private change (%d,%d)" slide state;
-          pushto ~change:(Dynamics(slide,state,priv)) fd fdfather;
+          pushto ~change:(Dynamics(slide,state,priv)) num fd;
         end;
       let s, g = read_sessid () in
       log_son num "public change %s %s %s" s g (String.concat " " pub);
       Printf.fprintf fouc "change %s %s %s\n%!" s g (String.concat " " pub);
     in
 
-    let _ = Sys.(
-        signal sigalrm
-               (Signal_handle (fun n ->
-                    log_son num "quit on sigalrm";
-                    Printf.fprintf fouc "quit %s %d\n%!" (fst (read_sessid ()))
-                                   (Unix.getpid ());
-                    exit 0)))
-    in
-
-    let rec process_req master get hdr reste=
-
-      ignore (Unix.alarm 300);
-
+    let rec process_req master get hdr reste =
       if !websocket then (
+
+      let socks, _, _ = Unix.select [fd;fdfather] [] [] 300. in
+      match socks with
+      | [] -> log_son num "quit because no ping"; exit 0
+      | ch::_ when ch == fdfather ->
+         begin
+           let dest = input_value finc in
+           log_son num "from father change";
+           if affected num !cur_slide !cur_state dest then (
+             log_son num "affected";
+             pushto ~change:(Dynamics(!cur_slide,!cur_state,dest)) num fd);
+           process_req master get hdr reste
+         end
+      | ch::_ when ch != fd -> assert false
+      | ch::_ ->
         let get = decode_slave inc in
 
         if Str.string_match move get 0 then (
           let slide, state = read_slide_state get in
           log_son num "websocket move (%d,%d) (send to websocket and father)" slide state;
-          pushto ~change:(Slide(slide,state)) fd fdfather;
+          pushto ~change:(Slide(slide,state)) num fd;
           let s, g = read_sessid () in
           Printf.fprintf fouc "move %s %s %d %d\n%!" s g slide state;
           process_req master "" [] reste)
@@ -1151,7 +1160,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
           let slide, state = read_slide_state get in
           log_son num "websocket refresh (%d,%d) (send to websocket and father)" slide state;
           Hashtbl.iter (fun label (dyn,ptr) -> ptr := None) dynCache.(slide).(state) ;
-          pushto ~change:(Slide(slide,state)) fd fdfather;
+          pushto ~change:(Slide(slide,state)) num fd;
           let s, g = read_sessid () in
           Printf.fprintf fouc "move %s %s %d %d\n%!" s g slide state;
           process_req master "" [] reste)
@@ -1206,7 +1215,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
           process_req master "" [] reste
         ) else if Str.string_match ping get 0 then (
           log_son num "websocket ping";
-          pushto ~change:Ping fd fdfather;
+          pushto ~change:Ping num fd;
           process_req master "" [] reste
         ) else
             process_req master "" [] reste
@@ -1377,19 +1386,19 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
         process_req master get hdr (x::reste)
       );
     )
-  in
-  try
-    process_req false "" [] []
-  with
+    in
+    try
+      process_req false "" [] []
+    with
     | e ->
-      (match !sessid with
-        None ->
+       (match !sessid with
+          None ->
           Printf.fprintf fouc "quit ? %d\n%!" (Unix.getpid ());
-      | Some(sessid,_,_) ->
-         Printf.fprintf fouc "quit %s %d\n%!" sessid (Unix.getpid ()));
-      Printf.eprintf "erreur %d : \"%s\"\n%!" num (Printexc.to_string e);
-      exit 0;
-in
+        | Some(sessid,_,_) ->
+           Printf.fprintf fouc "quit %s %d\n%!" sessid (Unix.getpid ()));
+       Printf.eprintf "erreur %d : \"%s\"\n%!" num (Printexc.to_string e);
+       exit 0;
+  in
 
   if !master_page="" then (
     master_page:=Printf.sprintf "/%d" (Random.int (1 lsl 29));
@@ -1442,7 +1451,7 @@ in
         List.iter (fun sock ->
           if not (List.mem sock errors) then (
           if not (List.mem sock master_sockets) then (
-          let son (*ic, pid, num, fd, sessid_ptr*) = try List.assoc sock !sonsBySock with _ -> assert false in
+          let son = try List.assoc sock !sonsBySock with _ -> assert false in
           try
             let cmd = Util.split ' ' (input_line son.fd) in
             match cmd with
@@ -1468,7 +1477,7 @@ in
                log_father "from [son%d] addr %d" son.num port;
                son.addr <- Unix.ADDR_INET(inet_addr_of_string addr, port)
             | "change"::sessid::groupid::dest ->
-               log_father "from [son%d] change";
+               log_father "from [son%d] change" son.num;
                push sock sessid groupid dest;
 
             | ["quit";sessid;pid] ->
@@ -1500,6 +1509,7 @@ in
               with _ -> exit 0);
             Unix.close fd1;
             sonsBySock := (fd2,{ fd = in_channel_of_descr fd2;
+                                 df = out_channel_of_descr fd2;
                            pid = pid; num = num; addr;
                            served_sock = conn_sock;
                            sessid = None; slide = 0; state = 0})::!sonsBySock))
