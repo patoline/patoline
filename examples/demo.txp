@@ -82,9 +82,9 @@ let cPos = db.create_data ~global:false default_coding "Cpos" (10.0,-10.0)
 \dynamic("figure")(
 	function ev ->
   	  (match ev with
-	   | Drag("a",p) -> aPos.write Vector.(p + aPos.read ()); Private
-	   | Drag("b",p) -> bPos.write Vector.(p + bPos.read ()); Private
-	   | Drag("c",p) -> cPos.write Vector.(p + cPos.read ()); Private
+	   | Drag("a",p,_) -> aPos.write Vector.(p + aPos.read ()); Private
+	   | Drag("b",p,_) -> bPos.write Vector.(p + bPos.read ()); Private
+	   | Drag("c",p,_) -> cPos.write Vector.(p + cPos.read ()); Private
 	   | _ -> Unchanged))([])(fun () -> <<
 \diagram(
  let frame = Node.(node [at (0.,0.);rectangle env;draw; color (mix 0.5 white blue); innerSep 20.] [])
