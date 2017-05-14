@@ -553,7 +553,7 @@ let buffered_output' ?dynCache ?(structure:structure=empty_structure) pages pref
 
 let default_script = ""
 
-let basic_html ?(extraheader="") ?script:(script=default_script) ?onload:(onload="") ?onhashchange:(onhashchange="")
+let basic_html ?(extraheader="") ?(extrabody="") ?script:(script=default_script) ?onload:(onload="") ?onhashchange:(onhashchange="")
     ?keyboard
     cache structure pages prefix=
   let html=Rbuffer.create 10000 in
@@ -608,7 +608,7 @@ else if(n<current_slide)
 <meta charset=\"utf-8\">
 <title>";
   Rbuffer.add_string html structure.name;
-  Rbuffer.add_string html "</title><script src=\"hammer.js\"></script> \n";
+  Rbuffer.add_string html "</title>\n";
   Rbuffer.add_string html extraheader;
   Rbuffer.add_string html "<script>\n";
   Rbuffer.add_string html script;
@@ -690,10 +690,11 @@ function setReaction(svg) {
         var elt = dragable[a];
         elt.style.pointerEvents = 'all';
         var name = elt.getAttribute('id');
-        function closure2(name,dest) {
-          return(function (e) { start_drag(name,dest,e); });
+        function closure2(name,dest,touch) {
+          return(function (e) { start_drag(name,dest,e,touch); });
         }
-        elt.onmousedown=closure2(name,elt.getAttribute('dest'));
+        elt.onmousedown=closure2(name,elt.getAttribute('dest'),null);
+        elt.addEventListener('touchstart', closure2(name,elt.getAttribute('dest'),elt), false);
         elt.onmouseover=(function () { document.body.style.cursor = 'move'; });
         elt.onmouseout=(function () { document.onselectstart = null; document.body.style.cursor = 'default'; });
     }
@@ -827,6 +828,7 @@ if(h0!=current_slide || h1!=current_state){
   Rbuffer.add_string html "<title>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg_div\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
+  Rbuffer.add_string html extrabody;
   Rbuffer.add_string html (Printf.sprintf "<svg id='svg_svg' xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\"><g>"
                              (round (w)) (round (h)));
   Rbuffer.add_string html

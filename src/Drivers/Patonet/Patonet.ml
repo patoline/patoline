@@ -358,7 +358,6 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   in
 
   let imgs = StrMap.add "favicon.ico" duck_ico imgs in
-  let imgs = StrMap.add "hammer.js" Hammer._Hammer_js imgs in
 
   let codemirror = Filename.concat !static_folder "codemirror/lib" in
   let use_codemirror = !static_folder <> "" &&
@@ -420,8 +419,8 @@ function draggable(anchor,obj)
       window.onmousemove = function(e){
         var x = e.pageX + objX0;
         var y = e.pageY + objY0;
-         obj.style.left=x+'px';
-         obj.style.top=y+'px';
+        obj.style.left=x+'px';
+        obj.style.top=y+'px';
       };
 
       window.onmouseup = function(e){
@@ -500,7 +499,7 @@ function start_edit(name,dest,ev) {
   draggable(title,div);
 }
 
-function start_drag(name,dest,ev) {
+function start_drag(name,dest,ev,touch) {
   ev = ev || window.event;
   var svg_rect = document.getElementById('svg_div');
   var w = svg_rect.offsetWidth;
@@ -515,23 +514,39 @@ function start_drag(name,dest,ev) {
     var dx = scale * (x - x0); var dy = scale * (y0 - y);
     if (dx != 0 || dy != 0 || release) {
       if (release) rmsg = '_release'; else rmsg = '';
-      console.log('rmsg: '+rmsg);
       websocket_send('drag_'+(current_slide)+'_'+(current_state)+'_'+dx+'_'+dy+rmsg+' '+message);
       x0 = x; y0 = y;
   }}
   var timer = setInterval(function () {do_drag(false);},200);
+  function touch_move(e) {
+      x = e.targetTouches[0].pageX,
+      y = e.targetTouches[0].pageY;
+  }
   function stop_drag(e) {
     clearInterval(timer);
-    x = e.pageX; y = e.pageY;
+    if (touch) {
+      touch.removeEventListener('touchmove', touch_move , false);
+      touch.removeEventListener('touchend', stop_drag, false);
+      touch.removeEventListener('touchcancel', stop_drag, false);
+      touch_move(e);
+    } else {
+      x = e.pageX; y = e.pageY;
+      window.onmousemove = null;
+      window.onmouseup = null;
+    }
     do_drag(true);
-    window.onmousemove = null;
-    window.onmouseup = null;
   }
-  window.onmouseup = stop_drag;
-  window.onmousemove = function(e) {
-    x = e.pageX;
-    y = e.pageY;
-  };
+  if (touch) {
+    touch.addEventListener('touchmove', touch_move , false);
+    touch.addEventListener('touchend', stop_drag, false);
+    touch.addEventListener('touchcancel', stop_drag, false);
+  } else {
+    window.onmouseup = stop_drag;
+    window.onmousemove = function(e) {
+      x = e.pageX;
+      y = e.pageY;
+    };
+  }
   return false;
 }
 /*
@@ -754,24 +769,26 @@ Base64DecodeEnumerator.prototype =
   in
 
   let keyboard=Printf.sprintf
-"function manageKey(e){
-if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
-if(current_slide > 0 && (current_state<=0 || e.keyCode==38)) {
-  websocket_send(\"move_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1));
-} else if (current_state > 0) {
-  websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state-1));
+"
+function previousPage() {
+  if(current_slide > 0 && (current_state<=0 || e.keyCode==38)) {
+    websocket_send(\"move_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1));
+  } else if (current_state > 0) {
+    websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state-1));
+  }
 }
-} //left
-if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
-if(current_slide < %d && (current_state>=states[current_slide]-1 || e.keyCode==40)) {
-  websocket_send(\"move_\"+(current_slide+1)+\"_0\");
-} else if (current_state < states.length - 1) {
-  websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state+1));
+function nextPage() {
+  if(current_slide < %d && (current_state>=states[current_slide]-1 || e.keyCode==40)) {
+    websocket_send(\"move_\"+(current_slide+1)+\"_0\");
+  } else if (current_state < states.length - 1) {
+    websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state+1));
+  }
 }
-} else //right
-if(e.keyCode==82){ //r
-  websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state));
-}
+function manageKey(e){
+  if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33) previousPage(); //left
+  else if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34) nextPage(); //right
+  else if(e.keyCode==82) //r
+    websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state));
 }
 window.onkeydown=manageKey;
 function gotoSlide(n){
@@ -780,33 +797,20 @@ function gotoSlide(n){
 %s" (Array.length pages - 1) mouse_script
   in
 
-  let onload = Printf.sprintf
+  let onload =
 "start_socket();
 websocket_send(\"refresh_\"+h0+\"_\"+h1);
-var svgDiv = document.getElementById('svg_div');
-Hammer(svgDiv, {
-  swipe_max_touches: 10,
-  swipe_velocity: 0.5
-});
-Hammer(svgDiv).on(\"swipeleft\", function(ev) {
-  if(current_slide < %d && current_state>=states[current_slide]-1) {
-    websocket_send(\"move_\"+(current_slide+1)+\"_0\");
-  } else if (current_state < states.length - 1) {
-    websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state+1));
-  }
-});
-Hammer(svgDiv).on(\"swiperight\", function(ev) {
-  if(current_slide > 0 && current_state<=0) {
-    websocket_send(\"move_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1));
-  } else if (current_state > 0) {
-    websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state-1));
-  }
-});
-" (Array.length pages - 1)
+"
   in
+
+  let extrabody = "
+  <div id=\"leftpanel\" style=\"left: 0px; top: 0px; position: absolute; z-index: 10;\"><button onclick=\"previousPage();\" style=\"min_height: 5%; min_width: 5%;\"><<</button></div>
+  <div id=\"rightpanel\" style=\"right: 0px; top: 0px; position: absolute;  z-index: 10;\"><button onclick=\"nextPage();\">>></button></div>
+  " in
 
   let page,css=SVG.basic_html
     ~extraheader
+    ~extrabody
     ~script:(websocket ())
     ~onload
     ~keyboard:keyboard
@@ -1138,8 +1142,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       | [] -> log_son num "quit because no ping"; exit 0
       | ch::_ when ch == fdfather ->
          begin
-           let dest = input_value finc in
            log_son num "from father change";
+           let dest = input_value finc in
            if affected num !cur_slide !cur_state dest then (
              log_son num "affected";
              pushto ~change:(Dynamics(!cur_slide,!cur_state,dest)) num fd);
