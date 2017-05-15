@@ -35,7 +35,7 @@ let read_file file =
   str
 
 
-let arrow = tT ">>" :: hspace(1.0)
+let arrow = tT ">>>" :: hspace(1.0)
 
 let file_table = Hashtbl.create 101
 
@@ -446,7 +446,11 @@ let test_ocaml ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") fi
   if out <> "" then out else "No error and no output"
 
 let test_python ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") filename writeR prg =
-  let tmpfile = Filename.temp_file "demo" ".ml" in
+  let namePrefix = match filename with
+    | None -> "demo"
+    | Some fname -> Filename.chop_extension fname
+  in
+  let tmpfile = Filename.temp_file namePrefix ".py" in
   let ch = open_out tmpfile in
   output_string ch prefix;
   output_string ch "\n\n";
@@ -457,12 +461,13 @@ let test_python ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") f
   close_out ch;
   let tmpfile2 = Filename.temp_file "demo" ".txt" in
   let tmpfile3 = Filename.temp_file "demo" ".txt" in
-  ignore (Sys.command (Printf.sprintf "python3 %s 2>%s >%s" tmpfile tmpfile3 tmpfile2));
+  let res_code = Sys.command (Printf.sprintf "python3 %s 2>%s >%s" tmpfile tmpfile3 tmpfile2) in
   let err = read_file tmpfile3 in
   let out = read_file tmpfile2 in
-  (try Sys.remove tmpfile with _ -> ());
+(*  (try Sys.remove tmpfile with _ -> ());
   (try Sys.remove tmpfile2 with _ -> ());
-  (try Sys.remove tmpfile3 with _ -> ());
+  (try Sys.remove tmpfile3 with _ -> ());*)
+  if res_code = 1 then (writeR DoNotCompile; err) else
   if err <> "" then (writeR FailTest; err) else
   (writeR Ok; if out <> "" then out else "No error and no output")
 

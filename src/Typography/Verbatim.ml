@@ -215,9 +215,9 @@ let param_PML =
   }
 
 let param_Python =
-  { keywords = ["def";"(";")";"*";";";",";"|";"=";":";
+  { keywords = ["def";"(";")";"*";";";",";"|";"=";":";"else";"elif";
 		"while";"for";"if";"else";"return";"try";"except";"break"]
-  ; separators = ["*";"(";")";",";";"]
+  ; separators = ["*";"(";")";",";";";":"]
   ; symbols  = [] }
 
 let lang_Default lines =
