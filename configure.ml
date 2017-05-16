@@ -654,7 +654,7 @@ let _=
   ok_drivers;
 
   (* Enable compilation of pa_patoline if earley_ocaml is installed *)
-  Printf.fprintf make "PA_PATOLINE := %s\n" "src/patobuild/pa_patoline";
+  Printf.fprintf make "PA_PATOLINE := %s\n" "src/pa_patoline/pa_patoline";
 
   (* Tell make which ConfigFindFont (fontconfig or not) should be linked while
    * building Typograhy.cmxa. *)

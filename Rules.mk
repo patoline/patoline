@@ -112,18 +112,18 @@ EDITORS_DIR := editors
 # Compilers and various tools
 OCAML := ocaml
 OCAMLFIND := ocamlfind
-OCAMLC := ocamlfind ocamlc $(if $(OCPP),-pp '$(OCPP)',)
-OCAMLOPT_SIMPLE := ocamlfind ocamlopt
-OCAMLC_SIMPLE := ocamlfind ocamlc
-OCAMLOPT_NOPP := $(OCAMLOPT_SIMPLE) -intf-suffix .cmi
-OCAMLOPT_NOINTF := $(OCAMLOPT_NOPP) $(if $(OCPP),-pp '$(OCPP)',)
-OCAMLOPT := $(OCAMLOPT_NOINTF) -intf-suffix .cmi
-OCAMLDEP := ocamlfind ocamldep $(if $(OCPP),-pp '$(OCPP)',) $(OCAMLDEPEXTRAS)
-OCAMLMKLIB := ocamlfind ocamlmklib
-OCAMLDOC := ocamlfind ocamldoc $(if $(OCPP),-pp '$(OCPP)',)
-OCAMLYACC := ocamlyacc
-OCAMLLEX := ocamllex
-FILE_TO_STRING := $(TOOLS_DIR)/file_to_string
+OCAMLC = ocamlfind ocamlc $(if $(OCPP),-pp '$(OCPP)',)
+OCAMLOPT_SIMPLE = ocamlfind ocamlopt
+OCAMLC_SIMPLE = ocamlfind ocamlc
+OCAMLOPT_NOPP = $(OCAMLOPT_SIMPLE) -intf-suffix .cmi
+OCAMLOPT_NOINTF = $(OCAMLOPT_NOPP) $(if $(OCPP),-pp '$(OCPP)',)
+OCAMLOPT = $(OCAMLOPT_NOINTF) -intf-suffix .cmi
+OCAMLDEP = ocamlfind ocamldep $(if $(OCPP),-pp '$(OCPP)',) $(OCAMLDEPEXTRAS)
+OCAMLMKLIB = ocamlfind ocamlmklib
+OCAMLDOC = ocamlfind ocamldoc $(if $(OCPP),-pp '$(OCPP)',)
+OCAMLYACC = ocamlyacc
+OCAMLLEX = ocamllex
+FILE_TO_STRING = $(TOOLS_DIR)/file_to_string
 
 export OCAML OCAMLC OCAMLOPT OCAMLDEP OCAMLMKLIB
 
