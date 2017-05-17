@@ -4,21 +4,27 @@ d := $(if $(d),$(d)/,)$(mod)
 
 all: $(d)/pa_patoline
 
-$(d)/Subsup.cmx: $(d)/Subsup.ml
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -package earley,earley_ocaml -I $(PA_PATOLINE_DIR) -o $@ -c $<
+PA_PATOLINE_INCLUDES := -I $(d) -I $(PATOBUILD_DIR) -I $(CONFIG_DIR) -I $(CONFIG_DIR) -I $(RBUFFER_DIR)
+# Find dependencies
+$(d)/%.depends: INCLUDES += $(PA_PATOLINE_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PA_PATOLINE_INCLUDES)
 
-$(d)/prefixTree.cmx: $(d)/prefixTree.ml
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT_NOINTF) -I $(PA_PATOLINE_DIR) -o $@ -c $<
+SRC_$(d) := $(wildcard $(d)/*.ml)
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
+-include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
 
-$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(d)/Subsup.cmx $(d)/prefixTree.cmx $(CONFIG_DIR)/patoconfig.cmxa
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp pa_ocaml -package patutil,earley,earley.str,earley_ocaml,compiler-libs \
-		-I $(CONFIG_DIR) -I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -rectypes \
-		-o $@ -c $<
+$(d)/Subsup.cmx: private OCPP=pa_ocaml
+$(d)/Subsup.cmx: private OFLAGS+=-package earley,earley_ocaml
+$(d)/Subsup.ml.depends: private OCPP=pa_ocaml
 
-$(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa $(CONFIG_DIR)/patoconfig.cmxa
+$(d)/pa_patoline.cmx: private OCPP=pa_ocaml
+$(d)/pa_patoline.cmx: private OFLAGS+=-package earley,earley_ocaml
+$(d)/pa_patoline.ml.depends: private OCPP=pa_ocaml
+
+$(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa $(CONFIG_DIR)/patoconfig.cmxa $(RBUFFER_DIR)/rbuffer.cmxa $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -package patutil,imagelib,dynlink,str,earley,earley.str,earley_ocaml,compiler-libs \
 		-I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -o $@ \
@@ -27,7 +33,7 @@ $(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTI
 		Subsup.cmx prefixTree.cmx $(CONFIG_DIR)/patoconfig.cmxa $<
 
 CLEAN += $(d)/*.o $(d)/*.cm[iox]
-DISTCLEAN += $(d)/pa_patoline
+DISTCLEAN += $(d)/pa_patoline $(d)/*.ml.depends
 
 # Installing
 install: install-pa_patoline

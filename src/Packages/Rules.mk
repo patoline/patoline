@@ -24,12 +24,13 @@ endif
 $(CMO_$(d)): $(TYPOGRAPHY_DIR)/Typography.cma $(PA_PATOLINE)
 $(CMX_$(d)): $(TYPOGRAPHY_DIR)/Typography.cmxa $(PA_PATOLINE)
 $(PCMX_$(d)): $(TYPOGRAPHY_DIR)/Typography.cmxa $(PA_PATOLINE)
+$(DEPS_$(d)): $(PA_PATOLINE)
 
 # And compiles with it
-$(CMO_$(d)): OCPP=$(PA_PATOLINE)
-$(CMX_$(d)): OCPP=$(PA_PATOLINE)
-$(PCMX_$(d)): OCPP=$(PA_PATOLINE)
-$(DEPS_$(d)): OCPP=$(PA_PATOLINE)
+$(CMO_$(d)): private OCPP=$(PA_PATOLINE)
+$(CMX_$(d)): private OCPP=$(PA_PATOLINE)
+$(PCMX_$(d)): private OCPP=$(PA_PATOLINE)
+$(DEPS_$(d)): private OCPP=$(PA_PATOLINE)
 
 # FIXME: currently: one package = one file
 

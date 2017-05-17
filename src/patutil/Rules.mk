@@ -27,11 +27,6 @@ UTIL_CMO:=$(UTIL_ML:.ml=.cmo)
 UTIL_CMX:=$(UTIL_ML:.ml=.cmx)
 UTIL_CMI:=$(UTIL_ML:.ml=.cmi)
 
-# We cannot run ocamlc and ocamlopt simultaneously on the same input,
-# since they both overwrite the .cmi file, which can get corrupted.
-# That's why we arbitrarily force the following dependency.
-$(UTIL_CMX): %.cmx: %.cmo
-
 $(d)/patutil.cma: $(UTIL_CMO)
 	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -a -o $@ $^
@@ -60,6 +55,11 @@ install-util: $(d)/patutil.cma $(d)/patutil.cmxa $(d)/patutil.cmxs \
 	$(ECHO) "[INS] patutil"
 	- $(OCAMLFIND) remove patutil
 	$(Q)$(OCAMLFIND) install patutil $^
+
+src/patutil/Util.cmo : src/patutil/UsualMake.cmo src/unicodelib/UTF8.cmo \
+    src/unicodelib/UChar.cmo src/rbuffer/rbuffer.cmi
+src/patutil/Util.cmx : src/patutil/UsualMake.cmx src/unicodelib/UTF8.cmx \
+    src/unicodelib/UChar.cmx src/rbuffer/rbuffer.cmx
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

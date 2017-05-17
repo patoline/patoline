@@ -737,7 +737,7 @@ let _=
   in
   Array.iter
     (fun file ->
-      if (is_substring "Format" file || file = "Interactive.ml"|| file = "Giac.ml") (*&& file <> "DefaultFormat.ml"*)
+      if (is_substring "Format" file) (*&& file <> "DefaultFormat.ml"*)
       then make_meta_part "src/Format" file) (Sys.readdir "src/Format");
   List.iter (fun drv ->
     make_meta_part (Filename.concat "src/Drivers" drv.name) (drv.name ^ ".ml")

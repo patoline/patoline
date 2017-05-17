@@ -21,6 +21,8 @@ UNICODE_DIR := $(d)/unicodelib
 CONFIG_DIR := $(d)/config
 GRAMMAR_DIR := $(d)/grammar
 PACKAGES_DIR := $(d)/Packages
+PATOBUILD_DIR := $(d)/patobuild
+RBUFFER_DIR := $(d)/rbuffer
 
 # Visit subdirectories
 MODULES := unicodelib rbuffer patutil patfonts rawlib db Typography \
