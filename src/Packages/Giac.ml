@@ -187,15 +187,17 @@ type t = Giac of giac | Error of string
 let parse_string = Earley.parse_string giac blank
 
 let lock_fd =
+  let open Unix in
   let temp = Filename.temp_file "giac_patoline" ".lock" in
-  let fd = Unix.openfile temp [O_CLOEXEC;O_EXCL;O_RDWR] 0o700 in
+  let fd = openfile temp [O_CLOEXEC;O_EXCL;O_RDWR] 0o700 in
   fd
 
 let run fmt =
-  Unix.lockf lock_fd F_LOCK 0;
+  let open Unix in
+  lockf lock_fd F_LOCK 0;
   let cont ouc =
     let (std, err) = input_all !giac_wait in
-    Unix.lockf lock_fd F_ULOCK 0;
+    lockf lock_fd F_ULOCK 0;
     (*Printf.eprintf ">>>>> %S\n%S\n%!" std err;*)
     let l = Str.(split (regexp_string "\n") std) in
     let len = List.length l in

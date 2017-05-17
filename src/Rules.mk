@@ -20,11 +20,12 @@ CESURE_DIR := $(d)/cesure
 UNICODE_DIR := $(d)/unicodelib
 CONFIG_DIR := $(d)/config
 GRAMMAR_DIR := $(d)/grammar
+PACKAGES_DIR := $(d)/Packages
 
 # Visit subdirectories
 MODULES := unicodelib rbuffer patutil patfonts rawlib db Typography \
 	Drivers Pdf cesure Format bibi plot proof patobuild grammar config \
-	pa_patoline
+	pa_patoline Packages
 
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 
