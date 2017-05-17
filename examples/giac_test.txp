@@ -1,0 +1,24 @@
+(* #FORMAT FormatArticle *)
+(* #PACKAGE Typography.Giac *)
+
+\Caml(
+open Giac
+)
+
+\Caml(
+ let m = parse_string "inv([[1,2],[2,1]])"
+)
+
+\[\gmath(m) = \gmath(Giac.eval(m))\]
+
+\Caml(
+  let f = parse_string "ln(x)^2"
+)
+\[∫ \gmath(f) d x = \gmath(Giac.eval(App(Symbol "int",[f])))\]
+
+
+\Caml(
+  let f = parse_string "sin(x*y)^2"
+)
+
+\[ ∂(\gmath(f)) \over ∂y = \gmath(Giac.eval(App(Symbol "derive",[f;Symbol "y"])))\]
