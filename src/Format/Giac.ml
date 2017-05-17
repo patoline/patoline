@@ -171,7 +171,6 @@ let input_all delay =
       if ins = [] then raise Exit;
       List.iter (fun ch ->
           let n = read ch s 0 1024 in
-          Printf.eprintf "reading %d %b\n%!" n (ch == inc);
           let b = if ch == inc then bstd else berr in
           Buffer.add_subbytes b s 0 n) ins
     done;
@@ -179,25 +178,35 @@ let input_all delay =
   with Exit ->
     (Buffer.contents bstd, Buffer.contents berr)
 
-let _ = input_all 1.0
+let giac_wait = ref 0.1
+
+let _ = input_all !giac_wait
 
 type t = Giac of giac | Error of string
 
 let parse_string = Earley.parse_string giac blank
 
+let lock_fd =
+  let temp = Filename.temp_file "giac_patoline" ".lock" in
+  let fd = Unix.openfile temp [O_CLOEXEC;O_EXCL;O_RDWR] 0o700 in
+  fd
+
 let run fmt =
+  Unix.lockf lock_fd F_LOCK 0;
   let cont ouc =
-    let (std, err) = input_all 1.0 in
-    Printf.eprintf ">>>>> %S\n%S\n%!" std err;
+    let (std, err) = input_all !giac_wait in
+    Unix.lockf lock_fd F_ULOCK 0;
+    (*Printf.eprintf ">>>>> %S\n%S\n%!" std err;*)
     let l = Str.(split (regexp_string "\n") std) in
     let len = List.length l in
-    List.iteri (Printf.eprintf "%d: %S") l;
-    if len < 2 then Error "unkonwn giac error" else
-      let std = (List.nth l 1) in
-      try
-        Giac (parse_string std)
-      with
-        _ -> Error std
+    if len < 2 then failwith "Unexpected giac answer";
+    let std = (List.nth l 1) in
+    try
+      Giac (parse_string std)
+    with
+    | e ->
+       Printf.eprintf "GIAC ERROR(%s):\n%s\n%s\n%!" (Printexc.to_string e) std err;
+       Error std
   in
   Printf.kfprintf cont ouc fmt
 

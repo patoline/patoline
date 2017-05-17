@@ -14,7 +14,7 @@ open Giac
 \Caml(
   let f = parse_string "ln(x)^2"
 )
-\[∫ \gmath(f) d x = \gmath(Giac.eval(App(Symbol "int",[f])))\]
+\[∫ \gmath(f) d{x} = \gmath(Giac.eval(App(Symbol "int",[f])))\]
 
 
 \Caml(
