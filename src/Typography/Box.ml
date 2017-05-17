@@ -407,18 +407,19 @@ let drawing_inline ?offset:(offset=0.) ?states:(states=[]) cont=
   ) states cont
   in
   let (a,b,c,d)=RawContent.bounding_box cont in
+  let e = (d -. b) /. 2. in
     {
       drawing_min_width=c-.a;
       drawing_nominal_width=c-.a;
       drawing_max_width=c-.a;
       drawing_width_fixed = true;
       drawing_adjust_before = false;
-      drawing_y0=offset+.b;
-      drawing_y1=offset+.d;
+      drawing_y0=offset +. b -. e;
+      drawing_y1=offset +. d -. e;
       drawing_badness=(fun _->0.);
       drawing_break_badness=0.;
       drawing_states=states;
-      drawing_contents=(fun _->List.map (translate (-.a) offset) cont)
+      drawing_contents=(fun _->List.map (translate (-.a) (offset -. e)) cont)
     }
 
 let drawing_inline' ?offset:(offset=0.) ?states:(states=[]) cont=
@@ -579,7 +580,7 @@ let rec translate x y=function
     drawing_y1=g.drawing_y1 +. y;
     drawing_contents=(fun w->List.map (RawContent.translate x y) (g.drawing_contents w))
   }
-  | Kerning k -> Kerning { k with 
+  | Kerning k -> Kerning { k with
                            kern_x0 = k.kern_x0 +. x;
                            kern_y0 = k.kern_y0 +. y;
                            kern_contents=translate x y k.kern_contents }
@@ -591,8 +592,8 @@ let vkern_percent_under' gs p envs st =
   let gs = gs envs st in
   let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
     | [] -> (sy/.float nb,mi,sk/.float nb,ma)
-    | GlyphBox g::gs -> 
-	let acc = 
+    | GlyphBox g::gs ->
+	let acc =
 	  sy +. g.glyph_y,
 	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
 	  sk +. g.glyph_ky,
@@ -600,16 +601,16 @@ let vkern_percent_under' gs p envs st =
 	  nb + 1
 	in vbox' acc gs
 	| _ -> failwith "vkern on non glyph"
-  in	  
+  in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
   let y,yl,y0,yh = vbox gs in
   let dy = p *. (yh -. yl) -. (y0 -. yl) in
   let center = (yh +. yl) /. 2.0 -. dy in
-  center, List.map (function 
+  center, List.map (function
       GlyphBox g -> GlyphBox {
-	g with 
+	g with
 	  glyph_y = g.glyph_y -. dy;
-	  glyph_ky = 0.0; 
+	  glyph_ky = 0.0;
       }
     | _ -> failwith "vkern on non glyph") gs
 
@@ -620,8 +621,8 @@ let vkern_center gs c envs st =
   let gs = gs envs st in
   let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
     | [] -> (sy/.float nb,mi,sk/.float nb,ma)
-    | GlyphBox g::gs -> 
-	let acc = 
+    | GlyphBox g::gs ->
+	let acc =
 	  sy +. g.glyph_y,
 	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
 	  sk +. g.glyph_ky,
@@ -629,26 +630,26 @@ let vkern_center gs c envs st =
 	  nb + 1
 	in vbox' acc gs
 	| _ -> failwith "vkern on non glyph"
-  in	  
+  in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
   let y,yl,y0,yh = vbox gs in
   let dy = (yh +. yl) /. 2.0 -. c in
-  List.map (function 
+  List.map (function
       GlyphBox g -> GlyphBox {
-	g with 
+	g with
 	  glyph_y = g.glyph_y -. dy;
-	  glyph_ky = 0.0; 
+	  glyph_ky = 0.0;
       }
     | _ -> failwith "vkern on non glyph") gs
 
 (* vertically re_kern g by a vertical translation *)
 let vkern_translate gs dy envs st =
   let gs = gs envs st in
-  List.map (function 
+  List.map (function
       GlyphBox g -> GlyphBox {
-	g with 
+	g with
 	  glyph_y = g.glyph_y -. dy;
-	  glyph_ky = 0.0; 
+	  glyph_ky = 0.0;
       }
     | _ -> failwith "vkern on non glyph") gs
 
@@ -658,8 +659,8 @@ let vkern_as gs gs' envs st =
   let gs' = gs' envs st in
   let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
     | [] -> (sy/.float nb,mi,sk/.float nb,ma)
-    | GlyphBox g::gs -> 
-	let acc = 
+    | GlyphBox g::gs ->
+	let acc =
 	  sy +. g.glyph_y,
 	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
 	  sk +. g.glyph_ky,
@@ -667,17 +668,17 @@ let vkern_as gs gs' envs st =
 	  nb + 1
 	in vbox' acc gs
 	| _ -> failwith "vkern on non glyph"
-  in	  
+  in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
   let y,yl,y0,yh = vbox gs in
   let y',yl',y0',yh' = vbox gs' in
   let s = (yh' -. yl') /. (yh -. yl) in
-  List.map (function 
+  List.map (function
       GlyphBox g -> GlyphBox {
-	g with 
+	g with
 	  glyph_size = g.glyph_size *. s;
 	  glyph_y = g.glyph_y *. s;
-	  glyph_ky = y0'; 
+	  glyph_ky = y0';
 	  glyph_x = g.glyph_x *. s;
 	  glyph_kx = g.glyph_kx *. s;
       }
