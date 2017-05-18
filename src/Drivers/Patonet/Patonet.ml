@@ -770,23 +770,23 @@ Base64DecodeEnumerator.prototype =
 
   let keyboard=Printf.sprintf
 "
-function previousPage() {
-  if(current_slide > 0 && (current_state<=0 || e.keyCode==38)) {
+function previousPage(page) {
+  if(current_slide > 0 && (current_state<=0 || page)) {
     websocket_send(\"move_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1));
   } else if (current_state > 0) {
     websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state-1));
   }
 }
-function nextPage() {
-  if(current_slide < %d && (current_state>=states[current_slide]-1 || e.keyCode==40)) {
+function nextPage(page) {
+  if(current_slide < %d && (current_state>=states[current_slide]-1 || page)) {
     websocket_send(\"move_\"+(current_slide+1)+\"_0\");
-  } else if (current_state < states.length - 1) {
+  } else if (current_state < states[current_slide] - 1) {
     websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state+1));
   }
 }
 function manageKey(e){
-  if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33) previousPage(); //left
-  else if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34) nextPage(); //right
+  if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33) previousPage(e.keyCode==38); //left
+  else if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34) nextPage(e.keyCode==40); //right
   else if(e.keyCode==82) //r
     websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state));
 }
@@ -804,8 +804,8 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
   in
 
   let extrabody = "
-  <div id=\"leftpanel\" style=\"left: 0px; top: 0px; position: absolute; z-index: 10;\"><button onclick=\"previousPage();\" style=\"min_height: 5%; min_width: 5%;\"><<</button></div>
-  <div id=\"rightpanel\" style=\"right: 0px; top: 0px; position: absolute;  z-index: 10;\"><button onclick=\"nextPage();\">>></button></div>
+  <div id=\"leftpanel\" style=\"left: 0px; top: 0px; position: absolute; z-index: 10;\"><button onclick=\"previousPage(false);\" style=\"min_height: 5%; min_width: 5%;\"><<</button></div>
+  <div id=\"rightpanel\" style=\"right: 0px; top: 0px; position: absolute;  z-index: 10;\"><button onclick=\"nextPage(false);\">>></button></div>
   " in
 
   let page,css=SVG.basic_html
