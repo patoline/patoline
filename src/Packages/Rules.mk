@@ -38,7 +38,7 @@ ALL_PACKAGES_CMXA := $(SRC_$(d):.ml=.cmxa)
 ALL_PACKAGES_CMA  := $(SRC_$(d):.ml=.cma)
 
 # Tell make that we want to build all the packages
-all: $(ALL_PACKAGES_CMXA) $(ALL_PACKAGES_CMA)
+packages: $(ALL_PACKAGES_CMXA) $(ALL_PACKAGES_CMA)
 
 $(ALL_PACKAGES_CMXA): %.cmxa: %.cmx
 	$(ECHO) "[LNK] $@"

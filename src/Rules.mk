@@ -23,13 +23,24 @@ GRAMMAR_DIR := $(d)/grammar
 PACKAGES_DIR := $(d)/Packages
 PATOBUILD_DIR := $(d)/patobuild
 RBUFFER_DIR := $(d)/rbuffer
+PA_PATOLINE_DIR := $(d)/pa_patoline
 
 # Visit subdirectories
 MODULES := unicodelib rbuffer patutil patfonts rawlib db Typography \
 	Drivers Pdf cesure Format bibi plot proof patobuild grammar config \
-	pa_patoline Packages
+	pa_patoline
 
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
+
+ifeq ($(MAKECMDGOALS),clean)
+include $(d)/Packages/Rules.mk
+endif
+ifeq ($(MAKECMDGOALS),distclean)
+include $(d)/Packages/Rules.mk
+endif
+ifeq ($(MAKECMDGOALS),packages)
+include $(d)/Packages/Rules.mk
+endif
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

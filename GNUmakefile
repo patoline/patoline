@@ -80,6 +80,12 @@ configure: configure.ml
 	$(Q)ocamlfind ocamlopt -package bytes,unix,str,findlib unix.cmxa str.cmxa \
 		findlib.cmxa configure.ml -o configure
 
+.PHONY: packages world
+world: all packages
+
+src/Makefile.config: configure
+	./configure
+
 .PHONY: testconfig
 testconfig:
 	@ if [ ! -f "src/Makefile.config" ]; then echo Run './configure [options]' before make; exit 1; fi
