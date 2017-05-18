@@ -62,9 +62,11 @@ install: install-format
 # install-format depends on install-typography, since we first must wait
 # for $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR) directory to be created
 # before putting formats in it.
+
 install-format: install-typography \
   $(ALL_FORMATS_CMXA) $(ALL_FORMATS_CMXA:.cmxa=.a) $(ALL_FORMATS_CMXA:.cmxa=.cmi)
-	install -p -m 644 $(ALL_FORMATS_CMXA) $(ALL_FORMATS_CMXA:.cmxa=.a) $(ALL_FORMATS_CMXA:.cmxa=.cmi) \
+	install -p -m 644 $(ALL_FORMATS_CMXA) $(ALL_FORMATS_CMXA:.cmxa=.a) \
+          $(ALL_FORMATS_CMXA:.cmxa=.cmi) $(ALL_FORMATS_CMXA:.cmxa=.cmx) \
 	  $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 
 # Rolling back changes made at the top
