@@ -42,6 +42,9 @@ endif
 ifeq ($(filter packages,$(MAKECMDGOALS)),packages)
   $(foreach mod,Packages,$(eval include $(d)/$$(mod)/Rules.mk))
 endif
+ifeq ($(filter install,$(MAKECMDGOALS)),install)
+  $(foreach mod,Packages,$(eval include $(d)/$$(mod)/Rules.mk))
+endif
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

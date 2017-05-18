@@ -148,6 +148,7 @@ let fonts_dir      = Filename.concat share  "patoline/fonts"
 let grammars_dir   = Filename.concat prefix "lib/patoline/grammars"
 let hyphen_dir     = Filename.concat share  "patoline/hyphen"
 let driver_dir     = Filename.concat libdir "Typography"
+let pack_dir       = Filename.concat libdir "Patoline"
 let emacsdir       = Filename.concat share  "emacs/site-lisp/patoline"
 
 (* Management of local packages. *)
@@ -614,6 +615,7 @@ let _=
   Printf.fprintf make "INSTALL_HYPHEN_DIR :=%s\n" hyphen_dir;
   Printf.fprintf make "INSTALL_TYPOGRAPHY_DIR :=%s/Typography\n" libdir;
   Printf.fprintf make "INSTALL_DRIVERS_DIR :=%s\n" driver_dir;
+  Printf.fprintf make "INSTALL_PACKAGES_DIR :=%s\n" pack_dir;
   Printf.fprintf make "INSTALL_DLLS_DIR :=%s\n" stublibs;
   Printf.fprintf make "INSTALL_EMACS_DIR :=%s\n" emacsdir;
   Printf.fprintf make "INSTALL_RBUFFER_DIR :=%s/rbuffer\n" libdir;

@@ -1,0 +1,21 @@
+name="Patoline"
+version="0.1"
+description="Patoline packages"
+
+package "Giac" (
+requires="rawlib,Typography"
+archive(native)="Giac.cmxa"
+archive(byte)="Giac.cma"
+)
+
+package "ProofTree" (
+requires="rawlib,Typography"
+archive(native)="ProofTree.cmxa"
+archive(byte)="ProofTree.cma"
+)
+
+package "Interactive" (
+requires="rawlib,db,Typography"
+archive(native)="Interactive.cmxa"
+archive(byte)="Interactive.cma"
+)

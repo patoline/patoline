@@ -1,6 +1,6 @@
 (* #FORMAT FormatSlides *)
 (* #PACKAGE mysql *)
-(* #PACKAGE Typography.Interactive *)
+(* #PACKAGE Patoline.Interactive *)
 
 \Caml(
 open Diagrams

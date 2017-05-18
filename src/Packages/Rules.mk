@@ -10,6 +10,7 @@ $(d)/%.depends: INCLUDES += $(PACKAGES_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PACKAGES_INCLUDES)
 
 SRC_$(d) := $(wildcard $(d)/*.ml)
+CMI_$(d) := $(SRC_$(d):.ml=.cmi)
 CMO_$(d) := $(SRC_$(d):.ml=.cmo)
 CMX_$(d) := $(SRC_$(d):.ml=.cmx)
 PCMX_$(d) := $(SRC_$(d):.ml=.p.cmx)
@@ -60,9 +61,11 @@ install: install-packages
 # install-format depends on install-typography, since we first must wait
 # for $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR) directory to be created
 # before putting formats in it.
+PACKAGES_INSTALL :=  $(ALL_PACKAGES_CMXA) $(ALL_PACKAGES_CMA) $(CMI_$(d)) $(CMO_$(d))\
+  $(CMX_$(d)) $(SRC_$(d):.ml=.a) $(d)/META
 install-packages: install-typography $(ALL_PACKAGES_CMXA) $(ALL_PACKAGES_CMA)
-	install -p -m 644  $(ALL_PACKAGES_CMXA) $(ALL_PACKAGES_CMA)\
-	  $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
+	install -m 755 -d $(DESTDIR)/$(INSTALL_PACKAGES_DIR)
+	install -p -m 644  $(PACKAGES_INSTALL) $(DESTDIR)/$(INSTALL_PACKAGES_DIR)
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

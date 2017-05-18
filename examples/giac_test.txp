@@ -1,6 +1,5 @@
 (* #FORMAT FormatArticle *)
-(* #PACKAGE Typography.Giac *)
-
+(* #PACKAGE Patoline.Giac *)
 \Caml(
 open Giac
 )
