@@ -80,11 +80,7 @@ configure: configure.ml
 	$(Q)ocamlfind ocamlopt -package bytes,unix,str,findlib unix.cmxa str.cmxa \
 		findlib.cmxa configure.ml -o configure
 
-.PHONY: packages world
-world: all packages
-
-src/Makefile.config: configure
-	./configure
+.PHONY: packages
 
 .PHONY: testconfig
 testconfig:

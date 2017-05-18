@@ -1,6 +1,5 @@
 module Box = Box
 module Maths = Maths
-module ProofTree = ProofTree
 module Document = Document
 module Diagrams = Diagrams
 module Verbatim = Verbatim

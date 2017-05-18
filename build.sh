@@ -2,4 +2,5 @@
 
 make configure
 ./configure
-make world
+make -j 8 all
+make -j 8 packages

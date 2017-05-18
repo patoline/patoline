@@ -32,14 +32,15 @@ MODULES := unicodelib rbuffer patutil patfonts rawlib db Typography \
 
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 
+#foreach to define mod ...bof FIXME
 ifeq ($(MAKECMDGOALS),clean)
-include $(d)/Packages/Rules.mk
+  $(foreach mod,Packages,$(eval include $(d)/$$(mod)/Rules.mk))
 endif
 ifeq ($(MAKECMDGOALS),distclean)
-include $(d)/Packages/Rules.mk
+  $(foreach mod,Packages,$(eval include $(d)/$$(mod)/Rules.mk))
 endif
-ifeq ($(MAKECMDGOALS),packages)
-include $(d)/Packages/Rules.mk
+ifeq ($(filter packages,$(MAKECMDGOALS)),packages)
+  $(foreach mod,Packages,$(eval include $(d)/$$(mod)/Rules.mk))
 endif
 
 # Rolling back changes made at the top
