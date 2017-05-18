@@ -157,7 +157,7 @@ clean:
 distclean: clean
 	rm -f $(DISTCLEAN)
 	rm -rf $(DISTCLEANR)
-	rm $(FILE_TO_STRING)
+	rm -f $(FILE_TO_STRING)
 
 # Visit subdirectories
 MODULES := src Hyphenation editors Fonts Accessoires

@@ -34,7 +34,7 @@ $(d)/Patonet.cmxs: $(d)/Patonet.cmx
 
 CLEAN +=
 
-DISTCLEAN += $(DEPENDS_$(d)) $(d)/Hammer.ml
+DISTCLEAN += $(DEPENDS_$(d))
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
