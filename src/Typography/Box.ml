@@ -56,7 +56,7 @@ and hyphenBox =
 and kind =
   | Extern of string
   | Intern of string
-  | Button of button_kind * string * string list
+  | Button of button_kind * string
 
 and marker =
   | Label     of string
@@ -126,7 +126,14 @@ and frame_zipper = frame * (int * frame) list
 module MarkerMap = Map.Make(
   struct
     type t = marker
-    let compare = compare
+    let compare m1 m2 = match m1, m2 with
+      | BeginLink l1, BeginLink l2 ->
+         begin
+           match l1, l2 with
+           | Button(_,n1), Button(_,n2) -> String.compare n1 n2
+           | _ -> compare l1 l2
+         end
+      | _ -> compare m1 m2
   end)
 
 (** Helpful test functions. *)
@@ -358,89 +365,28 @@ let empty_drawing_box=
       drawing_contents=(fun _->[])
     }
 
-let drawing ?offset:(offset=0.) ?states:(states=[]) cont=
+let drawing ?(vcenter=false) ?(hcenter=false) ?offset:(offset=0.) ?states:(states=[]) cont=
   let states=List.fold_left (fun st0 x->match x with
-      States s->st0@s.states_states
-    | _->st0
-  ) states cont
-  in
-  let (a,b,c,d)=RawContent.bounding_box_full cont in
-    {
-      drawing_min_width=c-.a;
-      drawing_nominal_width=c-.a;
-      drawing_max_width=c-.a;
-      drawing_width_fixed = true;
-      drawing_adjust_before = false;
-      drawing_y0=offset;
-      drawing_y1=offset+.d-.b;
-      drawing_badness=(fun _->0.);
-      drawing_break_badness=0.;
-      drawing_states=states;
-      drawing_contents=(fun _->List.map (translate (-.a) (offset-.b)) cont)
-    }
-
-let drawing' ?offset:(offset=0.) ?states:(states=[]) cont=
-  let states=List.fold_left (fun st0 x->match x with
-      States s->st0@s.states_states
-    | _->st0
-  ) states cont
-  in
-  let (a,b,c,d)=RawContent.bounding_box_full cont in
-    {
-      drawing_min_width=c;
-      drawing_nominal_width=c;
-      drawing_max_width=c;
-      drawing_width_fixed = true;
-      drawing_adjust_before = false;
-      drawing_y0=b+.offset;
-      drawing_y1=d+.offset;
-      drawing_badness=(fun _->0.);
-      drawing_break_badness=0.;
-      drawing_states=states;
-      drawing_contents=(fun _->List.map (translate 0. offset) cont)
-    }
-
-let drawing_inline ?offset:(offset=0.) ?states:(states=[]) cont=
-  let states=List.fold_left (fun st0 x->match x with
-      States s->unique (st0@s.states_states)
+      States s-> unique (st0@s.states_states)
     | _->st0
   ) states cont
   in
   let (a,b,c,d)=RawContent.bounding_box cont in
   let e = (d -. b) /. 2. in
     {
-      drawing_min_width=c-.a;
-      drawing_nominal_width=c-.a;
-      drawing_max_width=c-.a;
+      drawing_min_width=if hcenter then (c-.a) else c;
+      drawing_nominal_width=if hcenter then (c-.a) else c;
+      drawing_max_width=if hcenter then (c-.a) else c;
       drawing_width_fixed = true;
       drawing_adjust_before = false;
-      drawing_y0=offset +. b -. e;
-      drawing_y1=offset +. d -. e;
+      drawing_y0=offset +. (if vcenter then b -. e else 0.0);
+      drawing_y1=offset +. (if vcenter then d -. e else d -. b);
       drawing_badness=(fun _->0.);
       drawing_break_badness=0.;
       drawing_states=states;
-      drawing_contents=(fun _->List.map (translate (-.a) (offset -. e)) cont)
-    }
-
-let drawing_inline' ?offset:(offset=0.) ?states:(states=[]) cont=
-  let states=List.fold_left (fun st0 x->match x with
-      States s->unique (st0@s.states_states)
-    | _->st0
-  ) states cont
-  in
-  let (a,b,c,d)=RawContent.bounding_box cont in
-    {
-      drawing_min_width=c;
-      drawing_nominal_width=c;
-      drawing_max_width=c;
-      drawing_width_fixed = true;
-      drawing_adjust_before = false;
-      drawing_y0=offset+.b;
-      drawing_y1=offset+.d;
-      drawing_badness=(fun _->0.);
-      drawing_break_badness=0.;
-      drawing_states=states;
-      drawing_contents=(fun _->List.map (translate 0. offset) cont)
+      drawing_contents=(fun _->List.map (translate
+                                           (if hcenter then -.a else 0.0)
+                                           (if vcenter then offset -. e else offset)) cont)
     }
 
 let drawing_blit a x0 y0 b=

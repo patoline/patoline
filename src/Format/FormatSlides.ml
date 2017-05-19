@@ -1013,7 +1013,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
 				Printf.eprintf "Label not_found %s\n%!" l;
 				RawContent.Intern(l,-1,0.,0.)
                             )
-			    | Box.Button(drag,n,d) -> RawContent.Button(drag,n,d)
+			    | Box.Button(drag,n) -> RawContent.Button(drag,n)
 			  in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                      link_order=0;link_closed=false;

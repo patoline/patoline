@@ -123,6 +123,10 @@ let scoreBarProg envDiagram height width data =
   in
   scoreBar (module EnvDiagram : Diagrams.EnvDiagram) height width data
 
+(*===========================================================================*)
+(*                      Check boxes                                          *)
+(*===========================================================================*)
+
 let drawCheckBox ?(scale=0.5) env checked =
   let open Diagrams in
   let module Fig = Env_Diagram (struct let env = env end) in
@@ -138,19 +142,34 @@ let drawCheckBox ?(scale=0.5) env checked =
   );
   [ Drawing (Fig.make ()) ]
 
-let checkBox ?(global=false) ?(scale=0.75) ?(destinations=[]) data contents =
-  let name = data.Db.name in
-  let name' = name^"_dest" in
-  button ~btype:Clickable name (name'::destinations) (contents (fun () -> (dynamic name'
-    (function Click(name0) when name0 = name ->
-      data.write (not (data.read ())); (if global then Public else Private)
-    | _ -> Unchanged)
-    []
-    (fun () -> [bB (fun env -> drawCheckBox ~scale env (data.read ()))]))))
+let click f = Click (fun () -> record_write f ())
 
-let dataCheckBox ?(global=false) ?(scale=0.75) ?(destinations=[]) ?(init_value=false) name contents =
-  let data = db.create_data ~global bool_coding name init_value in
-  checkBox ~global ~scale ~destinations data contents
+let _ = Diagrams.drag_hook := (fun f p r -> record_write (f p) r)
+
+let checkBox ?(scale=0.75) data =
+  button (click (fun () -> data.write (not (data.read ()))))
+         (dynamic []
+                  (fun () -> [bB (fun env -> drawCheckBox ~scale env (data.read ()))]))
+
+let dataCheckBox ?(visibility=Private) ?(scale=0.75)
+                 ?(init_value=false) ?(hook=fun _ -> ()) name =
+  let data = db.create_data ~visibility bool_coding name init_value in
+  hook data;
+  checkBox ~scale data
+
+module Env_checkBoxes(X:sig val arg1 : string val arg2 : bool data list ref end) =
+  Enumerate(struct
+             open X
+             let _ = arg2 := []
+             let from_counter x =
+                 let name = arg1 ^ "_" ^ string_of_int (List.hd x) in
+                 dataCheckBox ~hook:(fun d -> arg2 := d::!arg2) name @
+                   [bB (fun env->let w=env.size/.phi in [glue w w w])]
+           end)
+
+(*===========================================================================*)
+(*                      Radio buttons                                        *)
+(*===========================================================================*)
 
 let drawRadio ?(scale=0.5) env checked =
   let open Diagrams in
@@ -158,31 +177,61 @@ let drawRadio ?(scale=0.5) env checked =
   let open Fig in
   let height = env.size *. scale in
   let height2 = height /. 2. in
-  let _ = Node.(node [draw; circle; outerSep height2; innerSep height2; at (height2, height2)] []) in
+  let _ = Node.(node [ draw; circle; outerSep height2; innerSep height2
+                     ; at (height2, height2)] []) in
   if checked then (
-    ignore (Node.(node [draw; fill black; circle; innerSep (height2 *. 0.66); at (height2, height2)] []))
+    ignore (Node.(node [ draw; fill black; circle; innerSep (height2 *. 0.66)
+                       ; at (height2, height2)] []))
   );
   [ Drawing (Fig.make ()) ]
 
 
-let radioButtons ?(global=false) ?(scale=0.5) ?(destinations=[]) data values =
-  let name = data.Db.name in
-  let dests = Array.init (Array.length values) (fun i -> name ^ "_dest" ^ string_of_int i) in
-  let buttons = Array.init (Array.length values) (fun i -> name ^ "_button" ^ string_of_int i) in
-  Array.mapi (fun i value contents ->
-    button ~btype:Clickable buttons.(i) (Array.to_list dests@destinations) (contents (fun () ->
-      (dynamic dests.(i)
-	 (function Click(name') ->
-	   if name' = buttons.(i) then
-	     data.write value; if global then Public else Private
-	 | _ -> Unchanged)
-	 []
-	 (fun () ->
-	   [bB (fun env -> drawRadio ~scale env (value = data.read ()))]))))) values
+let radioButton ?(scale=0.5) data value =
+  button (click(fun () -> data.write value))
+         (dynamic []
+	          (fun () ->
+	            [bB (fun env -> drawRadio ~scale env (value = data.read ()))]))
 
-let dataRadioButtons ?(global=false) ?(scale=0.5) ?(destinations=[]) name values =
-  let data = db.create_data ~global default_coding name values.(0) in
-  radioButtons ~global ~scale ~destinations data values
+let radioButtons ?(scale=0.5) data values =
+  Array.map (fun value ->  radioButton ~scale data value) values
+
+let dataRadioButtons ?(visibility=Private) ?(scale=0.5) name values =
+  let data = db.create_data ~visibility default_coding name values.(0) in
+  radioButtons ~scale data values
+
+module Env_radioButtons(X:sig val arg1 : int data end) =
+  Enumerate(struct
+             open X
+             let from_counter x =
+               radioButton arg1 (List.hd x) @
+                 [bB (fun env->let w=env.size/.phi in [glue w w w])]
+           end)
+
+module MkRadioButtons(X:sig type t val data : t data end) =
+  struct
+    open X
+    let values = ref []
+    module Enum =
+      Enumerate(struct
+                 let from_counter x =
+                   let x = List.nth (List.rev !values) (List.hd x) in
+                   radioButton data x @
+                     [bB (fun env->let w=env.size/.phi in [glue w w w])]
+               end)
+    let do_begin_env = Enum.do_begin_env
+    let do_end_env = Enum.do_end_env
+    module Item(X:sig val arg1 : t end) = struct
+      let _ = values := X.arg1 :: !values
+      include Enum.Item
+    end
+  end
+
+
+
+
+(*===========================================================================*)
+(*                      Editable text                                        *)
+(*===========================================================================*)
 
 let ascii =
   let str = String.make (2*(128-32)) ' ' in
@@ -229,13 +278,13 @@ let interEnv x =
 
 type eval_fun = string option -> (result -> unit) -> string -> string
 
-let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
+let editableText ?(log=true) ?(visibility=Private) ?(empty_case="Type in here")
       ?nb_lines ?err_lines ?(init_text="") ?(lang=lang_Default) ?(lang_result=lang_Default)
       ?(extra:eval_fun option) ?resultData ?data ?filename ?(influence=[]) name =
 
     let data =
       match data with
-	None -> db.create_data ~log ~global string_coding name init_text
+	None -> db.create_data ~log ~visibility string_coding name init_text
       | Some d -> d
     in
     (match filename with
@@ -246,7 +295,7 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
 
     let dataR =
       match resultData with
-	None -> db.create_data ~global result_coding (name^"_results") NotTried
+	None -> db.create_data ~visibility result_coding (name^"_results") NotTried
       | Some d -> d
     in
 
@@ -255,7 +304,7 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
       | Some f ->  f filename (fun _ -> ()) init_text
     in
 
-    let dataO = db.create_data ~global string_coding (name^"_ouput") init_res in
+    let dataO = db.create_data ~visibility string_coding (name^"_ouput") init_res in
 
     let eval t =
       match extra with
@@ -285,21 +334,14 @@ let editableText ?(log=true) ?(global=false) ?(empty_case="Type in here")
       | _ -> altStates (List.mapi (fun i _ -> [i], f i [i] ) pieces)
     in
 
-    let name' = List.mapi (fun i _ -> name^"_target_"^string_of_int i) pieces in
-    let name'' = name^"_target2" in
-
-    mk_states pieces (fun index states -> dynamic (List.nth name' index)
-      (function
-      | Edit(n, t) when name = n ->
-	data.write t;
-	eval t
-      | _ -> eval (data.read ()))
+    mk_states pieces (fun index states -> dynamic
       ascii
       (fun () ->
         let s, lines = update () in
-        (button ~btype:(Editable(s, init_text))
-           name
-	   (name' @ name'' :: influence)
+        (button (Edit(s, init_text, fun t ->
+                                    record_write (fun () ->
+	                                     data.write t;
+	                                     eval t) ()))
            [bB(fun env ->
 	     let env = interEnv env in
 	     List.map (fun x-> Drawing (snd x))
@@ -472,7 +514,7 @@ let test_python ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") f
   (writeR Ok; if out <> "" then out else "No error and no output")
 
 let score ?group data sample display exo =
-  dynamic (exo^"_target2")  (fun _ -> Public) sample (fun () ->
+  dynamic sample (fun () ->
     let total, scores = data.distribution ?group:(match group with None -> None | Some g -> Some (g ())) () in
     let total = max 1 total in
     let scores = List.filter (fun (x,_) -> x <> NotTried) scores in

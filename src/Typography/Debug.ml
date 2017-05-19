@@ -32,7 +32,7 @@ let print_frame_struct (f,s as p) =
   Printf.fprintf stderr "path: ";
   List.iter (fun i -> Printf.fprintf stderr "%d " i) path;
   Printf.fprintf stderr "\n";
-  let rec fn ch f = 
+  let rec fn ch f =
     Printf.fprintf ch "#%d [\n" (List.length f.frame_content);
     IntMap.iter (fun i f ->
       Printf.fprintf ch "%d:%a " i fn f) f.frame_children;
@@ -84,7 +84,10 @@ let rec print_box chan=function
 and print_link () l = match l with
     Extern s -> Printf.sprintf "Extern %S" s
   | Intern s -> Printf.sprintf "Intern %S" s
-  | Button (b,s,_) -> Printf.sprintf "Button %S" s
+  | Button (b,n) -> Printf.sprintf "Button %S %s" n
+                               (match b with Click _ -> "Click"
+                                           | Drag  _ -> "Drag"
+                                           | Edit  _ -> "Edit")
 
 and print_marker m=match m with
     Label l->Printf.sprintf "Label %s" l
@@ -143,6 +146,3 @@ let doc_graph out t0=
          Node t->do_it "x0" t
        | _->());
     Printf.fprintf out "}\n"
-
-
-

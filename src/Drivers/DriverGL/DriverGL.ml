@@ -24,6 +24,11 @@ open Color
 open Driver
 open Util
 
+type event =
+  | EvClick
+  | EvDrag of float * float * bool
+  | EvEdit of string
+
 type subpixel_anti_aliasing =
   No_SAA | RGB_SAA | BGR_SAA | VRGB_SAA | VBGR_SAA
 
@@ -297,10 +302,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     Hashtbl.remove dynCache d
   in
 
-  let dynReaction = Hashtbl.create 101 in
-
   let read_links () =
-    Hashtbl.clear dynReaction;
     links := Array.mapi
       (fun i page ->
 	Array.mapi (fun j state ->
@@ -311,11 +313,6 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	      fn l'.link_contents;
 	      l := l'::!l
 	    | Dynamic d ->
-	      let old =
-		try Hashtbl.find dynReaction d.dyn_label
-		with Not_found -> []
-	      in
-	      Hashtbl.replace dynReaction d.dyn_label (d.dyn_react::old);
 	      fn (dynContents d)
 	    | Affine a -> fn a.affine_contents
 	    | States s -> fn s.states_contents
@@ -985,15 +982,16 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
   let events = ref [] in
 
-  let send_events ds ev =
+  let send_events ev = () in
+                         (*
     let rec fn acc evs = match ev, evs with
-      | _, [] -> (ds, ev)::(List.rev acc)
-      | Drag(n1,(x1,y1),false), ((ds',Drag(n2,(x2,y2),r2))::evs) when n1 == n2 && ds == ds' ->
-	List.rev_append acc ((ds, Drag(n1,(x1+.x2,y1+.y2), r2))::evs)
-      | Click(n1) as e1, ((ds', Click(n2))::evs) when n1 == n2 && ds == ds' ->
-	List.rev_append acc ((ds, e1)::evs)
-      | Edit(n1,_) as e1, ((ds', Edit(n2,_))::evs) when n1 == n2 && ds == ds' ->
-	List.rev_append acc ((ds, e1)::evs)
+      | _, [] -> ev::(List.rev acc)
+      | (n1,EvDrag(x1,y1,false)), ((n2,EvDrag(x2,y2,r2))::evs) when n1 == n2 ->
+	List.rev_append acc ((n1, EvDrag(x1+.x2,y1+.y2, r2))::evs)
+      | (n1,EvClick) as e1, ((n2, EvClick)::evs) when n1 == n2 ->
+	List.rev_append acc (e1::evs)
+      | (n1,EvEdit(_)) as e1, ((n2, EvEdit(_))::evs) when n1 == n2 ->
+	List.rev_append acc (e1::evs)
       | _, ev::evs ->
 	fn (ev::acc) evs
     in
@@ -1003,7 +1001,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let treat_events () =
     let l = !events in
     events := [];
-    List.iter (function (ds, ev) ->
+    List.iter (function ev ->
       List.iter (fun d ->
 	try
 	  let rs = Hashtbl.find dynReaction d in
@@ -1015,7 +1013,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	  Not_found -> ())
 	ds) l
   in
-
+                          *)
 
 (* FIXME: reimplement showing on the slide ... *)
   let _draw_show x y w win =
@@ -1215,8 +1213,10 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	else (
 	  motion_ref := Some (x0,y0,x, y,buttons,links);
 	  let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
-	  List.iter (function (name,ds) ->
-	    send_events ds (Drag(name,(x,y),false))) buttons;
+	  List.iter (function (bt,name) ->
+                              match bt with Drag(act) ->
+                                let res = act (x,y) false in
+                                send_events res) buttons
 	));
   in
 
@@ -1392,7 +1392,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     let to_redraw = ref false in
     Array.iter (function None -> () | Some win ->
       if win.do_animation then to_redraw := true) all_win;
-    treat_events ();
+    (*treat_events ();*)
     show_links ();
     handle_request ();
     begin
@@ -1447,8 +1447,8 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
     | Glut.LEFT_BUTTON, Glut.DOWN ->
       let links = find_link win x y in
-      let buttons = List.filter (fun l -> match l.link_kind with Button(_,_,_) -> true | _ -> false) links in
-      let buttons = List.map (function { link_kind = Button(_,name,ds) } -> name,ds | _ -> assert false) buttons in
+      let buttons = List.filter (fun l -> match l.link_kind with Button(_,_) -> true | _ -> false) links in
+      let buttons = List.map (function { link_kind = Button(bt,name) } -> bt,name | _ -> assert false) buttons in
 
       motion_ref := Some (x,y,x, y,buttons,links);
 
@@ -1479,9 +1479,9 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 		  Not_found ->
 		    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
 	      end
-	    | Button(Clickable,name,ds) ->
-	      send_events ds (Click(name))
-	    | Button(Editable(current,init),name,ds) ->
+	    | Button(Click(act), name) ->
+                send_events (act ())
+	    | Button(Edit(current,init,act),name) ->
 	       let editor = try Sys.getenv "EDITOR" with Not_found -> "emacs" in
 	       let filename, ch = Filename.open_temp_file "" name in
 	       output_string ch current;
@@ -1492,15 +1492,15 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	       let buf = String.make len ' ' in
 	       let _ = really_input ch buf 0 len in
 	       close_in ch;
-	       send_events ds (Edit(name, buf))
-	    | Button(Dragable,name,ds) ->
+	       send_events (act buf)
+	    | Button(Drag(act),name) ->
                match !motion_ref with
                  None -> ()
                | Some (x0,y0,x', y',buttons,links) ->
                   let dx = x - x' and dy = y - y' in
 	          let mx = float dx and my = float dy in
 	          let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
-	          send_events ds (Drag(name,(x,y),true))
+	          send_events (act (x,y) true)
 	  ) links;
             motion_ref := None;
 

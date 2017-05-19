@@ -41,6 +41,10 @@ let scale_env env =
   let mathsEnv = Maths.env_style env.mathsEnvironment env.mathStyle in
   mathsEnv.Mathematical.mathsSize*.env.size
 
+let drag_hook : (((float * float) -> bool -> unit) ->
+                ((float * float) -> bool -> (string * Util.visibility) list)) ref
+  = ref (fun f (x,y) rel -> f (x,y) rel; [])
+
 let rec mem_compare cmp x l = match l with
   | [] -> false
   | y :: l' -> if cmp x y = 0 then true else mem_compare cmp x l'
@@ -827,7 +831,7 @@ module Transfo (X : Set.OrderedType) = struct
       pdfAnchor: Point.t ;
       node_contents : RawContent.raw list ;
 
-      button : (button_kind * string * string list) option;
+      button : (button_kind * string) option;
       (* textDepth : float ; *)
       (* textHeight : float ; *)
       (* textWidth : float ; *)
@@ -905,10 +909,10 @@ module Transfo (X : Set.OrderedType) = struct
       let c = (Curve.draw ~parameters:info.params info.midCurve) @ info.node_contents in
       let c = match info.button with
 	None -> c
-      | Some(drag,n,d) ->
+      | Some(btype,name) ->
 	let (x0,y0,x1,y1) = bounding_box c in
 	[Link { link_x0 = x0; link_y0 = y0; link_x1 = x1; link_y1 = y1;
-		link_closed = true; link_order = 0; link_kind = Button(drag,n,d);
+		link_closed = true; link_order = 0; link_kind = Button(btype,name);
 		link_contents = c }]
       in
       c @ (List.flatten (List.map (decoration_to_contents info) info.decorations))
@@ -1177,16 +1181,16 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
     let button,button_pet =
       Pet.register "node draw" ~depends:[]
-	(fun pet (name, destinations) ->
+	(fun pet action ->
 	{ pet = pet ; transfo = (fun transfos info ->
-	  { info with button = Some(Clickable,name,destinations);
+	  { info with button = Some(Click action, Document.button_name ());
 	  } ) })
 
     let drag,drag_pet =
       Pet.register "node draw" ~depends:[]
-	(fun pet (name, destinations) ->
+	(fun pet action ->
 	{ pet = pet ; transfo = (fun transfos info ->
-	  { info with button = Some(Dragable,name,destinations);
+	  { info with button = Some(Drag (!drag_hook action), button_name ());
 	  } ) })
 
     let (default_shape : Document.environment -> Transfo.Style.t) = fun env -> rectangle env
@@ -1700,20 +1704,20 @@ Doing a rectangle.\n" ;
 	    let width = Array.length ms.(0) in
 	    Point.middle (ms.(0).(0).Node.anchor `LineWest)
 	    (ms.(0).(width - 1).Node.anchor `LineEast)
-	      
+
 	let matrixBase info =
 	    let ms = info.nodes in
 	    let height = Array.length ms in
 	    let width = Array.length ms.(0) in
 	    Point.middle (ms.(height - 1).(0).Node.anchor `BaseWest)
-	    (ms.(height - 1).(width - 1).Node.anchor `BaseEast)	    
-	      
+	    (ms.(height - 1).(width - 1).Node.anchor `BaseEast)
+
 	let matrixCenter info =
 	    let ms = info.nodes in
 	    let height = Array.length ms in
 	    let width = Array.length ms.(0) in
 	    Point.middle (ms.(0).(0).Node.anchor `NorthWest)
-	    (ms.(height - 1).(width - 1).Node.anchor `SouthEast)	    
+	    (ms.(height - 1).(width - 1).Node.anchor `SouthEast)
 
       let mainNode,main_node_pet =
       Pet.register "matrix main node" ~depends:[make_placement_pet]
@@ -1739,7 +1743,7 @@ Doing a rectangle.\n" ;
 	  { pet = pet ; transfo = (fun transfos info ->
 	    let pdf_start = 0.,0. in
 	    let node_transfos = [Node.anchor (`Vec (mk_matrix_anchor matrix_anchor info))]
-	    in 
+	    in
 	    let node_info = Node.Transfo.transform node_transfos info.mainNode in
 	    let pdf_end = node_info.Node.anchor `Pdf in
 	    let v = Vector.of_points pdf_start pdf_end in
@@ -2825,13 +2829,13 @@ let cliptip grad info tip curve0 =
 
       let include_diagram x = let _ = stack := x @ !stack in ()
 
-      let make ?center:(center=true) ()=
+      let make ?(offset=0.0) ?(hcenter=true) ?(vcenter=false) ()=
 	let _ = match !compute_intersections with
 	  | None -> ()
 	  | Some f -> add_intersections f
 	in
 	let ordered_contents = to_contents !stack in
-	let fig = (if center then Box.drawing_inline else Box.drawing_inline') ordered_contents
+	let fig = Box.drawing ~offset ~vcenter ~hcenter ordered_contents
 	in
 	stack := [] ; fig
 

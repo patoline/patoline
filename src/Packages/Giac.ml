@@ -100,6 +100,19 @@ open Box
 let idvec n ls =
     List.for_all (function Vec l -> List.length l = n | _ -> false) ls
 
+let half_eq envs st =
+  let open FTypes in
+  let env = Maths.env_style envs.mathsEnvironment st in
+  let font = Lazy.force (env.Mathematical.mathsFont) in
+  (* Find the = glyph *)
+  let utf8 = { glyph_index = (Fonts.glyph_of_uchar font (UChar.chr 0x003d));
+                   glyph_utf8 = "="} in
+  let gl = Fonts.loadGlyph font utf8 in
+  let dot_y1 = (Fonts.glyph_y1 gl) *. envs.size *. env.Mathematical.mathsSize /. 1000. in
+  dot_y1 /. 2.
+
+let id x = x
+
 let rec gmath lvl e =
   let lvl' = prev_prio lvl in
   match e with
@@ -117,13 +130,22 @@ let rec gmath lvl e =
      if (lvl < PPro) then <$ (\gmath(lvl)(e) * \gmath(lvl)(f)) $>
      else  <$ \gmath(lvl)(e) \gmath(lvl')(f) $>
   | Vec (Vec l :: ls as l0s) when idvec (List.length l) ls ->
-     <$ (\mathsText{\diagram(
-      let m,ms = array (List.map (fun _ -> `Main) l)
-      (List.map (function Vec l -> List.map (gmath lvl) l
-                       | _ -> assert false) l0s))}) $>
+     <$ ( \id([Maths.Ordinary (Maths.node (fun env st->
+          let open Diagrams in
+          let module Fig = Env_Diagram (struct let env = env end) in
+          let open Fig in
+          let _ = array
+                       (List.map (fun _ -> `Main) l)
+                       (List.map (function Vec l -> List.map (gmath lvl) l
+                                         | _ -> assert false) l0s) in
+          [ Drawing (Fig.make ~vcenter:true ~offset:(half_eq env st) ())]))]) ) $>
   | Vec l ->
-     <$ (\mathsText{\diagram(
-                       let m,ms = array [`Main] (List.map (fun x -> [gmath lvl x]) l))}) $>
+     <$ ( \id([Maths.Ordinary (Maths.node (fun env st->
+          let open Diagrams in
+          let module Fig = Env_Diagram (struct let env = env end) in
+          let open Fig in
+          let _ = array [`Main] (List.map (fun x -> [gmath lvl x]) l) in
+          [ Drawing (Fig.make ~vcenter:true ~offset:(half_eq env st) ()) ]))]) ) $>
   | Pow(e,f) ->
      if (lvl < PPow) then <$ (\gmath(lvl)(e)^{\gmath(lvl)(f)}) $>
      else <$ \gmath(lvl)(e)^{\gmath(lvl)(f)} $>

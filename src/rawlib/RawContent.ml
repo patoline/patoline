@@ -80,15 +80,17 @@ type raw =
   | Animation of animation (* ??? *)
   | Dynamic   of raw list dynamic (* ??? *)
 
-(* Link on some contents. *)
+ (* Link on some contents. *)
+and write = (string * Util.visibility) list (* the writtent data *)
 and button_kind =
-  | Clickable
-  | Dragable
-  | Editable of string * string (* snd elt is init value to reset contents *)
+  | Click of (unit -> write)
+  | Drag of ((float * float) -> bool (* true: release button *) -> write)
+  | Edit of string * string * (string  -> write)
+  (* snd elt is init value to reset contents *) (* FIXME: usefull ? *)
 and link_kind =
   | Extern of string                             (* URI *)
   | Intern of string * int * float * float       (* (label, page, x, y) *)
-  | Button of button_kind * string * string list
+  | Button of button_kind * string
 and link =
   { mutable link_x0       : float
   ; mutable link_y0       : float
@@ -121,19 +123,10 @@ and animation =
   ; anim_order    : int }
 
 (* Dynamic. *)
-and event =
-  | Click of string
-  | Drag of string * (float * float) * bool (* true: release button *)
-  | Edit of string * string
-and action =
-  | Unchanged
-  | Private
-  | Public
 and 'a dynamic =
   { dyn_label    : string
   ; dyn_contents : unit -> 'a
   ; dyn_sample   : 'a
-  ; dyn_react    : event -> action
   ; dyn_order    : int }
 
 (* Shortcut function to build a state raw element. *)

@@ -164,6 +164,11 @@ type son =
     mutable state:int
   }
 
+type event =
+  | EvClick
+  | EvDrag of float * float * bool
+  | EvEdit of string
+
 let log_father msg =
   Printf.eprintf ("[father] " ^^ msg ^^ "\n%!")
 
@@ -327,24 +332,15 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
                                   page= -1;struct_x=0.;struct_y=0.;children=[||]})
     pages fileName=
 
-  let dynCache = Array.map (fun t -> Array.map (fun _ -> Hashtbl.create 13) t) pages in
+  let dynCache =
+    Array.map (fun t ->
+        Array.map (fun _ -> (Hashtbl.create 13,
+                             Hashtbl.create 13)) t) pages in
+  let graph = Hashtbl.create 1001 in
 
-  let slides,cache,imgs=SVG.buffered_output' ~structure:structure ~dynCache pages "" in
-
-  let dynTable = Hashtbl.create 101 in
-
-  Array.iteri (fun slide tbl ->
-    Array.iteri (fun state h ->
-      Hashtbl.iter (fun label dyn ->
-        try
-          let old = Hashtbl.find dynTable label in
-          Hashtbl.replace dynTable label (((slide,state),dyn)::old)
-        with
-          Not_found ->
-            Hashtbl.add dynTable label [(slide,state),dyn])
-        h)
-      tbl)
-    dynCache;
+  let slides,cache,imgs=
+    SVG.buffered_output' ~structure:structure ~dynCache:(dynCache,graph,Db.record_read) pages ""
+  in
 
   let imgs = StrMap.fold (fun k filename m ->
     let buf =
@@ -403,10 +399,9 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     let w,h = pages.(0).(0).size in (* FIXME: assume same format for all pages *)
     Printf.sprintf
 "
-function send_click(name,dest,ev) {
+function send_click(name,ev) {
   ev = ev || window.event;
-  var message = name+' '+dest;
-  websocket_send(\"click_\"+(current_slide)+\"_\"+(current_state)+\" \"+message);
+  websocket_send(\"click_\"+(current_slide)+\"_\"+(current_state)+\" \"+name);
 }
 
 
@@ -430,7 +425,7 @@ function draggable(anchor,obj)
     };
 }
 
-function start_edit(name,dest,ev) {
+function start_edit(name,ev) {
   ev = ev || window.event;
   var elt =  document.getElementById(name);
   window.onkeydown = null;
@@ -442,10 +437,10 @@ function start_edit(name,dest,ev) {
   div.style.left = '50px';
   div.style.top = '50px';
   div.innerHTML = \"<table><tr id='editorTitleBar'><td>Editor</td><td align='right'><button type='button' id='reset_button_\"+name+\"' >Reset</button><button type='button' id='cancel_button_\"+name+\"' >Cancel</button><button type='button' id='edit_button_\"+name+\"' >Save</button></td></tr><tr><td colspan='2'><textarea cols='80'; rows='40'; id='edit_\"+name+\"'>\"+contents+\"</textarea></td></tr></table>\";
-  function restart_edit(name,dest) {
-    return(function (e) { start_edit(name,dest,e); });
+  function restart_edit(name) {
+    return(function (e) { start_edit(name,e); });
   }
-  function reset_edit(name,dest,reseter) {
+  function reset_edit(name,reseter) {
     return function () {
       var icontents = elt.getAttribute('initial');
       var textArea = document.getElementById('edit_'+name);
@@ -456,22 +451,21 @@ function start_edit(name,dest,ev) {
       }
     }
   }
-  function stop_edit(name,dest,div,extra) {
+  function stop_edit(name,div,extra) {
     return function () {
-      var message = name+' '+dest;
       extra();
       var textArea = document.getElementById('edit_'+name);
       var elt =  document.getElementById(name);
       elt.setAttribute('contents', textArea.value);
       var contents = textArea.value.replace('&#13;&#10;','\\n').replace('&gt;','>').replace('&lt;','<').replace('&apos',\"'\").replace('&quot;','\"').replace('&amp;','&');
-      websocket_send('edit_'+(current_slide)+'_'+(current_state)+' '+message+' '+Base64.encode(contents));
+      websocket_send('edit_'+(current_slide)+'_'+(current_state)+' '+name+' '+Base64.encode(contents));
       window.onkeydown = manageKey;
       div.parentNode.removeChild(div);
-      elt.onclick = restart_edit(name,dest);
+      elt.onclick = restart_edit(name);
       return false;
     }
   }
-  function cancel_edit(name,dest,div) {
+  function cancel_edit(namediv) {
     return function () {
       var textArea = document.getElementById('edit_'+name);
       var elt =  document.getElementById(name);
@@ -481,7 +475,7 @@ function start_edit(name,dest,ev) {
         confirm('This will discard your edit, are you sure ?')) {
           window.onkeydown = manageKey;
           div.parentNode.removeChild(div);
-          elt.onclick = restart_edit(name,dest);
+          elt.onclick = restart_edit(name);
           return false;
       }
     }
@@ -490,22 +484,21 @@ function start_edit(name,dest,ev) {
   window.onkeydown = null;
   %s
   var button = document.getElementById('edit_button_'+name);
-  button.onclick = stop_edit(name,dest,div,finaliser);
+  button.onclick = stop_edit(name,div,finaliser);
   var button2 = document.getElementById('reset_button_'+name);
-  button2.onclick = reset_edit(name,dest,reseter);
+  button2.onclick = reset_edit(name,reseter);
   var button3 = document.getElementById('cancel_button_'+name);
-  button3.onclick = cancel_edit(name,dest,div);
+  button3.onclick = cancel_edit(name,div);
   var title = document.getElementById('editorTitleBar');
   draggable(title,div);
 }
 
-function start_drag(name,dest,ev,touch) {
+function start_drag(name,ev,touch) {
   ev = ev || window.event;
   var svg_rect = document.getElementById('svg_div');
   var w = svg_rect.offsetWidth;
   var h = svg_rect.offsetHeight;
   var scale = Math.max(%g / w, %g / h);
-  var message = name+' '+dest;
   var x0 =ev.pageX;
   var y0 =ev.pageY;
   var x  = x0;
@@ -514,7 +507,7 @@ function start_drag(name,dest,ev,touch) {
     var dx = scale * (x - x0); var dy = scale * (y0 - y);
     if (dx != 0 || dy != 0 || release) {
       if (release) rmsg = '_release'; else rmsg = '';
-      websocket_send('drag_'+(current_slide)+'_'+(current_state)+'_'+dx+'_'+dy+rmsg+' '+message);
+      websocket_send('drag_'+(current_slide)+'_'+(current_state)+'_'+dx+'_'+dy+rmsg+' '+name);
       x0 = x; y0 = y;
   }}
   var timer = setInterval(function () {do_drag(false);},200);
@@ -823,7 +816,7 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
 
   let output_cache out i j =
     Rbuffer.add_string out "<defs id=\"svg_defs\">";
-    Hashtbl.iter (fun k (d, ptr) ->
+    Hashtbl.iter (fun k (d, ptr, _, _) ->
       try
         let c = match !ptr with
             Some c -> (*Printf.eprintf "From cache\n%!";*)  c
@@ -835,14 +828,14 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
         Printf.eprintf "[ERROR]uncaught exception %s from dyn_contents %s\n%!" e d.dyn_label;
         Printexc.print_backtrace stderr;
         Rbuffer.add_string out (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label e)
-    ) dynCache.(i).(j);
+    ) (fst dynCache.(i).(j));
     Rbuffer.add_string out "</defs>";
   in
 
   let reset_cache () =
     Array.iter (fun tbl ->
-      Array.iter (fun tbl ->
-        Hashtbl.iter (fun k (d, ptr) -> ptr := None) tbl
+      Array.iter (fun (tbl,_) ->
+        Hashtbl.iter (fun k (d, ptr,_,_) -> ptr := None) tbl
       ) tbl
     ) dynCache
   in
@@ -867,17 +860,20 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
         | Dynamics(i,j,l) ->
            let l = List.fold_left
                      (fun acc label ->
-                      let l = List.filter (fun ((i',j'),_) -> i = i' && j = j') (Hashtbl.find dynTable label) in
-                      List.fold_left (fun acc ((_,_),(d,ptr)) ->
-                                      let c = match !ptr with
-                                          Some d -> d
-                                        | None ->
-                                          let r = d.dyn_contents () in ptr := Some r; r
-                                      in
-                                      Printf.sprintf "{\"dyn_label\":\"%s\", \"dyn_contents\":\"%s\"}" d.dyn_label (base64_encode c)::acc)
-                                     acc l)
+                       (*log_son num "searching %s,%d,%d" label i j;*)
+                       let (d,ptr,_,_) = Hashtbl.find (fst dynCache.(i).(j)) label in
+                       (*log_son num "found";*)
+                       let c = match !ptr with
+                         | None ->
+                            let c = d.dyn_contents () in
+                            ptr := Some c; c
+                         | Some c -> c
+                       in
+                       Printf.sprintf "{\"dyn_label\":\"%s\", \"dyn_contents\":\"%s\"}"
+                                      d.dyn_label (base64_encode c)::acc)
                      [] l
            in
+           if l = [] then raise Exit;
            let full = "[" ^ String.concat "," l ^"]" in
            i, j, "\"Dynamics\"", full
       in
@@ -887,19 +883,8 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
           change change_list
       );
     with
-      e-> log_son num "unexpected exception in pushto: %s" (Printexc.to_string e)
-  in
-
-  let affected num slide state dest =
-    List.fold_left (fun acc label ->
-      try
-        let l = Hashtbl.find dynTable label in
-        List.iter (fun ((i,j),(d,ptr)) ->
-          if !ptr <> None then (
-            log_son num "cache invalidated (%d,%d) %s" i j d.dyn_label;
-            ptr := None)) l;
-        acc || List.mem_assoc (slide,state) l
-      with Not_found -> acc) false dest
+    | Exit -> ()
+    | e-> log_son num "unexpected exception in pushto: %s" (Printexc.to_string e)
   in
 
   let in_group son g = match son.sessid with
@@ -1107,31 +1092,62 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
          exit 1;
     in
 
-    let update slide state ev dest =
-      let priv, pub =
-        List.fold_left (fun (priv,pub as acc) ds ->
-          try
-            let l = Hashtbl.find dynTable ds in
-            List.fold_left  (fun (priv,pub as acc) (_,(d,_)) ->
-              let res = d.dyn_react ev in
-              match res with
-                Unchanged -> acc
-              | Private -> (ds::priv), pub
-              | Public ->  (ds::priv), (ds::pub))
-              acc l
-          with
-            Not_found ->
-              log_son num "WARNING: dynamic not found: %S" ds;
-              acc) ([], []) dest
+
+    let update slide state name ev =
+      let (_,buttons) = dynCache.(slide).(state) in
+      let button = try Hashtbl.find buttons name
+                   with Not_found ->
+                     log_son num "unknown button %S" name;
+                     assert false
       in
-      if affected num slide state priv then
+      let affected = match ev, button with
+      | EvClick, Click(act) -> act ()
+      | EvDrag(x,y,r), Drag(act) -> act (x, y) r
+      | EvEdit(contents), Edit(_,_,act) -> act contents
+      | _ ->  log_son num "button %S do not match" name;
+              assert false
+      in
+      let to_push = ref [] in
+      let priv, pub =
+        List.fold_left (fun (priv,pub) (_,vis as key) ->
+            let ds = try Hashtbl.find graph key
+                     with Not_found -> []
+            in
+            let priv =
+              List.fold_left (fun acc (d,ptr,i,j) ->
+                  ptr := None;
+                  if i = slide && j = state then
+                    to_push := d.dyn_label :: !to_push;
+                  if List.mem d.dyn_label acc then acc
+                  else d.dyn_label::acc) priv ds
+            in
+            let ds =
+              if snd key = Private then
+                try Hashtbl.find graph (fst key, Public) (* TODO Group *)
+                with Not_found -> []
+              else ds
+            in
+            let pub =
+              List.fold_left (fun acc (d,ptr,i,j) ->
+                  let t = (d.dyn_label,i,j) in
+                  ptr := None;
+                  if List.mem t acc then acc else t::acc) pub ds
+            in
+            (priv,pub)) ([], []) affected
+      in
+      if !to_push <> [] then
         begin
           log_son num "private change (%d,%d)" slide state;
-          pushto ~change:(Dynamics(slide,state,priv)) num fd;
+          pushto ~change:(Dynamics(slide,state,!to_push)) num fd;
         end;
       let s, g = read_sessid () in
-      log_son num "public change %s %s %s" s g (String.concat " " pub);
-      Printf.fprintf fouc "change %s %s %s\n%!" s g (String.concat " " pub);
+      if pub <> [] then
+        begin
+          let pub = String.concat " " (List.map (fun (d,i,j) ->
+                                           Printf.sprintf "%s,%d,%d" d i j) pub) in
+          log_son num "public change coucou %s %s %s" s g pub;
+          Printf.fprintf fouc "change %s %s %s\n%!" s g pub;
+        end
     in
 
     let rec process_req master get hdr reste =
@@ -1144,9 +1160,17 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
          begin
            log_son num "from father change";
            let dest = input_value finc in
-           if affected num !cur_slide !cur_state dest then (
-             log_son num "affected";
-             pushto ~change:(Dynamics(!cur_slide,!cur_state,dest)) num fd);
+           let dest =
+             List.fold_left
+               (fun acc (dest,i,j) ->
+                 let (d,ptr,_,_) = Hashtbl.find (fst dynCache.(i).(j)) dest in
+                 ptr := None;
+                 if i = !cur_slide && j = !cur_state && not (List.mem dest acc) then
+                   dest::acc
+                 else
+                   acc) [] dest
+           in
+           pushto ~change:(Dynamics(!cur_slide,!cur_state,dest)) num fd;
            process_req master get hdr reste
          end
       | ch::_ when ch != fd -> assert false
@@ -1163,7 +1187,7 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
         else if Str.string_match refresh get 0 then (
           let slide, state = read_slide_state get in
           log_son num "websocket refresh (%d,%d) (send to websocket and father)" slide state;
-          Hashtbl.iter (fun label (dyn,ptr) -> ptr := None) dynCache.(slide).(state) ;
+          Hashtbl.iter (fun label (dyn,ptr,_,_) -> ptr := None) (fst dynCache.(slide).(state)) ;
           pushto ~change:(Slide(slide,state)) num fd;
           let s, g = read_sessid () in
           Printf.fprintf fouc "move %s %s %d %d\n%!" s g slide state;
@@ -1171,14 +1195,9 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
         else if Str.string_match click get 0 then (
           let match_end = Str.match_end () in
           let slide, state = read_slide_state get in
-          let rest =String.sub get match_end (String.length get - match_end) in
-          log_son num "websocket click (%d,%d) %s" slide state rest;
-
-          let name, dest = match Util.split ' ' rest with
-              name::dest -> name,dest
-            | _ -> failwith "Bad click"
-          in
-          update slide state (Click(name)) dest;
+          let name =String.sub get match_end (String.length get - match_end) in
+          log_son num "websocket click (%d,%d) %s" slide state name;
+          update slide state name EvClick;
           process_req master "" [] reste)
 
         else if Str.string_match edit get 0 then (
@@ -1187,18 +1206,15 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
           let rest =String.sub get match_end (String.length get - match_end) in
           log_son num "websocket edit (%d, %d) %s" slide state rest;
 
-          let name, dest, contents =
+          let name, contents =
             try
               match Util.split ' ' rest with
-                name::dest ->
-                  let dest = List.rev dest in
-                  let contents = List.hd dest in
-                  let dest = List.tl dest in
-                  name,dest, base64_decode contents
+                [name;contents] ->
+                  name, base64_decode contents
               | _ -> raise Not_found
             with _ -> failwith "Bad edit"
           in
-          update slide state (Edit(name,contents)) dest;
+          update slide state name (EvEdit(contents));
           process_req master "" [] reste
 
         ) else if Str.string_match drag get 0 then (
@@ -1207,15 +1223,11 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
           and dy = float_of_string (Str.matched_group 4 get) in
           let release = try ignore (Str.matched_group 5 get); true with _ -> false in
           let slide, state = read_slide_state get in
-          let rest =String.sub get match_end (String.length get - match_end) in
+          let name =String.sub get match_end (String.length get - match_end) in
 
-          log_son num "websocket drag (%d,%d) %g %g %s" slide state dx dy rest;
+          log_son num "websocket drag (%d,%d) %g %g %s" slide state dx dy name;
 
-          let name, dest = match Util.split ' ' rest with
-              name::dest -> name,dest
-            | _ -> failwith "Bad click"
-          in
-          update slide state (Drag(name,(dx,dy),release)) dest;
+          update slide state name (EvDrag(dx,dy,release));
           process_req master "" [] reste
         ) else if Str.string_match ping get 0 then (
           log_son num "websocket ping";
@@ -1482,6 +1494,16 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
                son.addr <- Unix.ADDR_INET(inet_addr_of_string addr, port)
             | "change"::sessid::groupid::dest ->
                log_father "from [son%d] change" son.num;
+               let dest = List.map (fun s ->
+                              log_father ">>> dest: %S" s;
+                              try
+                                match Util.split ',' s with
+                                | [d;i;j] -> (d, int_of_string i, int_of_string j)
+                                | _ -> raise Exit
+                              with _ ->
+                                 log_father "malformed dest: %S" s;
+                                 assert false) dest
+               in
                push sock sessid groupid dest;
 
             | ["quit";sessid;pid] ->

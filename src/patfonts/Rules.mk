@@ -3,7 +3,7 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 LIBFONTS_INCLUDES := -I $(d) $(PACK_FONTS) -I $(UNICODE_DIR) -I $(UNICODE_DIR)/encoding_data
-LIBFONTS_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_FONTS) -I $(UNICODE_DIR) -I $(UNICODE_DIR)/encoding_data
+LIBFONTS_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_FONTS) -I $(UNICODE_DIR) -I $(UTIL_DIR) -I $(UNICODE_DIR)/encoding_data
 
 # Compute ML files dependencies
 $(d)/%.depends $(d)/CFF/%.depends $(d)/Opentype/%.depends $(d)/unicodeRanges/%.depends: INCLUDES:=$(LIBFONTS_DEPS_INCLUDES)

@@ -120,6 +120,10 @@ svg .dragable rect{pointer-events:all;}
 
 
 let draw ?fontCache ?dynCache prefix w h contents=
+  let dynCache, buttonCache = match dynCache with
+    | None -> None, None
+    | Some((d,b),g,sl,st,f) -> Some (d,g,sl,st,f), Some b
+  in
   let svg_buf=Rbuffer.create 256 in
 
   let fontCache=match fontCache with
@@ -340,11 +344,16 @@ let draw ?fontCache ?dynCache prefix w h contents=
         Rbuffer.add_string svg_buf "<a xlink:href=\"";
         Rbuffer.add_string svg_buf uri;
         Rbuffer.add_string svg_buf "\">"
-      | Button(drag,name,ds) ->
-	let ty = match drag with
-	    Clickable -> "button"
-	  | Dragable -> "dragable"
-	  | Editable (s,init) -> "editable' contents='" ^
+      | Button(btype,name) ->
+         begin
+           match buttonCache with
+           | None -> ()
+           | Some c -> Hashtbl.replace c name btype
+         end;
+	 let ty = match btype with
+	    Click _ -> "button"
+	  | Drag  _ -> "dragable"
+	  | Edit(s, init, _) -> "editable' contents='" ^
 	    Str.(global_replace (regexp "\r?\n") "&#13;&#10;"
 		   (global_replace (regexp_string ">") "&gt;"
 		      (global_replace (regexp_string "<") "&lt;"
@@ -360,8 +369,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
 			       (global_replace (regexp_string "&") "&amp;" init))))))
 	in
         Rbuffer.add_string svg_buf (
-	  Printf.sprintf "<g class='%s' id='%s' dest='%s'>"
-	    ty name (String.concat " " ds)
+                             Printf.sprintf "<g class='%s' id='%s'>" ty name
 	);
       );
 
@@ -376,7 +384,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
         opened_text:=false
       );
       (match l.link_kind with
-      | Button(_,name,ds) ->
+      | Button(_,name) ->
 	Rbuffer.add_string svg_buf "</g>"
       | _ ->
 	Rbuffer.add_string svg_buf "</a>")
@@ -394,20 +402,27 @@ let draw ?fontCache ?dynCache prefix w h contents=
       (match dynCache with
 	 None ->
 	 List.iter output_contents_aux (d.dyn_contents ());
-       | Some h ->
+       | Some (ds,gs,slide,state,record) ->
 	  (* <use> and <defs> would be much better ... but click inside
              defs does not work with firefox (bug reported for more
              than one year *)
 	  let tmp = Rbuffer.create 256 in
 	  ignore (output_contents ~svg_buf:tmp (d.dyn_contents ()));
 	  ignore (output_contents ~svg_buf:tmp (d.dyn_sample));
- 	  let contents () =
+          let ptr = ref None in
+ 	  let rec contents () =
 	    let buf = Rbuffer.create 256 in
-	    ignore (output_contents ~svg_buf:buf (d.dyn_contents ()));
+            let contents, reads = record d.dyn_contents () in
+            List.iter (fun key ->
+                let old = try Hashtbl.find gs key with Not_found -> [] in
+                if not (List.memq d0 old) then
+	          Hashtbl.add gs key (d0::old)) reads;
+	    ignore (output_contents ~svg_buf:buf contents);
 	    Rbuffer.contents buf
-	  in
-	  let d = { d with dyn_contents = contents; dyn_sample = "" } in
-	  Hashtbl.add h d.dyn_label (d, ref None)
+	  and d0 = ({ d with dyn_contents = contents; dyn_sample = "" }, ptr,
+                    slide, state)
+          in
+	  Hashtbl.add ds d.dyn_label d0
       );
       Rbuffer.add_string svg_buf "</g>";
 
@@ -538,7 +553,7 @@ let buffered_output' ?dynCache ?(structure:structure=empty_structure) pages pref
       let sorted_pages = sort_raw page.contents in
       let dynCache = match dynCache with
 	  None -> None
-	| Some c -> Some c.(slide).(state)
+	| Some (c,g,f) -> Some (c.(slide).(state), g, slide, state, f)
       in
       let svg,imgs0=draw ~fontCache:cache ?dynCache prefix w h sorted_pages in
       imgs:=StrMap.fold StrMap.add imgs0 !imgs;
@@ -675,12 +690,12 @@ function setReaction(svg) {
 
     var buttons=svg.getElementsByClassName('button');
     for (var a=0;a<buttons.length;a++) {
-        function closure(name,dest) {
-          return(function (e) { send_click(name,dest,e); });
+        function closure(name) {
+          return(function (e) { send_click(name,e); });
         }
         var elt = buttons[a];
         elt.style.pointerEvents = 'all';
-        elt.onclick=closure(elt.getAttribute('id'),elt.getAttribute('dest'));
+        elt.onclick=closure(elt.getAttribute('id'));
         elt.onmouseover=(function () { document.body.style.cursor = 'crosshair'; });
         elt.onmouseout=(function () { document.body.style.cursor = 'default'; });
     }
@@ -690,11 +705,11 @@ function setReaction(svg) {
         var elt = dragable[a];
         elt.style.pointerEvents = 'all';
         var name = elt.getAttribute('id');
-        function closure2(name,dest,touch) {
-          return(function (e) { start_drag(name,dest,e,touch); });
+        function closure2(name,touch) {
+          return(function (e) { start_drag(name,e,touch); });
         }
-        elt.onmousedown=closure2(name,elt.getAttribute('dest'),null);
-        elt.addEventListener('touchstart', closure2(name,elt.getAttribute('dest'),elt), false);
+        elt.onmousedown=closure2(name,null);
+        elt.addEventListener('touchstart', closure2(name, false));
         elt.onmouseover=(function () { document.body.style.cursor = 'move'; });
         elt.onmouseout=(function () { document.onselectstart = null; document.body.style.cursor = 'default'; });
     }
@@ -704,10 +719,10 @@ function setReaction(svg) {
         var elt = editable[a];
         elt.style.pointerEvents = 'all';
         var name = elt.getAttribute('id');
-        function closure3(name,dest) {
-          return(function (e) { start_edit(name,dest,e); });
+        function closure3(name) {
+          return(function (e) { start_edit(name,e); });
         }
-        elt.onclick=closure3(name,elt.getAttribute('dest'));
+        elt.onclick=closure3(name);
         elt.onmouseover=(function () { document.body.style.cursor = 'text'; });
         elt.onmouseout=(function () { document.body.style.cursor = 'default'; });
     }

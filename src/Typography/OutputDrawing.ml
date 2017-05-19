@@ -204,7 +204,7 @@ let output ?state paragraphs figures env (opt_pages:frame)=
 	      let k = match l with
 		  Box.Extern l -> RawContent.Extern l
 		| Box.Intern l -> RawContent.Intern(l,Box.layout_page line,0.,0.);
-		| Box.Button(drag,n,d) -> RawContent.Button(drag,n,d)
+		| Box.Button(t,n) -> RawContent.Button(t,n)
 	      in
               let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                          link_order=0;

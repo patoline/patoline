@@ -1074,7 +1074,13 @@ let sectref x=lref ~refType:"_structure" x
 
 let extLink a b=bB (fun _->[Marker (BeginLink (Extern a))])::b@[bB (fun _->[Marker EndLink])]
 let link a b=bB (fun _->[Marker (BeginLink (Intern a))])::b@[bB (fun _->[Marker EndLink])]
-let button ?(btype=Clickable) name destinations b=bB (fun _->[Marker (BeginLink (Button(btype,name,destinations)))])::b@[bB (fun _->[Marker EndLink])]
+let button_name =
+  let c = ref 0 in
+  fun () -> let x = !c in c := x+1; "button_" ^ string_of_int x
+let button =
+  fun btype b ->
+    bB (fun _->[Marker (BeginLink (Button(btype, button_name ())))])::
+      b@[bB (fun _->[Marker EndLink])]
 
 (** {3 Images} *)
 
@@ -1371,7 +1377,7 @@ let draw_boxes env l=
               Not_found->(-1)
 	  in
 	  RawContent.Intern(l,dest_page,0.,0.);
-	| Box.Button(drag,n,d) -> RawContent.Button(drag,n,d)
+	| Box.Button(t,n) -> RawContent.Button(t,n)
       in
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                  link_order=0;

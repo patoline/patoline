@@ -625,7 +625,12 @@ let animation ?(step=1./.24.) ?(duration=600.) ?(mirror=true) ?(default=0) cycle
     drawing_contents=(fun _->[r])
   }]))]
 
-let dynamic name action sample contents =
+let dynname =
+  let c = ref 0 in
+  (fun () -> let x = !c in c := x + 1; "dynamic_" ^ string_of_int x)
+
+let dynamic sample contents =
+  let name = dynname () in
   RawContent.([bB (fun env ->
     let contents () = draw env (contents ()) in
     let r = Dynamic{
@@ -633,7 +638,6 @@ let dynamic name action sample contents =
       dyn_contents = contents;
       dyn_order = List.fold_left (fun acc c -> min acc (RawContent.drawing_order c)) max_int (contents ());
       dyn_sample = draw env sample;
-      dyn_react = action;
     }
   in
   let (x0,y0,x1,y1)=bounding_box [r] in
@@ -652,7 +656,7 @@ let dynamic name action sample contents =
     drawing_contents=(fun _->[r])
   }])])
 
-module Env_dynamic(X : sig val arg1 : string val arg2 : RawContent.event -> RawContent.action val arg3 : content list
+module Env_dynamic(X : sig val arg1 : content list
                        end)=struct
   let do_begin_env ()=
     D.structure:=newChildAfter !D.structure (Node empty);
@@ -671,7 +675,7 @@ module Env_dynamic(X : sig val arg1 : string val arg2 : RawContent.event -> RawC
         D.structure:=(Node { n with children=IntMap.remove num n.children },x);
     | x->D.structure:=x);
     let cont () = OutputDrawing.minipage (t,[]) in
-    let cont = dynamic X.arg1 X.arg2 X.arg3 cont in
+    let cont = dynamic X.arg1 cont in
     match lastChild !D.structure with
       Paragraph x,y->
         D.structure:=up (Paragraph {x with par_contents=x.par_contents@cont},y);
@@ -1480,7 +1484,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 			  let k = match l with
 			      Box.Extern l -> RawContent.Extern l;
 			    | Box.Intern l -> RawContent.Intern(l,layout_page line,0.,0.);
-			    | Box.Button(drag,n,d) -> RawContent.Button(drag,n,d)
+			    | Box.Button (t,n) -> RawContent.Button(t,n)
 			  in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                      link_order=0;link_closed=false;

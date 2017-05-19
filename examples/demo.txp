@@ -17,9 +17,9 @@ let db_info = Mysql.(
       dbpwd = Some "demo";
       dbuser = Some "demo";})
 
-(* let db = init_db "demo" db_info *)
+let db = init_db "demo" (Mysql db_info)
 
-let db = init_db "demo" Memory
+(*let db = init_db "demo" Memory*)
 module MyDb = struct
   let db = db
   let base_dir = "/tmp"
@@ -28,6 +28,8 @@ end
 module Interactive =
   Interactive.Make(D)(Patoline_Format)(MyDb)
 open Interactive
+
+let _ = Printexc.record_backtrace true
 )
 
 
@@ -53,20 +55,16 @@ let img file =
 \begin{slide}
 \begin{itemize}
 
-\Caml(let count = db.create_data ~global:true default_coding "count" 0)
-\item \button("test")(["cible"]){Un bouton} qui a été cliqué
-\dynamic("cible")(function ev ->
-  	  (match ev with
-	     Click "test"-> let c = count.read () + 1 in count.write c; Public
-           | _ -> Unchanged)){0123456789 fois}(
+\Caml(let count = db.create_data ~visibility:Public default_coding "count" 0)
+\item \button(click(fun () ->let c = count.read () + 1 in count.write c))
+           {Un bouton} qui a été cliqué
+\dynamic{0123456789 fois}(
 	   fun () -> <<\caml(let c = count.read () in [tT (string_of_int c)]) fois !>>)
 
-\Caml(let count2 = db.create_data ~global:false default_coding "count2" 0)
-\item \button("test")(["cible2"]){Un autre bouton} qui a été cliqué
-\dynamic("cible2")(function ev ->
-  	  (match ev with
-	     Click "test"-> let c = count2.read () + 1 in count2.write c; Public
-           | _ -> Unchanged)){0123456789 fois}(
+\Caml(let count2 = db.create_data default_coding "count2" 0)
+\item \button(click(fun () -> let c = count2.read () + 1 in count2.write c))
+          {Un autre bouton} qui a été cliqué
+\dynamic{0123456789 fois}(
 	   fun () -> <<\caml(let c = count2.read () in [tT (string_of_int c)]) fois !>>)
 
 \item Chercher la différence entre ces deux boutons ! indication : ouvrez deux fois la présentation.
@@ -75,17 +73,11 @@ let img file =
 
 \begin{center}
 \Caml(
-let aPos = db.create_data ~global:false default_coding "Apos" (10.0,10.0)
-let bPos = db.create_data ~global:false default_coding "Bpos" (-10.0,-10.0)
-let cPos = db.create_data ~global:false default_coding "Cpos" (10.0,-10.0)
+let aPos = db.create_data default_coding "Apos" (10.0,10.0)
+let bPos = db.create_data default_coding "Bpos" (-10.0,-10.0)
+let cPos = db.create_data default_coding "Cpos" (10.0,-10.0)
 )
-\dynamic("figure")(
-	function ev ->
-  	  (match ev with
-	   | Drag("a",p,_) -> aPos.write Vector.(p + aPos.read ()); Private
-	   | Drag("b",p,_) -> bPos.write Vector.(p + bPos.read ()); Private
-	   | Drag("c",p,_) -> cPos.write Vector.(p + cPos.read ()); Private
-	   | _ -> Unchanged))([])(fun () -> <<
+\dynamic([])(fun () -> <<
 \diagram(
  let frame = Node.(node [at (0.,0.);rectangle env;draw; color (mix 0.5 white blue); innerSep 20.] [])
  let apos = aPos.read () and bpos = bPos.read () and cpos = cPos.read ()
@@ -95,63 +87,52 @@ let cPos = db.create_data ~global:false default_coding "Cpos" (10.0,-10.0)
  let ab = Node.(coord Point.(middle apos bpos))
  let bc = Node.(coord Point.(middle bpos cpos))
  let ca = Node.(coord Point.(middle cpos apos))
- let a = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec av) env <<A>>; at apos; drag ("a",["figure"])] [])
- let b = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec bv) env <<B>>; at bpos; drag ("b",["figure"])] [])
- let c = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec cv) env <<C>>; at cpos; drag ("c",["figure"])] [])
+ let dragA p rel = aPos.write Vector.(p + aPos.read ())
+ let dragB p rel = bPos.write Vector.(p + bPos.read ())
+ let dragC p rel = cPos.write Vector.(p + cPos.read ())
+ let a = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec av) env <<A>>; at apos;
+		     drag(dragA)] [])
+ let b = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec bv) env <<B>>; at bpos;
+		     drag(dragB)] [])
+ let c = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec cv) env <<C>>; at cpos;
+		     drag(dragC)] [])
  let _ = edge Edge.([draw]) a b
  let _ = edge Edge.([draw]) b c
  let _ = edge Edge.([draw]) c a
- let _ = edge Edge.([draw;dashed[1.;2.]]) a bc
- let _ = edge Edge.([draw;dashed[1.;2.]]) b ca
- let _ = edge Edge.([draw;dashed[1.;2.]]) c ab
+ let _ = edge Edge.([draw;dashed[1.]]) a bc
+ let _ = edge Edge.([draw;dashed[1.]]) b ca
+ let _ = edge Edge.([draw;dashed[1.]]) c ab
 )>>)
 
 \end{center}
 \end{itemize}
 \end{slide}
 
-\Caml(
-type sondage =
-  Null
-| Fun_but
-| Fun_yes
-| No_opinion
-| No_answer
-
-let sonde = db.create_data ~global:false default_coding "sondage" No_answer
-
-let box name s =
- dynamic name
- (function ev -> Private)
- (<<$X$ $O$>>)
- (fun () -> if sonde.read () = s then (<<$X$>>) else (<<$O$>>))
-)
 
 \Caml(
-let destinations = ["qui_res"]
-let questions = Array.init 5 (fun i -> db.create_data default_coding ("box"^string_of_int i) false)
+let questions = ref []
 )
 
 \begin{slide}
 \Title{Qui êtes-vous ?}
 
-\begin{raggedLeft}
-\caml(checkBox  ~destinations questions.(0))(fun b -> << \b() J'aime le nombre 42. >>)
+\begin{checkBoxes}("geekTest")(questions)
+\item J'aime le nombre 42.
 
-\caml(checkBox  ~destinations questions.(1))(fun b -> << \b() J'ai vu presque tous les épisodes de \italic{Startrek} ou \italic{Big-Bang Theory} >>)
+\item J'ai vu presque tous les épisodes de \italic{Startrek} ou \italic{Big-Bang Theory}
 
-\caml(checkBox  ~destinations questions.(2))(fun b -> << \b() Je programme souvent >>)
+\item Je programme souvent
 
-\caml(checkBox  ~destinations questions.(3))(fun b -> << \b() J'ai un casse tête que je ne sais pas résoudre >>)
+\item J'ai un casse tête que je ne sais pas résoudre
 
-\caml(checkBox  ~destinations questions.(4))(fun b -> << \b() Mes amis me trouvent bizarre >>)
-\end{raggedLeft}
+\item Mes amis me trouvent bizarre
+\end{checkBoxes}
 
 \vspaceBefore(5.0)
 \begin{center}
-\dynamic("qui_res")(function _ -> Private){Vous êtes un humain bizarre geek}(fun () ->
-    let nb = Array.fold_left (fun acc b -> if b.read() then succ acc else acc) 0 questions in
-    let bizarre = questions.(4).read () in
+\dynamic{Vous êtes un humain bizarre geek}(fun () ->
+    let nb = List.fold_left (fun acc b -> if b.read() then succ acc else acc) 0 !questions in
+    let bizarre = try (List.hd !questions).read() with _ -> false in
     if nb >= 4 then <<Vous êtes un geek>>
     else if bizarre || nb >= 2 then <<Vous êtes un humain probablement bizarre>>
     else <<Vous êtes un humain>>
@@ -160,10 +141,14 @@ let questions = Array.init 5 (fun i -> db.create_data default_coding ("box"^stri
 \end{slide}
 
 \Caml(
-type value = No_opinion | Not_clicked | Null | Fun_but | Fun_yes
-let values = [|Not_clicked ; Null; Fun_but; Fun_yes; No_opinion|]
-let data = db.create_data default_coding "Sondage" Not_clicked
-let radios = radioButtons ~destinations:["histo"] data values
+  module Data =
+   struct
+      type t = No_opinion | Not_clicked | Null | Fun_but | Fun_yes
+      let data = db.create_data default_coding "Sondage" Not_clicked
+    end
+  module Env_choices = MkRadioButtons(Data)
+  open Data
+ )
 )
 
 \begin{slide}
@@ -173,14 +158,15 @@ let radios = radioButtons ~destinations:["histo"] data values
 \vspaceAfter(5.0)
 \end{center}
 
-\caml(radios.(1) (fun b -> << \b() Patoline c'est null, ça ne marchera jamais. >>))
+\begin{choices}
+\item(Null) Patoline c'est null, ça ne marchera jamais.
 
-\caml(radios.(2) (fun b -> << \b() Patoline c'est chouette, mais ça ne marchera pas. >>))
+\item(Fun_but) Patoline c'est chouette, mais ça ne marchera pas.
 
-\caml(radios.(3) (fun b -> << \b() Patoline c'est chouette, et ça va casser la baraque ! >>))
+\item(Fun_yes) Patoline c'est chouette, et ça va casser la baraque !
 
-\caml(radios.(4) (fun b -> << \b() Je ne sais pas. >>))
-
+\item(No_opinion) Je ne sais pas.
+\end{choices}
 \end{slide}
 
 \begin{slide}
@@ -188,7 +174,7 @@ let radios = radioButtons ~destinations:["histo"] data values
 
 
 \begin{center}
-\dynamic("histo")(fun _ -> Public)([])(fun () ->
+\dynamic([])(fun () ->
 let total, results = data.distribution () in
 let color v = match v with
   Null -> red
@@ -196,7 +182,7 @@ let color v = match v with
 | Fun_yes -> green
 | No_opinion | Not_clicked -> grey
 in
-let values = List.tl (Array.to_list values) in
+let values = [ Null; Fun_but; Fun_yes; No_opinion ] in
 let res = List.map (fun value -> (color value, try List.assoc value results with Not_found -> 0)) values in
 let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
 <<\diagram(
@@ -217,7 +203,7 @@ let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
 Un petit programme éditable, the program is compiled and executed (beware of security issues) :
 }
 \caml(
-  editableText ~nb_lines:7 ~lang:Verbatim.lang_OCaml ~extra:(test_ocaml ~run:true) ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML"
+  editableText ~nb_lines:7 ~err_lines:3  ~lang:Verbatim.lang_OCaml ~extra:(test_ocaml ~run:true) ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML"
 )
 \end{block}
 \end{slide}

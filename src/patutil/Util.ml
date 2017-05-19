@@ -238,15 +238,7 @@ let unspace s=
 
 let compose f g x=f (g x)
 
-let unique l=
-  let sl=List.sort compare l in
-  let rec uniq l acc=match l with
-      []->acc
-    | h0::h1::s when h0=h1 -> uniq (h1::s) acc
-    | h0::s->uniq s (h0::acc)
-  in
-  uniq sl []
-
+let unique l= List.sort_uniq compare l
 
 type 'a tree=
     N of ('a tree) IntMap.t
@@ -414,3 +406,10 @@ let base64_encode s0=
   if m>=1 then Bytes.set str (String.length str-1) '=';
   if m=1  then Bytes.set str (String.length str-2) '=';
   str
+
+(* A type needed both by Db and RawContent *)
+type visibility = Private | Group | Public
+let vis_to_string = function
+  | Private -> "Private"
+  | Group -> "Group"
+  | Public -> "Public"

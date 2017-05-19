@@ -80,7 +80,7 @@ let bool_coding = {
 
 type db = {
   db : unit -> database;
-  create_data : 'a.( ?log:bool -> ?global:bool -> 'a coding -> string -> 'a -> 'a data);
+  create_data : 'a.( ?log:bool -> ?visibility:visibility -> 'a coding -> string -> 'a -> 'a data);
   disconnect : unit -> unit;
 }
 
@@ -96,6 +96,40 @@ let sessid = ref (None: (string * string * (string * string) list) option)
 
 let secret = ref ""
 
+let record ptr f a =
+  let l = ref [] in
+  let r = fun s -> l := s :: !l in
+  ptr := r :: !ptr;
+  let pop () = match !ptr with
+    | r' :: l when r == r' -> ptr := l
+    | _ -> assert false
+  in
+  try
+    let res = f a in
+    pop (); (res, !l)
+  with e -> pop (); raise e
+
+let read_hook : (string -> visibility -> unit) list ref = ref []
+let write_hook : (string -> visibility -> unit) list ref = ref []
+let record hook f a =
+  let l = ref [] in
+  let r = fun s v -> l := (s, v) :: !l in
+  hook := r :: !hook;
+  let pop () = match !hook with
+    | r' :: l when r == r' -> hook := l
+    | _ -> assert false
+  in
+  try
+    let res = f a in
+    pop (); (res, !l)
+  with e -> pop (); raise e
+
+let record_read f a = record read_hook f a
+let record_write f a = snd (record write_hook f a)
+
+let do_record_read  = fun d v -> List.iter (fun f -> f d.name v) !read_hook
+let do_record_write = fun d v -> List.iter (fun f -> f d.name v) !write_hook
+
 let init_db table_name db_info =
 #ifdef MYSQL
   let log_name = table_name ^"_log" in
@@ -105,11 +139,20 @@ let init_db table_name db_info =
     let total_table = Hashtbl.create 1001 in
     { db = (fun () -> MemoryDb);
       disconnect = (fun () -> ());
-      create_data = fun ?(log=false) ?(global=false) coding name vinit ->
+      create_data = fun ?(log=false) ?(visibility=Private) coding name vinit ->
+        let rec data =
 	let table = Hashtbl.create 1001 in
-	let sessid () = match !sessid with None -> ("", "", []) | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs in
+	let sessid () = match !sessid with
+          | None -> ("", "", [])
+          | Some (s,g,fs) ->
+             match visibility with
+             | Private -> (s, g, fs)
+             | Group   -> ("ANY", g, [])
+             | Public  -> ("ANY", "ANY", [])
+        in
 	let read = fun () ->
 	  let s,g,_ = sessid () in
+          do_record_read data visibility;
 	  try Hashtbl.find table (s,g) with Exit | Not_found -> vinit in
 	let add_to_table ((s,g) as key) v =
 	  let old = try Hashtbl.find total_table g with Not_found -> [] in
@@ -119,15 +162,18 @@ let init_db table_name db_info =
 	let write = fun v ->
 	  try
 	    let s, g, fs = sessid () in
+            do_record_write data visibility;
 	    add_to_table (s,g) v;
 	    List.iter (fun key -> add_to_table key v) fs;
 	  with Exit -> ()
 	in
 	let reset () =
 	  let s,g,fs = sessid () in
+          do_record_write data visibility;
 	  Hashtbl.remove table (s, g);
 	in
 	let distribution ?group () =
+          do_record_read data (if group = None then Public else max Group visibility);
 	  let total = match group with
 	    | None ->
 	      Hashtbl.fold (fun k l acc -> acc + List.length l) total_table 0
@@ -140,7 +186,9 @@ let init_db table_name db_info =
 	    Hashtbl.replace res v (old + 1)) table;
 	  total, Hashtbl.fold (fun v n acc -> (v,n)::acc) res [];
 	in
-	{name; read; write; reset; distribution};
+	{ name; read; write; reset; distribution}
+        in
+        data
     }
 
 
@@ -186,13 +234,18 @@ let init_db table_name db_info =
       disconnect = (fun () ->
 	match !dbptr with None -> ()
 	| Some db -> Mysql.disconnect db);
-      create_data = fun ?(log=false) ?(global=false) coding name vinit ->
+      create_data = fun ?(log=false) ?(visibility=Private) coding name vinit ->
 	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
+        let rec data =
 	Hashtbl.add created name ();
 	let v = coding.encode vinit in
 	let sessid () = match !sessid with
 	    None -> "", "guest", []
-	  | Some (s,g,fs) -> if global then "shared_variable", g, [] else s, g, fs
+	  | Some (s,g,fs) ->
+             match visibility with
+             | Private -> (s, g, fs)
+             | Group   -> ("ANY", g, [])
+             | Public  -> ("ANY", "ANY", [])
 	in
 	let init () =
 	  let sessid, groupid, friends = sessid () in
@@ -233,6 +286,7 @@ let init_db table_name db_info =
 	let read () =
 	  try
             let sessid, groupid, _  = init () in
+            do_record_read data visibility;
             let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
 	      table_name sessid name in
 	    (*Printf.eprintf "Sending request %s\n%!" sql;*)
@@ -252,6 +306,7 @@ let init_db table_name db_info =
 	in
 	let write v =
 	    let sessid, groupid, friends = init () in
+            do_record_write data visibility;
 	    let fn (sessid, groupid) =
               try
 		let v = coding.encode v in
@@ -278,6 +333,7 @@ let init_db table_name db_info =
 	let reset () =
 	  try
 	    let sessid, groupid, _ = init () in
+            do_record_write data visibility;
             let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s';"
 	      table_name name sessid in
 	    let _r = Mysql.exec (db ()) sql in
@@ -285,6 +341,7 @@ let init_db table_name db_info =
 	  with Exit -> ()
 	in
 	let distribution ?group () =
+          do_record_read data (if group = None then Public else max Group visibility);
 	  try
 	    let _ = init () in
 	    let group = match group with
@@ -319,7 +376,9 @@ let init_db table_name db_info =
 	    total, scores
 	  with Exit -> 0, []
 	in
-	{name; read; write; reset; distribution}}
+	{name; read; write; reset; distribution}
+        in data
+    }
 #endif
 
 let make_sessid () =
