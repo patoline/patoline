@@ -1433,7 +1433,6 @@ let rec bezier_of_boxes=function
      else
        l@(bezier_of_boxes s)
   | Dynamic(d)::s ->
-     Printf.eprintf "coucou\n%!";
      (bezier_of_boxes (d.dyn_contents ()))@(bezier_of_boxes s)
   | Link(l)::s ->
      (bezier_of_boxes l.link_contents)@(bezier_of_boxes s)

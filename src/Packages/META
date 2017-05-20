@@ -15,7 +15,7 @@ archive(byte)="ProofTree.cma"
 )
 
 package "Interactive" (
-requires="rawlib,db,Typography"
+requires="rawlib,db,Typography,Patoline.Giac"
 archive(native)="Interactive.cmxa"
 archive(byte)="Interactive.cma"
 )

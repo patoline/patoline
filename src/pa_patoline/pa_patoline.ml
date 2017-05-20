@@ -557,7 +557,7 @@ let _ =
                 open Diagram ;;
                 $struct:s$ ;;
               end
-             in [ Drawing (Res.EnvDiagram.make ()) ])]>>)
+             in [ Drawing (Res.Diagram.make ()) ])]>>)
 
 let parser config =
   | "eat_right"                           -> EatR
