@@ -11,21 +11,25 @@ type giac =
   | Ind of giac * giac list
   | Vec of giac list
   | Tup of giac list (* En fait sequence, a revoir avec juste un Cons et Nil *)
+  | Eq  of giac * giac
 
 let int n = Number (string_of_int n)
 
-type prio = PAtm | PPow | PPro | PSum
+type prio = PAtm | PPow | PPro | PSum | Pred
+
+let pTop = Pred
 
 let prev = function
   | PAtm -> PAtm
   | PPow -> PAtm
   | PPro -> PPow
   | PSum -> PPro
+  | Pred -> PSum
 
 let parser giac lvl =
   | s:''[0-9]+''                    when lvl = PAtm -> Number s
   | s:''[a-zA-Z_][a-zA-Z0-9_]*''    when lvl = PAtm -> Symbol s
-  | "inv" '(' e:(giac PSum) ')'     when lvl = PAtm -> Inv(e)
+  | "inv" '(' e:(giac pTop) ')'     when lvl = PAtm -> Inv(e)
   | e:(giac PAtm) '(' l:gs ')'      when lvl = PAtm ->
            if e = Symbol "inv" then Earley.give_up (); App(e,l)
   | e:(giac PAtm) '[' l:gs ']'      when lvl = PAtm -> Ind(e,l)
@@ -37,13 +41,14 @@ let parser giac lvl =
   | e:(giac PPro) '/' f:(giac PPow) when lvl = PPro -> Pro(e,Inv f)
   | e:(giac PSum) '+' f:(giac PPro) when lvl = PSum -> Sum(e,f)
   | e:(giac PSum) '-' f:(giac PPro) when lvl = PSum -> Sum(e,Opp f)
+  | e:(giac PSum) "==" f:(giac PSum) when lvl = Pred -> Eq(e,f)
   | e:(giac (prev lvl))             when lvl > PAtm -> e
 
 and gs =
   | EMPTY -> []
-  | e:(giac PSum) l:{_:',' (giac PSum)}* -> e::l
+  | e:(giac pTop) l:{_:',' (giac pTop)}* -> e::l
 
-let giac = giac PSum
+let giac = giac pTop
 
 let blank = Earley.blank_regexp ''[ \t\n\r]*''
 
@@ -52,6 +57,9 @@ let rec print lvl ch e =
   let lvl' = prev lvl in
   match e with
   | Symbol s | Number s -> pr "%s" s
+  | Eq(e,f) ->
+     let fmt : ('a,'b,'c) format = if lvl < Pred then "(%a == %a)" else "%a == %a" in
+     pr fmt (print lvl) e (print lvl') f
   | Sum(e,Opp f) ->
      let fmt : ('a,'b,'c) format = if lvl < PSum then "(%a - %a)" else "%a - %a" in
      pr fmt (print lvl) e (print lvl') f
@@ -68,9 +76,9 @@ let rec print lvl ch e =
      let fmt : ('a,'b,'c) format = if lvl < PPow then "(%a ^ %a)" else "%a ^ %a" in
      pr fmt (print lvl') e (print lvl) f
   | Inv e ->
-     pr "inv(%a)" (print PSum) e
+     pr "inv(%a)" (print pTop) e
   | Opp e ->
-     let fmt : ('a1,'b1,'c1) format = if lvl < PPow then "(-%a)" else "%a" in
+     let fmt : ('a1,'b1,'c1) format = if lvl < PPow then "(-%a)" else "-%a" in
      pr fmt (print lvl) e
   | App(e,l) ->
      pr "%a(%a)" (print PAtm) e prl l
@@ -84,40 +92,41 @@ let rec print lvl ch e =
 and prl ch l =
   match l with
   | [] -> ()
-  | [e] -> print PSum ch e
-  | e::l -> Printf.fprintf ch "%a, %a" (print PSum) e prl l
+  | [e] -> print pTop ch e
+  | e::l -> Printf.fprintf ch "%a, %a" (print pTop) e prl l
 
-let print = print PSum
+let print = print pTop
 let prev_prio = prev
 
 open DefaultFormat
 open Maths
 open MathsFormat
 open Document
-open Typography.Diagrams
 open Box
 
 let idvec n ls =
     List.for_all (function Vec l -> List.length l = n | _ -> false) ls
 
-let half_eq envs st =
-  let open FTypes in
-  let env = Maths.env_style envs.mathsEnvironment st in
-  let font = Lazy.force (env.Mathematical.mathsFont) in
-  (* Find the = glyph *)
-  let utf8 = { glyph_index = (Fonts.glyph_of_uchar font (UChar.chr 0x003d));
-                   glyph_utf8 = "="} in
-  let gl = Fonts.loadGlyph font utf8 in
-  let dot_y1 = (Fonts.glyph_y1 gl) *. envs.size *. env.Mathematical.mathsSize /. 1000. in
-  dot_y1 /. 2.
-
 let id x = x
 
 let rec gmath lvl e =
   let lvl' = prev_prio lvl in
-  match e with
+  match e with (* TODO derive et integrale multiple *)
+  | App(Symbol("derive"|"diff"), [f] ) ->
+     <$ {\partial \gmath(pTop)(f)} \over {\partial \gmath(pTop)(Symbol "x") } $>
+  | App(Symbol("derive"|"diff"), [f; Symbol(_) as s]) ->
+     <$ {\partial \gmath(pTop)(f)} \over {\partial \gmath(pTop)(s) } $>
+  | App(Symbol("int"|"integrate"|"integration"), [f] ) ->
+     <$ \int \gmath(pTop)(f) d x $>
+  | App(Symbol("int"|"integrate"|"integration"), [f; Symbol(_) as s] ) ->
+     <$ \int \gmath(pTop)(f) d \gmath(pTop)(s) $>
+  | App(Symbol("int"|"integrate"|"integration"), [f; Symbol(_) as s;a;b] ) ->
+     <$ \int_{\gmath(pTop)(a)}^{\gmath(pTop)(b)} \gmath(pTop)(f) d \gmath(pTop)(s) $>
   | Number s | Symbol s ->
-    [Maths.Ordinary (Maths.node (Maths.glyphs s))]
+     [Maths.Ordinary (Maths.node (Maths.glyphs s))]
+  | Eq(e,f) ->
+     if (lvl < Pred) then <$ (\gmath(lvl)(e) = \gmath(lvl)(f)) $>
+     else  <$ \gmath(lvl)(e) = \gmath(lvl')(f) $>
   | Sum(e,Opp f) ->
      if (lvl < PSum) then <$ (\gmath(lvl)(e) - \gmath(lvl)(f)) $>
      else  <$ \gmath(lvl)(e) - \gmath(lvl')(f) $>
@@ -130,22 +139,12 @@ let rec gmath lvl e =
      if (lvl < PPro) then <$ (\gmath(lvl)(e) * \gmath(lvl)(f)) $>
      else  <$ \gmath(lvl)(e) \gmath(lvl')(f) $>
   | Vec (Vec l :: ls as l0s) when idvec (List.length l) ls ->
-     <$ ( \id([Maths.Ordinary (Maths.node (fun env st->
-          let open Diagrams in
-          let module Fig = Env_Diagram (struct let env = env end) in
-          let open Fig in
-          let _ = array
-                       (List.map (fun _ -> `Main) l)
-                       (List.map (function Vec l -> List.map (gmath lvl) l
-                                         | _ -> assert false) l0s) in
-          [ Drawing (Fig.make ~vcenter:true ~offset:(half_eq env st) ())]))]) ) $>
+     let l = List.map (function Vec l -> List.map (gmath lvl) l
+                              | _ -> assert false) l0s in
+     <$ ( \matrix(l) ) $>
   | Vec l ->
-     <$ ( \id([Maths.Ordinary (Maths.node (fun env st->
-          let open Diagrams in
-          let module Fig = Env_Diagram (struct let env = env end) in
-          let open Fig in
-          let _ = array [`Main] (List.map (fun x -> [gmath lvl x]) l) in
-          [ Drawing (Fig.make ~vcenter:true ~offset:(half_eq env st) ()) ]))]) ) $>
+     let l = List.map (gmath lvl) l in
+     <$ ( \lineMatrix(l) ) $>
   | Pow(e,f) ->
      if (lvl < PPow) then <$ (\gmath(lvl)(e)^{\gmath(lvl)(f)}) $>
      else <$ \gmath(lvl)(e)^{\gmath(lvl)(f)} $>
@@ -167,11 +166,11 @@ let rec gmath lvl e =
 and gmathl l =
   match l with
   | [] -> []
-  | [e] -> gmath PSum e
-  | e::l -> <$ \gmath(PSum)(e), \gmathl(l) $>
+  | [e] -> gmath pTop e
+  | e::l -> <$ \gmath(pTop)(e), \gmathl(l) $>
 
 
-let gmath = gmath PSum
+let gmath = gmath pTop
 
 let giac_name = try Sys.getenv "GIAC" with Not_found -> "giac"
 
@@ -206,7 +205,11 @@ let _ = input_all !giac_wait
 
 type t = Giac of giac | Error of string
 
-let parse_string = Earley.parse_string giac blank
+let parse_string s =
+  try
+    Earley.parse_string giac blank s
+  with _ ->
+    Printf.eprintf "Fail to parse giac %S\n%!" s; Symbol "PARSE ERROR"
 
 let lock_fd =
   let open Unix in

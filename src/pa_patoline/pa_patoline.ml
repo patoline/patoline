@@ -434,7 +434,7 @@ let symbol ss =
     s.[0] = '\\') ss
 
 (* FIXME: more entry are possible : paragraphs, ...*)
-type entry = Caml | CamlStruct | String | Math | Text | Current
+type entry = Caml | CamlStruct | String | Math | MathLine | MathMatrix | Text | Current
 
 type arg_config =
   { entry : entry;
@@ -468,12 +468,17 @@ let macro_args id cs =
   find_args cs
 
 let parser arg_type =
-  | "math" -> Math
-  | "text" -> Text
-  | "caml" -> Caml
-  | "struct" -> CamlStruct
-  | "string" -> String
-  | "current" -> Current
+  | s:''[a-zA-Z0-9_]+'' ->
+      match s with
+      | "math_line" -> MathLine
+      | "math_matrix" -> MathMatrix
+      | "math" -> Math
+      | "text" -> Text
+      | "caml" -> Caml
+      | "struct" -> CamlStruct
+      | "string" -> String
+      | "current" -> Current
+      | _ -> give_up ()
 
 let parser arg_description =
   | entry:arg_type filter_name:lid?[""] -> { entry; filter_name }
@@ -548,8 +553,8 @@ let _ =
           [bB (fun env ->
             let module Res =
               struct
-                module EnvDiagram = Env_Diagram (struct let env = env end) ;;
-                open EnvDiagram ;;
+                module Diagram = MakeDiagram (struct let env = env end) ;;
+                open Diagram ;;
                 $struct:s$ ;;
               end
              in [ Drawing (Res.EnvDiagram.make ()) ])]>>)
@@ -894,8 +899,21 @@ let parser br_string =
 let paragraph_basic_text, set_paragraph_basic_text = grammar_family "paragraph_basic_text"
 let math_toplevel = declare_grammar "math_toplevel"
 
+let nil = let _loc = Location.none in <:expr<[]>>
+let math_line = parser
+  | m:math_toplevel?[nil] ls:{ _:'&' l:math_toplevel?[nil]}*
+      -> <:expr< $m$ :: $list:ls$ >>
+
+let math_matrix = parser
+  | EMPTY -> <:expr< [] >>
+  | l:math_line ls:{ "\\\\" m:math_line }* -> <:expr< $l$ :: $list:ls$ >>
+
 let parser macro_argument config =
-  | '{' m:(math_toplevel) '}' when config.entry = Math
+  | '{' m:math_toplevel '}' when config.entry = Math
+			      -> apply_expr_filter config m _loc
+  | '{' m:math_line '}' when config.entry = MathLine
+			      -> apply_expr_filter config m _loc
+  | '{' m:math_matrix '}' when config.entry = MathMatrix
 			      -> apply_expr_filter config m _loc
   | '{' e:(change_layout (paragraph_basic_text TagSet.empty) blank1) '}' when config.entry = Text
 			      -> apply_expr_filter config e _loc
@@ -1633,6 +1651,7 @@ let _ = set_grammar math_toplevel (parser
   | s:any_symbol i:with_indices ->
       if s = Invisible then give_up ();
       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s i$]>>)
+
 
 (****************************************************************************
  * Text content of paragraphs and macros (mutually recursive).              *

@@ -40,6 +40,7 @@ type database =
 
 type 'a data = {
   name : string;
+  init : 'a;
   read : unit -> 'a;
   write : 'a -> unit;
   reset : unit -> unit;
@@ -52,6 +53,7 @@ exception DummyData
 
 let dummyData = {
   name = "Dummy data ! Do not use";
+  init = "Dummy data ! Do not use";
   read = (fun _ -> raise DummyData) ;
   write = (fun _ -> raise DummyData) ;
   reset = (fun _ -> raise DummyData) ;
@@ -113,7 +115,9 @@ let read_hook : (string -> visibility -> unit) list ref = ref []
 let write_hook : (string -> visibility -> unit) list ref = ref []
 let record hook f a =
   let l = ref [] in
-  let r = fun s v -> l := (s, v) :: !l in
+  let r = fun s v ->
+    Printf.eprintf "#### recording for %s\n%!" s;
+    l := (s, v) :: !l in
   hook := r :: !hook;
   let pop () = match !hook with
     | r' :: l when r == r' -> hook := l
@@ -139,7 +143,7 @@ let init_db table_name db_info =
     let total_table = Hashtbl.create 1001 in
     { db = (fun () -> MemoryDb);
       disconnect = (fun () -> ());
-      create_data = fun ?(log=false) ?(visibility=Private) coding name vinit ->
+      create_data = fun ?(log=false) ?(visibility=Private) coding name init ->
         let rec data =
 	let table = Hashtbl.create 1001 in
 	let sessid () = match !sessid with
@@ -153,7 +157,7 @@ let init_db table_name db_info =
 	let read = fun () ->
 	  let s,g,_ = sessid () in
           do_record_read data visibility;
-	  try Hashtbl.find table (s,g) with Exit | Not_found -> vinit in
+	  try Hashtbl.find table (s,g) with Exit | Not_found -> init in
 	let add_to_table ((s,g) as key) v =
 	  let old = try Hashtbl.find total_table g with Not_found -> [] in
 	  if not (List.mem s old) then Hashtbl.replace total_table g (s::old);
@@ -186,7 +190,7 @@ let init_db table_name db_info =
 	    Hashtbl.replace res v (old + 1)) table;
 	  total, Hashtbl.fold (fun v n acc -> (v,n)::acc) res [];
 	in
-	{ name; read; write; reset; distribution}
+	{ name; init; read; write; reset; distribution}
         in
         data
     }
@@ -376,7 +380,7 @@ let init_db table_name db_info =
 	    total, scores
 	  with Exit -> 0, []
 	in
-	{name; read; write; reset; distribution}
+	{name; init=vinit; read; write; reset; distribution}
         in data
     }
 #endif

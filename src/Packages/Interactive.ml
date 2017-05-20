@@ -70,10 +70,9 @@ let result_coding = {
   | _ -> DoNotCompile);
 }
 
-let scoreBar ?(vertical=false) envDiagram height width data =
+let scoreBar ?(vertical=false) (module Diagram:Diagrams.Diagram) height width data =
   let open Diagrams in
-  let module EnvDiagram = (val envDiagram : Diagrams.EnvDiagram) in
-  let open EnvDiagram in
+  let open Diagram in
   let total = max 1 (List.fold_left (fun acc ((_: color),x) -> acc + x) 0 data) in
   let cur_pos = ref 0.0 in
   let len = if vertical then height else width in
@@ -108,9 +107,7 @@ let scoreBar ?(vertical=false) envDiagram height width data =
       ignore (path Edge.([draw;fill (col:color);noStroke]) (x0, 0.0) [[x1, 0.0] ; [x1, height] ; [x0, height]]);
     ) data
 
-let scoreBarProg envDiagram height width data =
-  let module EnvDiagram = (val envDiagram : Diagrams.EnvDiagram) in
-  let open EnvDiagram in
+let scoreBarProg diagram height width data =
   let data = List.sort (fun (x,_) (x',_) -> compare x x') data in
   let data = List.map (fun
     (x,n) ->
@@ -121,7 +118,7 @@ let scoreBarProg envDiagram height width data =
 	| _ -> grey
       in (color, n)) data
   in
-  scoreBar (module EnvDiagram : Diagrams.EnvDiagram) height width data
+  scoreBar diagram height width data
 
 (*===========================================================================*)
 (*                      Check boxes                                          *)
@@ -129,7 +126,7 @@ let scoreBarProg envDiagram height width data =
 
 let drawCheckBox ?(scale=0.5) env checked =
   let open Diagrams in
-  let module Fig = Env_Diagram (struct let env = env end) in
+  let module Fig = MakeDiagram (struct let env = env end) in
   let open Fig in
   let height = env.size *. scale in
   let _ = path Edge.([draw]) (0.0, 0.0)
@@ -173,7 +170,7 @@ module Env_checkBoxes(X:sig val arg1 : string val arg2 : bool data list ref end)
 
 let drawRadio ?(scale=0.5) env checked =
   let open Diagrams in
-  let module Fig = Env_Diagram (struct let env = env end) in
+  let module Fig = MakeDiagram (struct let env = env end) in
   let open Fig in
   let height = env.size *. scale in
   let height2 = height /. 2. in
@@ -522,4 +519,56 @@ let score ?group data sample display exo =
     let scores = (NotTried,total - total') :: scores in
 
     display scores)
+
+
+let editable_math ?(visibility=Private) ?test ?(sample=[]) name init =
+  let data = db.create_data ~visibility string_coding name init in
+  let update () =
+    let s = data.read() in
+    let s = if s = init then init else s in
+    s, Giac.gmath (Giac.parse_string s)
+  in
+  let test = match test with
+    | None -> None
+    | Some (good,rd) -> Some (Giac.parse_string good, rd)
+  in
+
+  let eval = match test with
+    | None -> fun _ -> ()
+    | Some (good, d) -> fun t ->
+       if t = init then d.write NotTried else
+         try
+           let res = Giac.eval (Giac.Eq(good,Giac.parse_string t)) in
+           Printf.eprintf "RESULT: %a => %a" Giac.print (Giac.Eq(good,Giac.parse_string t))
+                          Giac.print res;
+           if Giac.eval (Giac.Eq(good,Giac.parse_string t)) = Giac.Symbol("vrai")
+           then d.write Ok
+           else d.write FailTest
+         with _ -> d.write DoNotCompile
+  in
+
+  let correct () =
+    match test with
+    | None -> true
+    | Some (_,d) -> d.read () = Ok
+  in
+
+  let gsample = match test with None -> [] | Some (g,_) -> Giac.gmath g in
+  let open Maths in
+  let open DefaultFormat.MathsFormat in
+  let default = <$123456 + 7 * 8 - 90$> in
+  let caml x = x in
+  let sample = << $ \caml(Giac.gmath (Giac.parse_string init) @ gsample @ sample @ default) $ >> in
+  [Maths.Ordinary (Maths.node (fun env st->
+     boxify_scoped
+       { env with size=env.size*.(Maths.env_style env.mathsEnvironment st).Mathematical.mathsSize }
+       (dynamic sample (fun () ->
+                 let s, m = update () in
+                 (button (Edit(s, init, fun t ->
+                                        record_write (fun () ->
+	                                    data.write t; eval t) ()))
+                 (if correct () then << $\m$ >>
+                         else << $\mcolor(Color.red){\m} $ >> ))))))]
+
+
 end

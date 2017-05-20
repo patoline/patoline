@@ -606,12 +606,14 @@ let animation ?(step=1./.24.) ?(duration=600.) ?(mirror=true) ?(default=0) cycle
     anim_step = step;
     anim_duration = duration;
     anim_default = d;
-    anim_order = Array.fold_left (fun acc c -> List.fold_left (fun acc c -> min acc (RawContent.drawing_order c)) acc c) max_int tbl;
+    anim_order = Array.fold_left (fun acc c ->
+                     List.fold_left (fun acc c -> min acc (drawing_order c))
+                                    acc c) max_int tbl;
     anim_mirror = mirror})
   in
   let (x0,y0,x1,y1)=RawContent.bounding_box [r] in
   let w = x1 -. x0 in
-  RawContent.([Drawing {
+  [Drawing {
     drawing_min_width=w;
     drawing_max_width=w;
     drawing_nominal_width=w;
@@ -623,7 +625,7 @@ let animation ?(step=1./.24.) ?(duration=600.) ?(mirror=true) ?(default=0) cycle
     drawing_break_badness=0.;
     drawing_badness=(fun _->0.);
     drawing_contents=(fun _->[r])
-  }]))]
+  }])]
 
 let dynname =
   let c = ref 0 in
@@ -636,7 +638,8 @@ let dynamic sample contents =
     let r = Dynamic{
       dyn_label = name;
       dyn_contents = contents;
-      dyn_order = List.fold_left (fun acc c -> min acc (RawContent.drawing_order c)) max_int (contents ());
+      dyn_order = List.fold_left (fun acc c -> min acc (drawing_order c))
+                                 max_int (contents ());
       dyn_sample = draw env sample;
     }
   in
@@ -647,7 +650,7 @@ let dynamic sample contents =
     drawing_max_width=w;
     drawing_nominal_width=w;
     drawing_width_fixed = true;
-    drawing_adjust_before = false;
+    drawing_adjust_before = true;
     drawing_y0=y0;
     drawing_y1=y1;
     drawing_states=[];
@@ -2084,6 +2087,36 @@ module MathsFormat=struct
     let odd = oDoubleDot
 
     let hat = oHat
+
+    (* half of the equal sign, is a good centering line *)
+    let half_eq envs st =
+      let open FTypes in
+      let env = Maths.env_style envs.mathsEnvironment st in
+      let font = Lazy.force (env.Mathematical.mathsFont) in
+      (* Find the = glyph *)
+      let utf8 = { glyph_index = (Fonts.glyph_of_uchar font (UChar.chr 0x003d));
+                   glyph_utf8 = "="} in
+      let gl = Fonts.loadGlyph font utf8 in
+      let dot_y1 = (Fonts.glyph_y1 gl) *. envs.size *. env.Mathematical.mathsSize /. 1000. in
+      dot_y1 /. 2.
+
+    let matrix ?(extra=fun _ _ _ -> ()) a =
+      [Maths.Ordinary
+         (Maths.node
+            (fun env st->
+              let open Diagrams in
+              let module Fig = MakeDiagram (struct let env = env end) in
+              let open Fig in
+              let m, ms = array (List.map (fun _ -> `Main) a) a in
+              let _ = extra (module Fig:Diagram) m ms in
+              [ Drawing (Fig.make ~vcenter:true ~offset:(half_eq env st) ())]))]
+
+    let ematrix m extra = matrix ~extra m
+
+    let colomnMatrix ?(extra=fun _ _ _ -> ()) c = matrix ~extra (List.map (fun x -> [x]) c)
+    let lineMatrix   ?(extra=fun _ _ _ -> ()) l = matrix ~extra [l]
+
+    let caml x = x
         (*******************************************************)
 
 

@@ -485,9 +485,9 @@ let resize_drawing l x=
   { x with
     drawing_min_width= x.drawing_min_width*.l;
     drawing_max_width= x.drawing_max_width*.l;
+    drawing_nominal_width= x.drawing_nominal_width*.l;
     drawing_y0=x.drawing_y0*.l;
     drawing_y1=x.drawing_y1*.l;
-    drawing_nominal_width= x.drawing_nominal_width*.l;
     drawing_contents=(fun w->List.map (RawContent.resize l) (x.drawing_contents w))
   }
 

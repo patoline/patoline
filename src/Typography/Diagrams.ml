@@ -2674,7 +2674,7 @@ let cliptip grad info tip curve0 =
     type entity = Entity.t
     open Entity
 
-    module Env_Diagram (Args : sig val env : environment end) = struct
+    module MakeDiagram (Args : sig val env : environment end) = struct
       open Entity
       let stack : entity list ref = ref []
       let env = Args.env
@@ -3103,4 +3103,4 @@ let cliptip grad info tip curve0 =
       [Edge e], default_where ms)
 
 (* not so dirty if "module type of" does not run any code *)
-module type EnvDiagram = module type of Env_Diagram (struct let env = assert false end)
+module type Diagram = module type of MakeDiagram (struct let env = assert false end)

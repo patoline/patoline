@@ -1094,60 +1094,68 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
 
 
     let update slide state name ev =
-      let (_,buttons) = dynCache.(slide).(state) in
-      let button = try Hashtbl.find buttons name
-                   with Not_found ->
-                     log_son num "unknown button %S" name;
-                     assert false
-      in
-      let affected = match ev, button with
-      | EvClick, Click(act) -> act ()
-      | EvDrag(x,y,r), Drag(act) -> act (x, y) r
-      | EvEdit(contents), Edit(_,_,act) -> act contents
-      | _ ->  log_son num "button %S do not match" name;
-              assert false
-      in
-      let to_push = ref [] in
-      let priv, pub =
-        List.fold_left (fun (priv,pub) (_,vis as key) ->
-            let ds = try Hashtbl.find graph key
-                     with Not_found -> []
-            in
-            let priv =
-              List.fold_left (fun acc (d,ptr,i,j) ->
-                  ptr := None;
-                  if i = slide && j = state then
-                    to_push := d.dyn_label :: !to_push;
-                  if List.mem d.dyn_label acc then acc
-                  else d.dyn_label::acc) priv ds
-            in
-            let ds =
-              if snd key = Private then
-                try Hashtbl.find graph (fst key, Public) (* TODO Group *)
-                with Not_found -> []
-              else ds
-            in
-            let pub =
-              List.fold_left (fun acc (d,ptr,i,j) ->
-                  let t = (d.dyn_label,i,j) in
-                  ptr := None;
-                  if List.mem t acc then acc else t::acc) pub ds
-            in
-            (priv,pub)) ([], []) affected
-      in
-      if !to_push <> [] then
-        begin
-          log_son num "private change (%d,%d)" slide state;
-          pushto ~change:(Dynamics(slide,state,!to_push)) num fd;
-        end;
-      let s, g = read_sessid () in
-      if pub <> [] then
-        begin
-          let pub = String.concat " " (List.map (fun (d,i,j) ->
-                                           Printf.sprintf "%s,%d,%d" d i j) pub) in
-          log_son num "public change coucou %s %s %s" s g pub;
-          Printf.fprintf fouc "change %s %s %s\n%!" s g pub;
-        end
+      try
+        let (_,buttons) = dynCache.(slide).(state) in
+        let button = try Hashtbl.find buttons name
+                     with Not_found ->
+                       log_son num "unknown button %S" name;
+                       raise Exit
+        in
+        let affected = match ev, button with
+          | EvClick, Click(act) -> act ()
+          | EvDrag(x,y,r), Drag(act) -> act (x, y) r
+          | EvEdit(contents), Edit(_,_,act) -> act contents
+          | _ ->  log_son num "button %S do not match" name;
+                  assert false
+        in
+        let to_push = ref [] in
+        let priv, pub =
+          List.fold_left (fun (priv,pub) (_,vis as key) ->
+              let ds = try Hashtbl.find graph key
+                       with Not_found -> []
+              in
+              let priv =
+                List.fold_left (fun acc (d,ptr,i,j) ->
+                    ptr := None;
+                    if i = slide && j = state
+                       && not (List.mem d.dyn_label !to_push) then
+                      to_push := d.dyn_label :: !to_push;
+                    if List.mem d.dyn_label acc then acc
+                    else d.dyn_label::acc) priv ds
+              in
+              let ds =
+                if snd key = Private then
+                  (try Hashtbl.find graph (fst key, Group) (* Group differently from public *)
+                  with Not_found -> [])
+                  @
+                  (try Hashtbl.find graph (fst key, Public)
+                  with Not_found -> [])                else ds
+              in
+              let pub =
+                List.fold_left (fun acc (d,ptr,i,j) ->
+                    let t = (d.dyn_label,i,j) in
+                    ptr := None;
+                    if i = slide && j = state
+                       && not (List.mem d.dyn_label !to_push) then
+                      to_push := d.dyn_label :: !to_push;
+                    if List.mem t acc then acc else t::acc) pub ds
+              in
+              (priv,pub)) ([], []) affected
+        in
+        if !to_push <> [] then
+          begin
+            log_son num "private change (%d,%d)" slide state;
+            pushto ~change:(Dynamics(slide,state,!to_push)) num fd;
+          end;
+        let s, g = read_sessid () in
+        if pub <> [] then
+          begin
+            let pub = String.concat " " (List.map (fun (d,i,j) ->
+                                             Printf.sprintf "%s,%d,%d" d i j) pub) in
+            log_son num "public change coucou %s %s %s" s g pub;
+            Printf.fprintf fouc "change %s %s %s\n%!" s g pub;
+          end
+      with Not_found -> ()
     in
 
     let rec process_req master get hdr reste =

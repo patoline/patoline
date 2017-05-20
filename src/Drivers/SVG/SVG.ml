@@ -415,6 +415,9 @@ let draw ?fontCache ?dynCache prefix w h contents=
             let contents, reads = record d.dyn_contents () in
             List.iter (fun key ->
                 let old = try Hashtbl.find gs key with Not_found -> [] in
+                Printf.eprintf "#### Adding (%s, %s) => %s\n%!"
+                               (fst key) (vis_to_string (snd key))
+                               d.dyn_label;
                 if not (List.memq d0 old) then
 	          Hashtbl.add gs key (d0::old)) reads;
 	    ignore (output_contents ~svg_buf:buf contents);

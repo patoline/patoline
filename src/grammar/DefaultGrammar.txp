@@ -564,6 +564,11 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Configure_math_macro{\sqrt}{ syntax = math; name = Maths.sqrt; }
 \Configure_math_macro{\cal}{ syntax = math; name = mathcal; }
 \Configure_math_macro{\bold}{ syntax = math; name = mathbold; }
+\Configure_math_macro{\color}{ syntax = caml, math; name = mcolor; }
+\Configure_math_macro{\matrix}{ syntax = math_matrix; name = matrix; }
+\Configure_math_macro{\ematrix}{ syntax = math_matrix, caml; name = ematrix; }
+\Configure_math_macro{\line}{ syntax = math_line; name = matrix_line; }
+\Configure_math_macro{\column}{ syntax = math_line; name = matrix_column; }
 
 \Configure_word_macro{\hspace}{ syntax = caml; eat_right; eat_left; }
 \Configure_math_macro{\hspace}{ syntax = caml; name = mathSpace; }
