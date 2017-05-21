@@ -520,6 +520,9 @@ let score ?group data sample display exo =
 
     display scores)
 
+(* to force some glyphs to be present,
+   usefull with dynamics contents *)
+
 
 let editable_math ?(visibility=Private) ?test ?(sample=[]) name init =
   let data = db.create_data ~visibility string_coding name init in
@@ -538,10 +541,11 @@ let editable_math ?(visibility=Private) ?test ?(sample=[]) name init =
     | Some (good, d) -> fun t ->
        if t = init then d.write NotTried else
          try
-           let res = Giac.eval (Giac.Eq(good,Giac.parse_string t)) in
+           let open Giac in
+           let res = eval (App(Symbol("simplify"),[Sum(good,Opp(parse_string t))])) in
            Printf.eprintf "RESULT: %a => %a" Giac.print (Giac.Eq(good,Giac.parse_string t))
                           Giac.print res;
-           if Giac.eval (Giac.Eq(good,Giac.parse_string t)) = Giac.Symbol("vrai")
+           if res = Giac.Number("0")
            then d.write Ok
            else d.write FailTest
          with _ -> d.write DoNotCompile
@@ -556,19 +560,22 @@ let editable_math ?(visibility=Private) ?test ?(sample=[]) name init =
   let gsample = match test with None -> [] | Some (g,_) -> Giac.gmath g in
   let open Maths in
   let open DefaultFormat.MathsFormat in
-  let default = <$123456 + 7 * 8 - 90$> in
+  let default = <$123456 + 7 * 8 - 90 \times {\int}
+                  \partial (abcdefghijklmnopqrstuvwxyz) [ABCDEFGHIJKLMNOPQRSTUVWXYZ]
+                  a b c d e f g h i j k l m n o p q r s t u v w x y z
+                  A B C D E F G H I J K L M N O P Q R S T U V W X Y Z
+                  X^{2^2}
+                $> in
   let caml x = x in
   let sample = << $ \caml(Giac.gmath (Giac.parse_string init) @ gsample @ sample @ default) $ >> in
   [Maths.Ordinary (Maths.node (fun env st->
-     boxify_scoped
-       { env with size=env.size*.(Maths.env_style env.mathsEnvironment st).Mathematical.mathsSize }
-       (dynamic sample (fun () ->
+    boxify_scoped env
+      (dynamic sample (fun () ->
                  let s, m = update () in
                  (button (Edit(s, init, fun t ->
                                         record_write (fun () ->
 	                                    data.write t; eval t) ()))
-                 (if correct () then << $\m$ >>
-                         else << $\mcolor(Color.red){\m} $ >> ))))))]
-
+                         (if correct () then << $\m$ >>
+                          else << $\mcolor(Color.red){\m} $ >> ))))))]
 
 end

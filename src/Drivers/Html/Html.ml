@@ -24,7 +24,7 @@ open Driver
 open RawContent
 
 let driver_options = []
-let filter_options argv = argv			    
+let filter_options argv = argv
 
 exception Bezier_degree
 
@@ -103,7 +103,7 @@ body{line-height:0;}\n" structure.name;
 
 let output' = output_to_prime output
 
-let _ = 
+let _ =
   Hashtbl.add DynDriver.drivers "Html" (
     module struct
       let output  = output

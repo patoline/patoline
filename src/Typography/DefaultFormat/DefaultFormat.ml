@@ -2109,7 +2109,8 @@ module MathsFormat=struct
               let open Fig in
               let m, ms = array (List.map (fun _ -> `Main) a) a in
               let _ = extra (module Fig:Diagram) m ms in
-              [ Drawing (Fig.make ~vcenter:true ~offset:(half_eq env st) ())]))]
+              [ Drawing (Fig.make ~adjust_before:true ~vcenter:true
+                                  ~offset:(half_eq env st) ())]))]
 
     let ematrix m extra = matrix ~extra m
 

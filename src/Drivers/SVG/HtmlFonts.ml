@@ -132,7 +132,7 @@ let build_font_cache prefix pages=
       in
       Fonts.add_kerning info [];
       let buf=Fonts.subset font info (make_bindings 1 IntMap.empty) glyphs in
-      let notFull = Printf.sprintf "%s_%d_%d_" (Fonts.fontName font).postscript_name instance subfont in 
+      let notFull = Printf.sprintf "%s_%d_%d_" (Fonts.fontName font).postscript_name instance subfont in
       let full = notFull ^ (Digest.to_hex (Digest.string (Rbuffer.contents buf))) in
       families:=StrMap.add (notFull) (full, StrMap.cardinal !families) !families;
       let filename=Filename.concat prefix (full^".otf") in
@@ -175,10 +175,8 @@ let filter_fonts cmd cache =
     Sys.remove filename;
   ) cache.fontBuffers;
   Unix.rmdir temp_dir
-      
 
-(* renvoit (nom complet de la police, nom de la classe) *)
-let className cache gl_=
+let classStyle cache gl_=
   let gl=gl_.glyph in
   let font=Fonts.glyphFont gl in
   let idx=Fonts.glyphNumber gl in
@@ -196,15 +194,33 @@ let className cache gl_=
   let notFull=Printf.sprintf "%s_%d_%d_" (Fonts.fontName font).postscript_name instance subfont in
   (* let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in *)
   let full, fam=StrMap.find notFull cache.fontFamilies in
+  (fam,gl_.glyph_size,gl_.glyph_color)
 
+exception Style of (int * float * Color.color) * int
+
+let max_old_class = ref (-1)
+
+(* renvoit (nom complet de la police, nom de la classe) *)
+let className ?(create_new_class=true) cache gl_=
+  let style = classStyle cache gl_ in
   try
-    ClassMap.find (fam,gl_.glyph_size,gl_.glyph_color) cache.classes
+    let n = ClassMap.find style cache.classes in
+    if n > !max_old_class then
+      raise (Style (style, n))
+    else n
   with
-      Not_found->(
-        let n=ClassMap.cardinal cache.classes in
-        cache.classes<-ClassMap.add (fam,gl_.glyph_size,gl_.glyph_color) n cache.classes;
-        n
-      )
+  | Not_found ->
+     let n=ClassMap.cardinal cache.classes in
+     cache.classes<-ClassMap.add style n cache.classes;
+     if create_new_class then
+       begin
+         max_old_class := n; n
+       end
+     else
+       raise (Style (style, n))
+
+
+
 
 
 let make_style cache=

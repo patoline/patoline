@@ -116,7 +116,6 @@ let write_hook : (string -> visibility -> unit) list ref = ref []
 let record hook f a =
   let l = ref [] in
   let r = fun s v ->
-    Printf.eprintf "#### recording for %s\n%!" s;
     l := (s, v) :: !l in
   hook := r :: !hook;
   let pop () = match !hook with

@@ -48,6 +48,32 @@ let assemble style title svg=
   Rbuffer.add_buffer svg_buf svg;
   svg_buf
 
+let htmlColor col =
+  let (r,g,b) = to_rgb col in
+  if r<>0. || g<>0. || b<>0. then
+    let r = min 1. (max 0. r) in
+    let g = min 1. (max 0. g) in
+    let b = min 1. (max 0. b) in
+    (Printf.sprintf "fill:#%02x%02x%02x; "
+                    (round (255.*.r))
+                    (round (255.*.g))
+                    (round (255.*.b)))
+  else ""
+
+let output_fontCache def_buf fontCache units class_prefix =
+  StrMap.iter (fun _ (full, class_name) ->
+      Rbuffer.add_string def_buf
+        (Printf.sprintf "@font-face { font-family:f%d; src:url(\"" class_name);
+      Rbuffer.add_string def_buf full;
+      Rbuffer.add_string def_buf ".otf\") format(\"opentype\"); }\n"
+    ) fontCache.fontFamilies;
+  ClassMap.iter (fun (fam,size,col) k->
+    let col = htmlColor col in
+    Rbuffer.add_string def_buf (
+       Printf.sprintf ".%s%d { font-family:f%d;font-size:%g%s; %s}\n"
+                      class_prefix k fam size units col);
+    ) fontCache.classes
+
 let standalone w h style title svg=
   let svg_buf=Rbuffer.create 256 in
   Rbuffer.add_string svg_buf (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
@@ -91,31 +117,8 @@ svg a rect{pointer-events:all;}
 svg .button rect{pointer-events:all;}
 svg .editable rect{pointer-events:all;}
 svg .dragable rect{pointer-events:all;}
-";
-  if output_fonts then
-    StrMap.iter (fun _ (full, class_name) ->
-      Rbuffer.add_string def_buf
-        (Printf.sprintf "@font-face { font-family:f%d; src:url(\"" class_name);
-      Rbuffer.add_string def_buf full;
-      Rbuffer.add_string def_buf ".otf\") format(\"opentype\"); }\n"
-    ) fontCache.fontFamilies;
-  ClassMap.iter (fun (fam,size,col) k->
-    Rbuffer.add_string def_buf (
-      Printf.sprintf ".%s%d { font-family:f%d;font-size:%g%s;" class_prefix k fam size units
-    );
-    (let (r,g,b) = to_rgb col in
-     if r<>0. || g<>0. || b<>0. then
-       let r = min 1. (max 0. r) in
-       let g = min 1. (max 0. g) in
-       let b = min 1. (max 0. b) in
-       Rbuffer.add_string def_buf
-         (Printf.sprintf "fill:#%02x%02x%02x; "
-            (round (255.*.r))
-            (round (255.*.g))
-            (round (255.*.b)))
-    );
-    Rbuffer.add_string def_buf "}\n";
-  ) fontCache.classes;
+ ";
+  if output_fonts then output_fontCache def_buf fontCache units class_prefix;
   def_buf
 
 
@@ -153,7 +156,8 @@ let draw ?fontCache ?dynCache prefix w h contents=
 
   (* Écriture du contenu à proprement parler *)
 
-  let rec output_contents ~svg_buf contents=
+  let rec output_contents ?(create_new_class=true)  ~svg_buf contents=
+    let outcont = output_contents ~create_new_class in
     let imgs=ref StrMap.empty in
     let cur_x=ref 0. in
     let cur_y=ref 0. in
@@ -169,17 +173,25 @@ let draw ?fontCache ?dynCache prefix w h contents=
           opened_tspan:=false
         );
 	try
-          let cls=className fontCache x in
+          let style,cls =
+            try
+              let cls = className ~create_new_class fontCache x in
+              Printf.sprintf "class=\"c%d\"" cls, cls
+            with
+              Style((fam,size,col),cls) ->
+              let col = htmlColor col in
+              Printf.sprintf "style=\"font-family:f%d; font-size:%gpx; %s\"" fam size col, cls
+          in
         (* let size=x.glyph_size in *)
-          if cls<> !cur_cls
+          if cls <> !cur_cls
             || !cur_x<>x.glyph_x || !cur_y <>x.glyph_y
             || not !opened_tspan
           then (
             if !opened_tspan then (
               Rbuffer.add_string svg_buf "</tspan>";
             );
-            Rbuffer.add_string svg_buf (Printf.sprintf "<tspan x=\"%g\" y=\"%g\" class=\"c%d\">"
-                                          (x.glyph_x) ((offset-.x.glyph_y)) cls);
+            Rbuffer.add_string svg_buf (Printf.sprintf "<tspan x=\"%g\" y=\"%g\" %s>"
+                                          (x.glyph_x) ((offset-.x.glyph_y)) style);
             cur_x:=x.glyph_x;
             cur_y:=x.glyph_y;
             cur_cls:=cls;
@@ -373,7 +385,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	);
       );
 
-      ignore (output_contents ~svg_buf l.link_contents);
+      ignore (outcont ~svg_buf l.link_contents);
 
       if !opened_tspan then (
         Rbuffer.add_string svg_buf "</tspan>\n";
@@ -407,8 +419,8 @@ let draw ?fontCache ?dynCache prefix w h contents=
              defs does not work with firefox (bug reported for more
              than one year *)
 	  let tmp = Rbuffer.create 256 in
-	  ignore (output_contents ~svg_buf:tmp (d.dyn_contents ()));
-	  ignore (output_contents ~svg_buf:tmp (d.dyn_sample));
+	  ignore (outcont ~svg_buf:tmp (d.dyn_contents ()));
+	  ignore (outcont ~svg_buf:tmp (d.dyn_sample));
           let ptr = ref None in
  	  let rec contents () =
 	    let buf = Rbuffer.create 256 in
@@ -420,7 +432,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
                                d.dyn_label;
                 if not (List.memq d0 old) then
 	          Hashtbl.add gs key (d0::old)) reads;
-	    ignore (output_contents ~svg_buf:buf contents);
+	    ignore (output_contents ~create_new_class:false ~svg_buf:buf contents);
 	    Rbuffer.contents buf
 	  and d0 = ({ d with dyn_contents = contents; dyn_sample = "" }, ptr,
                     slide, state)
@@ -964,7 +976,7 @@ let images_of_boxes ?cache ?(css="style.css") ?(output_font_defs=true) prefix en
       let y0=y0-.0.2 in
       let y1=y1+.0.2 in
       let h=(y1-.y0) in
-      Rbuffer.add_string r (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" overflow=\"visible\" width=\"%gmm\" height=\"%gmm\" viewBox=\"%g %g %g %g\" style=\"position:relative;bottom:%gmm;\">"
+      Rbuffer.add_string r (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" overflow=\"visible\" width=\"%gpx\" height=\"%gmm\" viewBox=\"%g %g %g %g\" style=\"position:relative;bottom:%gmm;\">"
                               (ceil (x1-.floor x0))
                               (y1-.y0)
                               (floor x0) (h-.y1) (ceil (x1-.floor x0)) (y1-.y0)

@@ -798,8 +798,9 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
 
   let extrabody = "
   <div id=\"leftpanel\" style=\"left: 0px; top: 0px; position: absolute; z-index: 10;\"><button onclick=\"previousPage(false);\" style=\"min_height: 5%; min_width: 5%;\"><<</button></div>
-  <div id=\"rightpanel\" style=\"right: 0px; top: 0px; position: absolute;  z-index: 10;\"><button onclick=\"nextPage(false);\">>></button></div>
-  " in
+  <div id=\"rightpanel\" style=\"right: 0px; top: 0px; position: absolute;  z-index: 10;\"><button onclick=\"nextPage(false);\">>></button></div>"
+  in
+
 
   let page,css=SVG.basic_html
     ~extraheader

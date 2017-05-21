@@ -10,7 +10,6 @@ type giac =
   | App of giac * giac list
   | Ind of giac * giac list
   | Vec of giac list
-  | Tup of giac list (* En fait sequence, a revoir avec juste un Cons et Nil *)
   | Eq  of giac * giac
 
 let int n = Number (string_of_int n)
@@ -33,7 +32,7 @@ let parser giac lvl =
   | e:(giac PAtm) '(' l:gs ')'      when lvl = PAtm ->
            if e = Symbol "inv" then Earley.give_up (); App(e,l)
   | e:(giac PAtm) '[' l:gs ']'      when lvl = PAtm -> Ind(e,l)
-  | '(' l:gs ')'                    when lvl = PAtm -> Tup(l)
+  | '(' e:(giac pTop) ')'           when lvl = PAtm -> e
   | '[' l:gs ']'                    when lvl = PAtm -> Vec(l)
   | e:(giac PAtm) '^' f:(giac PPow) when lvl = PPow -> Pow(e,f)
   | '-' e:(giac PPow)               when lvl = PPow -> Opp(e)
@@ -54,38 +53,36 @@ let blank = Earley.blank_regexp ''[ \t\n\r]*''
 
 let rec print lvl ch e =
   let pr fmt = Printf.fprintf ch fmt in
-  let lvl' = prev lvl in
+  let pp = prev in
   match e with
   | Symbol s | Number s -> pr "%s" s
   | Eq(e,f) ->
      let fmt : ('a,'b,'c) format = if lvl < Pred then "(%a == %a)" else "%a == %a" in
-     pr fmt (print lvl) e (print lvl') f
+     pr fmt (print Pred) e (print (pp Pred)) f
   | Sum(e,Opp f) ->
      let fmt : ('a,'b,'c) format = if lvl < PSum then "(%a - %a)" else "%a - %a" in
-     pr fmt (print lvl) e (print lvl') f
+     pr fmt (print PSum) e (print (pp PSum)) f
   | Sum(e,f) ->
      let fmt : ('a,'b,'c) format = if lvl < PSum then "(%a + %a)" else "%a + %a" in
-     pr fmt (print lvl) e (print lvl') f
+     pr fmt (print PSum) e (print (pp PSum)) f
   | Pro(e,Inv f) ->
      let fmt : ('a,'b,'c) format = if lvl < PPro then "(%a / %a)" else "%a / %a" in
-     pr fmt (print lvl) e (print lvl') f
+     pr fmt (print PPro) e (print (pp PPro)) f
   | Pro(e,f) ->
      let fmt : ('a,'b,'c) format = if lvl < PPro then "(%a * %a)" else "%a * %a" in
-     pr fmt (print lvl) e (print lvl') f
+     pr fmt (print PPro) e (print (pp PPro)) f
   | Pow(e,f) ->
      let fmt : ('a,'b,'c) format = if lvl < PPow then "(%a ^ %a)" else "%a ^ %a" in
-     pr fmt (print lvl') e (print lvl) f
+     pr fmt (print (pp PPow)) e (print PPow) f
   | Inv e ->
      pr "inv(%a)" (print pTop) e
   | Opp e ->
      let fmt : ('a1,'b1,'c1) format = if lvl < PPow then "(-%a)" else "-%a" in
-     pr fmt (print lvl) e
+     pr fmt (print (pp PPow)) e
   | App(e,l) ->
      pr "%a(%a)" (print PAtm) e prl l
   | Ind(e,l) ->
      pr "%a[%a]" (print PAtm) e prl l
-  | Tup(l) ->
-     pr "(%a)" prl l
   | Vec(l) ->
      pr "[%a]" prl l
 
@@ -109,9 +106,16 @@ let idvec n ls =
 
 let id x = x
 
+let rec use_times = function
+  | Number _ -> true
+  | Pow(e,f) -> use_times e
+  | _ -> false
+
 let rec gmath lvl e =
-  let lvl' = prev_prio lvl in
+  let pp = prev_prio in
   match e with (* TODO derive et integrale multiple *)
+  | App(Symbol("sqrt"), [f] ) ->
+     <$ \sqrt{\gmath(pTop)(f)} $>
   | App(Symbol("derive"|"diff"), [f] ) ->
      <$ {\partial \gmath(pTop)(f)} \over {\partial \gmath(pTop)(Symbol "x") } $>
   | App(Symbol("derive"|"diff"), [f; Symbol(_) as s]) ->
@@ -125,19 +129,22 @@ let rec gmath lvl e =
   | Number s | Symbol s ->
      [Maths.Ordinary (Maths.node (Maths.glyphs s))]
   | Eq(e,f) ->
-     if (lvl < Pred) then <$ (\gmath(lvl)(e) = \gmath(lvl)(f)) $>
-     else  <$ \gmath(lvl)(e) = \gmath(lvl')(f) $>
+     if (lvl < Pred) then <$ (\gmath(pp Pred)(e) = \gmath(pp Pred)(f)) $>
+     else  <$ \gmath(pp Pred)(e) = \gmath(pp Pred)(f) $>
   | Sum(e,Opp f) ->
-     if (lvl < PSum) then <$ (\gmath(lvl)(e) - \gmath(lvl)(f)) $>
-     else  <$ \gmath(lvl)(e) - \gmath(lvl')(f) $>
+     if (lvl < PSum) then <$ (\gmath(PSum)(e) - \gmath(pp PSum)(f)) $>
+     else  <$ \gmath(PSum)(e) - \gmath(pp PSum)(f) $>
   | Sum(e,f) ->
-     if (lvl < PSum) then <$ (\gmath(lvl)(e) + \gmath(lvl)(f)) $>
-     else  <$ \gmath(lvl)(e) - \gmath(lvl')(f) $>
+     if (lvl < PSum) then <$ (\gmath(PSum)(e) + \gmath(pp PSum)(f)) $>
+     else  <$ \gmath(PSum)(e) + \gmath(pp PSum)(f) $>
   | Pro(e,Inv f) ->
      <$ {\gmath(PSum)(e)} \over \gmath(PSum)(f) $>
+  | Pro(e, f) when use_times f ->
+     if (lvl < PPro) then <$ (\gmath(PPro)(e) \times \gmath(pp PPro)(f)) $>
+     else  <$ \gmath(PPro)(e) \times \gmath(pp PPro)(f) $>
   | Pro(e,f) ->
-     if (lvl < PPro) then <$ (\gmath(lvl)(e) * \gmath(lvl)(f)) $>
-     else  <$ \gmath(lvl)(e) \gmath(lvl')(f) $>
+     if (lvl < PPro) then <$ (\gmath(PPro)(e) \gmath(pp PPro)(f)) $>
+     else  <$ \gmath(PPro)(e) \gmath(pp PPro)(f) $>
   | Vec (Vec l :: ls as l0s) when idvec (List.length l) ls ->
      let l = List.map (function Vec l -> List.map (gmath lvl) l
                               | _ -> assert false) l0s in
@@ -146,23 +153,19 @@ let rec gmath lvl e =
      let l = List.map (gmath lvl) l in
      <$ ( \lineMatrix(l) ) $>
   | Pow(e,f) ->
-     if (lvl < PPow) then <$ (\gmath(lvl)(e)^{\gmath(lvl)(f)}) $>
-     else <$ \gmath(lvl)(e)^{\gmath(lvl)(f)} $>
+     if (lvl < PPow) then <$ (\gmath(pp PPow)(e)^{\gmath(PPow)(f)}) $>
+     else <$ \gmath(pp PPow)(e)^{\gmath(PPow)(f)} $>
   | Inv e ->
-     if (lvl < PPow) then <$ (\gmath(lvl)(e)^{-1}) $>
-     else <$ \gmath(lvl)(e)^{-1} $>
+     if (lvl < PPow) then <$ (\gmath(pp PPow)(e)^{-1}) $>
+     else <$ \gmath(pp PPow)(e)^{-1} $>
   | Opp e ->
-     if (lvl < PPow) then <$ (-\gmath(lvl)(e)) $>
-     else <$ -\gmath(lvl)(e) $>
+     if (lvl < PPow) then <$ (-\gmath(pp PPow)(e)) $>
+     else <$ -\gmath(pp PPow)(e) $>
   | App(e,l) ->
      <$ \gmath(PAtm)(e)(\gmathl(l)) $>
   | Ind(e,l) ->
      <$ \gmath(PPow)(e)_{\gmathl(l)} $>
-  | _ -> assert false
-(*
-  | Tup(l) ->
-     pr "(%a)" prl l
- *)
+
 and gmathl l =
   match l with
   | [] -> []

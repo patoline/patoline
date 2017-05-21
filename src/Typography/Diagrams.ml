@@ -2829,13 +2829,13 @@ let cliptip grad info tip curve0 =
 
       let include_diagram x = let _ = stack := x @ !stack in ()
 
-      let make ?(offset=0.0) ?(hcenter=true) ?(vcenter=false) ()=
+      let make ?(offset=0.0) ?(adjust_before=false) ?(hcenter=true) ?(vcenter=false) ()=
 	let _ = match !compute_intersections with
 	  | None -> ()
 	  | Some f -> add_intersections f
 	in
 	let ordered_contents = to_contents !stack in
-	let fig = Box.drawing ~offset ~vcenter ~hcenter ordered_contents
+	let fig = Box.drawing ~adjust_before ~offset ~vcenter ~hcenter ordered_contents
 	in
 	stack := [] ; fig
 
