@@ -66,7 +66,13 @@ let build_font_cache prefix pages=
         make_fonts i s fonts'
       )
       | Link l::s->
-        make_fonts i s (make_fonts (-2) l.link_contents fonts)
+         let fonts =
+           match l.link_kind with
+           | Button(Menu(items), name) ->
+              List.fold_left (fun fonts (_,c) -> make_fonts (-2) c fonts) fonts items
+           | _ -> fonts
+         in
+         make_fonts i s (make_fonts (-2) l.link_contents fonts)
       | States st::s->
         make_fonts i s (make_fonts (-2) st.states_contents fonts)
       | Animation a::s ->

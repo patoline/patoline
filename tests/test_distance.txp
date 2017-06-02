@@ -1,3 +1,4 @@
+(* PACKAGE fonts *)
 (*
   Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
   Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
@@ -25,7 +26,7 @@ open Document
 open Document.Mathematical
 open Maths
 open Fonts
-open Fonts.FTypes
+open FTypes
 open Distance
 
 let _ = Sys.catch_break true; Printexc.record_backtrace true
@@ -38,14 +39,14 @@ let _ = Sys.catch_break true; Printexc.record_backtrace true
 let _ = Distance.debug := false
    let _ = Distance.debug_mediatrice := false
 
-let get_char env c = 
+let get_char env c =
     let x=Fonts.loadGlyph (Lazy.force env.mathsEnvironment.(0).mathsFont)
       ({empty_glyph with glyph_index=Fonts.glyph_of_char
 	  (Lazy.force env.mathsEnvironment.(0).mathsFont) c})
     in
     List.flatten (Fonts.outlines x)
 
-let mkEdge ?col ?fil path profile = 
+let mkEdge ?col ?fil path profile =
   let first = let x, y = List.hd profile in x/.100.,y/.100. in
   let profile = List.map (fun (x,y) -> 
     [x/.100.,y/.100.]) (List.tl profile) in

@@ -241,7 +241,7 @@ let uchar =
   | c0:hd4 - c1:tl - c2:tl - c3:tl -> Printf.sprintf "%c%c%c%c" c0 c1 c2 c3
 
   let char_re    = "[^ \"\t\r\n\\#*/|_$>{}-]"
-  let escaped_re =     "\\\\[\\#*/|_$>{}-]"
+  let escaped_re =     "\\\\[\\#*/|_$&>{}-]"
 
   let non_special = ['>';'*';'/';'|';'-';'_';'<';'=']
   let char_alone =
@@ -259,7 +259,7 @@ let uchar =
 
 let special_char =
   [ ' ' ; '"' ; '\t' ; '\r' ; '\n' ; '\\' ; '#' ; '*' ; '/' ; '|' ; '_'
-  ; '$' ; '<'; '>' ; '{'; '}'; '-'; '=' ]
+  ; '$' ; '<'; '>' ; '{'; '}'; '-'; '='; '&' ]
 
 let no_spe =
   let f buf pos =
@@ -434,7 +434,8 @@ let symbol ss =
     s.[0] = '\\') ss
 
 (* FIXME: more entry are possible : paragraphs, ...*)
-type entry = Caml | CamlStruct | String | Math | MathLine | MathMatrix | Text | Current
+type entry = Caml | CamlStruct | String | Math | MathLine | MathMatrix
+           | Text | TextLine | TextMatrix | Current
 
 type arg_config =
   { entry : entry;
@@ -474,6 +475,8 @@ let parser arg_type =
       | "math_matrix" -> MathMatrix
       | "math" -> Math
       | "text" -> Text
+      | "text_line" -> TextLine
+      | "text_matrix" -> TextMatrix
       | "caml" -> Caml
       | "struct" -> CamlStruct
       | "string" -> String
@@ -908,6 +911,16 @@ let math_matrix = parser
   | EMPTY -> <:expr< [] >>
   | l:math_line ls:{ "\\\\" m:math_line }* -> <:expr< $l$ :: $list:ls$ >>
 
+let simple_text = change_layout (paragraph_basic_text TagSet.empty) blank1
+
+let text_line = parser
+  | m:simple_text?[nil] ls:{ _:'&' l:simple_text?[nil]}*
+      -> <:expr< $m$ :: $list:ls$ >>
+
+let text_matrix = parser
+  | EMPTY -> <:expr< [] >>
+  | l:text_line ls:{ "\\\\" m:text_line }* -> <:expr< $l$ :: $list:ls$ >>
+
 let parser macro_argument config =
   | '{' m:math_toplevel '}' when config.entry = Math
 			      -> apply_expr_filter config m _loc
@@ -915,7 +928,11 @@ let parser macro_argument config =
 			      -> apply_expr_filter config m _loc
   | '{' m:math_matrix '}' when config.entry = MathMatrix
 			      -> apply_expr_filter config m _loc
-  | '{' e:(change_layout (paragraph_basic_text TagSet.empty) blank1) '}' when config.entry = Text
+  | '{' e:simple_text '}' when config.entry = Text
+			      -> apply_expr_filter config e _loc
+  | '{' e:text_line '}' when config.entry = TextLine
+			      -> apply_expr_filter config e _loc
+  | '{' e:text_matrix '}' when config.entry = TextMatrix
 			      -> apply_expr_filter config e _loc
   | e:wrapped_caml_expr when config.entry <> CamlStruct
 			      -> apply_expr_filter config e _loc
@@ -933,7 +950,7 @@ let parser macro_argument config =
 			      -> apply_string_filter config s _loc
 
 let parser simple_text_macro_argument =
-  | '{' l:(change_layout (paragraph_basic_text TagSet.empty) blank1)?$ '}' ->
+  | '{' l:simple_text?$ '}' ->
       (match l with Some l -> l | None -> <:expr<[]>>)
   | e:wrapped_caml_expr  -> e
   | e:wrapped_caml_array -> <:expr<$array:e$>>
@@ -1734,8 +1751,6 @@ let _ = set_grammar math_toplevel (parser
                       , concat_paragraph p _loc_p m _loc_m)
                     in snd (List.fold_left fn m l))
 
-  let text_only = change_layout (paragraph_basic_text TagSet.empty) blank1
-
   let oparagraph_basic_text = paragraph_basic_text
   let parser paragraph_basic_text =
       p:(oparagraph_basic_text TagSet.empty) ->
@@ -1886,7 +1901,7 @@ let usect lvl = parser
   | "---------" when lvl = 7
 
 let parser text_item lvl =
-  | op:''[-=_]>'' title:text_only txt:(topleveltext (lvl+1)) cl:''[-=_]<'' when lvl < 8 ->
+  | op:''[-=_]>'' title:simple_text txt:(topleveltext (lvl+1)) cl:''[-=_]<'' when lvl < 8 ->
     let (num, in_toc) = numbered op cl in
     (fun _ lvl' ->
       assert(lvl' = lvl);
@@ -1900,8 +1915,8 @@ let parser text_item lvl =
       in
       (true, lvl, code))
 
-  | (num,title):{_:(sect lvl)  title:text_only _:(sect lvl) -> true, title
-		|_:(usect lvl) title:text_only _:(usect lvl)-> false, title }
+  | (num,title):{_:(sect lvl)  title:simple_text _:(sect lvl) -> true, title
+		|_:(usect lvl) title:simple_text _:(usect lvl)-> false, title }
       txt:(topleveltext (lvl+1))$ when lvl < 8 ->
      (fun _ lvl' ->
        assert (lvl' >= lvl);
@@ -1951,12 +1966,12 @@ let parser header = _:patoline_config* ->
 
 let parser title =
   | RE("==========\\(=*\\)")
-      title:text_only
+      title:simple_text
       (auth,inst,date):{
-	auth:{_:RE("----------\\(-*\\)") text_only}
+	auth:{_:RE("----------\\(-*\\)") simple_text}
 	(inst,date):{
-	  inst:{_:RE("----------\\(-*\\)") text_only}
-	  date:{_:RE("----------\\(-*\\)") text_only}? -> (Some inst, date)
+	  inst:{_:RE("----------\\(-*\\)") simple_text}
+	  date:{_:RE("----------\\(-*\\)") simple_text}? -> (Some inst, date)
 	}?[None,None] -> (Some auth, inst, date)
       }?[None,None,None]
     RE("==========\\(=*\\)") ->
@@ -2041,7 +2056,7 @@ let parser directive =
 let extra_structure = directive :: extra_structure
 
 let parser patoline_quotations _ =
-  | "<<" par:text_only     ">>" -> par
+  | "<<" par:simple_text     ">>" -> par
   | "<$" mat:math_toplevel "$>" -> mat
 
 let _ =

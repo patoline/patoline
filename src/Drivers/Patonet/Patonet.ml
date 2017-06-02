@@ -168,6 +168,7 @@ type event =
   | EvClick
   | EvDrag of float * float * bool
   | EvEdit of string
+  | EvMenu of int
 
 let log_father msg =
   Printf.eprintf ("[father] " ^^ msg ^^ "\n%!")
@@ -206,6 +207,7 @@ let move=Str.regexp "move_\\([0-9]*\\)_\\([0-9]*\\)"
 let refresh=Str.regexp "refresh_\\([0-9]*\\)_\\([0-9]*\\)"
 let click=Str.regexp "click_\\([0-9]*\\)_\\([0-9]*\\) "
 let edit=Str.regexp "edit_\\([0-9]*\\)_\\([0-9]*\\) "
+let menu=Str.regexp "menu_\\([0-9]*\\)_\\([0-9]*\\) \\([a-zA-Z_0-9]*\\) \\([a-zA-Z_0-9]*\\)"
 let drag=Str.regexp "drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*\\)\\(_release\\)? "
 let ping=Str.regexp "ping"
 
@@ -1106,6 +1108,7 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
           | EvClick, Click(act) -> act ()
           | EvDrag(x,y,r), Drag(act) -> act (x, y) r
           | EvEdit(contents), Edit(_,_,act) -> act contents
+          | EvMenu(id), Menu(items) -> fst (List.nth items id) ()
           | _ ->  log_son num "button %S do not match" name;
                   assert false
         in
@@ -1208,7 +1211,13 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
           log_son num "websocket click (%d,%d) %s" slide state name;
           update slide state name EvClick;
           process_req master "" [] reste)
-
+        else if Str.string_match menu get 0 then (
+          let slide, state = read_slide_state get in
+          let name = Str.matched_group 3 get in
+          let id = int_of_string (Str.matched_group 4 get) in
+          log_son num "websocket menu (%d, %d) %s %d" slide state name id;
+          update slide state name (EvMenu id);
+          process_req master "" [] reste)
         else if Str.string_match edit get 0 then (
           let match_end = Str.match_end () in
           let slide, state = read_slide_state get in

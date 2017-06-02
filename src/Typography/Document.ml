@@ -1080,7 +1080,7 @@ let button_name =
 let button =
   fun btype b ->
     bB (fun _->[Marker (BeginLink (Button(btype, button_name ())))])::
-      b@[bB (fun _->[Marker EndLink])]
+      b @ bB (fun _->[Marker EndLink]) :: []
 
 (** {3 Images} *)
 

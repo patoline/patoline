@@ -102,6 +102,9 @@ g.editable{z-index:10;unselectable:'on';onselectstart:'return false;'; -webkit-t
   -khtml-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;user-select: none;}
 div.editor{position:fixed;border:2px solid blue;background:#000080;background:rgba(0,0,255,0.5);margin:0;}
 svg text{pointer-events:none;}
+.menu {background-color:#b0ffb0; opacity:0.80}
+g.svg_item{opacity:0;pointer-events: all;}
+td.svg_item:hover {background-color:#b0b0ff; opacity:1.0 }
 svg path{pointer-events:none;}
 svg rect{pointer-events:none;}
 svg a text{pointer-events:all;}
@@ -156,8 +159,8 @@ let draw ?fontCache ?dynCache prefix w h contents=
 
   (* Écriture du contenu à proprement parler *)
 
-  let rec output_contents ?(create_new_class=true)  ~svg_buf contents=
-    let outcont = output_contents ~create_new_class in
+  let rec output_contents ?(offset=h) ?(create_new_class=true) ~svg_buf contents=
+    let outcont ?(offset=offset) = output_contents ~offset ~create_new_class in
     let imgs=ref StrMap.empty in
     let cur_x=ref 0. in
     let cur_y=ref 0. in
@@ -165,7 +168,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
     let opened_text=ref false in
     let opened_tspan=ref false in
     let animate_count = ref 0 in
-    let rec output_contents_aux ?offset:(offset=h) cont=match cont with
+    let rec output_contents_aux ?(offset=offset) cont=match cont with
       Glyph x->(
         if not !opened_text then (
           Rbuffer.add_string svg_buf "<text>\n";
@@ -356,6 +359,29 @@ let draw ?fontCache ?dynCache prefix w h contents=
         Rbuffer.add_string svg_buf "<a xlink:href=\"";
         Rbuffer.add_string svg_buf uri;
         Rbuffer.add_string svg_buf "\">"
+      | Button(Menu(items) as btype, name) ->
+         begin
+           match buttonCache with
+           | None -> ()
+           | Some c -> Hashtbl.replace c name btype
+         end;
+         List.iteri (fun i (w,c) ->
+             let (x0,y0,x1,y1) = RawContent.bounding_box_full c in
+             let x0 = min x0 0.0 in
+             let (x0',_,_,_) = RawContent.bounding_box_kerning c in
+             let h = y1 -. y0 in
+             let w = x1 -. x0 in
+             Rbuffer.add_string svg_buf
+                (Printf.sprintf "<g class='svg_item' name='%s' id='%d'
+                                    box_w='%f' box_h='%f' box_x='%f' box_y='%f'
+                                    transform='translate(%f,0)'>"
+                                name i w h x0 (-.y1) (x0' -. x0));
+             (* NOTE: the translate is here because a transform-orgin of 50%
+                is there in user agent css and can not be disables ... *)
+             ignore (outcont ~offset:0. ~svg_buf c);
+             Rbuffer.add_string svg_buf "</g>") items;
+         Rbuffer.add_string svg_buf
+             (Printf.sprintf "<a onclick='make_menu(evt,\"%s\");'>" name)
       | Button(btype,name) ->
          begin
            match buttonCache with
@@ -363,7 +389,8 @@ let draw ?fontCache ?dynCache prefix w h contents=
            | Some c -> Hashtbl.replace c name btype
          end;
 	 let ty = match btype with
-	    Click _ -> "button"
+          | Menu _ -> assert false
+	  | Click _ -> "button"
 	  | Drag  _ -> "dragable"
 	  | Edit(s, init, _) -> "editable' contents='" ^
 	    Str.(global_replace (regexp "\r?\n") "&#13;&#10;"
@@ -378,7 +405,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
 		      (global_replace (regexp_string "<") "&lt;"
 			 (global_replace (regexp_string "\'") "&apos;"
 			    (global_replace (regexp_string "\"") "&quot;"
-			       (global_replace (regexp_string "&") "&amp;" init))))))
+			                    (global_replace (regexp_string "&") "&amp;" init))))))
 	in
         Rbuffer.add_string svg_buf (
                              Printf.sprintf "<g class='%s' id='%s'>" ty name
@@ -396,7 +423,9 @@ let draw ?fontCache ?dynCache prefix w h contents=
         opened_text:=false
       );
       (match l.link_kind with
-      | Button(_,name) ->
+      | Button(Menu _, _) ->
+	Rbuffer.add_string svg_buf "</a>"
+      | Button(_,_) ->
 	Rbuffer.add_string svg_buf "</g>"
       | _ ->
 	Rbuffer.add_string svg_buf "</a>")
@@ -427,9 +456,6 @@ let draw ?fontCache ?dynCache prefix w h contents=
             let contents, reads = record d.dyn_contents () in
             List.iter (fun key ->
                 let old = try Hashtbl.find gs key with Not_found -> [] in
-                Printf.eprintf "#### Adding (%s, %s) => %s\n%!"
-                               (fst key) (vis_to_string (snd key))
-                               d.dyn_label;
                 if not (List.memq d0 old) then
 	          Hashtbl.add gs key (d0::old)) reads;
 	    ignore (output_contents ~create_new_class:false ~svg_buf:buf contents);
@@ -521,7 +547,15 @@ let draw ?fontCache ?dynCache prefix w h contents=
       | _->0
     in
     let subsort a=match a with
-        Link l->Link { l with link_contents=List.sort comp l.link_contents }
+      | Link l->
+         let l = match l.link_kind with
+           | Button(Menu(items), name) ->
+              let items = List.map (fun (f,c) -> (f, List.sort comp c)) items in
+              let link_kind = Button(Menu(items), name) in
+              { l with link_kind }
+           | _ -> l
+         in
+         Link { l with link_contents=List.sort comp l.link_contents }
       | b->b
     in
     IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
@@ -804,6 +838,77 @@ var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     setReaction(svg);
 }
 
+function close_menu(n,i) {
+   var id = i;
+   var name = n;
+   return (function () {
+     var div = document.getElementsByName(name)[0];
+     table=div.firstChild;
+     var svg_svg = document.getElementById('svg_svg');
+     while (table.hasChildNodes()) {
+       var row = table.firstChild;
+       var td = row.firstChild;
+       var svg = td.firstChild;
+       var g = svg.firstChild;
+       g.style.opacity = 0.0;
+       document.body.appendChild(svg_svg);
+       table.removeChild(row);
+     }
+     document.body.removeChild(div);
+     if (typeof websocket_send === 'function') {
+       websocket_send('menu_'+(current_slide)+'_'+(current_state)+' '+n+' '+id);
+     }
+     console.log('menu: ', n, id)});
+}
+
+function make_menu(evt,name) {
+   var svg_svg = document.getElementById('svg_svg');
+   var box = svg_svg.getBBox();
+   var wsvg = svg_svg.getBoundingClientRect();
+   var ratio = wsvg.width / box.width;
+   console.log(box,wsvg);
+   var div = document.createElement('div');
+   div.style.position = 'absolute';
+   div.style.left = evt.pageX.toString() + 'px';
+   div.style.top = evt.pageY.toString() + 'px';
+   div.style.zIndex = '20';
+   div.setAttribute('name',name);
+   var table = document.createElement('table');
+   table.setAttribute('class','menu');
+   div.appendChild(table);
+
+   var sel = 'svg g[name=\"' + name + '\"]';
+   var items =[].slice.call(document.body.querySelectorAll(sel));
+   items.sort(function (x, y) {
+     var ix = x.getAttribute('id');
+     var iy = y.getAttribute('id');
+     return(ix - iy)});
+   console.log(items.length);
+   for(var i=0;i<items.length;i++) {
+      var row = document.createElement('tr');
+      table.appendChild(row);
+      var td  = document.createElement('td');
+      td.setAttribute('class', 'svg_item');
+      row.appendChild(td);
+      var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+      td.appendChild(svg);
+      items[i].style.opacity = 1.0;
+      svg.appendChild(items[i]);
+      var w = items[i].getAttribute('box_w');
+      var h = items[i].getAttribute('box_h');
+      var x = items[i].getAttribute('box_x');
+      var y = items[i].getAttribute('box_y');
+      svg.setAttribute('viewBox',
+        String(x) + ' ' + String(y) + ' ' + String(w) + ' ' + String(h));
+      var name = items[i].getAttribute('name');
+      var id = items[i].getAttribute('id');
+      td.onclick = close_menu(name,id);
+      svg.style.width = String(w * ratio) + 'px';
+      svg.style.height = String(h * ratio) + 'px';
+   }
+   document.body.appendChild(div);
+}
+
 function loadSlide(n,state,force){
   if(n>=0 && n<%d && state>=0 && state<states[n] && (force || n!=current_slide || state!=current_state || !first_displayed)) {
 
@@ -950,7 +1055,15 @@ let images_of_boxes ?cache ?(css="style.css") ?(output_font_defs=true) prefix en
         | _->0
       in
       let subsort a=match a with
-          Link l->Link { l with link_contents=List.sort comp l.link_contents }
+        | Link l->
+           let l = match l.link_kind with
+             | Button(Menu(items), name) ->
+                let items = List.map (fun (f,c) -> (f, List.sort comp c)) items in
+                let link_kind = Button(Menu(items), name) in
+                { l with link_kind }
+             | _ -> l
+           in
+           Link { l with link_contents=List.sort comp l.link_contents }
         | b->b
       in
       IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []

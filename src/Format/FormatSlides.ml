@@ -213,6 +213,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                            ((List.rev sect_num)@num)))
          )::[])
 
+
       module Block=Env_block(struct let arg1=blocktitle end)
 
       let reference name=lref ~refType:Th.refType name
@@ -395,10 +396,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         lead=Default.defaultEnv.normalLead*.1.2;
         hyphenate=(fun _->[||]);
         par_indent=[];
-        new_line=(fun env node params nextNode nextParams layout height->
-          (* min height (nextNode.height-.env.lead) *)
-          height-.env.lead
-        );
+        new_line=(fun env node params nextNode nextParams layout height-> height -. env.lead);
         new_page= (* useless because redefined below depending upon the presence of a title *)
         (fun t->
           let zip=Box.make_page (slidew,slideh) (frame_top t) in
@@ -723,9 +721,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                         lowest_start.(ll.line.paragraph)<-min
                           ll.line.height
                           lowest_start.(ll.line.paragraph)
-                      )
-                    ) l
-                  ) opts;
+                      )) l ) opts;
+
 
                   (* Premier positionnement de tout le monde ("aligné" en haut) *)
                   let max_frame=ref (-.infinity) in
@@ -751,6 +748,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                     ) opts.(i)
                   done;
                   min_frame:=max (slideh/.6.) !min_frame;
+                  let place = !max_frame -. !min_frame -.(!max_h-. !min_h) in
+                  let place=match classify_float place with
+                      FP_infinite | FP_nan->0. | _->max 0. place
+                  in
 
                   (* Centrage collectif *)
                   for i=0 to Array.length opts-1 do

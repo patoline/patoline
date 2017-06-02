@@ -87,7 +87,8 @@ and print_link () l = match l with
   | Button (b,n) -> Printf.sprintf "Button %S %s" n
                                (match b with Click _ -> "Click"
                                            | Drag  _ -> "Drag"
-                                           | Edit  _ -> "Edit")
+                                           | Edit  _ -> "Edit"
+                                           | Menu  _ -> "Menu")
 
 and print_marker m=match m with
     Label l->Printf.sprintf "Label %s" l

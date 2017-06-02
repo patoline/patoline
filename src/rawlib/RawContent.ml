@@ -81,12 +81,14 @@ type raw =
   | Dynamic   of raw list dynamic (* ??? *)
 
  (* Link on some contents. *)
-and write = (string * Util.visibility) list (* the writtent data *)
+and write = (string * Util.visibility) list (* the written data *)
 and button_kind =
   | Click of (unit -> write)
   | Drag of ((float * float) -> bool (* true: release button *) -> write)
   | Edit of string * string * (string  -> write)
-  (* snd elt is init value to reset contents *) (* FIXME: usefull ? *)
+      (* snd elt is init value to reset contents *)
+  | Menu of ((unit -> write) * raw list) list
+
 and link_kind =
   | Extern of string                             (* URI *)
   | Intern of string * int * float * float       (* (label, page, x, y) *)

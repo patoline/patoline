@@ -365,7 +365,8 @@ let empty_drawing_box=
       drawing_contents=(fun _->[])
     }
 
-let drawing ?(adjust_before=false) ?(vcenter=false) ?(hcenter=false) ?offset:(offset=0.) ?states:(states=[]) cont=
+let drawing ?(adjust_before=false) ?(vcenter=false) ?(hcenter=false)
+            ?(offset=0.) ?(width_fixed=true) ?(states=[]) cont=
   let states=List.fold_left (fun st0 x->match x with
       States s-> unique (st0@s.states_states)
     | _->st0
@@ -377,7 +378,7 @@ let drawing ?(adjust_before=false) ?(vcenter=false) ?(hcenter=false) ?offset:(of
       drawing_min_width=if hcenter then (c-.a) else c;
       drawing_nominal_width=if hcenter then (c-.a) else c;
       drawing_max_width=if hcenter then (c-.a) else c;
-      drawing_width_fixed = true;
+      drawing_width_fixed = width_fixed;
       drawing_adjust_before = adjust_before;
       drawing_y0=offset +. (if vcenter then b -. e else 0.0);
       drawing_y1=offset +. (if vcenter then d -. e else d -. b);

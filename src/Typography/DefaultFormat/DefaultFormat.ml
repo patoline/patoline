@@ -662,30 +662,19 @@ let dynamic sample contents =
 module Env_dynamic(X : sig val arg1 : content list
                        end)=struct
   let do_begin_env ()=
-    D.structure:=newChildAfter !D.structure (Node empty);
+    D.structure:=newChildAfter !D.structure (Node { empty with node_env=(fun env->{env with par_indent=[]})});
     env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
   let do_end_env ()=
-    D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
-    env_stack:=List.tl !env_stack;
-
-    let t,num=match !D.structure with
-        t,(h,_)::_->t,h
-      | t,[]->t,0
+    let res0, path0=(follow (top !D.structure) (List.rev (List.hd !env_stack))) in
+    let cont () = OutputDrawing.minipage
+                    ~env_mod:(fun e -> { e with normalLeftMargin=0. }) (res0,[])
     in
-    (match up !D.structure with
-      Node n,x->
-        D.structure:=(Node { n with children=IntMap.remove num n.children },x);
-    | x->D.structure:=x);
-    let cont () = OutputDrawing.minipage (t,[]) in
     let cont = dynamic X.arg1 cont in
-    match lastChild !D.structure with
-      Paragraph x,y->
-        D.structure:=up (Paragraph {x with par_contents=x.par_contents@cont},y);
-    | _->(
-      newPar D.structure Complete.normal parameters cont;
-          (* D.structure:=lastChild !D.structure *)
-    )
+    D.structure:=up (Node empty, path0);
+    newPar ~environment:(fun env->{env with par_indent=[];}) D.structure
+           Complete.normal parameters cont;
+    env_stack:=List.tl !env_stack;
 
 end
 
@@ -1754,6 +1743,9 @@ module MathsFormat=struct
         = Mathematical.Display })::a
     )]
 
+    let setStyle f a=[Maths.Scope(
+      fun _ _->Maths.Env (fun env-> List.hd(f env.mathStyle [env])):: a)]
+
     let mathsize alpha a=[Maths.Scope(
       fun _ _->Maths.Env (fun env-> { env with size=alpha })::a
     )]
@@ -2107,9 +2099,12 @@ module MathsFormat=struct
               let open Diagrams in
               let module Fig = MakeDiagram (struct let env = env end) in
               let open Fig in
-              let m, ms = array (List.map (fun _ -> `Main) a) a in
+              let a = List.map (fun l -> List.map Maths.(setStyle matrixStyle) l) a in
+              let m, ms = array
+                            (List.map (fun _ -> `Main) a) a
+              in
               let _ = extra (module Fig:Diagram) m ms in
-              [ Drawing (Fig.make ~adjust_before:true ~vcenter:true
+              [ Drawing (Fig.make ~adjust_before:true ~vcenter:true ~width_fixed:false
                                   ~offset:(half_eq env st) ())]))]
 
     let ematrix m extra = matrix ~extra m

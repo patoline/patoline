@@ -206,6 +206,7 @@ let numeratorStyle x = set_style (match x with
                                   | Display' -> Text'
                                   | _        -> scriptStyle x)
 let denominatorStyle = numeratorStyle
+let matrixStyle = numeratorStyle
 
 let adjust_space ?(absolute=false) env target minimum box_left box_right =
   if not env.kerning then target else
@@ -244,7 +245,7 @@ let adjust_space ?(absolute=false) env target minimum box_left box_right =
   let da = d minimum in
   let epsilon = epsilon /. 16. in
 
-  if !debug_kerning then Printf.fprintf stderr "start Adjust: min = %f => %f, target = %f => %f\n" minimum da target db;
+  if !debug_kerning then Printf.eprintf "start Adjust: min = %f => %f, target = %f => %f\n" minimum da target db;
 
   let r =
     if da > target then minimum else if db < target then target else
