@@ -842,7 +842,8 @@ function close_menu(n,i) {
    var id = i;
    var name = n;
    return (function () {
-     var div = document.getElementsByName(name)[0];
+     var sel = 'div[name=\"' + name + '\"]';
+     var div =document.body.querySelectorAll(sel)[0];
      table=div.firstChild;
      var svg_svg = document.getElementById('svg_svg');
      while (table.hasChildNodes()) {
@@ -862,6 +863,9 @@ function close_menu(n,i) {
 }
 
 function make_menu(evt,name) {
+   var sel = 'div[name=\"' + name + '\"]';
+   var div =document.body.querySelectorAll(sel);
+   if (div.length != 0) return; //menu already open
    var svg_svg = document.getElementById('svg_svg');
    var box = svg_svg.getBBox();
    var wsvg = svg_svg.getBoundingClientRect();
