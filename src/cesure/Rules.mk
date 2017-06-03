@@ -3,10 +3,10 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 CESURE_INCLUDES := -I $(d) $(PACK_CESURE) -pp pa_ocaml
-CESURE_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_CESURE) -pp pa_ocaml
 
-$(d)/%.ml.depends: INCLUDES += $(CESURE_DEPS_INCLUDES)
+$(d)/%.ml.depends $(d)/%.ml.depends: INCLUDES += $(DEPS_DIR) -pp pa_ocaml
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/cesure: INCLUDES:=$(CESURE_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)

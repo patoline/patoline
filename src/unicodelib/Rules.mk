@@ -3,12 +3,10 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 UNICODELIB_INCLUDES := -I $(d) $(PACK_UNICODELIB)
-UNICODELIB_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_UNICODELIB)
-
 PA_CONV:=$(d)/pa_convert
 
-$(d)/%.depends: OCAMLDEP:=ocamlfind ocamldep -pp pa_ocaml
-$(d)/%.depends: INCLUDES:=$(UNICODELIB_DEPS_INCLUDES)
+$(d)/%.depends: INCLUDES:=$(DEPS_DIR)
+$(d)/%.depends: OCAMLDEP:=ocamlfind ocamldep -pp pa_ocaml $(INCLUDES)
 $(d)/pa_%.depends: OCAMLDEP:=ocamlfind ocamldep -pp pa_ocaml $(OFLAGS) $(INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa: INCLUDES:=$(UNICODELIB_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cma: OCAMLC:=ocamlfind ocamlc -pp pa_ocaml $(OFLAGS) $(INCLUDES)

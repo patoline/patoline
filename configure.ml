@@ -604,10 +604,7 @@ let _=
     Printf.fprintf make "PACK_%s := %s %s\n"
       macro (h
       (String.concat "," (gen_pack_line (f (packages_local local) @ f extern))))
-      (includes_local name);
-    Printf.fprintf make "DEPS_PACK_%s := %s %s\n"
-      macro (includes_local ~subdir_only:false name) (h
-      (String.concat "," (gen_pack_line (f extern)))))
+      (includes_local name))
     local_packages;
 
   Printf.fprintf make "INSTALL_FONT_DIR :=%s\n" fonts_dir;
@@ -650,8 +647,6 @@ let _=
     let pack = if pack <> "" then "-package "^pack else pack in
     Printf.fprintf make "PACK_DRIVER_%s := %s %s\n" d.name pack
       (includes_driver d);
-    Printf.fprintf make "DEPS_PACK_DRIVER_%s := %s %s\n"d.name pack
-      (includes_driver ~subdir_only:false d)
   )
   ok_drivers;
 

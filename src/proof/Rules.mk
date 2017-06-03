@@ -11,9 +11,10 @@ endif
 endif
 
 PROOF_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/Pdf $(PACK_PROOF)
-PROOF_DEPS_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/Pdf $(DEPS_PACK_PROOF)
-$(d)/%.depends: INCLUDES+=$(PROOF_DEPS_INCLUDES)
+
+$(d)/%.depends: INCLUDES+= $(DEPS_DIR)
 $(d)/proof $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PROOF_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 $(d)/proof.cmx: $(d)/proof.cmo
 

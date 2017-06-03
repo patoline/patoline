@@ -4,9 +4,11 @@ d := $(if $(d),$(d)/,)$(mod)
 
 all: $(d)/emacs/patoline-input.el
 
+$(d)/emacs/%.depends: INCLUDES += $(DEPS_DIR)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
+
 # Vim part
 
-$(d)/emacs/%.depends: INCLUDES += -I $(UNICODE_DIR)
 # Emacs part
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)

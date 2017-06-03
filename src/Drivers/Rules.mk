@@ -3,9 +3,10 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 DRIVERS_INCLUDES:=-I $(d) $(PACK_DRIVERS)
-DRIVERS_DEPS_INCLUDES:=-I $(d) $(DEPS_PACK_DRIVERS)
-$(d)/%.depends $(d)/%/%.depends: INCLUDES += $(DRIVERS_DEPS_INCLUDES)
+
+$(d)/%.depends $(d)/%/%.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%/%.cmo $(d)/%/%.cmi $(d)/%/%.cmx: INCLUDES += $(DRIVERS_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 DRIVERS_CMXA:=$(foreach drv,$(DRIVERS),src/Drivers/$(drv)/$(drv).cmxa)
 DRIVERS_CMA:=$(foreach drv,$(DRIVERS),src/Drivers/$(drv)/$(drv).cma)

@@ -5,9 +5,11 @@ d := $(if $(d),$(d)/,)$(mod)
 all: $(d)/pa_patoline
 
 PA_PATOLINE_INCLUDES := -I $(d) -I $(PATOBUILD_DIR) -I $(CONFIG_DIR) -I $(CONFIG_DIR) -I $(RBUFFER_DIR) -I $(UTIL_DIR) -I $(UNICODE_DIR)
+
 # Find dependencies
-$(d)/%.depends: INCLUDES += $(PA_PATOLINE_INCLUDES)
+$(d)/%.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PA_PATOLINE_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d) := $(wildcard $(d)/*.ml)
 ifneq ($(MAKECMDGOALS),clean)

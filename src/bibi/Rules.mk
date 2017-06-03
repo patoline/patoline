@@ -3,11 +3,11 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 BIBI_INCLUDES := -I $(d) $(PACK_BIBI) -I $(CONFIG_DIR)
-BIBI_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_BIBI) -I $(CONFIG_DIR)
 
 # Finding dependencies
-$(d)/%.ml.depends: INCLUDES += $(BIBI_DEPS_INCLUDES)
+$(d)/%.ml.depends $(d)/%.ml.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(BIBI_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)

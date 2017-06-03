@@ -1,6 +1,3 @@
 #!/bin/bash
 
-make configure
-./configure
-make -j 8 all
-make -j 8 packages
+make configure && ./configure && make -j 8  && make -j 8 packages && make install

@@ -4,10 +4,9 @@ d := $(if $(d),$(d)/,)$(mod)
 
 # Compute ML files dependencies
 SRC_$(d):=$(wildcard $(d)/*.ml) $(d)/obj_parser.ml $(d)/obj_lexer.ml $(d)/obj_parser.mli
+$(d)/%.ml.depends $(d)/%.ml.depends: INCLUDES += $(DEPS_DIR)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
-$(d)/obj_lexer.ml.depends: $(d)/obj_lexer.ml
-$(d)/obj_parser.ml.depends: $(d)/obj_parser.ml $(d)/obj_lexer.ml
-$(d)/pdf_parser.ml.depends: $(d)/obj_parser.ml $(d)/obj_lexer.ml
 # Without the following empty rule, make does not know that ocamlyacc
 # writes both .ml and .mli files.
 $(d)/obj_parser.mli: $(d)/obj_parser.ml ;

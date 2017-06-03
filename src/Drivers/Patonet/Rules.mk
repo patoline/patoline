@@ -3,10 +3,10 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 PATONET_DRIVER_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(PACK_DRIVER_Patonet)
-PATONET_DRIVER_DEPS_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(DEPS_PACK_DRIVER_Patonet)
 
-$(d)/%.ml.depends: INCLUDES += $(PATONET_DRIVER_DEPS_INCLUDES)
+$(d)/%.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATONET_DRIVER_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))

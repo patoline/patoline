@@ -15,9 +15,9 @@ PATOPLOT_LIBS := $(d)/plot.cmxa $(d)/plot.a $(d)/plot.cmi
 all: $(PATOPLOT_LIBS)
 
 PLOT_INCLUDES := -I $(d) $(PACK_PLOT)
-PLOT_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PLOT)
-$(d)/%.depends: INCLUDES+=$(PLOT_DEPS_INCLUDES)
+$(d)/%.depends: INCLUDES+=$(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PLOT_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 # We cannot run ocamlc and ocamlopt simultaneously on the same input,
 # since they both overwrite the .cmi file, which can get corrupted.

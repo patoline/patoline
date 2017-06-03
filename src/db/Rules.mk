@@ -3,10 +3,10 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 DB_INCLUDES := -I $(d) $(PACK_DB)
-DB_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_DB)
 
-$(d)/%.depends: INCLUDES:=$(DB_DEPS_INCLUDES)
+$(d)/%.depends: INCLUDES:=$(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(DB_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 # Compute ML files dependencies
 SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)

@@ -3,16 +3,16 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 LIBFONTS_INCLUDES := -I $(d) $(PACK_FONTS) -I $(UNICODE_DIR) -I $(UNICODE_DIR)/encoding_data
-LIBFONTS_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_FONTS) -I $(UNICODE_DIR) -I $(UTIL_DIR) -I $(UNICODE_DIR)/encoding_data
 
 # Compute ML files dependencies
-$(d)/%.depends $(d)/CFF/%.depends $(d)/Opentype/%.depends $(d)/unicodeRanges/%.depends: INCLUDES:=$(LIBFONTS_DEPS_INCLUDES)
+$(d)/%.depends $(d)/CFF/%.depends $(d)/Opentype/%.depends $(d)/unicodeRanges/%.depends: INCLUDES:=$(DEPS_DIR)
 $(d)/%.cmx $(d)/%.cmo $(d)/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
 $(d)/CFF/%.cmx $(d)/CFF/%.cmo $(d)/CFF/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
 $(d)/Opentype/%.cmx $(d)/Opentype/%.cmo $(d)/Opentype/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
 $(d)/unicodeRanges/%.cmx $(d)/unicodeRanges/%.cmo $(d)/unicodeRanges/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
 
 $(d)/Opentype/Opentype.ml.depends: $(UNICODE_DIR)/ROMAN.ml $(UNICODE_DIR)/LATIN1.ml $(UNICODE_DIR)/UTF8.ml
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d):=$(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) \
           $(wildcard $(d)/CFF/*.ml) $(wildcard $(d)/CFF/*.mli) \

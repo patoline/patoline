@@ -5,11 +5,9 @@ d := $(if $(d),$(d)/,)$(mod)
 NET_DRIVER_INCLUDES := \
 	-I $(d) $(PACK_DRIVER_Net) -I $(DRIVERS_DIR)/SVG -I $(CONFIG_DIR)
 
-NET_DRIVER_DEPS_INCLUDES := \
-	-I $(d) $(DEPS_PACK_DRIVER_Net) -I $(DRIVERS_DIR)/SVG -I $(CONFIG_DIR)
-
-$(d)/%.ml.depends: INCLUDES += $(NET_DRIVER_DEPS_INCLUDES)
+$(d)/%.ml.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(NET_DRIVER_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))

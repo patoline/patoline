@@ -21,9 +21,18 @@ UNICODE_DIR := $(d)/unicodelib
 CONFIG_DIR := $(d)/config
 GRAMMAR_DIR := $(d)/grammar
 PACKAGES_DIR := $(d)/Packages
-PATOBUILD_DIR := $(d)/patobuild
-RBUFFER_DIR := $(d)/rbuffer
-PA_PATOLINE_DIR := $(d)/pa_patoline
+DEFAULT_FORMAT_DIR := $(TYPOGRAPHY_DIR)/DefaultFormat
+
+DEPS_DIR := -I $(PA_PATOLINE_DIR) -I $(PATOBUILD_DIR) -I $(PACKAGES_DIR) \
+  -I $(TYPOGRAPHY_DIR) -I $(RAWLIB_DIR) -I $(DB_DIR) -I $(DRIVERS_DIR) \
+  -I $(FORMAT_DIR) -I $(UTIL_DIR) -I $(RBUFFER_DIR) -I $(LIBFONTS_DIR) \
+  -I $(CESURE_DIR) -I $(UNICODE_DIR) -I $(CONFIG_DIR) -I $(GRAMMAR_DIR) \
+  -I $(DEFAULT_FORMAT_DIR) -I $(LIBFONTS_DIR)/CFF -I $(LIBFONTS_DIR)/isoAdobe \
+  -I $(LIBFONTS_DIR)/Opentype -I $(LIBFONTS_DIR)/unicodeRanges \
+  -I $(DRIVERS_DIR)/Bin -I $(DRIVERS_DIR)/DriverCairo -I $(DRIVERS_DIR)/DriverGL \
+  -I $(DRIVERS_DIR)/DriverImage -I $(DRIVERS_DIR)/Html -I $(DRIVERS_DIR)/Net \
+  -I $(DRIVERS_DIR)/None -I $(DRIVERS_DIR)/Patonet -I $(DRIVERS_DIR)/Pdf \
+  -I $(DRIVERS_DIR)/SVG
 
 # Visit subdirectories
 MODULES := unicodelib rbuffer patutil patfonts rawlib db Typography \

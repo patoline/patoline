@@ -6,10 +6,10 @@ d := $(if $(d),$(d)/,)$(mod)
 SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
 
 RBUFFER_INCLUDES := -I $(d) $(PACK_RBUFFER)
-RBUFFER_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_RBUFFER)
 
-$(d)/%.depends: INCLUDES:=$(RBUFFER_DEPS_INCLUDES)
+$(d)/%.depends: INCLUDES:=$(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(RBUFFER_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)

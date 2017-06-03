@@ -9,9 +9,10 @@ endif
 endif
 
 PDF_DRIVERS_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(DRIVERS_INCLUDES) $(PACK_DRIVER_Pdf)
-PDF_DRIVERS_DEPS_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(DRIVERS_INCLUDES) $(DEPS_PACK_DRIVER_Pdf)
-$(d)/%.ml.depends: INCLUDES += $(PDF_DRIVERS_DEPS_INCLUDES)
+
+$(d)/%.ml.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PDF_DRIVERS_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 $(d)/Pdf.cmo: %.cmo: %.ml
 	$(ECHO) "[BYT] $@"

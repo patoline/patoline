@@ -3,10 +3,11 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 GL_DRIVER_INCLUDES:=-I $(d) $(PACK_DRIVER_DriverGL)
-GL_DRIVER_DEPS_INCLUDES:=-I $(d) $(DEPS_PACK_DRIVER_DriverGL)
-$(d)/%.depends : INCLUDES:= $(GL_DRIVER_DEPS_INCLUDES)
+
+$(d)/%.depends : INCLUDES:= $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/%.cmxs: INCLUDES += $(GL_DRIVER_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/%.cmxs: OFLAGS += -thread
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))

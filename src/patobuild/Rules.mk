@@ -3,10 +3,10 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 PATOBUILD_INCLUDES      := -I $(d) -I $(CONFIG_DIR) -package earley,threads -pp pa_ocaml -thread
-PATOBUILD_DEPS_INCLUDES := -I $(d) -I $(CONFIG_DIR) -package earley,threads -pp pa_ocaml
 
-$(d)/%.depends: INCLUDES := $(PATOBUILD_DEPS_INCLUDES)
+$(d)/%.depends: INCLUDES := $(DEPS_DIR) -pp pa_ocaml
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES := $(PATOBUILD_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 # FIXME twice patoline otherwise patoline.ml.depends is not build ...
 # silly error ?

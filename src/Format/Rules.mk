@@ -3,11 +3,11 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 FORMAT_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/SVG $(PACK_FORMAT)
-FORMAT_DEPS_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/SVG $(DEPS_PACK_FORMAT)
 
 # Find dependencies
-$(d)/%.depends: INCLUDES += $(FORMAT_DEPS_INCLUDES)
+$(d)/%.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(FORMAT_INCLUDES)
+$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d) := $(wildcard $(d)/*.ml)
 CMO_$(d) := $(SRC_$(d):.ml=.cmo)
