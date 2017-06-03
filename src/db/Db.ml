@@ -98,19 +98,6 @@ let sessid = ref (None: (string * string * (string * string) list) option)
 
 let secret = ref ""
 
-let record ptr f a =
-  let l = ref [] in
-  let r = fun s -> l := s :: !l in
-  ptr := r :: !ptr;
-  let pop () = match !ptr with
-    | r' :: l when r == r' -> ptr := l
-    | _ -> assert false
-  in
-  try
-    let res = f a in
-    pop (); (res, !l)
-  with e -> pop (); raise e
-
 let read_hook : (string -> visibility -> unit) list ref = ref []
 let write_hook : (string -> visibility -> unit) list ref = ref []
 let record hook f a =
@@ -127,8 +114,21 @@ let record hook f a =
     pop (); (res, !l)
   with e -> pop (); raise e
 
+let stop_record hook f a =
+  let save = !hook in
+  hook:=[];
+  try
+    let res = f a in
+    hook := save;
+    res
+  with e ->
+    hook := save; raise e
+
 let record_read f a = record read_hook f a
 let record_write f a = snd (record write_hook f a)
+
+let stop_record_read f a = stop_record read_hook f a
+let stop_record_write f a = stop_record write_hook f a
 
 let do_record_read  = fun d v -> List.iter (fun f -> f d.name v) !read_hook
 let do_record_write = fun d v -> List.iter (fun f -> f d.name v) !write_hook

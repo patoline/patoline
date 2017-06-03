@@ -12,6 +12,10 @@ type giac =
   | Vec of giac list
   | Eq  of giac * giac
 
+let rec zero = function
+  | Vec l -> Vec (List.map zero l)
+  | _ -> Number "0"
+
 let int n = Number (string_of_int n)
 
 type prio = PAtm | PPow | PPro | PSum | Pred

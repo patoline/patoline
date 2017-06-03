@@ -590,7 +590,7 @@ let editable_math ?(visibility=Private) ?test ?(sample=[]) name init =
            let res = eval (App(Symbol("simplify"),[Sum(good,Opp(parse_string t))])) in
            Printf.eprintf "RESULT: %a => %a" Giac.print (Giac.Eq(good,Giac.parse_string t))
                           Giac.print res;
-           if res = Giac.Number("0")
+           if res = Giac.zero res
            then d.write Ok
            else d.write FailTest
          with _ -> d.write DoNotCompile

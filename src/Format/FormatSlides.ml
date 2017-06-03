@@ -755,10 +755,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 
                   (* Centrage collectif *)
                   for i=0 to Array.length opts-1 do
-                    let place=(!max_frame-. !min_frame-.(!max_h-. !min_h))/.2. in
-                    let place=match classify_float place with
-                        FP_infinite | FP_nan->0. | _->max 0. place
-                    in
                     opts.(i)<-List.map (fun ll->
                       { ll with
                         line={ ll.line with

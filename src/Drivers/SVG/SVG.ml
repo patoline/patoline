@@ -263,7 +263,8 @@ let draw ?fontCache ?dynCache prefix w h contents=
        | [] -> ()
        | l ->
           Rbuffer.add_string svg_buf "stroke-dasharray=\"";
-          Rbuffer.add_string svg_buf (String.concat "," (List.map string_of_float l));
+          (* do not use string_of_float, 1. is not legal in SVG *)
+          Rbuffer.add_string svg_buf (String.concat "," (List.map (Printf.sprintf "%f") l));
           Rbuffer.add_string svg_buf "\" ");
 
       (match args.lineCap with
