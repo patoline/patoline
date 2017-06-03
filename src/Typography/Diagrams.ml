@@ -3104,3 +3104,13 @@ let cliptip grad info tip curve0 =
 
 (* not so dirty if "module type of" does not run any code *)
 module type Diagram = module type of MakeDiagram (struct let env = assert false end)
+
+let drawingOfDiagram : Document.content list -> Document.environment -> Box.drawingBox = function
+  | [] -> assert false
+  | B (f,_) :: _ -> begin fun env ->
+                    match f env with
+                    | [] -> assert false
+                    | Drawing d :: _ -> d
+                    | _ -> assert false
+                    end
+  | _ -> assert false
