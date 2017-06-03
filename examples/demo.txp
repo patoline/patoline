@@ -73,9 +73,11 @@ let img file =
 
 \begin{center}
 \Caml(
-let aPos = db.create_data default_coding "Apos" (10.0,10.0)
-let bPos = db.create_data default_coding "Bpos" (-10.0,-10.0)
-let cPos = db.create_data default_coding "Cpos" (10.0,-10.0)
+let s = 10.0
+let s' = 14.0
+let aPos = db.create_data default_coding "Apos" (s,s)
+let bPos = db.create_data default_coding "Bpos" (-.s,-.s)
+let cPos = db.create_data default_coding "Cpos" (s,-.s)
 )
 \dynamic([])(fun () -> <<
 \diagram(
@@ -87,9 +89,15 @@ let cPos = db.create_data default_coding "Cpos" (10.0,-10.0)
  let ab = Node.(coord Point.(middle apos bpos))
  let bc = Node.(coord Point.(middle bpos cpos))
  let ca = Node.(coord Point.(middle cpos apos))
- let dragA p rel = aPos.write Vector.(p + aPos.read ())
- let dragB p rel = bPos.write Vector.(p + bPos.read ())
- let dragC p rel = cPos.write Vector.(p + cPos.read ())
+ let drag data p rel =
+   let (x,y) as p = Vector.(p + data.read ()) in
+   let p = if rel then (max (-.s') (min x s'), max (-.s') (min y s'))
+                  else p
+   in
+   data.write p
+ let dragA = drag aPos
+ let dragB = drag bPos
+ let dragC = drag cPos
  let a = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec av) env <<A>>; at apos;
 		     drag(dragA)] [])
  let b = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec bv) env <<B>>; at bpos;
