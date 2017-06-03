@@ -486,15 +486,13 @@ module Transfo (X : Set.OrderedType) = struct
 	(* type t = module T *)
 
 	  type t = { pet : Pet.t ; transfo : transfo }
-	  and transfo = transfos -> X.t -> X.t
-	  and transfos = t list Pet.Map.t
+	  and transfo = X.t -> X.t
 
       end
 	= struct
 
 	  type t = { pet : Pet.t ; transfo : transfo }
-	  and transfo = transfos -> X.t -> X.t
-	  and transfos = t list Pet.Map.t
+	  and transfo = X.t -> X.t
 
 	end
       and Pet : sig
@@ -712,7 +710,7 @@ module Transfo (X : Set.OrderedType) = struct
 	let x' =
 	  Pet.Map.fold (fun pet styles x' ->
 	    (List.fold_left (fun  x'' style ->
-	      style.transfo transfos x'')
+	      style.transfo x'')
 	       x'
 	       styles))
 	    transfos
@@ -934,42 +932,42 @@ module Transfo (X : Set.OrderedType) = struct
 
     let params,params_pet =
       Pet.register "node params" (fun pet params ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with params = params })})
 
     let lineWidth w =
       { pet = params_pet ;
-	transfo = (fun transfos info ->
+	transfo = (fun info ->
 	  { info with params = { info.params with lineWidth = w ;
 	    strokingColor = Some Color.black } } ) }
 
     let dashed,dashed_pet =
       Pet.register "node dashed" (fun pet pattern ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with params = { info.params with
 	    strokingColor = Some Color.black ;
 	    dashPattern = pattern } } ) })
 
     let draw,draw_pet =
       Pet.register "node draw" (fun pet ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with params = { info.params with
 	    strokingColor = Some Color.black } } ) })
 
     let setZ,setZ_pet =
       Pet.register "node setZ" (fun pet z ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with z = z  } ) })
 
     let drawColor,draw_pet =
       Pet.register "node draw" (fun pet color ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with params = { info.params with
 	    strokingColor = Some color } } ) })
 
     let fill,fill_pet =
       Pet.register "node fill" (fun pet color ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with params = { info.params with
 	    (* path_order = -1 ; *)
 	    fillColor = Some color } } ) })
@@ -977,14 +975,14 @@ module Transfo (X : Set.OrderedType) = struct
     let color,color_pet =
       Pet.register "node draw" ~depends:[dashed_pet;draw_pet;params_pet]
 	(fun pet color ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with params = { info.params with
 	    strokingColor = Some color } } ) })
 
     let contents_outputcommon,contents_pet =
       Pet.register "node contents" ~depends:[fill_pet]
 	(fun pet contents ->
-	  { pet = pet ; transfo = (fun transfos info ->
+	  { pet = pet ; transfo = (fun info ->
 	    (* Printf.fprintf stderr "contents\n" ;  *)
 	    let (x0,y0,x1,y1) as bb = match contents with
 	      | [] -> (0.,0.,0.,0.)
@@ -1006,17 +1004,17 @@ module Transfo (X : Set.OrderedType) = struct
 
     let innerSep,inner_sep_pet =
       Pet.register "inner sep" (fun pet sep ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with innerSep = sep })})
 
     let outerSep,outer_sep_pet =
       Pet.register "outer sep" (fun pet sep ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with outerSep = sep })})
 
     let mainAnchor,main_anchor_pet =
       Pet.register "node main anchor" (fun pet anchor ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  (* Printf.fprintf stderr "main anchor" ; flush stderr ; *)
 	  (* let _ =  *)
 	  (*   if anchor = `Base  *)
@@ -1069,19 +1067,19 @@ module Transfo (X : Set.OrderedType) = struct
 
     let boundingBox,bounding_box_pet =
       Pet.register "bounding box" ~depends:[contents_pet] (fun pet f ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with bb = f (info.bb) })})
 
     (* let textWidth,text_width_pet =  *)
     (*   Pet.register "text width" ~depends:[contents_pet] (fun pet w ->  *)
-    (* 	{ pet = pet ; transfo = (fun transfos info ->  *)
+    (* 	{ pet = pet ; transfo = (fun info ->  *)
     (* 	  let (x0,y0,x1,y1) = info.bb in *)
     (* 	  let bb' = (x0,y0,w, y1) in *)
     (* 	  { info with bb = bb' })}) *)
 
     (* let textHeight,text_height_pet =  *)
     (*   Pet.register "text height" ~depends:[contents_pet] (fun pet h ->  *)
-    (* 	{ pet = pet ; transfo = (fun transfos info ->  *)
+    (* 	{ pet = pet ; transfo = (fun info ->  *)
     (* 	  let (x0,y0,x1,y1) = info.bb in *)
     (* 	  let bb' = (x0,y0,x1,h) in *)
     (* 	  { info with bb = bb' })}) *)
@@ -1115,7 +1113,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 		  (* text_height_pet;text_width_pet; *)
 		  contents_pet;main_anchor_pet]
 	(fun pet env ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  (* Printf.fprintf stderr "node shape\n" ; flush stderr ; *)
 	  let (x0,y0,x1,y1) as bb_boot = info.bb in
 	  let rectangle (p1,p2,p3,p4) =
@@ -1182,14 +1180,14 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
     let button,button_pet =
       Pet.register "node draw" ~depends:[]
 	(fun pet action ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with button = Some(Click action, Document.button_name ());
 	  } ) })
 
     let drag,drag_pet =
       Pet.register "node draw" ~depends:[]
 	(fun pet action ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with button = Some(Drag (!drag_hook action), button_name ());
 	  } ) })
 
@@ -1202,14 +1200,14 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
     (*   Pet.register "node default shape" *)
     (* 	~depends:[shape_pet] *)
     (* 	(fun pet env -> *)
-    (* 	{ pet = pet ; transfo = (fun transfos info -> *)
+    (* 	{ pet = pet ; transfo = (fun info -> *)
     (* 	  (\* Printf.fprintf stderr "default node shape\n" ;  *\) *)
-    (* 	  if info.midCurve = [] then (rectangle env).transfo transfos info else info) }) *)
+    (* 	  if info.midCurve = [] then (rectangle env).transfo info else info) }) *)
 
     let kappa = 0.5522847498
 
     let circle =
-	{ pet = shape_pet ; transfo = (fun transfos info ->
+	{ pet = shape_pet ; transfo = (fun info ->
 	  let (_,y0,_,_) as bb = info.bb in
 	  let center = info.center in
 	  let circle (p1,p2,p3,p4) =
@@ -1297,7 +1295,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
     (* An isoceles triangle with apex angle [apex_angle] oriented towards [orientation] *)
     let triangle ?orientation:(orientation=90.) ?apex_angle:(apex_angle=60.)  env =
-	{ Transfo.Style.pet = shape_pet ; Transfo.Style.transfo = (fun transfos info ->
+	{ Transfo.Style.pet = shape_pet ; Transfo.Style.transfo = (fun info ->
 
 	  let n,orient = float_div orientation 90. in
 
@@ -1471,7 +1469,7 @@ Doing a rectangle.\n" ;
 
     let anchor,anchor_pet =
       Pet.register "node anchor" ~depends:[shape_pet] (fun pet anchor ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  (* Printf.fprintf stderr "anchor\n" ; flush stderr ; *)
 	  let (xt,yt) as v = Vector.of_points (info.anchor anchor) (info.anchor info.node_anchor) in
 	  let info' = translate v info in
@@ -1480,13 +1478,13 @@ Doing a rectangle.\n" ;
 
     let at,at_pet =
       Pet.register "node at" ~depends:[anchor_pet] (fun pet point ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  (* Printf.fprintf stderr "node at\n" ; flush stderr ; *)
 	  translate point info)})
 
     let at3d,at3d_pet =
       Pet.register "node at ... in 3d" ~depends:[anchor_pet] (fun pet projection point3d ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  (* Printf.fprintf stderr "node at\n" ; flush stderr ; *)
 	  let (x,y,z) = Proj3d.project projection point3d in
 	  { (translate (x,y) info)
@@ -1504,7 +1502,7 @@ Doing a rectangle.\n" ;
     let label, label_pet =
       Pet.register ~depends:[draw_pet;params_pet;fill_pet] "label"
 	(fun pet env ?pos:(pos=(`North : anchor)) ?style:(style=[rectangle env]) cont ->
-	  { pet = pet ; transfo = (fun transfos info ->
+	  { pet = pet ; transfo = (fun info ->
 	    let node = make env (at (info.anchor pos) :: anchor (opposite pos) :: style) cont in
 	    {info with decorations = Node node::info.decorations }) })
 
@@ -1582,7 +1580,7 @@ Doing a rectangle.\n" ;
       let (allNodes : Node.Transfo.Style.t list -> S.t),
 	all_nodes_pet =
       Pet.register "matrix all nodes" (fun pet node_transfos ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  (* Printf.fprintf stderr "allNodes \n" ; flush stderr ; *)
 	  { info with
 	    common =  info.common @ node_transfos })})
@@ -1607,7 +1605,7 @@ Doing a rectangle.\n" ;
 
       let makeNodes,make_nodes_pet =
       Pet.register "matrix make nodes" ~depends:[all_nodes_pet] (fun pet lines ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  (* Printf.fprintf stderr "makeNodes \n" ; flush stderr ; *)
 	  let width = List.fold_left
 	    (fun res line -> max res (List.length line))
@@ -1645,11 +1643,11 @@ Doing a rectangle.\n" ;
 
       let placement, placement_pet =
 	Pet.register "prepare matrix placement" ~depends:[all_nodes_pet;make_nodes_pet] (fun pet placement ->
-	  { pet = pet ; transfo = (fun transfos info -> { info with placement = placement }) })
+	  { pet = pet ; transfo = (fun info -> { info with placement = placement }) })
 
       let makePlacement,make_placement_pet =
 	Pet.register "matrix placement" ~depends:[placement_pet;all_nodes_pet;make_nodes_pet] (fun pet ->
-	  { pet = pet ; transfo = (fun transfos info ->
+	  { pet = pet ; transfo = (fun info ->
 	    (* Printf.fprintf stderr "matrix placement \n" ; flush stderr ; *)
 	      let info' =
 		{ info with nodes = mapi (fun i j node_info ->
@@ -1665,7 +1663,7 @@ Doing a rectangle.\n" ;
       let setZ,set_z_pet =
 	Pet.register "set matrix z coordinate" ~depends:[placement_pet;all_nodes_pet;make_nodes_pet]
 	  (fun pet z_placement ->
-	  { pet = pet ; transfo = (fun transfos info ->
+	  { pet = pet ; transfo = (fun info ->
 	      let info' =
 		{ info with nodes = mapi
 		    (fun i j node_info -> { node_info with Node.z = z_placement node_info i j })
@@ -1674,7 +1672,7 @@ Doing a rectangle.\n" ;
 
       (* let mainNodeContents,main_node_contents_pet = *)
       (* 	Pet.register "matrix main node contents" ~depends:[placement_pet] (fun pet ->  *)
-      (* 	{ pet = pet ; transfo = (fun transfos info ->  *)
+      (* 	{ pet = pet ; transfo = (fun info ->  *)
       (* 	  let nodes_contents = nodes_contents info in *)
       (* 	  let node_info = Node.Transfo.transform *)
       (* 	    [Node.contents_outputcommon nodes_contents] *)
@@ -1722,7 +1720,7 @@ Doing a rectangle.\n" ;
       let mainNode,main_node_pet =
       Pet.register "matrix main node" ~depends:[make_placement_pet]
 	(fun pet ?matrix_anchor node_transfos ->
-	  { pet = pet ; transfo = (fun transfos info ->
+	  { pet = pet ; transfo = (fun info ->
 	    let pdf_start = 0.,0. in
 	    let node_transfos = begin match matrix_anchor with
   	      None -> node_transfos
@@ -1740,7 +1738,7 @@ Doing a rectangle.\n" ;
       let mainAnchor,main_anchor_pet =
       Pet.register "matrix main node anchor" ~depends:[main_node_pet]
 	(fun pet matrix_anchor ->
-	  { pet = pet ; transfo = (fun transfos info ->
+	  { pet = pet ; transfo = (fun info ->
 	    let pdf_start = 0.,0. in
 	    let node_transfos = [Node.anchor (`Vec (mk_matrix_anchor matrix_anchor info))]
 	    in
@@ -1756,7 +1754,7 @@ Doing a rectangle.\n" ;
       (* let wrap,wrap_pet =  *)
       (* 	Pet.register "matrix wrap" ~depends:[main_node_contents_pet; main_node_pet] (fun pet -> *)
       (* 	  { pet = pet ;  *)
-      (* 	    transfo = (fun transfos info ->  *)
+      (* 	    transfo = (fun info ->  *)
       (* 	      let info' =  *)
       (* 		{ info with nodes = mapi (fun i j node_info ->  *)
       (* 		  Node.translate (info.placement info i j) node_info) info.nodes }  *)
@@ -1841,14 +1839,14 @@ Doing a rectangle.\n" ;
       let (allNodes : Node.Transfo.Style.t list -> S.t),
 	all_nodes_pet =
       Pet.register "matrix 3d all nodes" (fun pet node_transfos ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  { info with
 	    common =  info.common @ node_transfos })})
 
 
       let makeNodes,make_nodes_pet =
       Pet.register "matrix 3d make nodes" ~depends:[all_nodes_pet] (fun pet planes ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  (* Printf.fprintf stderr "makeNodes \n" ; flush stderr ; *)
 	  let width = max_list_list List.length 0 planes in
 	  let depth = List.length planes in
@@ -1897,11 +1895,11 @@ Doing a rectangle.\n" ;
 
       let placement, placement_pet =
 	Pet.register "prepare 3d matrix placement" ~depends:[all_nodes_pet;make_nodes_pet] (fun pet placement ->
-	  { pet = pet ; transfo = (fun transfos info -> { info with placement = placement }) })
+	  { pet = pet ; transfo = (fun info -> { info with placement = placement }) })
 
       let transmit, transmit_pet =
       Pet.register "make 3d matrix " ~depends:[all_nodes_pet;make_nodes_pet;placement_pet] (fun pet sty ->
-	{ pet = pet ; transfo = (fun transfos
+	{ pet = pet ; transfo = (fun
 	  ({ mainNode = main ;
 	    mainNodes = mains ;
 	    common = style ;
@@ -1926,7 +1924,7 @@ Doing a rectangle.\n" ;
       let mainNode,main_node_pet =
       Pet.register "matrix 3d main node" ~depends:[transmit_pet]
 	(fun pet node_transfos ->
-	  { pet = pet ; transfo = (fun transfos info ->
+	  { pet = pet ; transfo = (fun info ->
 	    let nodes_contents = nodes_contents info in
 	    let pdf_start = 0.,0. in
 	    let node_info = Node.Transfo.transform
@@ -2085,29 +2083,29 @@ Doing a rectangle.\n" ;
       let paramsOf,params_pet =
 	Pet.register "params"
 	(fun pet params ->
-	  { pet = pet ; transfo = (fun transfos edge_info ->
+	  { pet = pet ; transfo = (fun edge_info ->
 	    { edge_info with params = params })})
 
       let dashed pattern =
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	{ pet = params_pet ; transfo = (fun edge_info ->
 	  { edge_info with params = { edge_info.params with dashPattern = pattern }})}
 
       let fill c =
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	{ pet = params_pet ; transfo = (fun edge_info ->
 	  { edge_info with params = { edge_info.params with close = true ; fillColor = Some c }})}
 
       let color c =
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	{ pet = params_pet ; transfo = (fun edge_info ->
 	  { edge_info with params = { edge_info.params with strokingColor = Some c }})}
 
       let noStroke =
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	{ pet = params_pet ; transfo = (fun edge_info ->
 	  { edge_info with params = { edge_info.params with strokingColor = None }})}
 
       let black = color Color.black
 
       let lineWidth w =
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	{ pet = params_pet ; transfo = (fun edge_info ->
 	  { edge_info with params = { edge_info.params  with lineWidth = w }})}
 
 
@@ -2153,13 +2151,13 @@ Doing a rectangle.\n" ;
 
       let clip, clip_pet =
 	Pet.register ~depends:[params_pet] "clip" (fun pet ->
-	  { pet = pet ; transfo = (fun transfos info ->
+	  { pet = pet ; transfo = (fun info ->
 	    { info with underlying_curve = do_clip info.underlying_curve info.start info.finish }) })
 
       let draw, draw_pet =
 	Pet.register ~depends:[clip_pet] "draw edge" (fun pet ->
 	  { pet = pet ;
-	    transfo = (fun transfos edge_info ->
+	    transfo = (fun edge_info ->
 	      { edge_info with curves = [ edge_info.params, edge_info.underlying_curve ] })
 	  })
 
@@ -2206,7 +2204,7 @@ Doing a rectangle.\n" ;
 	  (fun pet freq amplitude a b ->
 	    { pet = pet ;
 	      transfo =
-		(fun transfos edge_info ->
+		(fun edge_info ->
 		  let squiggle (params, curve) =
 		    let curve1,curve,curve2 = Curve.split2 curve a b in
 		    (params, curve1 @ (List.flatten (List.map (do_squiggle freq amplitude) curve)) @ curve2)
@@ -2217,7 +2215,7 @@ Doing a rectangle.\n" ;
 		)})
 
       let shorten, shorten_pet = Pet.register ~depends:[clip_pet] "shorten" (fun pet a b ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  let shorten (params',curve') =
 	    let ta = if a = 0.0 then 0.0 else Curve.curvilinear curve' a in
 	    let tb = if b = 0.0 then 1.0 else Curve.curvilinear curve' (-. b) in
@@ -2235,7 +2233,7 @@ Doing a rectangle.\n" ;
       let zs, zs_pet =
 	Pet.register "provide a z curve (mainly for intersections)" (fun pet zs ->
 	  { pet = pet ;
-	    transfo = (fun transfos edge_info ->
+	    transfo = (fun edge_info ->
 	      { edge_info with z_curve = zs })
 	  })
 
@@ -2244,7 +2242,7 @@ Doing a rectangle.\n" ;
 
       let double, double_pet = Pet.register ~depends:[params_pet; draw_pet]
 	~append:only_last "double" (fun pet margin ->
-	{ pet = pet ; transfo = (fun transfos info ->
+	{ pet = pet ; transfo = (fun info ->
 	  let black_paths = List.map (fun (params, curve) ->
 	    { params with
 	      lineWidth = margin +. 2. *. params.lineWidth },
@@ -2354,12 +2352,12 @@ Doing a rectangle.\n" ;
 (* Note 2: in the presence of a "double arrow" we take the latest
 intersection. Maybe this could be modified by slightly changing the
 [margin], but the current solution is the best I could get for now. *)
-let cliptip grad info tip curve0 =
+let cliptip ?(reverse=false) grad info tip curve0 =
     let margin = 	if info.tip_info.is_double then
 			  0.5 *. (info.tip_info.tip_line_width +. info.params.lineWidth)  else 0. in
     let normale = Vector.(normalise ~norm:margin (turn_left grad)) in
     let curve = Curve.translate normale curve0 in
-    let (j,t') as finish = begin
+    let finish = if reverse then ((Curve.nb_beziers curve) - 1,1.) else begin
 	match tip with
 	| [] -> ((Curve.nb_beziers curve) - 1,1.)
 	| [xs,ys] when Array.length xs <= 1 -> ((Curve.nb_beziers curve) - 1,1.)
@@ -2370,12 +2368,23 @@ let cliptip grad info tip curve0 =
 		    else earliest_intersection)
 		   curve curve2 ((Curve.nb_beziers curve) - 1,1.))
       end in
-    if Curve.compare_lt (0,0.) finish < 0 then
-      Curve.internal_restrict curve0 (0,0.) finish
+     let beggin = if not reverse then (0,0.) else begin
+	match tip with
+	| [] -> (0,0.)
+	| [xs,ys] when Array.length xs <= 1 -> (0,0.)
+	| curve2 ->
+	   Curve.(app_default
+		    (if info.tip_info.is_double then
+		      earliest_intersection
+		    else latest_intersection)
+		   curve curve2 (0,0.))
+      end in
+    if Curve.compare_lt beggin finish < 0 then
+      Curve.internal_restrict curve0 beggin finish
     else Curve.restrict curve0 0. 0.
 
 (* Transformation for adding an arrow head *)
-      let base_arrow env ?head_or_tail:(head_or_tail=true) transfos edge_info=
+      let base_arrow env ?head_or_tail:(head_or_tail=true) edge_info=
 	(* We first compute the gradient where the arrow head should be added *)
 	let params = edge_info.params in
 	let underlying_curve = edge_info.underlying_curve in
@@ -2397,9 +2406,11 @@ let cliptip grad info tip curve0 =
 		 (* Now we're in business *)
 		 let angle = Vector.angle grad in
 		 let tip = fontArrowHead e angle env edge_info.tip_info params arrowCurves size in
+                 let reverse = not head_or_tail in
 		 { edge_info with
 		   (* We shorten the main curves as needed *)
-		   curves = List.map (fun (params,curve) -> params, cliptip grad edge_info tip curve)
+		   curves = List.map (fun (params,curve) -> params,
+                                                cliptip ~reverse grad edge_info tip curve)
 				     edge_info.curves ;
 		   (* and add the new decoration *)
 		   decorations = edge_info.decorations @
@@ -2422,9 +2433,18 @@ let cliptip grad info tip curve0 =
 		      { pet = pet ; transfo = base_arrow env ~head_or_tail:false })
       let arrow' env = backArrowOf env
 
+      let bothArrowOf, bothArrow_head_pet =
+	Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow head+tail"
+		     (fun pet env ->
+		       { pet = pet ; transfo =
+                                       (fun info ->
+                                         base_arrow env (base_arrow env ~head_or_tail:false info)) })
+
+      let dblArrow env = bothArrowOf env
+
       let modToOf,mod_to_of_pet = Pet.register ~depends:[draw_pet] "mod to"
 	(fun pet time width env ->
-	  { pet = pet ; transfo = (fun transfos edge_info ->
+	  { pet = pet ; transfo = (fun edge_info ->
 	    let edge_info' = Transfo.transform [arrow env] edge_info in
 	    let underlying_curve = edge_info'.underlying_curve in
 	    let middle = Curve.eval underlying_curve time in
@@ -2441,7 +2461,7 @@ let cliptip grad info tip curve0 =
 
       let bendOf,bend_pet = Pet.register ~codepends:[clip_pet] "bend"
 	(fun pet angle ->
-	  { pet = pet ; transfo = (fun transfos edge_info ->
+	  { pet = pet ; transfo = (fun edge_info ->
 	    let curve = edge_info.underlying_curve in
 	    let curve' = begin
 	      if Curve.nb_beziers curve = 1 then
@@ -2470,7 +2490,7 @@ let cliptip grad info tip curve0 =
       let foreground, foreground_pet =
 	Pet.register ~depends:[draw_pet;shorten_pet;params_pet] "foreground"
 	  (fun pet ?shortens:(shortens=3.) ?shortene:(shortene=3.) ?color:(color=Color.white) margin ->
-	  { pet = pet ; transfo = (fun transfos info ->
+	  { pet = pet ; transfo = (fun info ->
 	    let white_paths = List.map (fun (params, curve) ->
 	      { info.params with
 		Drivers.dashPattern = [] ;
@@ -2489,7 +2509,7 @@ let cliptip grad info tip curve0 =
 		    params_pet;draw_pet;shorten_pet;squiggle_pet;clip_pet]
 	  "make anchors"
 	  (fun pet ->
-	  { pet = pet ; transfo = (fun transfos edge_info ->
+	  { pet = pet ; transfo = (fun edge_info ->
       	    let curve = edge_info.underlying_curve in
       	    let given_curve = edge_info.given_curve in
       	    let anchor = function
@@ -2510,7 +2530,7 @@ let cliptip grad info tip curve0 =
       let label, label_pet =
 	Pet.register ~depends:[draw_pet;shorten_pet;params_pet;double_pet;foreground_pet;make_anchors_pet] "label"
 	  (fun pet env ?pos:(pos=(`Temporal 0.5 : anchor)) ?style:(style=[Node.rectangle env]) cont ->
-	    { pet = pet ; transfo = (fun transfos info ->
+	    { pet = pet ; transfo = (fun info ->
 	      let node = Node.make env (Node.at (info.anchor pos) :: style) cont in
 	      { info with decorations = info.decorations @ [Node node] }) })
 
