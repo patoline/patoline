@@ -495,52 +495,72 @@ function start_edit(name,ev) {
   draggable(title,div);
 }
 
-function start_drag(name,ev,touch) {
+var indrag = false;
+
+function start_drag(el,name,ev,touch) {
+  if (indrag) return;
+  indrag = true;
   ev = ev || window.event;
   var svg_rect = document.getElementById('svg_div');
   var w = svg_rect.offsetWidth;
   var h = svg_rect.offsetHeight;
   var scale = Math.max(%g / w, %g / h);
-  var x0 =ev.pageX;
-  var y0 =ev.pageY;
+  var x0 = 0; var y0 = 0;
+  if (touch) {
+    x0 = ev.changedTouches[0].pageX;
+    y0 = ev.changedTouches[0].pageY;
+  } else {
+    x0 =ev.pageX;
+    y0 =ev.pageY;
+  }
   var x  = x0;
   var y  = y0;
   function do_drag(release) {
     var dx = scale * (x - x0); var dy = scale * (y0 - y);
-    if (dx != 0 || dy != 0 || release) {
+    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5 || release) {
       if (release) rmsg = '_release'; else rmsg = '';
       websocket_send('drag_'+(current_slide)+'_'+(current_state)+'_'+dx+'_'+dy+rmsg+' '+name);
       x0 = x; y0 = y;
   }}
-  var timer = setInterval(function () {do_drag(false);},200);
+  var timer = setInterval(function () {do_drag(false);},50);
+  function mouse_move(e) {
+      x = e.pageX;
+      y = e.pageY;
+  }
   function touch_move(e) {
-      x = e.targetTouches[0].pageX,
-      y = e.targetTouches[0].pageY;
+      e.preventDefault();
+      x = e.changedTouches[0].pageX;
+      y = e.changedTouches[0].pageY;
   }
   function stop_drag(e) {
+    indrag=false;
     clearInterval(timer);
     if (touch) {
-      touch.removeEventListener('touchmove', touch_move , false);
-      touch.removeEventListener('touchend', stop_drag, false);
-      touch.removeEventListener('touchcancel', stop_drag, false);
+      alert('fin');
       touch_move(e);
+      el.removeEventListener('touchmove', touch_move , false);
+      el.removeEventListener('touchend', stop_drag, false);
+      el.removeEventListener('touchcancel', stop_drag, false);
+      window.removeEventListener('touchmove', touch_move , false);
+      window.removeEventListener('touchend', stop_drag, false);
+      window.removeEventListener('touchcancel', stop_drag, false);
     } else {
-      x = e.pageX; y = e.pageY;
+      mouse_move(e);
       window.onmousemove = null;
       window.onmouseup = null;
     }
     do_drag(true);
   }
   if (touch) {
-    touch.addEventListener('touchmove', touch_move , false);
-    touch.addEventListener('touchend', stop_drag, false);
-    touch.addEventListener('touchcancel', stop_drag, false);
+    el.addEventListener('touchmove', touch_move , false);
+    el.addEventListener('touchend', stop_drag, false);
+    el.addEventListener('touchcancel', stop_drag, false);
+    window.addEventListener('touchmove', touch_move , false);
+    window.addEventListener('touchend', stop_drag, false);
+    window.addEventListener('touchcancel', stop_drag, false);
   } else {
     window.onmouseup = stop_drag;
-    window.onmousemove = function(e) {
-      x = e.pageX;
-      y = e.pageY;
-    };
+    window.onmousemove = mouse_move;
   }
   return false;
 }

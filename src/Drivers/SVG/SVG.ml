@@ -755,11 +755,13 @@ function setReaction(svg) {
         var elt = dragable[a];
         elt.style.pointerEvents = 'all';
         var name = elt.getAttribute('id');
-        function closure2(name,touch) {
-          return(function (e) { start_drag(name,e,touch); });
+        function closure2(elt,name,touch) {
+          return(function (e) {
+            if (touch) e.preventDefault();
+            start_drag(elt,name,e,touch); });
         }
-        elt.onmousedown=closure2(name,null);
-        elt.addEventListener('touchstart', closure2(name, false));
+        elt.onmousedown=closure2(elt,name,false);
+        elt.addEventListener('touchstart', closure2(elt,name, true));
         elt.onmouseover=(function () { document.body.style.cursor = 'move'; });
         elt.onmouseout=(function () { document.onselectstart = null; document.body.style.cursor = 'default'; });
     }
