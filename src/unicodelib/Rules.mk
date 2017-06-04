@@ -5,12 +5,8 @@ d := $(if $(d),$(d)/,)$(mod)
 UNICODELIB_INCLUDES := -I $(d) $(PACK_UNICODELIB)
 PA_CONV:=$(d)/pa_convert
 
-$(d)/%.depends: INCLUDES:=$(DEPS_DIR)
-$(d)/%.depends: OCAMLDEP:=ocamlfind ocamldep -pp pa_ocaml $(INCLUDES)
-$(d)/pa_%.depends: OCAMLDEP:=ocamlfind ocamldep -pp pa_ocaml $(OFLAGS) $(INCLUDES)
+$(d)/%.depends $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: OCPP=$(PA_OCAML)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa: INCLUDES:=$(UNICODELIB_INCLUDES)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cma: OCAMLC:=ocamlfind ocamlc -pp pa_ocaml $(OFLAGS) $(INCLUDES)
-$(d)/%.cmx $(d)/%.cmxa: OCAMLOPT:=ocamlfind ocamlopt -pp pa_ocaml $(OFLAGS) $(INCLUDES)
 $(PA_CONV): INCLUDES:=$(UNICODELIB_INCLUDES)
 
 # Compute ML files dependencies
@@ -63,11 +59,6 @@ $(ENCODING_ML): %.ml: $(PA_CONV)
 	$(Q)$(PA_CONV) --ascii $(@D)/encoding_data/$(basename $(@F)).TXT > $@
 
 ###
-
-### Parsing and data generation for UnicodeData.txt
-$(d)/pa_UnicodeData.cmx: $(d)/pa_UnicodeData.ml $(d)/pa_UnicodeData.cmo
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(INCLUDES) -pp pa_ocaml -package compiler-libs -c $<
 
 $(d)/pa_UnicodeData: $(d)/UChar.cmx $(d)/PermanentMap.cmx $(d)/UnicodeLibConfig.cmx $(d)/UCharInfo.cmx $(d)/pa_UnicodeData.cmx
 	$(ECHO) "[OPT] $@"

@@ -12,7 +12,6 @@ $(d)/Opentype/%.cmx $(d)/Opentype/%.cmo $(d)/Opentype/%.cmi: INCLUDES:=$(LIBFONT
 $(d)/unicodeRanges/%.cmx $(d)/unicodeRanges/%.cmo $(d)/unicodeRanges/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
 
 $(d)/Opentype/Opentype.ml.depends: $(UNICODE_DIR)/ROMAN.ml $(UNICODE_DIR)/LATIN1.ml $(UNICODE_DIR)/UTF8.ml
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d):=$(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) \
           $(wildcard $(d)/CFF/*.ml) $(wildcard $(d)/CFF/*.mli) \
@@ -38,14 +37,6 @@ LIBFONTS_CMX:=$(LIBFONTS_ML:.ml=.cmx)
 
 LIBFONTS_MLI:=$(wildcard $(d)/*.mli) $(wildcard $(d)/CFF/*.mli) $(wildcard $(d)/Opentype/*.mli)
 LIBFONTS_CMI:=$(LIBFONTS_MLI:.mli=.cmi) $(d)/FBezier.cmi $(d)/FTypes.cmi $(d)/IsoAdobe.cmi $(d)/UnicodeRanges.cmi $(d)/Opentype/Opentype.cmi $(d)/CFF/CFF.cmi
-
-# We cannot run ocamlc and ocamlopt simultaneously on the same input,
-# since they both overwrite the .cmi file, which can get corrupted.
-# That's why we arbitrarily force the following dependency.
-$(LIBFONTS_CMX): %.cmx: %.cmo
-
-$(LIBFONTS_MLI:.mli=.cmo): %.cmo: %.cmi
-$(LIBFONTS_MLI:.mli=.cmx): %.cmx: %.cmo
 
 $(filter-out $(LIBFONTS_MLI:.mli=.cmi), $(LIBFONTS_CMI)): %.cmi: %.cmo;
 

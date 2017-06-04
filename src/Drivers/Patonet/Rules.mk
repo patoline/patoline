@@ -4,9 +4,7 @@ d := $(if $(d),$(d)/,)$(mod)
 
 PATONET_DRIVER_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(PACK_DRIVER_Patonet)
 
-$(d)/%.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATONET_DRIVER_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
@@ -15,9 +13,6 @@ ifneq ($(MAKECMDGOALS),distclean)
 -include $(DEPENDS_$(d))
 endif
 endif
-
-# cmi race condition
-$(d)/Patonet.cmx: %.cmx: %.cmo
 
 $(d)/Patonet.cma: $(d)/Patonet.cmo
 	$(ECHO) "[MKL] $@"

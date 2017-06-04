@@ -5,9 +5,7 @@ d := $(if $(d),$(d)/,)$(mod)
 NET_DRIVER_INCLUDES := \
 	-I $(d) $(PACK_DRIVER_Net) -I $(DRIVERS_DIR)/SVG -I $(CONFIG_DIR)
 
-$(d)/%.ml.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(NET_DRIVER_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
@@ -16,9 +14,6 @@ ifneq ($(MAKECMDGOALS),distclean)
 -include $(DEPENDS_$(d))
 endif
 endif
-
-# cmi race condition
-$(d)/Net.cmx: %.cmx: %.cmo
 
 $(d)/Net.cma: $(d)/Net.cmo
 	$(ECHO) "[LNK] $@"

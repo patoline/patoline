@@ -4,9 +4,6 @@ d := $(if $(d),$(d)/,)$(mod)
 
 all: $(d)/emacs/patoline-input.el
 
-$(d)/emacs/%.depends: INCLUDES += $(DEPS_DIR)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
-
 # Vim part
 
 # Emacs part
@@ -17,20 +14,15 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-$(d)/emacs/SubstKey.cmx: INCLUDES += -I $(UNICODE_DIR) -I $(EDITORS_DIR)/emacs
-$(d)/emacs/SubstKey.cmo: INCLUDES += -I $(UNICODE_DIR) -I $(EDITORS_DIR)/emacs
-$(d)/emacs/SubstKey.cmx: $(d)/emacs/SubstKey.cmo
+$(d)/emacs/%.cmx $(d)/emacs/%.cmo: INCLUDES += -I $(UNICODE_DIR) -I $(EDITORS_DIR)/emacs
+
 $(d)/emacs/SubstKey: $(d)/emacs/SubstKey.cmx $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -package str,unicodelib $< -linkpkg -o $@
 
-$(d)/emacs/UnicodeScripts.cmx: INCLUDES += -I $(UNICODE_DIR) -I $(EDITORS_DIR)/emacs
-$(d)/emacs/UnicodeScripts.cmo: INCLUDES += -I $(UNICODE_DIR) -I $(EDITORS_DIR)/emacs
-$(d)/emacs/UnicodeScripts.cmx: $(d)/emacs/UnicodeScripts.cmo
 $(d)/emacs/UnicodeScripts: $(d)/emacs/UnicodeScripts.cmx $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -package bigarray,unicodelib $< -linkpkg -o $@
-
 
 $(d)/emacs/Subsup.el $(d)/emacs/Subsup.ml: $(UNICODE_DATA_TXT) $(d)/emacs/UnicodeScripts
 	$(ECHO) "[GEN] $@"

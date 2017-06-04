@@ -7,9 +7,7 @@ SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
 
 RBUFFER_INCLUDES := -I $(d) $(PACK_RBUFFER)
 
-$(d)/%.depends: INCLUDES:=$(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(RBUFFER_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
@@ -26,12 +24,6 @@ RBUFFER_CMX:=$(RBUFFER_ML:.ml=.cmx)
 
 RBUFFER_MLI:=$(wildcard $(d)/*.mli)
 RBUFFER_CMI:=$(RBUFFER_MLI:.mli=.cmi)
-
-# We cannot run ocamlc and ocamlopt simultaneously on the same input,
-# since they both overwrite the .cmi file, which can get corrupted.
-# That's why we arbitrarily force the following dependency.
-#inutile Rbuffer à un .mli
-#$(RBUFFER_CMX): %.cmx: %.cmo
 
 $(d)/rbuffer.cma: $(RBUFFER_CMO)
 	$(ECHO) "[LNK] $@"

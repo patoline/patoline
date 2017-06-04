@@ -2,11 +2,11 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-CESURE_INCLUDES := -I $(d) $(PACK_CESURE) -pp pa_ocaml
+CESURE_INCLUDES := -I $(d) $(PACK_CESURE)
 
-$(d)/%.ml.depends $(d)/%.ml.depends: INCLUDES += $(DEPS_DIR) -pp pa_ocaml
+$(d)/%.ml.depends $(d)/%.ml.depends: OCPP=pa_ocaml
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/cesure: INCLUDES:=$(CESURE_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: OCPP=pa_ocaml
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
@@ -15,10 +15,6 @@ endif
 endif
 
 all: $(d)/cesure $(d)/cesure.cmxa $(d)/cesure.cma
-
-$(d)/cesure.cmo $(d)/hyphen.cmo: $(UNICODE_DIR)/UnicodeLibConfig.cmo
-$(d)/cesure.cmx: $(d)/cesure.cmo $(UNICODE_DIR)/UnicodeLibConfig.cmx
-$(d)/hyphen.cmx: $(d)/hyphen.cmo $(UNICODE_DIR)/UnicodeLibConfig.cmx
 
 $(d)/cesure.cma: $(d)/hyphen.cmo $(UNICODE_DIR)/unicodelib.cma
 	$(ECHO) "[LNK] $@"

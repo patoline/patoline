@@ -6,7 +6,6 @@ UTIL_INCLUDES := -I $(d) $(PACK_UTIL)
 
 $(d)/%.depends: INCLUDES:=$(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa : INCLUDES:=$(UTIL_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 # Compute ML files dependencies
 SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
@@ -55,11 +54,6 @@ install-util: $(d)/patutil.cma $(d)/patutil.cmxa $(d)/patutil.cmxs \
 	$(ECHO) "[INS] patutil"
 	- $(OCAMLFIND) remove patutil
 	$(Q)$(OCAMLFIND) install patutil $^
-
-src/patutil/Util.cmo : src/patutil/UsualMake.cmo src/unicodelib/UTF8.cmo \
-    src/unicodelib/UChar.cmo src/rbuffer/rbuffer.cmi
-src/patutil/Util.cmx : src/patutil/UsualMake.cmx src/unicodelib/UTF8.cmx \
-    src/unicodelib/UChar.cmx src/rbuffer/rbuffer.cmx
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

@@ -3,10 +3,8 @@
 d := $(if $(d),$(d)/,)$(mod)
 
 SVG_DRIVER_INCLUDES := -I $(d) $(PACK_DRIVER_SVG)
-$(d)/%.depends : INCLUDES:=$(DEPS_DIR)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/%.cmxs: INCLUDES += $(SVG_DRIVER_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/%.cmxs: INCLUDES += $(SVG_DRIVER_INCLUDES)
 
 SVG_DRIVER_ML:=$(wildcard $(d)/*.ml)
 SVG_DRIVER_CMO:=$(SVG_DRIVER_ML:.ml=.cmo)
@@ -17,8 +15,6 @@ ifneq ($(MAKECMDGOALS),distclean)
 -include $(SVG_DRIVER_ML:.ml=.ml.depends)
 endif
 endif
-
-$(SVG_DRIVER_CMX): %.cmx: %.cmo
 
 $(d)/SVG.cma: $(SVG_DRIVER_CMO)
 	$(ECHO) "[LNK] $@"

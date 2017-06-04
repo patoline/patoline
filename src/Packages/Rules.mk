@@ -4,10 +4,7 @@ d := $(if $(d),$(d)/,)$(mod)
 
 PACKAGES_INCLUDES := -I $(d) $(PACK_FORMAT)
 
-# Find dependencies
-$(d)/%.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PACKAGES_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d) := $(wildcard $(d)/*.ml)
 CMI_$(d) := $(SRC_$(d):.ml=.cmi)

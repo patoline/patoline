@@ -4,15 +4,20 @@ d := $(if $(d),$(d)/,)$(mod)
 
 DRIVERS_INCLUDES:=-I $(d) $(PACK_DRIVERS)
 
-$(d)/%.depends $(d)/%/%.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%/%.cmo $(d)/%/%.cmi $(d)/%/%.cmx: INCLUDES += $(DRIVERS_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 DRIVERS_CMXA:=$(foreach drv,$(DRIVERS),src/Drivers/$(drv)/$(drv).cmxa)
 DRIVERS_CMA:=$(foreach drv,$(DRIVERS),src/Drivers/$(drv)/$(drv).cma)
 LIB_DRIVERS_A:=$(wildcard $(d)/*/lib*.a)
 DRIVERS_CMX:=$(DRIVERS_CMXA:.cmxa=.cmx)
 DRIVERS_CMXS:=$(DRIVERS_CMXA:.cmxa=.cmxs)
+
+# Find dependencies
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
+-include $(DRIVERS_CMXA:.cmxa=.ml.depends)
+endif
+endif
 
 # Building stuff
 all: $(DRIVERS_CMA) $(DRIVERS_CMXA) $(DRIVERS_CMXS)
@@ -22,9 +27,6 @@ all: $(DRIVERS_CMA) $(DRIVERS_CMXA) $(DRIVERS_CMXS)
 DRIVERS_WITH_RULES_MK := $(foreach drv,$(patsubst %/Rules.mk,%,$(wildcard $(d)/*/Rules.mk)),$(drv)/$(notdir $(drv)).cmxa)
 DRIVERS_WITHOUT_RULES_MK := $(filter-out $(DRIVERS_WITH_RULES_MK),$(DRIVERS_CMXA))
 
-# for cmi race condition
-$(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.cmo
-
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmo): %.cmo: %.ml
 	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) -o $@ -c $<
@@ -32,10 +34,6 @@ $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmo): %.cmo: %.ml
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.ml %.cmo
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) -o $@ -c $<
-
-$(DRIVERS_WITHOUT_RULES_MK:.cmxa=.ml.depends): %.ml.depends: %.ml
-	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLDEP) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) $< > $@
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cma): %.cma: %.cmo
 	$(ECHO) "[LNK] $@"
@@ -48,13 +46,6 @@ $(DRIVERS_WITHOUT_RULES_MK): %.cmxa: %.cmx
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmxs): %.cmxs: %.cmx
 	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) $(PACK_DRIVER_$(patsubst %.cmx,%,$(notdir $(<)))) $(INCLUDES) -shared -o $@ $<
-
-# Find dependencies
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(MAKECMDGOALS),distclean)
--include $(DRIVERS_CMXA:.cmxa=.ml.depends)
-endif
-endif
 
 CLEAN+=$(DRIVERS_CMXA) $(DRIVERS_CMX) \
        $(d)/*.cmo $(d)/*.cmi $(d)/*.o $(d)/*.cmx $(d)/*.a $(d)/*.so $(d)/*.cmxa \

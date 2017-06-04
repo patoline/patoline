@@ -2,6 +2,10 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
+PROOF_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/Pdf $(PACK_PROOF)
+
+$(d)/proof $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PROOF_INCLUDES)
+
 # Compute ML files dependencies
 SRC_$(d):=$(wildcard $(d)/*.ml)
 ifneq ($(MAKECMDGOALS),clean)
@@ -9,14 +13,6 @@ ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
 endif
 endif
-
-PROOF_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/Pdf $(PACK_PROOF)
-
-$(d)/%.depends: INCLUDES+= $(DEPS_DIR)
-$(d)/proof $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PROOF_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
-
-$(d)/proof.cmx: $(d)/proof.cmo
 
 # Building stuff
 all: $(d)/proof

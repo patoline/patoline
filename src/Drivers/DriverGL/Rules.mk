@@ -4,10 +4,8 @@ d := $(if $(d),$(d)/,)$(mod)
 
 GL_DRIVER_INCLUDES:=-I $(d) $(PACK_DRIVER_DriverGL)
 
-$(d)/%.depends : INCLUDES:= $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/%.cmxs: INCLUDES += $(GL_DRIVER_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.cma $(d)/%.cmxa $(d)/%.cmxs: OFLAGS += -thread
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
@@ -32,11 +30,6 @@ endif
 ifeq ($(UNAME), Darwin)
 FPIC_FLAGS=-I$(shell ocamlc -where) -fPIC # -framework GLUT -framework OpenGL
 endif
-
-# We cannot run ocamlc and ocamlopt simultaneously on the same input,
-# since they both overwrite the .cmi file, which can get corrupted.
-# That's why we arbitrarily force the following dependency.
-$(DRIVERGL_CMX): %.cmx: %.cmo
 
 $(d)/FrameBuffer.o: $(d)/FrameBuffer.c
 	$(ECHO) "[GCC] $@"

@@ -4,10 +4,7 @@ d := $(if $(d),$(d)/,)$(mod)
 
 TYPOGRAPHY_INCLUDES := -I $(d) $(PACK_TYPOGRAPHY) -I $(CONFIG_DIR)
 
-# Compute ML files dependencies
-$(d)/%.depends $(wildcard $(d)/*/%.depends): INCLUDES:=$(DEPS_DIR)
 $(d)/%.cmx $(d)/%.cmo $(d)/%.cmi $(wildcard $(d)/*/%.cmx) $(wildcard $(d)/*/%.cmo) $(wildcard $(d)/*/%.cmi): INCLUDES:=$(TYPOGRAPHY_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d):=$(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) $(wildcard $(d)/*/*.ml) $(wildcard $(d)/*/*.mli) $(d)/ConfigFindFont.ml
 ifneq ($(MAKECMDGOALS),clean)
@@ -29,14 +26,6 @@ TYPOGRAPHY_CMI:=$(TYPOGRAPHY_MLI:.mli=.cmi)
 TYPOGRAPHY_ALL_CMI:=$(TYPOGRAPHY_ML:.ml=.cmi)
 TYPOGRAPHY_ALL_CMX:=$(TYPOGRAPHY_ML:.ml=.cmx)
 TYPOGRAPHY_ALL_CMO:=$(TYPOGRAPHY_ML:.ml=.cmo)
-
-# We cannot run ocamlc and ocamlopt simultaneously on the same input,
-# since they both overwrite the .cmi file, which can get corrupted.
-# That's why we arbitrarily force the following dependency.
-$(TYPOGRAPHY_CMX): %.cmx: %.cmo
-
-$(TYPOGRAPHY_CMI:.cmi=.cmo): %.cmo: %.cmi
-$(TYPOGRAPHY_CMI:.cmi=.cmx): %.cmx: %.cmo
 
 $(d)/Typography.cmxa: $(d)/patoconfig.cmxa $(d)/patoconfig.a
 $(d)/DefaultFormat.cmxa: $(d)/patoconfig.cmxa $(d)/patoconfig.a

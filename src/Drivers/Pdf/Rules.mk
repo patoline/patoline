@@ -2,25 +2,15 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
+PDF_DRIVERS_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(DRIVERS_INCLUDES) $(PACK_DRIVER_Pdf)
+
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PDF_DRIVERS_INCLUDES)
+
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
 -include $(d)/Pdf.ml.depends
 endif
 endif
-
-PDF_DRIVERS_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(DRIVERS_INCLUDES) $(PACK_DRIVER_Pdf)
-
-$(d)/%.ml.depends: INCLUDES += $(DEPS_DIR)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PDF_DRIVERS_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
-
-$(d)/Pdf.cmo: %.cmo: %.ml
-	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
-
-$(d)/Pdf.cmx: %.cmx: %.ml %.cmo
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 
 $(d)/Pdf.cma: %.cma: %.cmo
 	$(ECHO) "[LNK] $@"

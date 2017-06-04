@@ -4,7 +4,6 @@ d := $(if $(d),$(d)/,)$(mod)
 
 IMAGE_DRIVER_INCLUDES:=-I $(d) $(PACK_DRIVER_DriverImage)
 
-$(d)/%.ml.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(IMAGE_DRIVER_INCLUDES)
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
@@ -14,9 +13,6 @@ ifneq ($(MAKECMDGOALS),distclean)
 -include $(DEPENDS_$(d))
 endif
 endif
-
-# cmi race condition
-$(d)/DriverImage.cmx: %.cmx: %.cmo
 
 $(d)/DriverImage.cma: $(d)/DriverImage.cmo
 	$(ECHO) "[LNk] $@"

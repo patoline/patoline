@@ -2,31 +2,27 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-PATOBUILD_INCLUDES      := -I $(d) -I $(CONFIG_DIR) -package earley,threads -pp pa_ocaml -thread
+PATOBUILD_INCLUDES := -I $(d) -I $(CONFIG_DIR) -package earley,threads -thread
 
-$(d)/%.depends: INCLUDES := $(DEPS_DIR) -pp pa_ocaml
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES := $(PATOBUILD_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
+$(d)/%.cmi $(d)/%.cmx $(d)/%.cmo: INCLUDES := $(PATOBUILD_INCLUDES)
+$(d)/%.depends $(d)/%.cmi $(d)/%.cmx: OCPP=pa_ocaml
 
-# FIXME twice patoline otherwise patoline.ml.depends is not build ...
-# silly error ?
-PATOBUILD_MODS := pragma parallel build patoline patoline
-
-PATOBUILD_ML  := $(addsuffix .ml,$(addprefix $(d)/,$(PATOBUILD_MODS)))
+#no cmo here
+$(d)/%.cmo: ; touch $@
+$(d)/%.cmx: OCAMLOPT=$(OCAMLOPT_NOINTF)
 
 # Compute ML dependencies
-SRC_$(d) := $(addsuffix .depends,$(PATOBUILD_ML)))
+SRC_$(d):=$(wildcard $(d)/*.ml)
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
--include $(SRC_$(d))
+-include $(addsuffix .depends,$(SRC_$(d))) $(d)/patoline.ml.depends
 endif
 endif
 
-PATOBUILD_CMX := $(PATOBUILD_ML:.ml=.cmx)
-PATOBUILD_CMO := $(PATOBUILD_ML:.ml=.cmo)
+PATOBUILD_MODS := pragma parallel build patoline patoline
 
-$(PATOBUILD_CMX): %.cmx: %.cmo
+PATOBUILD_CMX  := $(addsuffix .cmx,$(addprefix $(d)/,$(PATOBUILD_MODS)))
 
 all: $(d)/patoline
 

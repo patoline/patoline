@@ -6,7 +6,6 @@ DB_INCLUDES := -I $(d) $(PACK_DB)
 
 $(d)/%.depends: INCLUDES:=$(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(DB_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 # Compute ML files dependencies
 SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
@@ -25,11 +24,6 @@ DB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(DB_MODS)))
 DB_CMO:=$(DB_ML:.ml=.cmo)
 DB_CMX:=$(DB_ML:.ml=.cmx)
 DB_CMI:=$(DB_ML:.ml=.cmi)
-
-# We cannot run ocamlc and ocamlopt simultaneously on the same input,
-# since they both overwrite the .cmi file, which can get corrupted.
-# That's why we arbitrarily force the following dependency.
-$(DB_CMX): %.cmx: %.cmo
 
 $(d)/db.cma: $(DB_CMO)
 	$(ECHO) "[LNK] $@"

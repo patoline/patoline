@@ -4,12 +4,11 @@ d := $(if $(d),$(d)/,)$(mod)
 
 # Compute ML files dependencies
 SRC_$(d):=$(wildcard $(d)/*.ml) $(d)/obj_parser.ml $(d)/obj_lexer.ml $(d)/obj_parser.mli
-$(d)/%.ml.depends $(d)/%.ml.depends: INCLUDES += $(DEPS_DIR)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
-# Without the following empty rule, make does not know that ocamlyacc
-# writes both .ml and .mli files.
-$(d)/obj_parser.mli: $(d)/obj_parser.ml ;
+$(d)/obj_lexer.ml.depends: $(d)/obj_lexer.ml $(d)/obj_parser.ml.depends $(d)/pdf_parser.ml.depends
+$(d)/obj_parser.ml.depends: $(d)/obj_parser.ml
+$(d)/pdf_parser.ml.depends: $(d)/pdf_parser.ml
+$(d)/%.cmx $(d)/%.cmo: INCLUDES:=-I $(d) -package $(CAMLZIP),rawlib,bytes
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
@@ -17,18 +16,8 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-$(d)/obj_lexel.cmx: $(d)/obj_lexer.cmo
-$(d)/pdf.cmx: $(d)/pdf.cmo
-$(d)/pdf_parser.cmx: $(d)/pdf_parser.cmo
-
 # Building stuff
-all: $(d)/pdf_parser.cmxa $(d)/pdf_parser.a $(d)/pdf_parser.cmi
-$(d)/%.depends $(d)/%.cmx $(d)/%.cmo: INCLUDES:=-I $(d) -package $(CAMLZIP),rawlib,bytes
-
-$(d)/pdf_parser.cmi: $(d)/pdf_parser.cmx ;
-
-$(d)/obj_parser.cmx $(d)/pdf_parser.cmx $(d)/pdfutil.cmx: $(RAWLIB_DIR)/rawlib.cmxa
-$(d)/obj_parser.cmo $(d)/pdf_parser.cmo $(d)/pdfutil.cmo: $(RAWLIB_DIR)/rawlib.cma
+all: $(d)/pdf_parser.cmxa $(d)/pdf_parser.a
 
 PDF_PARSER_SOURCES := $(d)/pdfutil.ml $(d)/obj_lexer.ml $(d)/obj_parser.ml $(d)/pdf_parser.ml
 

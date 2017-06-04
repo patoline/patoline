@@ -6,9 +6,11 @@ all: $(d)/pa_patoline
 
 PA_PATOLINE_INCLUDES := -I $(d) -I $(PATOBUILD_DIR) -I $(CONFIG_DIR) -I $(CONFIG_DIR) -I $(RBUFFER_DIR) -I $(UTIL_DIR) -I $(UNICODE_DIR)
 
-# Find dependencies
-$(d)/%.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PA_PATOLINE_INCLUDES)
+
+# no .cmo here
+$(d)/%.cmo: ; touch $@
+$(d)/%.cmx: private OCAMLOPT=$(OCAMLOPT_NOINTF)
 
 SRC_$(d) := $(wildcard $(d)/*.ml)
 ifneq ($(MAKECMDGOALS),clean)
@@ -17,16 +19,8 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-# no .cmo here
-$(d)/%.cmx: private OCAMLOPT=$(OCAMLOPT_NOINTF)
-
-$(d)/Subsup.cmx: private OCPP=pa_ocaml
-$(d)/Subsup.cmx: private OFLAGS+=-package earley,earley_ocaml
-$(d)/Subsup.ml.depends: private OCPP=pa_ocaml
-
-$(d)/pa_patoline.cmx: private OCPP=pa_ocaml
-$(d)/pa_patoline.cmx: private OFLAGS+=-package earley,earley_ocaml
-$(d)/pa_patoline.ml.depends: private OCPP=pa_ocaml
+$(d)/%.cmx $(d)/%.ml.depends: private OCPP=pa_ocaml
+$(d)/%.cmx: private OFLAGS+=-package earley,earley_ocaml
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa $(CONFIG_DIR)/patoconfig.cmxa $(RBUFFER_DIR)/rbuffer.cmxa $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[NAT] $@"

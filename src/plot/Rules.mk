@@ -2,7 +2,9 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-# Compute ML files dependencies
+PLOT_INCLUDES := -I $(d) $(PACK_PLOT)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx $(d)/%.p.cmx: INCLUDES += $(PLOT_INCLUDES)
+
 SRC_$(d):=$(wildcard $(d)/*.ml)
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
@@ -11,33 +13,20 @@ endif
 endif
 
 # Building stuff
-PATOPLOT_LIBS := $(d)/plot.cmxa $(d)/plot.a $(d)/plot.cmi
+PATOPLOT_LIBS := $(d)/plot.cmxa $(d)/plot.cma
 all: $(PATOPLOT_LIBS)
-
-PLOT_INCLUDES := -I $(d) $(PACK_PLOT)
-$(d)/%.depends: INCLUDES+=$(DEPS_DIR)
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PLOT_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
-
-# We cannot run ocamlc and ocamlopt simultaneously on the same input,
-# since they both overwrite the .cmi file, which can get corrupted.
-# That's why we arbitrarily force the following dependencies.
-$(d)/plot.cmx: $(d)/plot.cmo
-$(d)/plot.p.cmx: $(d)/plot.cmo
-$(d)/plot.cmi: $(d)/plot.cmo ;
-$(d)/plot.a: $(d)/plot.cmxa ;
 
 $(d)/plot.cmxa: %.cmxa: %.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[LNK] $@"
-	$(Q)$(OCAMLOPT) -a -o $@ $<
+	$(Q)$(OCAMLOPT) $(PLOT_INCLUDES) -a -o $@ $<
 
 $(d)/plot.cma: %.cma: %.cmo $(TYPOGRAPHY_DIR)/Typography.cma
 	$(ECHO) "[LNK] $@"
-	$(Q)$(OCAMLC) -a -o $@ $<
+	$(Q)$(OCAMLC) $(PLOT_INCLUDES) -a -o $@ $<
 
 $(d)/plot.p.cmxa: %.p.cmxa: %.p.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[LNK] $@"
-	$(Q)$(OCAMLOPT) -a -p -o $@ $<
+	$(Q)$(OCAMLOPT) $(PLOT_INCLUDES) -a -p -o $@ $<
 
 # Installing
 install: install-plot

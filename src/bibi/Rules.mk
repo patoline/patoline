@@ -7,7 +7,6 @@ BIBI_INCLUDES := -I $(d) $(PACK_BIBI) -I $(CONFIG_DIR)
 # Finding dependencies
 $(d)/%.ml.depends $(d)/%.ml.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(BIBI_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
@@ -26,9 +25,6 @@ $(d)/bibi.cmxa: %.cmxa: %.cmx
 $(d)/bibi.cma: %.cma: %.cmo $(TYPOGRAPHY_DIR)/Typography.cma
 	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -a $<
-
-$(d)/bibi.cmi: $(d)/bibi.cmo ;
-$(d)/bibi.cmx: $(d)/bibi.cmo
 
 # Installing
 install: install-bibi

@@ -4,18 +4,13 @@ d := $(if $(d),$(d)/,)$(mod)
 
 HTML_DRIVER_INCLUDES:=-I $(d) -I $(DRIVERS_DIR)/SVG $(PACK_DRIVER_Html)
 
-$(d)/%.depends : INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(HTML_DRIVER_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
 -include $(d)/Html.ml.depends
 endif
 endif
-
-# cmi race condition
-$(d)/Html.cmx: %.cmx: %.cmo
 
 $(d)/Html.cma: %.cma: %.cmo $(DRIVERS_DIR)/SVG/HtmlFonts.cmo
 	$(ECHO) "[LNK] $@"

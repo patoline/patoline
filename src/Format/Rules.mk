@@ -4,10 +4,7 @@ d := $(if $(d),$(d)/,)$(mod)
 
 FORMAT_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/SVG $(PACK_FORMAT)
 
-# Find dependencies
-$(d)/%.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(FORMAT_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d) := $(wildcard $(d)/*.ml)
 CMO_$(d) := $(SRC_$(d):.ml=.cmo)
@@ -36,15 +33,6 @@ $(OTHER_FORMATS:.ml=.cmxa): %.cmxa: %.cmx
 $(OTHER_FORMATS:.ml=.cma): %.cma: %.cmo
 	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -a $^
-
-# Common ML rules with proper includes
-$(CMO_$(d)): %.cmo: %.ml
-	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -c $<
-
-$(CMX_$(d)): %.cmx: %.ml %.cmo
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -c $<
 
 # Tell make that we want to build all formats
 all: $(OTHER_FORMATS:.ml=.cmxa) $(OTHER_FORMATS:.ml=.cma)

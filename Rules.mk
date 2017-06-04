@@ -112,9 +112,10 @@ EDITORS_DIR := editors
 # Compilers and various tools
 OCAML := ocaml
 OCAMLFIND := ocamlfind
-OCAMLC = ocamlfind ocamlc $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLOPT_SIMPLE = ocamlfind ocamlopt
 OCAMLC_SIMPLE = ocamlfind ocamlc
+OCAMLC_NOPP = $(OCAMLC_SIMPLE)
+OCAMLC = $(OCAMLC_SIMPLE) $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLOPT_NOPP = $(OCAMLOPT_SIMPLE) -intf-suffix .cmi
 OCAMLOPT_NOINTF = $(OCAMLOPT_SIMPLE) $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLOPT = $(OCAMLOPT_NOINTF) $(if $(OCPP),-pp '$(OCPP)',) -intf-suffix .cmi
@@ -123,6 +124,7 @@ OCAMLMKLIB = ocamlfind ocamlmklib
 OCAMLDOC = ocamlfind ocamldoc $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLYACC = ocamlyacc
 OCAMLLEX = ocamllex
+PA_OCAML = pa_ocaml
 FILE_TO_STRING = $(TOOLS_DIR)/file_to_string
 
 export OCAML OCAMLC OCAMLOPT OCAMLDEP OCAMLMKLIB
@@ -177,11 +179,11 @@ INCLUDES:=
 
 %.ml.depends: %.ml
 	$(ECHO) "[DEP] $@"
-	$(Q)$(OCAMLDEP) $(INCLUDES) -I $(<D) $< > $@
+	$(Q)$(OCAMLDEP) $(DEPS_DIR) $< > $@
 
 %.mli.depends: %.mli
 	$(ECHO) "[DEP] $@"
-	$(Q)$(OCAMLDEP) $(INCLUDES) $< > $@
+	$(Q)$(OCAMLDEP) $(DEPS_DIR) $< > $@
 
 %.cmi: %.mli %.ml.depends
 	$(ECHO) "[BYT] $@"
@@ -190,11 +192,14 @@ INCLUDES:=
 %.cmo: %.ml %.ml.depends
 	$(ECHO) "[BYT] $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
-%.cmx: %.cmo
 
-%.cmx: %.ml %.ml.depends
+%.cmx: %.ml %.ml.depends %.cmo
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ -c $<
+
+%.p.cmx: %.ml %.ml.depends %.cmo
+	$(ECHO) "[OPT] $@"
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -p -o $@ -c $<
 
 %: %.cmo
 	$(ECHO) "[LNK] $@"
@@ -208,7 +213,7 @@ INCLUDES:=
 	$(ECHO) "[YAC] $@"
 	$(Q)$(OCAMLYACC) $<
 
-%.ml: %.mll
+%.ml %.mli: %.mll
 	$(ECHO) "[LEX] $@"
 	$(Q)$(OCAMLLEX) -q $<
 

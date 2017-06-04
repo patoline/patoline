@@ -6,7 +6,6 @@ RAWLIB_INCLUDES := -I $(d) $(PACK_RAWLIB)
 
 $(d)/%.depends: INCLUDES:=$(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(RAWLIB_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 # Compute ML files dependencies
 SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
@@ -25,11 +24,6 @@ RAWLIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(RAWLIB_MODS)))
 RAWLIB_CMO:=$(RAWLIB_ML:.ml=.cmo)
 RAWLIB_CMX:=$(RAWLIB_ML:.ml=.cmx)
 RAWLIB_CMI:=$(RAWLIB_ML:.ml=.cmi)
-
-# We cannot run ocamlc and ocamlopt simultaneously on the same input,
-# since they both overwrite the .cmi file, which can get corrupted.
-# That's why we arbitrarily force the following dependency.
-$(RAWLIB_CMX): %.cmx: %.cmo
 
 $(d)/rawlib.cma: $(RAWLIB_CMO)
 	$(ECHO) "[LNK] $@"
