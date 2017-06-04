@@ -9,7 +9,6 @@ PA_PATOLINE_INCLUDES := -I $(d) -I $(PATOBUILD_DIR) -I $(CONFIG_DIR) -I $(CONFIG
 # Find dependencies
 $(d)/%.depends: INCLUDES += $(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PA_PATOLINE_INCLUDES)
-$(d)/%.cmx: $(d)/%.cmo $(d)/%.cmi
 
 SRC_$(d) := $(wildcard $(d)/*.ml)
 ifneq ($(MAKECMDGOALS),clean)
@@ -17,6 +16,9 @@ ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
 endif
 endif
+
+# no .cmo here
+$(d)/%.cmx: private OCAMLOPT=$(OCAMLOPT_NOINTF)
 
 $(d)/Subsup.cmx: private OCPP=pa_ocaml
 $(d)/Subsup.cmx: private OFLAGS+=-package earley,earley_ocaml
