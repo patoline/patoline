@@ -206,7 +206,7 @@ let postprocess_tree tree=
           par_env=(fun env->
                      let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
 
-                     { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures)
+                     { (envAlternative ~features:(Opentype.oldStyleFigures::env.fontFeatures)
                           (if List.length b>=4 then Regular else Caps) env) with
 		       par_indent = [];
                        hyphenate=(fun _->[||]);

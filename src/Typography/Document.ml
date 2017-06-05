@@ -500,15 +500,8 @@ let raw_new_page pageFormat zip =
 (**/**)
 
 
-
-
-
-
-
-
-
-
-
+let envApp l env =
+  List.fold_left (fun env f -> f env) env l
 
 let rec map_paragraphs f = function
   | Node n -> Node  { n with children=IntMap.map (map_paragraphs f) n.children }
@@ -646,18 +639,17 @@ let notItalic t =
 let toggleItalic t =
   [Scoped ((fun env -> envItalic (not env.fontItalic) env), t)]
 
-let envAlternative features alt env =
+let envAlternative ?(features:'a option) alt env =
+  let features = match features with
+      None -> env.fontFeatures
+    | Some f -> f
+  in
   let font,str,subs,pos = selectFont env.fontFamily alt env.fontItalic in
   let env = { env with fontAlternative = alt } in
   add_features features (updateFont env font str subs pos)
 
-let alternative ?features alt t =
-  [Scoped ((fun env ->
-    let features = match features with
-	None -> env.fontFeatures
-      | Some f -> f
-    in
-    envAlternative features alt env), t)]
+let alternative ?(features:'a option) alt t =
+  [Scoped ((fun env -> envAlternative ?features alt env), t)]
 
 let font_size_ratio font1 font2 =
   let x_h f =
@@ -684,39 +676,51 @@ let envMonoFamily fam env =
 let monoFamily fam t =
   [Scoped ((fun env -> envMonoFamily fam env), t)]
 
-let resize_env fsize env=
+let envSize fsize env=
   { env with
       size=fsize;
       lead=env.lead*.fsize/.env.size }
 
-let scale_env alpha env=
+(* Changer de taille dans un scope *)
+let size fsize t=
+  [Scoped (envSize fsize, t)]
+
+let envScale alpha env=
   { env with
       size=env.size *. alpha;
       lead=env.lead *. alpha }
 
 (* Changer de taille dans un scope *)
-let size fsize t=
-  [Scoped (resize_env fsize, t)]
-
-(* Changer de taille dans un scope *)
 let scale alpha t=
-  [Scoped (scale_env alpha, t)]
+  [Scoped (envScale alpha, t)]
 
-let color col t=
-  [Scoped ((fun env->{env with fontColor=col}), t)]
+let envScaleLead alpha env=
+  { env with
+      lead=env.lead *. alpha }
 
-let bold a=alternative Bold a
+let scaleLead alpha t=
+  [Scoped (envScaleLead alpha, t)]
 
-let sc a=alternative Caps a
+let envColor color env =
+  {env with fontColor=color}
+
+let color color t=
+  [Scoped (envColor color, t)]
+
+let envBold = envAlternative Bold
+let bold    = alternative Bold
+
+let envSv = envAlternative Caps
+let sc = alternative Caps
 
 let verbEnv x =
-  { (envFamily x.fontMonoFamily x)
-    with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [];
-      (*lead = x.lead *. x.fontMonoRatio*)}
+  { (envFamily x.fontMonoFamily (envScale x.fontMonoRatio x))
+  with normalMeasure=infinity; par_indent = [] } (* For full paragraph *)
 
 let verb p =
-  [Scoped ((fun x ->
-    { (envFamily x.fontMonoFamily x) with size = x.size *. x.fontMonoRatio}), p)]
+  [Scoped ((fun x -> envFamily x.fontMonoFamily
+                               (envScale x.fontMonoRatio x)),
+           p)] (* for inline text *)
 
 let emph=toggleItalic
 let id x=x
@@ -1669,72 +1673,77 @@ let flatten ?(initial_path=[]) env0 str=
     v
   in
 
-  let rec flatten flushes env_ path tree=
+  let rec flatten flushes env0 path tree=
     match tree with
-        Paragraph p -> (
-          p.par_paragraph <- List.length !paragraphs;
-          if List.exists (function N _->true | _->false) p.par_contents then
-            begin
-              let rec collect_nodes l cur nodes=
-                match l with
-                    []->List.rev (if cur<>[] then
-                        (Paragraph { p with par_contents=List.rev cur })::nodes
-                      else nodes)
-                | C(f)::s->(
-                  collect_nodes (f env_@s) cur nodes
-                )
-                (*| Scoped(f,e)::s->(
+    | Paragraph p -> (
+      let env1 = p.par_env env0 in
+      p.par_paragraph <- List.length !paragraphs;
+      let env2 =
+        if List.exists (function N _->true | _->false) p.par_contents then
+          begin
+            let rec collect_nodes l cur nodes=
+              match l with
+                []->List.rev (if cur<>[] then
+                                (Paragraph { p with par_contents=List.rev cur })::nodes
+                              else nodes)
+              | C(f)::s->(
+                collect_nodes (f env1@s) cur nodes
+              )
+              (*| Scoped(f,e)::s->(
                   (* TODO: support N here *)
                   collect_nodes s (::cur) nodes
                   )*)
-                  | N n::s->collect_nodes s []
-                    (n::
-                       if cur<>[] then
-                         (Paragraph { p with par_contents=List.rev cur })::nodes
-                       else nodes
-                    )
-                  | h::s->collect_nodes s (h::cur) nodes
+              | N n::s->collect_nodes s []
+                                      (n::
+                                         if cur<>[] then
+                                           (Paragraph { p with par_contents=List.rev cur })::nodes
+                                         else nodes
+                                      )
+              | h::s->collect_nodes s (h::cur) nodes
+            in
+            match collect_nodes p.par_contents [] [] with
+              [Paragraph _]->add_paragraph env1 tree path p
+            | [Node n]->flatten flushes env1 path (Node n)
+            | l->(
+              let rec make_node i m l=match l with
+                  []->m
+                | h::s->make_node (i+1) (IntMap.add i h m) s
               in
-              match collect_nodes p.par_contents [] [] with
-                  [Paragraph _]->add_paragraph env_ tree path p
-                | [Node n]->flatten flushes env_ path (Node n)
-                | l->(
-                  let rec make_node i m l=match l with
-                      []->m
-                    | h::s->make_node (i+1) (IntMap.add i h m) s
-                  in
-                  flatten flushes env_ path
-                    (Node { empty with children=make_node 0 IntMap.empty [] })
-                )
-            end
-          else
-            add_paragraph env_ tree path p
-        )
-      | FigureDef f -> (
-        let env1=f.fig_env env_ in
-        let n=IntMap.cardinal !figures in
-        fig_param:=IntMap.add n (f.fig_parameters env1) !fig_param;
-        figures:=IntMap.add n (f.fig_contents env1) !figures;
-        figure_trees:=IntMap.add n (tree,path) !figure_trees;
-        append buf frees (BeginFigure n);
-        f.fig_post_env env_ env1
-      )
-      | Node s-> (
-        let env=
-          let level=
-            try
-              List.length (snd (StrMap.find "_structure" env_.counters))
-            with Not_found->0
-          in
-          { env_ with counters=StrMap.map (fun (lvl,l)->if lvl>level then lvl,[] else lvl,l)
-              env_.counters }
+              flatten flushes env0 path
+                      (Node { empty with children=make_node 0 IntMap.empty [] })
+            )
+          end
+        else
+          add_paragraph env1 tree path p
+      in
+      p.par_post_env env0 env2
+    )
+    | FigureDef f -> (
+      let env1=f.fig_env env0 in
+      let n=IntMap.cardinal !figures in
+      fig_param:=IntMap.add n (f.fig_parameters env1) !fig_param;
+      figures:=IntMap.add n (f.fig_contents env1) !figures;
+      figure_trees:=IntMap.add n (tree,path) !figure_trees;
+      append buf frees (BeginFigure n);
+      f.fig_post_env env0 env1
+    )
+    | Node s-> (
+      let env1 = s.node_env env0 in
+      let env1=
+        let level=
+          try
+            List.length (snd (StrMap.find "_structure" env1.counters))
+          with Not_found->0
         in
-        s.node_paragraph <- List.length !paragraphs;
-        s.boxified_displayname <- draw_boxes env (boxify_scoped env s.displayname);
-        let flushes'=ref [] in
-        let flat_children k a (is_first, env1)=match a with
-            Paragraph p->(
-              let env2=flatten flushes' (p.par_env env1) ((k,tree)::path)
+        { env1 with counters=StrMap.map (fun (lvl,l)->if lvl>level then lvl,[] else lvl,l)
+                                        env1.counters }
+      in
+      s.node_paragraph <- List.length !paragraphs;
+      s.boxified_displayname <- draw_boxes env1 (boxify_scoped env1 s.displayname);
+      let flushes'=ref [] in
+      let flat_children k a (is_first, env1)=match a with
+          Paragraph p->(
+          let env2=flatten flushes' env1 ((k,tree)::path)
                 (Paragraph { p with par_contents=
                     (if is_first then (
                       (* Set up a marker to be able to obtain section page.
@@ -1748,53 +1757,45 @@ let flatten ?(initial_path=[]) env0 str=
                        bB (fun _->[Marker (Label name)])
                       ]
                      ) else [])@
-                          [bB (fun env->(p.par_env env).par_indent);
-                           Env (fun env->{env with par_indent=[]})]
-                              @ p.par_contents
-                          }
-              ) in
-              false, p.par_post_env env1 env2
-            )
-          | FigureDef f as h->(
-            let env2=flatten flushes' env1 ((k,tree)::path) h in
-            let num=try
-                      match StrMap.find "_figure" env2.counters with
-                          _,h::_->h
-                        | _->0
-              with
-                  Not_found ->0
-            in
-            flushes':=FlushFigure num::(!flushes');
-            is_first,env2
-          )
-          | Node h as tr->(
-            let env2=h.node_env env1 in
-            let env3=flatten flushes' env2 ((k,tree)::path) tr in
-            (is_first),
-            h.node_post_env env1 env3
-          )
+                      [bB (fun env->(p.par_env env).par_indent);
+                       Env (fun env->{env with par_indent=[]})]
+                      @ p.par_contents
+                           }
+                ) in
+          false, env2
+        )
+        | FigureDef f as h->(
+          let env2=flatten flushes' env1 ((k,tree)::path) h in
+          let num=try
+              match StrMap.find "_figure" env2.counters with
+                _,h::_->h
+              | _->0
+            with
+              Not_found ->0
+          in
+          flushes':=FlushFigure num::(!flushes');
+          is_first,env2
+        )
+        | Node h as tr->(
+          (is_first, flatten flushes' env1 ((k,tree)::path) tr)
+        )
         in
-        let _,env2=IntMap.fold flat_children s.children (true,env) in
+        let _,env2=IntMap.fold flat_children s.children (true,env1) in
         paragraphs:=(match !paragraphs with
             []->[]
           | h::s->Array.append h (Array.of_list !flushes')::s);
-        env2
+        s.node_post_env env0 env2
       )
   in
-  let env1=match str with
-      Node n->n.node_env env0
-    | Paragraph n->n.par_env env0
-    | _->env0
-  in
-  let env2=flatten (ref []) env1 [] str in
+  let env1=flatten (ref []) env0 [] str in
   let params=Array.init
     (IntMap.cardinal !figures)
     (fun i->IntMap.find i !fig_param)
   in
-  (env2, params,
-   Array.of_list (match List.rev !param with []->[parameters env2] | l->l),
-   Array.of_list (match List.rev !new_page_list with []->[env2.new_page] | l->l),
-   Array.of_list (match List.rev !new_line_list with []->[env2.new_line env2] | l->l),
+  (env1, params,
+   Array.of_list (match List.rev !param with []->[parameters env1] | l->l),
+   Array.of_list (match List.rev !new_page_list with []->[env1.new_page] | l->l),
+   Array.of_list (match List.rev !new_line_list with []->[env1.new_line env1] | l->l),
    Array.of_list (List.rev !compl),
    Array.of_list (List.rev !bads),
    Array.of_list (List.rev !paragraphs),

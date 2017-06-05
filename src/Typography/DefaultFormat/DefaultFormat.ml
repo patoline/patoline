@@ -418,7 +418,7 @@ let defaultEnv:environment=
               && n.displayname<>[]->
             let par=Paragraph {
               par_contents=n.displayname;
-              par_env=(fun env->resize_env (env.size*.2.) {env with par_indent=[]; hyphenate=(fun _->[||])});
+              par_env=(fun env-> envScale 2. {env with par_indent=[]; hyphenate=(fun _->[||])});
               par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
                 user_positions=user_positions env2 });
               par_parameters=
@@ -462,7 +462,7 @@ let defaultEnv:environment=
                       par_contents=section_name;
                       par_env=(fun env->
                                let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-                               { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
+                               { (envAlternative ~features:(Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
                                  size=(if List.length b <= 2 then sqrt phi else
                                          sqrt (sqrt phi))*.env.size;
                                  par_indent = []
@@ -1724,10 +1724,10 @@ module MathsFormat=struct
     let mathcal a=[Maths.Scope(fun _ _-> Maths.Env (Euler.changeFont [Euler.Font `Cal]):: a)]
     let cal a=mathcal a
     let fraktur a=[Maths.Scope(fun _ _-> Maths.Env (Euler.changeFont [Euler.Font `Fraktur]) :: a)]
-    let mathbf a=[Maths.Scope(fun _ _-> Maths.Env (fun env -> Euler.changeFont [Euler.Graisse `Gras] (envAlternative [] Bold env)) :: a)]
+    let mathbf a=[Maths.Scope(fun _ _-> Maths.Env (fun env -> Euler.changeFont [Euler.Graisse `Gras] (envAlternative Bold env)) :: a)]
     let mathsc a=
       [Maths.Scope(fun _ _->
-                     Maths.Env (fun env->envAlternative [] Caps env)::
+                     Maths.Env (fun env->envAlternative Caps env)::
                        Maths.Env (fun env->Maths.change_fonts env env.font)::
                        a
                   )]
@@ -2114,7 +2114,7 @@ module MathsFormat=struct
                 fn [] max_len
               in
               let a = List.map (enlarge []) a in
-              let anchor = enlarge `Main [] in
+              let anchor = enlarge `Base [] in
               let a = List.map (fun l -> List.map Maths.(setStyle matrixStyle) l) a in
               let m, ms = array
                             (List.map (fun _ -> `Main) a) a
