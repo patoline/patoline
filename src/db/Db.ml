@@ -26,7 +26,7 @@ type dbinfo =
 | Mysql of Mysql.db
 #endif
 #ifdef SQLITE3
-| Sqlite of string
+| Sqlite3 of string
 #endif
 
 type database =
@@ -35,7 +35,7 @@ type database =
 | MysqlDb of Mysql.dbd
 #endif
 #ifdef SQLITE3
-(*| SqliteDb of ...*)
+| Sqlite3Db of Sqlite3.db
 #endif
 
 type 'a data = {
@@ -194,13 +194,6 @@ let init_db table_name db_info =
         data
     }
 
-
-#ifdef SQLITE3
-  | Sqlite filename ->
-      (* FIXME: implement Sqlite support, with concurrent access, must manage the Busy error *)
-      Printf.eprintf "Sqlite support not yet implemented\n";
-      exit 1
-#endif
 #ifdef MYSQL
   | Mysql db_info ->
     let dbptr = ref None in
@@ -222,9 +215,10 @@ let init_db table_name db_info =
       (
      (* FIXME: new sql ? *)
     let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
-      `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `VALUE` text,
+      `sessid` CHAR(33), `groupid` CHAR(33), `key` CHAR(64), `VALUE` text,
       `createtime` DATETIME NOT NULL,
-      `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);" table_name in
+      `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (`sessid`,`groupid`,`key`));" table_name in
      let _r = Mysql.exec (db ()) sql in
      let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
       `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `time` DATETIME NOT NULL);" log_name in
@@ -382,6 +376,193 @@ let init_db table_name db_info =
 	{name; init=vinit; read; write; reset; distribution}
         in data
     }
+#endif
+#ifdef SQLITE3
+  | Sqlite3 filename ->
+    let dbptr = ref None in
+    let created = Hashtbl.create 1001 in
+    let db () =
+      match !dbptr with
+	None -> let db = Sqlite3.db_open ~mutex:`FULL ~cache:`PRIVATE filename in
+                Printf.eprintf "Reconnected to db\n%!"; dbptr := Some db; db
+      | Some db -> db
+    in
+    let exec ?(cb=fun _ -> ()) sql =
+      try
+        let r = Sqlite3.exec_no_headers ~cb (db ()) sql in
+        if r <> Sqlite3.Rc.OK then begin
+            Printf.eprintf "sql fails: '%s' (%s)\n%!" sql (Sqlite3.Rc.to_string r);
+            Printf.eprintf "  %s\n%!" (Sqlite3.errmsg (db ()));
+            exit 1
+          end
+      with
+        e ->
+        Printf.eprintf "sql fails: '%s'\n%!" sql;
+        exit 1
+    in
+
+    interaction_start_hook := (fun () ->
+      match !dbptr with
+      | None -> ()
+      | Some db -> ignore (Sqlite3.db_close db); dbptr := None;
+                   Printf.eprintf "Disconnected from db\n%!")::!interaction_start_hook;
+      (
+     (* FIXME: new sql ? *)
+    let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
+      `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `VALUE` text,
+      `createtime` DATETIME NOT NULL,
+                              `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (`sessid`,`groupid`,`key`));" table_name in
+    (* TODO TIMESTAMP *)
+     exec sql;
+     let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
+      `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `time` DATETIME NOT NULL);" log_name in
+     exec sql;
+
+
+     let sql = Printf.sprintf "CREATE TRIGGER IF NOT EXISTS [%s_Update] AFTER UPDATE ON %s
+                               FOR EACH ROW
+                               WHEN NEW.`modiftime` < OLD.`modiftime`
+                               BEGIN
+                                 UPDATE %s SET `modiftime`=CURRENT_TIMESTAMP WHERE
+                                   `sessid`=OLD.`sessid` AND
+                                   `groupid`=OLD.`groupid` AND
+                                   `key`=OLD.`key`
+                                 ;
+                               END" table_name table_name table_name
+     in
+     exec sql;
+
+    { db = (fun () -> Sqlite3Db (db ()));
+      disconnect = (fun () ->
+	match !dbptr with None -> ()
+	| Some db -> ignore (Sqlite3.db_close db));
+      create_data = fun ?(log=false) ?(visibility=Private) coding name vinit ->
+	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
+        let rec data =
+	Hashtbl.add created name ();
+	let v = coding.encode vinit in
+	let sessid () = match !sessid with
+	    None -> "", "guest", []
+	  | Some (s,g,fs) ->
+             match visibility with
+             | Private -> (s, g, fs)
+             | Group   -> ("ANY", g, [])
+             | Public  -> ("ANY", "ANY", [])
+	in
+	let init () =
+	  let sessid, groupid, friends = sessid () in
+	  let fn (sessid, grouid) =
+            let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
+				     table_name sessid name in
+            let cb row =
+	       let count = match row.(0) with None -> 0 | Some n -> int_of_string n in
+	       (match count with
+		  0 ->
+		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `value`, `createtime`) VALUES ('%s','%s','%s','%s', datetime('now'));"
+					   table_name sessid groupid name v in
+		  (*Printf.eprintf "inserting: %s\n%!" sql;*)
+		  exec sql;
+		  if (log) then begin
+		    let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', datetime('now'));"
+					   log_name sessid groupid name in
+  		    (*Printf.eprintf "inserting: %s\n%!" sql;*)
+	 	    exec sql;
+		  end
+		| 1 -> ()
+      		| _ -> raise (Failure "SQL duplicate data in base"))
+            in
+            exec ~cb sql
+	  in
+	  fn (sessid, groupid);
+	  List.iter fn friends;
+          sessid, groupid, friends
+	in
+	let read () =
+	  try
+            let sessid, groupid, _  = init () in
+            do_record_read data visibility;
+            let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
+	                             table_name sessid name in
+            let res = ref vinit in
+            let cb row =
+              match row.(0) with
+              | None -> ()
+              | Some n -> res := coding.decode n
+            in
+            exec ~cb sql;
+            !res
+          with
+            Exit -> vinit
+	in
+	let write v =
+	    let sessid, groupid, friends = init () in
+            do_record_write data visibility;
+	    let fn (sessid, groupid) =
+              try
+		let v = coding.encode v in
+		let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s',`groupid`='%s' WHERE `key` = '%s' AND `sessid` = '%s';"
+					 table_name v groupid name sessid in
+		exec sql;
+		if log then begin
+		    let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', datetime('now'));"
+		    log_name sessid groupid name in
+		    (*Printf.eprintf "inserting: %s\n%!" sql;*)
+		    exec sql
+                  end
+	      with Exit -> ()
+	    in
+	    fn (sessid, groupid);
+	    List.iter fn friends
+	in
+	let reset () =
+	  try
+	    let sessid, groupid, _ = init () in
+            do_record_write data visibility;
+            let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s';"
+	      table_name name sessid in
+	    exec sql;
+	  with Exit -> ()
+	in
+	let distribution ?group () =
+          do_record_read data (if group = None then Public else max Group visibility);
+	  try
+	    let _ = init () in
+	    let group = match group with
+		None -> ""
+	      | Some g -> Printf.sprintf "AND `groupid` = '%s' " g
+	    in
+	    let sql = Printf.sprintf
+              "SELECT `value`,COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`"
+	      table_name name group in
+	    let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s"
+              table_name name group in
+	    (*Printf.eprintf "total: %s\n%!" sql';*)
+
+	    let f = function None -> "" | Some s -> s in
+	    let f' = function None -> 0 | Some s -> int_of_string s in
+            let total =
+              let total = ref 0 in
+	      let cb row =
+	        match row.(0) with
+                | None -> ()
+                | Some s -> total := int_of_string s
+	      in
+              exec ~cb sql';
+              !total
+            in
+	    let scores =
+	      let l = ref [] in
+	      let cb row = l := (coding.decode (f row.(0)), f' row.(1))::!l in
+	      exec ~cb sql;
+              !l
+	    in
+	    total, scores
+	  with Exit -> 0, []
+	in
+	{name; init=vinit; read; write; reset; distribution}
+        in data
+    })
 #endif
 
 let make_sessid () =
