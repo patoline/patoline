@@ -42,6 +42,19 @@ install-fonts:
 	install -p -m 644 Fonts/BitstreamVeraSansMono/BitstreamVeraSansMono-Bold.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/BitstreamVeraSansMono/BitstreamVeraSansMono-Bold.otf
 	install -p -m 755 -d $(DESTDIR)/$(INSTALL_FONT_DIR)/Euler
 	install -p -m 644 Fonts/Euler/euler.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Euler/euler.otf
+	install -p -m 755 -d $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont
+	install -p -m 644 Fonts/FreeFont/FreeSerif.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeSerif.ttf
+	install -p -m 644 Fonts/FreeFont/FreeSerifItalic.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeSerifItalic.ttf
+	install -p -m 644 Fonts/FreeFont/FreeSerifBold.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeSerifBold.ttf
+	install -p -m 644 Fonts/FreeFont/FreeSerifBoldItalic.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeSerifBoldItalic.ttf
+	install -p -m 644 Fonts/FreeFont/FreeSans.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeSans.ttf
+	install -p -m 644 Fonts/FreeFont/FreeSansOblique.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeSansOblique.ttf
+	install -p -m 644 Fonts/FreeFont/FreeSansBold.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeSansBold.ttf
+	install -p -m 644 Fonts/FreeFont/FreeSansBoldOblique.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeSansBoldOblique.ttf
+	install -p -m 644 Fonts/FreeFont/FreeMono.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeMono.ttf
+	install -p -m 644 Fonts/FreeFont/FreeMonoOblique.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeMonoOblique.ttf
+	install -p -m 644 Fonts/FreeFont/FreeMonoBold.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeMonoBold.ttf
+	install -p -m 644 Fonts/FreeFont/FreeMonoBoldOblique.ttf  $(DESTDIR)/$(INSTALL_FONT_DIR)/FreeFont/FreeMonoBoldOblique.ttf
 	install -p -m 755 -d $(DESTDIR)/$(INSTALL_FONT_DIR)/KacstOne
 	install -p -m 644 Fonts/KacstOne/KacstOne-Bold.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/KacstOne/KacstOne-Bold.ttf
 	install -p -m 644 Fonts/KacstOne/KacstOne.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/KacstOne/KacstOne.ttf

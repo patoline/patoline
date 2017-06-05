@@ -1223,9 +1223,14 @@ let makeGlue env x0=
 
 (** Converts a [string] to a list of glyphs, according to the environment. *)
 let gl_of_str env str =
-  try hyphenate env.hyphenate env.substitutions env.positioning env.font
-        env.size env.fontColor str
-  with Glyph_not_found _ -> []
+  try
+    let res = hyphenate env.hyphenate env.substitutions env.positioning env.font
+                        env.size env.fontColor str
+    in
+    res
+  with Glyph_not_found _ ->
+    Printf.eprintf "glyph not found in: %s (%S)\n%!" str str;
+    []
 
 (**/**)
 let append buf nbuf x=

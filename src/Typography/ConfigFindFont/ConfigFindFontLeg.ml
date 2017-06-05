@@ -26,6 +26,22 @@ let dejavuserif_variants = function
   | {family = _; slant = Roman; weight = Black} -> "-Bold"
   | {family = _; slant = Italic; weight = Black} -> "-BoldItalic"
 
+let freesans_variants = function
+  | {family = _; slant = Roman; weight = Regular} -> ""
+  | {family = _; slant = Italic; weight = Regular} -> "Oblique"
+  | {family = _; slant = Roman; weight = Bold} -> "Bold"
+  | {family = _; slant = Italic; weight = Bold} -> "BoldOblique"
+  | {family = _; slant = Roman; weight = Black} -> "Bold"
+  | {family = _; slant = Italic; weight = Black} -> "BoldOblique"
+
+let freeserif_variants = function
+  | {family = _; slant = Roman; weight = Regular} -> ""
+  | {family = _; slant = Italic; weight = Regular} -> "Italic"
+  | {family = _; slant = Roman; weight = Bold} -> "Bold"
+  | {family = _; slant = Italic; weight = Bold} -> "BoldItalic"
+  | {family = _; slant = Roman; weight = Black} -> "Bold"
+  | {family = _; slant = Italic; weight = Black} -> "BoldItalic"
+
 let bitstreamverasans_variants = function
   | {family = _; slant = Roman; weight = Regular} -> "Roman"
   | {family = _; slant = Italic; weight = Regular} -> "Oblique"
@@ -85,7 +101,7 @@ let pat_to_name pat =
 
   | "Latin Modern Math" ->
       "lmodern/lmmath.otf"
- 
+
   | "DejaVu Sans" ->
       "DejaVu-2.34/DejaVuSans" ^ (dejavusans_variants pat) ^".ttf"
 
@@ -101,6 +117,11 @@ let pat_to_name pat =
   | "DejaVu Serif Condensed" ->
       "DejaVu-2.34/DejaVuSerifCondensed" ^ (dejavuserif_variants pat) ^".ttf"
 
+  | "Free Serif" -> "FreeSerif"^ (freeserif_variants pat) ^ ".ttf"
+
+  | "Free Sans" -> "FreeSans"^ (freesans_variants pat) ^ ".ttf"
+
+  | "Free Mono" -> "FreeMono"^ (freesans_variants pat) ^ ".ttf"
 
   | _ -> raise Not_found
 

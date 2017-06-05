@@ -62,16 +62,28 @@ let patoconfig : patoconfig =
 
 exception File_not_found of string
 
-let findPath (path, paths) fname =
+let findPath ?(subdir=false) (path, paths) fname =
   if debug then Printf.eprintf "########## Looking for %S in:\n%!" fname;
   if debug then List.iter (Printf.eprintf " - %S\n%!") (path :: paths);
+  let rec search base =
+    let path = Filename.concat base fname in
+    if Sys.file_exists path then path else
+      let dirs = Sys.readdir base in
+      let rec fn i =
+        if i < 0 then raise Not_found;
+        let dname = Filename.concat base dirs.(i) in
+        if Sys.is_directory dname then search dname
+        else fn (i-1)
+      in
+      if subdir then fn (Array.length dirs - 1)
+      else raise Not_found
+  in
   let rec find = function
     | []    -> raise (File_not_found fname)
-    | p::ps -> let path = Filename.concat p fname in
-               if Sys.file_exists path then path else find ps
+    | p::ps -> try search p with Not_found -> find ps
   in find (List.rev (path :: paths))
 
-let findFont    fn = findPath patoconfig.fonts_dir fn
+let findFont    fn = findPath ~subdir:true patoconfig.fonts_dir fn
 let findGrammar fn = findPath patoconfig.grammars_dir fn
 let findHyphen  fn = findPath patoconfig.hyphen_dir fn
 

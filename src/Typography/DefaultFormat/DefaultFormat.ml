@@ -205,6 +205,10 @@ let dejaVuSerifCondensed=simpleFont "DejaVu Serif Condensed"
 let dejaVuSansCondensed=simpleFont "DejaVu Sans Condensed"
 let texgyrecursor=simpleFont "TeX Gyre Cursor"
 let bitstreamverasansmono=simpleFont "Bitstream Vera Sans Mono"
+let freeSerif=simpleFont "Free Serif"
+let freeSans=simpleFont "Free Sans"
+let freeMono=simpleFont "Free Mono"
+
 
 let all_fonts = [alegreya; texgyrecursor] (* trick to force same type *)
 
