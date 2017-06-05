@@ -712,6 +712,7 @@ function Animate(name,nbframes,mirror,step) {
     }, step));
   }
 
+
 function setReaction(svg) {
 
     /* move definitions (can not use <use> and <defs>

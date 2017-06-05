@@ -406,6 +406,39 @@ function send_click(name,ev) {
   websocket_send(\"click_\"+(current_slide)+\"_\"+(current_state)+\" \"+name);
 }
 
+var indrag = false;
+
+function start_swipe(touch,ev) {
+  if (indrag ||
+      (touch && ev.touches.length != 1)) return;
+  var x0 = touch ? ev.changedTouches[0].pageX : ev.pageX;
+  var w = window.innerWidth;
+  var t0 = new Date().getTime();
+  var limit = Math.min(300,w/3);
+  function move_swipe(touch,ev) {
+    var x = touch ? ev.changedTouches[0].pageX : ev.pageX;
+    var t = new Date().getTime();
+    if (touch) {
+      window.removeEventListener('touchend', move_swipe);
+    } else {
+      window.onmouseup = null;
+    }
+    if ((t - t0) < 500 &&
+        (!touch || ev.changedTouches.length + ev.touches.length == 1)) {
+      if (x - x0 > limit) previousPage(false);
+      if (x0 - x > limit) nextPage(false);
+    }
+  }
+  if (touch) {
+    window.addEventListener('touchend', function (ev) { move_swipe(true,ev); });
+  } else {
+    window.onmouseup = function (ev) { move_swipe(false,ev); };
+  }
+}
+
+window.onmousedown =  function (ev) { start_swipe(false,ev); };
+window.addEventListener('touchstart',  function (ev) { start_swipe(true, ev); });
+
 
 function draggable(anchor,obj)
 {
@@ -495,8 +528,6 @@ function start_edit(name,ev) {
   draggable(title,div);
 }
 
-var indrag = false;
-
 function start_drag(el,name,ev,touch) {
   if (indrag) return;
   indrag = true;
@@ -517,12 +548,12 @@ function start_drag(el,name,ev,touch) {
   var y  = y0;
   function do_drag(release) {
     var dx = scale * (x - x0); var dy = scale * (y0 - y);
-    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5 || release) {
+    if (Math.abs(dx) > 0.25 || Math.abs(dy) > 0.25 || release) {
       if (release) rmsg = '_release'; else rmsg = '';
       websocket_send('drag_'+(current_slide)+'_'+(current_state)+'_'+dx+'_'+dy+rmsg+' '+name);
       x0 = x; y0 = y;
   }}
-  var timer = setInterval(function () {do_drag(false);},50);
+  var timer = setInterval(function () {do_drag(false);},200);
   function mouse_move(e) {
       x = e.pageX;
       y = e.pageY;
@@ -536,7 +567,6 @@ function start_drag(el,name,ev,touch) {
     indrag=false;
     clearInterval(timer);
     if (touch) {
-      alert('fin');
       touch_move(e);
       el.removeEventListener('touchmove', touch_move , false);
       el.removeEventListener('touchend', stop_drag, false);
@@ -817,16 +847,15 @@ function gotoSlide(n){
 websocket_send(\"refresh_\"+h0+\"_\"+h1);
 "
   in
-
+(*
   let extrabody = "
   <div id=\"leftpanel\" style=\"left: 0px; top: 0px; position: absolute; z-index: 10;\"><button onclick=\"previousPage(false);\" style=\"min_height: 5%; min_width: 5%;\"><<</button></div>
   <div id=\"rightpanel\" style=\"right: 0px; top: 0px; position: absolute;  z-index: 10;\"><button onclick=\"nextPage(false);\">>></button></div>"
   in
-
+ *)
 
   let page,css=SVG.basic_html
     ~extraheader
-    ~extrabody
     ~script:(websocket ())
     ~onload
     ~keyboard:keyboard
@@ -1215,6 +1244,7 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
           pushto ~change:(Slide(slide,state)) num fd;
           let s, g = read_sessid () in
           Printf.fprintf fouc "move %s %s %d %d\n%!" s g slide state;
+          log_son num "websocket move (%d,%d) (done)" slide state;
           process_req master "" [] reste)
         else if Str.string_match refresh get 0 then (
           let slide, state = read_slide_state get in
@@ -1223,6 +1253,7 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
           pushto ~change:(Slide(slide,state)) num fd;
           let s, g = read_sessid () in
           Printf.fprintf fouc "move %s %s %d %d\n%!" s g slide state;
+          log_son num "websocket refresh (%d,%d) (done)" slide state;
           process_req master "" [] reste)
         else if Str.string_match click get 0 then (
           let match_end = Str.match_end () in
