@@ -656,6 +656,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                       IntMap.iter (fun k a->
                         params.(k)<-params0.(a);
                         paragraphs.(k)<-paragraphs0.(a);
+                        new_line.(k)<-new_line0.(a);
                         compl.(k)<-compl0.(a);
                         badnesses.(k)<-badnesses0.(a);
                       ) !par_map;
