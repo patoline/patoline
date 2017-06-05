@@ -758,7 +758,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     opts.(i)<-List.map (fun ll->
                       { ll with
                         line={ ll.line with
-                          height=ll.line.height -. place
+                          height=ll.line.height -. place /. 2.0
                         }
                       }
                     ) opts.(i)

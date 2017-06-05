@@ -400,7 +400,7 @@ module Make(L : Line with type t = Box.line) =
               let min_min_page_before=ref 0 in
 
               let rec fix layouts pages_created height n_iter=
-                (* Printf.fprintf stderr "%d / %d fix %f\n" (frame_page (List.hd layouts)) n_iter height;flush stderr; *)
+                (*Printf.fprintf stderr "%d / %d fix %f\n" (frame_page (List.hd layouts)) n_iter height;flush stderr;*)
                 let layout=List.hd layouts in
                 let nextNode={
                   paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
@@ -445,28 +445,32 @@ module Make(L : Line with type t = Box.line) =
                                   min min_h
                                     (node0.height-.(snd (line_height paragraphs figures nextNode))+.fig.drawing_y0)
                                 ) else (
-                              (* Hauteur à laquelle devrait être placée nextNode pour ne pas taper sur node0 *)
-                                  let h=
-                                    (node0.height+.
-                                       (try
-                                          ColMap.find (parameters.left_margin, parameters.measure, { node0 with height=0. },
-                                                       nextParams.left_margin, nextParams.measure, { nextNode with height=0. }) !colision_cache
-                                        with
-                                            Not_found -> (
-                                              let dist=collide node0 parameters comp0 nextNode nextParams comp1 in
-                                              colision_cache := ColMap.add (parameters.left_margin, parameters.measure,
-                                                                            {node0 with height=0.;layout=doc_frame,[]},
-                                                                            nextParams.left_margin, nextParams.measure,
-                                                                            {nextNode with layout=doc_frame,[];
-                                                                              height=0.})
-                                                dist !colision_cache;
-                                              dist
-                                            )
-                                       )
-                                     -. max nextParams.min_height_before parameters.min_height_after
-                                    )
+                                  (* Hauteur à laquelle devrait être placée nextNode pour ne pas taper sur node0 *)
+                                  let dist =
+                                    try
+                                      ColMap.find (parameters.left_margin, parameters.measure, { node0 with height=0. },
+                                                   nextParams.left_margin, nextParams.measure, { nextNode with height=0. }) !colision_cache
+                                    with
+                                      Not_found ->
+                                      let dist=collide node0 parameters comp0 nextNode nextParams comp1 in
+                                      colision_cache := ColMap.add (parameters.left_margin, parameters.measure,
+                                                                    {node0 with height=0.;layout=doc_frame,[]},
+                                                                    nextParams.left_margin, nextParams.measure,
+                                                                    {nextNode with layout=doc_frame,[];
+                                                                                   height=0.})
+                                                                   dist !colision_cache;
+                                      dist
                                   in
+                                  let h=node0.height+. dist
+                                                        -. max nextParams.min_height_before parameters.min_height_after
+                                  in
+                                  (*Printf.eprintf "node0.height = %f, dist = %f, min_before = %f, min_after = %f \n%!"
+                                                 node0.height dist nextParams.min_height_before parameters.min_height_after;*)
                                   let node0_width=node0.min_width +. comp0*.(node0.max_width-.node0.min_width) in
+                                  let h2 = node0.height
+                                           -. max (snd (line_height paragraphs figures nextNode))
+                                                  (max nextParams.min_height_before parameters.min_height_after)
+                                  in
                                   (try
                                      let _,_,_,_,_,_,prec,_,_=cur_node0 in
                                      let (prec_line,_,_,params,_,comp,_,_,_) as prec_=match prec with None->raise Not_found | Some a->a in
@@ -474,19 +478,14 @@ module Make(L : Line with type t = Box.line) =
                                        (nextParams).left_margin>=parameters.left_margin
                                        && (nextParams).left_margin+.nextNode_width<=parameters.left_margin+.node0_width
                                      in
-                                     if prec_line.layout==nextLayout && not arret then (v_distance prec_ params comp (min h min_h)) else
-                                       min (min h min_h) (
-                                         (node0.height
-                                          -. max (snd (line_height paragraphs figures nextNode))
-                                            (max nextParams.min_height_before parameters.min_height_after))
-                                       )
+                                     if prec_line.layout==nextLayout && not arret then (
+                                       v_distance prec_ params comp (min h min_h)
+                                     ) else (
+                                       min (min h h2) min_h
+                                     )
                                    with
-                                       Not_found->
-                                         min (min h min_h) (
-                                           (node0.height
-                                            -. max (snd (line_height paragraphs figures nextNode))
-                                              (max nextParams.min_height_before parameters.min_height_after))
-                                         )
+                                   | Not_found->
+                                      min (min h h2) min_h
                                   )
                                 )
                               in

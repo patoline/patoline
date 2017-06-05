@@ -1509,7 +1509,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                             link_x1=(fst line.layout).frame_x0+.param.left_margin;
                             link_y0=line.height;link_y1=line.height }, c)::(a,h,c)::s);
 
-                        (* Écrire la page *)
+                      (* Écrire la page *)
                       let _=
                         fold_left_line paragraphs (fun x b->x+.draw_box x line.height b)
                           ((fst line.layout).frame_x0+.param.left_margin) line
