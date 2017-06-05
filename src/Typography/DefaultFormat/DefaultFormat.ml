@@ -2099,10 +2099,20 @@ module MathsFormat=struct
               let open Diagrams in
               let module Fig = MakeDiagram (struct let env = env end) in
               let open Fig in
+              let max_len = List.fold_left (fun acc l -> max acc (List.length l)) 0 a in
+              let enlarge default =
+                let rec fn acc n l = match n, l with
+                  | 0, [] -> List.rev acc
+                  | 0, _::_ -> assert false
+                  | n, [] -> fn (default::acc) (n-1) []
+                  | n, x::l -> fn (x::acc) (n-1) l
+                in
+                fn [] max_len
+              in
+              let a = List.map (enlarge []) a in
+              let anchor = enlarge `Main [] in
               let a = List.map (fun l -> List.map Maths.(setStyle matrixStyle) l) a in
               let m, ms = array
-                            ~all_node_styles:[Matrix.allNodes Node.[innerSep 0.]]
-                            ~main_node_style:Node.[innerSep 0.;at (0.,0.);anchor `SouthWest]
                             (List.map (fun _ -> `Main) a) a
               in
               let _ = extra (module Fig:Diagram) m ms in
