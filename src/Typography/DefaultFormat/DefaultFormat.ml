@@ -2101,6 +2101,8 @@ module MathsFormat=struct
               let open Fig in
               let a = List.map (fun l -> List.map Maths.(setStyle matrixStyle) l) a in
               let m, ms = array
+                            ~all_node_styles:[Matrix.allNodes Node.[innerSep 0.]]
+                            ~main_node_style:Node.[innerSep 0.;at (0.,0.);anchor `SouthWest]
                             (List.map (fun _ -> `Main) a) a
               in
               let _ = extra (module Fig:Diagram) m ms in
