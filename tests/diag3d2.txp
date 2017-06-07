@@ -1,0 +1,204 @@
+(*
+  Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
+  Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
+
+  This file is part of Patoline.
+
+  Patoline is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Patoline is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
+*)
+\Caml(
+  open Util
+  open Typography
+  open Typography.Diagrams
+  open Gentity
+  open Node 
+  open Matrix
+  open Edge
+  open Entity
+  open Typography.Complete
+  open Matrix3d
+
+  let style s a = [Scoped ((fun env -> { env with mathStyle = s }), a)]
+  let scriptstyle x = style Mathematical.Script x
+
+  module MakeDiagram (Arg : sig val env : environment end) = struct
+    include MakeDiagram (Arg) 
+
+    let centers ?projection:(projection=Proj3d.cavaliere45bg) z y x = 
+      Matrix3d.(placement (between_centers ~projection:projection z y x))
+
+
+    let simple_3d_matrix ?style:(style=[Matrix3d.(centers 20. 20. 20.)]) planes = 
+      matrix_3d_full style
+		     ((List.map
+			 (List.map
+			    (List.map (fun contents -> ([],contents))))) planes)
+
+    let default_allmain3d = Matrix3d.([
+					 allNodes Node.([mainAnchor `Base;anchor `Line]);
+					 mainNode Node.([at (0.,ex env);anchor `South])])
+
+    let sedges_3d ?style:(st=Edge.([arrow env;draw])) l = 
+      edges_3d st (List.map (fun (st',s,e) -> (st',s,[],[],e)) l)
+
+    let sedges_3d_matrix ?style:(st=Edge.([arrow env;draw])) ms l = 
+      sedges_3d ~style:st
+		(List.map (fun (st',(ai,aj,ak),(bi,bj,bk)) -> (st',ms.(ai).(aj).(ak),ms.(bi).(bj).(bk))) l)
+
+
+    module IntVect3d = struct
+      type t = int * int * int
+      let proj (x,y,z) = x
+      let proj' (x,y,z) = y
+      let proj'' (x,y,z) = z
+      let (+) (x0,y0,z0) (x1,y1,z1) = (x0 + x1), (y0 + y1), (z0 + z1)
+      let (-) (x0,y0,z0) (x1,y1,z1) = (x0 - x1), (y0 - y1), (z0 - z1)
+      let (/) (x0,y0,z0) r = (x0 / r, y0 /r, z0/r)
+    end
+
+    let matrix3d_square ms ?init:(init=(0,0,0)) ?first:(first=(0,0,1))
+			?second:(second=(0,1,0)) ab ac bd cd = 
+      let a = init in
+      let b = IntVect3d.(init + first) in
+      let c = IntVect3d.(init + second) in
+      let d = IntVect3d.(init + first + second) in
+      match sedges_3d_matrix ms [
+			       (ab,a,b);
+			       (ac,a,c);
+			       (bd,b,d);
+			       (cd,c,d)
+			     ]
+      with
+	[x;y;z;t] -> (x,y,z,t)
+      | _ -> assert false
+
+    let label_anchor a ?pos:(pos=(`Temporal 0.5 : anchor)) ?style:(style=Node.([rectangle env])) 
+		     cont =
+      label_anchor a ~pos:pos ~style:style (scriptstyle cont) 
+
+    let labela = label_anchor `South
+    let labelb = label_anchor `North
+    let labell = label_anchor `East
+    let labelr = label_anchor `West
+    let labelal = label_anchor `SouthEast
+    let labelar = label_anchor `SouthWest
+    let labelbl = label_anchor `NorthEast
+    let labelbr = label_anchor `NorthWest
+    let labelo ?style:(style=Node.([fill white;innerSep 0.3;rectangle env])) = label_anchor ~style:style `Center
+
+    let pro  = label_anchor `Center 
+			    ~style:Node.([circle; draw; fill Color.black; innerSep (0.2 *. ex env)]) 
+			    []
+
+    let rawCoord3d (x,y,z) =
+      let p = (x,y) in
+      { Node.default with
+      at = p ;
+      z = z;
+      center = p ;
+      pdfAnchor = p ;
+      innerSep = 0. ;
+      innerCurve = Curve.of_point_lists [[p]] ;
+      outerCurve = Curve.of_point_lists [[p]] ;
+      bb = (x,y,x,y) ;
+      anchor = (fun _ -> p) }
+
+    let coordinate3d ?projection:(projection=Proj3d.cavaliere45bg) (x,y,z) =
+      let a = rawCoord3d (x,y,z) in
+      let _ = stack := (Node a) :: !stack in
+      a
+
+    let temporal3d e t =
+      let x,y = e.Edge.anchor (`Temporal t) in
+      let z = Edge.evaluate_z_global e t in
+      (x,y,z)
+
+
+    let twocellStyle  ?short:(short=0.5) env = Edge.([double 0.5 ; shorten short short;arrow env;draw])
+
+
+    let twocell3d env ?short:(short=0.5) e e' t t' st = 
+      edge_3d (twocellStyle ~short:short env @ st)
+	      (coordinate3d (temporal3d e  t))
+	      (coordinate3d (temporal3d e' t'))
+
+    let twocell3dStart env ?short:(short=0.5) e e' ?start:(start=0.3) ?startt:(startt=start) st =
+      twocell3d env ~short:short e e' start startt st
+    let twocell3dEnd env ?short:(short=0.5) e e' ?finish:(finish=0.7) ?finisht:(finisht=finish) st =
+      twocell3d env ~short:short e e' finish finisht st
+
+
+end
+)
+
+
+\diagram(
+  let matrix = Matrix3d.(simple_3d_matrix ~style:(centers ~projection:Proj3d.cavaliere60bg 20. 40. 30.
+      	       				  		    ::  default_allmain3d) [
+    [[
+	];[
+	[] ; << $Z$>>
+	]];[[
+	<< $Y'$>> ; << $Y$>>
+	];[
+	<< $[n'ᵥ]$>> ; << $Z'$>>
+	];[
+	];[
+	<< $[nᵥ]$>> ; << $X$.>>
+	]]
+    ])
+
+    let m,ms = matrix_3d_project matrix
+
+    let n'v = (1,1,0)
+    let y = (1,0,1)
+    let y' = (1,0,0)
+    let z = (1,1,1)
+    let z' = (0,1,1)
+    let x = (1,3,1)
+
+	let k', v, u'1, h = Edge.(matrix3d_square ms ~init:n'v ~second:(0,2,0)
+	    [] [labell << $v$>>; pro] [labelr << $u'₁$>> ; pro] [labelb << $x$>>])
+
+        let u'2 :: u :: k :: u1 :: u' :: u2 :: k'' :: w :: _ = sedges_3d_matrix ms Edge.([
+	([pro;labelbr << $u'₂$>>],y,z);
+	([pro;labelbr << $u$>>;bendLeft 50.],y,x);
+	([],n'v,z');
+	([pro;labelbl << $u₁$>>],z',x);
+	([pro;labelbr << $u'$>>],z,z');
+	([pro;bendRight 20.;labelo ~pos:(`Temporal 0.65) << $u₂$>>],y,z');
+	([],y',y);
+	([pro;labell << $w$>>],y',n'v)
+	])
+
+	let _ = twocell3d env
+	     v u'1  0.35 0.25 Edge.([labelal ~pos:(`Temporal 0.3) << $α'₁$>>])
+	let _ = twocell3d env ~short:2. v u1 0.4 0.25 Edge.([labelb << $α₁$>>])
+	let _ = twocell3dEnd env ~finish:0.25 ~finisht:0.45
+	     u'1 u Edge.([labela << $δ'$>>])
+	let _ = twocell3d env ~short:2.1 u1 u 0.25 0.45
+	   Edge.([bendRight 20.; labelb ~pos:(`Temporal 0.6) << $δ$>>])
+
+	let _ = twocell3d env  ~short:3.
+	     w u'2  0.5 0.5 Edge.([labelal ~pos:(`Temporal 0.3) << $α'₂$>>])
+	let _ = twocell3d env ~short:4. w u2 0.55 0.5 Edge.([labelb << $α₂$>>])
+	let _ = twocell3d env ~short:2. u2 u'2 0.55 0.55 Edge.([labelo << $μ$>>])
+
+	let _ = twocell3d env ~short:2.2 u1 u'1 0.25 0.25 Edge.([labelo << $υ$>>])
+	let _ = edge_3d (Edge.(labelo << $ξ$>>) :: (twocellStyle ~short:1.2 env))
+		(let x,y,z = n'v in ms.(x).(y).(z))
+	    (coordinate3d (temporal3d u' 0.5))
+
+
+)
