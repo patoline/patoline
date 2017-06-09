@@ -105,17 +105,21 @@ module Format=functor (D:Document.DocumentStructure)->(
         let stru',_=paragraph ~parameters:center [C (fun env->
           try
 	    env_accessed := true;
-            let alpha=0.9 in
             let margin=env.size*.0.2 in
-            let mes=env.normalMeasure*.alpha in
+            let mes=env.normalMeasure in
             let env0={env with
+              normalLeftMargin=env.normalLeftMargin+.margin;
+              normalMeasure=env.normalMeasure-.2.*.margin
+            }
+            in
+            let env1={env with
               normalLeftMargin=margin;
               normalMeasure=mes-.2.*.margin
             }
             in
-            let minip,env1,ms1=OutputDrawing.minipage' env0 (map_params stru,[]) in
+            let minip,env1,ms1=OutputDrawing.minipage' env1 (map_params stru,[]) in
             let stru_title,_=paragraph M.arg1 in
-            let minip_title,env2,ms2=OutputDrawing.minipage' {env1 with fontColor=(!block_title_foreground)} (stru_title,[]) in
+            let minip_title,env1,ms2=OutputDrawing.minipage' {env1 with fontColor=(!block_title_foreground)} (stru_title,[]) in
             let minip_title0=try snd (IntMap.min_binding minip_title) with Not_found->empty_drawing_box in
             let minip_title0=
               if minip_title0.drawing_y0=infinity then
@@ -173,7 +177,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
               drawing_contents=(fun w->(List.map (fun a->RawContent.translate margin 0. (in_order 2 a)) (tit.drawing_contents w))@frame)
             } in
-            [bB (fun _->Drawing dr :: ms2 @ ms1);Env (fun _->env2)]
+            [bB (fun _->Drawing dr :: ms2 @ ms1);Env (fun _->env0)]
           with
               Invalid_argument _->[]
         )] in
