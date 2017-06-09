@@ -496,8 +496,6 @@ let defaultEnv:environment=
 
 
 
-    let indent ()=[bB (fun env->env.par_indent);Env (fun env->{env with par_indent=[]})]
-
 
     let defaultEnv=defaultEnv
 
@@ -808,7 +806,8 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
       let do_begin_env ()=
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack ;
         D.structure:=newChildAfter !D.structure
-          (Node { empty with node_tags=("noindent","")::empty.node_tags })
+          (Node { empty with node_tags=("noindent","")::empty.node_tags;
+                             node_env=fun env -> {env with par_indent=[]} })
 
 
       let do_end_env ()=
@@ -816,8 +815,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
         env_stack:=List.tl !env_stack
     end
 
-    let noindent ()=
-      []
+    let noindent = [Env (fun env -> Printf.printf "coucou 2\n%!";{env with par_indent=[] } )]
 
     let hfill t = [bB (fun env-> let x = env.normalMeasure in
 				  [match glue 0. env.size (x /. t) with
@@ -2117,7 +2115,9 @@ module MathsFormat=struct
               let anchor = enlarge `Base [] in
               let a = List.map (fun l -> List.map Maths.(setStyle matrixStyle) l) a in
               let m, ms = array
-                            (List.map (fun _ -> `Main) a) a
+                            ~all_node_styles:[Matrix.allNodes Node.[innerSep 0.]]
+                            ~main_node_style:Node.[innerSep 0.;at (0.,0.);anchor `SouthWest]
+                            anchor a
               in
               let _ = extra (module Fig:Diagram) m ms in
               [ Drawing (Fig.make ~adjust_before:true ~vcenter:true ~width_fixed:false

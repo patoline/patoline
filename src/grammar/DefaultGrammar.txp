@@ -597,6 +597,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Configure_word_macro{\label}{ syntax = string; eat_right; eat_left; }
 \Configure_word_macro{\thRef}{ syntax = string;  }
 \Configure_word_macro{\hand}{  syntax =; eat_right; eat_left; }
+\Configure_word_macro{\noindent}{  syntax =; eat_right; eat_left; }
 
 \Configure_environment{genumerate}{ syntax = string genumerate; }
 

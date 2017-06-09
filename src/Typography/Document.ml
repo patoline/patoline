@@ -252,7 +252,7 @@ and paragraph =
                          -> Break.figurePosition IntMap.t -> line MarkerMap.t
                          -> line -> bool -> line list
   ; par_states : int list
-  ; mutable par_paragraph : int
+  ; par_paragraph : int
 }
 
 (* Second type of leaves in a document: figures. *)
@@ -915,19 +915,6 @@ let beginFigure name=
      )]
 
 (****************************************************************)
-
-let new_paragraph ?(env=(fun x->x)) ?(badness=badness) ?(states=[]) complete params par =
-  { par_contents     = par
-  ; par_env          = env
-  ; par_post_env     = (fun env1 env2 ->
-                          { env1 with names = names env2
-                          ; counters        = env2.counters
-                          ; user_positions  = user_positions env2 })
-  ; par_parameters   = params
-  ; par_badness      = badness
-  ; par_completeLine = complete
-  ; par_states       = states
-  ; par_paragraph    = (-1) }
 
 
 (* Add a new paragraph (with given parameters) below the current node. *)
@@ -1609,7 +1596,7 @@ let draw env x=
 let states st x=
   [uB (fun env->
     let d=draw env x in
-    let (_,off,_,_)=bounding_box d in
+    let (_,off,_,_)=bounding_box_kerning d in
     [Drawing
         (drawing ~offset:off
             [States { states_contents=d;
@@ -1623,7 +1610,7 @@ let altStates l =
     let ds = List.map (fun (st,x) -> (st, draw env x)) l in
     (* FIXME : each state should have its own offset !!!*)
     let off = List.fold_left (fun acc (_,d) ->
-	let (_,off,_,_) = bounding_box d in
+	let (_,off,_,_) = bounding_box_kerning d in
 	min acc off) 0.0 ds
     in
     [Drawing
@@ -1658,8 +1645,9 @@ let flatten ?(initial_path=[]) env0 str=
   let nbuf=ref 0 in
   let frees=ref 0 in
   let add_paragraph env tree path p=
+    let cont = bB (fun env->(p.par_env env).par_indent) :: p.par_contents in
     nbuf:= !frees;
-    let v=boxify buf nbuf env p.par_contents in
+    let env=boxify buf nbuf env cont in
     adjust_width env buf nbuf;
     paragraphs:=(Array.sub !buf 0 !nbuf)::(!paragraphs);
     trees:=(tree,path)::(!trees);
@@ -1670,53 +1658,36 @@ let flatten ?(initial_path=[]) env0 str=
     bads:=(p.par_badness env)::(!bads);
     incr n;
     frees:=0;
-    v
+    env
   in
 
   let rec flatten flushes env0 path tree=
     match tree with
     | Paragraph p -> (
       let env1 = p.par_env env0 in
-      p.par_paragraph <- List.length !paragraphs;
-      let env2 =
-        if List.exists (function N _->true | _->false) p.par_contents then
-          begin
-            let rec collect_nodes l cur nodes=
-              match l with
-                []->List.rev (if cur<>[] then
-                                (Paragraph { p with par_contents=List.rev cur })::nodes
-                              else nodes)
-              | C(f)::s->(
-                collect_nodes (f env1@s) cur nodes
-              )
-              (*| Scoped(f,e)::s->(
-                  (* TODO: support N here *)
-                  collect_nodes s (::cur) nodes
-                  )*)
-              | N n::s->collect_nodes s []
-                                      (n::
-                                         if cur<>[] then
-                                           (Paragraph { p with par_contents=List.rev cur })::nodes
-                                         else nodes
-                                      )
-              | h::s->collect_nodes s (h::cur) nodes
-            in
-            match collect_nodes p.par_contents [] [] with
-              [Paragraph _]->add_paragraph env1 tree path p
-            | [Node n]->flatten flushes env1 path (Node n)
-            | l->(
-              let rec make_node i m l=match l with
-                  []->m
-                | h::s->make_node (i+1) (IntMap.add i h m) s
-              in
-              flatten flushes env0 path
-                      (Node { empty with children=make_node 0 IntMap.empty [] })
-            )
-          end
-        else
-          add_paragraph env1 tree path p
+      let add_node env cur =
+        if cur<>[] then
+          add_paragraph env tree path
+                        { p with par_paragraph = List.length !paragraphs;
+                                 par_contents=List.rev cur }
+        else env
       in
-      p.par_post_env env0 env2
+      let rec collect_nodes env1 l cur =
+        match l with
+        | []-> (env1, cur)
+        | C(f)::s-> collect_nodes env1 (f env1@s) cur
+        | Scoped(f,s')::s-> let (_, cur) = collect_nodes (f env1) s' cur in
+                            collect_nodes env1 s cur
+        | Env f::s -> collect_nodes (f env1) s cur
+        | N n::s->
+           let env1 = add_node env1 cur in
+           let env1 = flatten flushes env1 path n in
+           collect_nodes env1 s []
+        | (T _ | FileRef _ | B _ as h)::s-> collect_nodes env1 s (h::cur)
+      in
+      let (env1, cur) = collect_nodes env1 p.par_contents [] in
+      let env1 = add_node env1 cur in
+      p.par_post_env env0 env1
     )
     | FigureDef f -> (
       let env1=f.fig_env env0 in
@@ -1756,10 +1727,7 @@ let flatten ?(initial_path=[]) env0 str=
                             (names env) });
                        bB (fun _->[Marker (Label name)])
                       ]
-                     ) else [])@
-                      [bB (fun env->(p.par_env env).par_indent);
-                       Env (fun env->{env with par_indent=[]})]
-                      @ p.par_contents
+                     ) else [])@ p.par_contents
                            }
                 ) in
           false, env2

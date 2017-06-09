@@ -1,12 +1,12 @@
 
-type projection = {  
+type projection = {
   (* distance du foyer de la projection > 0 et >> à tous les z de la figure *)
   distance_focale : float;
   (* coordonnée du foyer en x et y et aussi centre pour les axes de rotation *)
   origin_transfo_x : float;
   origin_transfo_y : float;
   origin_transfo_z : float;
-  (* point qui aura les coordonnées 0, 0 après transformation *) 
+  (* point qui aura les coordonnées 0, 0 après transformation *)
   origin_diag : (float * float * float);
   (* un facteur d'homotétie *)
   homotetie : float;
@@ -15,7 +15,7 @@ type projection = {
   (* angle de la rotation *)
   rot_angle : float;
 }
-    
+
 (* perspectiva cavaliere *)
 (* 45bg = angle à 45 degré, face avant en bas à gauche *)
 
@@ -121,6 +121,17 @@ let cavaliere60hd = {
 (* perspective naturelle avec rotation à droite ou à gauche autour
    de l'axe des y. L'ajustement du centre est impératif *)
 
+let rot angle = {
+   distance_focale = 55.;
+   origin_transfo_x = 0.;
+   origin_transfo_y = 0.;
+   origin_transfo_z = 0.;
+   origin_diag = (0.,0.,0.);
+   axe_angle = 0.;
+   rot_angle = angle;
+   homotetie = 1.0;
+}
+
 let rot_y45d = {
    distance_focale = 55.;
    origin_transfo_x = 0.;
@@ -142,7 +153,7 @@ let rot_y30d = {
    rot_angle = 3.1416 /. 6.;
    homotetie = 1.0;
 }
-  
+
 let rot_y45g = {
    distance_focale = 55.;
    origin_transfo_x = 0.;
@@ -163,7 +174,7 @@ let rot_y30g = {
    axe_angle = 0.;
    rot_angle = -3.1416 /. 6.;
    homotetie = 1.0;
-}  
+}
 
 let project projection (x,y,z) =
   let f (x,y,z) =
@@ -179,4 +190,3 @@ let project projection (x,y,z) =
   let (x,y,z) = f (x,y,z) in
   let (x0,y0,z0) = f projection.origin_diag in
   (x -. x0, y -. y0, z -. z0)
-

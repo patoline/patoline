@@ -210,6 +210,8 @@ let param_PML =
   ; symbols = [("->", symbol "→");("→", symbol "→");("=>", symbol "⇒");("⇒", symbol "⇒");
                ("✂", symbol "✂"); ("⟨", symbol "⟨"); ("⟩", symbol "⟩");
                ("∀", symbol "∀"); ("∃", symbol "∃");("∈", symbol "∈");
+               ("μ", symbol "μ");("ν", symbol "ν");("↓", symbol "↓");
+               ("α", symbol "α");("β", symbol "β");("γ", symbol "γ");
                ("τ", symbol "τ");("ι", symbol "ι");("ο", symbol "ο");("≡", symbol "≡")
               ]
   }

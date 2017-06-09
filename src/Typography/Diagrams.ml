@@ -1553,7 +1553,7 @@ Doing a rectangle.\n" ;
 
       let default_matrix_node_anchor = `Base
       let default_matrix_node_style env =
-	Node.([mainAnchor `Center ; anchor default_matrix_node_anchor ; rectangle env])
+	Node.([mainAnchor `Center ; anchor default_matrix_node_anchor; rectangle env ])
       let between_centers disty distx _ i j =
 	(float_of_int j *. distx), -. (float_of_int i *. disty)
 
