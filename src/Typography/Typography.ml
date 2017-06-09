@@ -14,4 +14,6 @@ module Offset = Offset
 module OutputDrawing = OutputDrawing
 module Proj3d = Proj3d
 module TypoLanguage = TypoLanguage
+module Euler = Euler
+module Macros = Macros
 module Debug = Debug

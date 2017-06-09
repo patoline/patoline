@@ -26,47 +26,45 @@
   Christophe Raffalli, …
 ==========================================
 
-\Caml(open DefaultFormat)
-
 \Verbose_Changes
 
 => Delimiters
 
 (* From Asana font *)
-\Add_left{ ( }(MathFonts.adjusted_asana_delimiters "(" [10;3346;3347;3348])
-\Add_right{ ) }(MathFonts.adjusted_asana_delimiters ")" [11;3349;3350;3351])
-\Add_left{ \{ }(MathFonts.adjusted_asana_delimiters "{" [93;3352;3353;3354])
-\Add_right{ \} }(MathFonts.adjusted_asana_delimiters "}" [95;3355;3356;3357])
-\Add_left{ [ }(MathFonts.adjusted_asana_delimiters "[" [61;3340;3341;3342])
-\Add_right{ ] }(MathFonts.adjusted_asana_delimiters "]" [63;3343;3344;3345])
-\Add_left{ \lbar \labs | }(MathFonts.adjusted_asana_delimiters  "|" [749;3316;3317;3318;3319])
-\Add_right{ \rbar \rabs | }(MathFonts.adjusted_asana_delimiters "|" [749;3316;3317;3318;3319])
-\Add_left{ \ldbar || ‖ }(MathFonts.adjusted_asana_delimiters "\\ldbar" [385;3308;3309;3310;3311])
-\Add_right{ \rdbar || ‖ }(MathFonts.adjusted_asana_delimiters  "\\rdbar" [385;3308;3309;3310;3311])
-\Add_left{\lceil ⌈}(MathFonts.adjusted_asana_delimiters "\\lceil" [974;3328;3329;3330])
-\Add_right{\rceil ⌉}(MathFonts.adjusted_asana_delimiters "\\rceil" [975;3331;3332;3333])
-\Add_left{\lfloor ⌊}(MathFonts.adjusted_asana_delimiters "\\lfloor" [976;3334;3335;3336])
-\Add_right{\rfloor ⌋}(MathFonts.adjusted_asana_delimiters "\\rfloor" [977;3337;3338;3339])
+\Add_left{ ( }(Maths.adjusted_asana_delimiters "(" [10;3346;3347;3348])
+\Add_right{ ) }(Maths.adjusted_asana_delimiters ")" [11;3349;3350;3351])
+\Add_left{ \{ }(Maths.adjusted_asana_delimiters "{" [93;3352;3353;3354])
+\Add_right{ \} }(Maths.adjusted_asana_delimiters "}" [95;3355;3356;3357])
+\Add_left{ [ }(Maths.adjusted_asana_delimiters "[" [61;3340;3341;3342])
+\Add_right{ ] }(Maths.adjusted_asana_delimiters "]" [63;3343;3344;3345])
+\Add_left{ \lbar \labs | }(Maths.adjusted_asana_delimiters  "|" [749;3316;3317;3318;3319])
+\Add_right{ \rbar \rabs | }(Maths.adjusted_asana_delimiters "|" [749;3316;3317;3318;3319])
+\Add_left{ \ldbar || ‖ }(Maths.adjusted_asana_delimiters "\\ldbar" [385;3308;3309;3310;3311])
+\Add_right{ \rdbar || ‖ }(Maths.adjusted_asana_delimiters  "\\rdbar" [385;3308;3309;3310;3311])
+\Add_left{\lceil ⌈}(Maths.adjusted_asana_delimiters "\\lceil" [974;3328;3329;3330])
+\Add_right{\rceil ⌉}(Maths.adjusted_asana_delimiters "\\rceil" [975;3331;3332;3333])
+\Add_left{\lfloor ⌊}(Maths.adjusted_asana_delimiters "\\lfloor" [976;3334;3335;3336])
+\Add_right{\rfloor ⌋}(Maths.adjusted_asana_delimiters "\\rfloor" [977;3337;3338;3339])
 \Add_left{\left_white_square_bracket \llbracket [| ⟦}(
-	  MathFonts.fix_asana_delimiters "\\left_white_square_bracket" [3320;3321;3322;3323])
+	  Maths.fix_asana_delimiters "\\left_white_square_bracket" [3320;3321;3322;3323])
 \Add_right{\right_white_square_bracket \rrbracket |] ⟧}(
-	  MathFonts.fix_asana_delimiters "\\left_white_square_bracket" [3324;3325;3326;3327])
-\Add_left{\orig_left_white_square_bracket} (List.map (MathFonts.asana "\\left_white_square_bracket")
+	  Maths.fix_asana_delimiters "\\left_white_square_bracket" [3324;3325;3326;3327])
+\Add_left{\orig_left_white_square_bracket} (List.map (Maths.asana "\\left_white_square_bracket")
 					   [3320;3321;3322;3323])
-\Add_right{\orig_right_white_square_bracket} (List.map (MathFonts.asana "\\right_white_square_bracket")
+\Add_right{\orig_right_white_square_bracket} (List.map (Maths.asana "\\right_white_square_bracket")
 				      [3324;3325;3326;3327])
-\Add_left{ ⌜ \ulcorner}( [MathFonts.asana "ulcorner" 980] )
-\Add_right{ ⌝ \urcorner}( [MathFonts.asana "urcorner" 981] )
-\Add_left{ \lbanana ⦅ }( [MathFonts.asana "lbanana" 1267] )
-\Add_right{ \rbanana ⦆ }( [MathFonts.asana "rbanana" 1268] )
-\Add_left{ \lhalfmoon ⦇ }( [MathFonts.asana "lhalfmoon" 1269] )
-\Add_right{ \rhalfmoon ⦈ }( [MathFonts.asana "rhalfmoon" 1270] )
-\Add_left{ \llangle ⟪ }(MathFonts.adjusted_asana_delimiters "llangle" [1112;3220;3221;3222])
-\Add_right{ \rrangle ⟫ }(MathFonts.adjusted_asana_delimiters "rrangle" [1113;3223;3224;3225])
+\Add_left{ ⌜ \ulcorner}( [Maths.asana "ulcorner" 980] )
+\Add_right{ ⌝ \urcorner}( [Maths.asana "urcorner" 981] )
+\Add_left{ \lbanana ⦅ }( [Maths.asana "lbanana" 1267] )
+\Add_right{ \rbanana ⦆ }( [Maths.asana "rbanana" 1268] )
+\Add_left{ \lhalfmoon ⦇ }( [Maths.asana "lhalfmoon" 1269] )
+\Add_right{ \rhalfmoon ⦈ }( [Maths.asana "rhalfmoon" 1270] )
+\Add_left{ \llangle ⟪ }(Maths.adjusted_asana_delimiters "llangle" [1112;3220;3221;3222])
+\Add_right{ \rrangle ⟫ }(Maths.adjusted_asana_delimiters "rrangle" [1113;3223;3224;3225])
 
 (* From Euler font *)
-\Add_left{ \langle ⟨ }(MathFonts.adjusted_euler_delimiters "\\langle" [1803;1807(*;1809*);1811;1813])
-\Add_right{ \rangle ⟩ }(MathFonts.adjusted_euler_delimiters "\\rangle" [1804;1808(*;1810*);1812;1814])
+\Add_left{ \langle ⟨ }(Maths.adjusted_euler_delimiters "\\langle" [1803;1807(*;1809*);1811;1813])
+\Add_right{ \rangle ⟩ }(Maths.adjusted_euler_delimiters "\\rangle" [1804;1808(*;1810*);1812;1814])
 
 
 =<
@@ -92,12 +90,12 @@
 \Add_relation{\notsupset ⊅}{⊅}
 \Add_relation{\subsetneq ⊊}{⊊}
 \Add_relation{\supsetneq ⊋}{⊋}
-\Add_relation{\squaresub ⊏}(MathFonts.asana "⊏" 857)
-\Add_relation{\squaresup ⊐}(MathFonts.asana "⊐" 858)
+\Add_relation{\squaresub ⊏}(Maths.asana "⊏" 857)
+\Add_relation{\squaresup ⊐}(Maths.asana "⊐" 858)
 \Add_relation{\squaresubeq ⊑}{⊑}
 \Add_relation{\squaresupeq ⊒}{⊒}
-\Add_relation{\squaresubnoteq ⋤}(MathFonts.asana "⋤" 942)
-\Add_relation{\squaresupnoteq ⋥}(MathFonts.asana "⋥" 943)
+\Add_relation{\squaresubnoteq ⋤}(Maths.asana "⋤" 942)
+\Add_relation{\squaresupnoteq ⋥}(Maths.asana "⋥" 943)
 \Add_relation{\identical \equiv ≡}{≡}
 \Add_relation{\notidentical \nequiv ≢}{≢}
 \Add_relation{\almostequal ≈}{≈}
@@ -106,35 +104,35 @@
 \Add_relation{≃ \simeq \equi}{≃}
 \Add_relation{\notalmostequal ≉}{≉}
 \Add_relation{∼ \sim}{∼}
-\Add_relation{≜ \eqtriangle}(MathFonts.asana "≜" 806)
-\Add_relation{≝ \eqbydef}(MathFonts.asana "≝" 807)
-\Add_relation{\frown}(MathFonts.asana "frown" 986)
-\Add_relation{\smile}(MathFonts.asana "smile" 987)
+\Add_relation{≜ \eqtriangle}(Maths.asana "≜" 806)
+\Add_relation{≝ \eqbydef}(Maths.asana "≝" 807)
+\Add_relation{\frown}(Maths.asana "frown" 986)
+\Add_relation{\smile}(Maths.asana "smile" 987)
 \Add_relation{\botrel}{⊥}
 
-\Add_relation{\pitchfork ⋔}(MathFonts.asana "pitchfork" 1609)
+\Add_relation{\pitchfork ⋔}(Maths.asana "pitchfork" 1609)
 
 \Add_relation{\leq <= ≤}{≤}
 \Add_relation{\geq >= ≥}{≥}
 \Add_relation{\lt <}{<}
 \Add_relation{\gt >}{>}
-\Add_relation{\eqdef =:}(MathFonts.asana "\\eqdef" 799)
-\Add_relation{\defeq := ≔}(MathFonts.asana "\\defeq" 798)
-\Add_relation{\bnfeq ::=}(MathFonts.asana "\\bnfeq" 1506)
+\Add_relation{\eqdef =:}(Maths.asana "\\eqdef" 799)
+\Add_relation{\defeq := ≔}(Maths.asana "\\defeq" 798)
+\Add_relation{\bnfeq ::=}(Maths.asana "\\bnfeq" 1506)
 
 
-\Add_relation{\succ ≻}(MathFonts.asana "\\succ" 837)
-\Add_relation{\pred ≺}(MathFonts.asana "\\pred" 836)
-\Add_relation{\succeq ≽}(MathFonts.asana "\\succeq" 839)
-\Add_relation{\predeq ≼}(MathFonts.asana "\\predeq" 838)
-\Add_relation{\unlhd ⊴}(MathFonts.asana "\\unlhd" 894)
-\Add_relation{\unrhd ⊵}(MathFonts.asana "\\unrhd" 895)
+\Add_relation{\succ ≻}(Maths.asana "\\succ" 837)
+\Add_relation{\pred ≺}(Maths.asana "\\pred" 836)
+\Add_relation{\succeq ≽}(Maths.asana "\\succeq" 839)
+\Add_relation{\predeq ≼}(Maths.asana "\\predeq" 838)
+\Add_relation{\unlhd ⊴}(Maths.asana "\\unlhd" 894)
+\Add_relation{\unrhd ⊵}(Maths.asana "\\unrhd" 895)
 
-\Add_relation{\realize \force ⊩}(MathFonts.asana "⊩" 883)
-\Add_relation{\urealize}(MathFonts.asana "\\urealize" 884)
+\Add_relation{\realize \force ⊩}(Maths.asana "⊩" 883)
+\Add_relation{\urealize}(Maths.asana "\\urealize" 884)
 \Add_relation{\vdash ⊢ |-}{⊢}
-\Add_relation{\models \entails ⊨ |=}(MathFonts.asana "\\models" 881)
-\Add_relation{\triangleright ⊳ } ( MathFonts.asana "triangle right" 893 )
+\Add_relation{\models \entails ⊨ |=}(Maths.asana "\\models" 881)
+\Add_relation{\triangleright ⊳ } ( Maths.asana "triangle right" 893 )
 
 =<
 
@@ -149,11 +147,11 @@
 \Add_addition_like{\mp}{∓}
 \Add_addition_like{\union \cup ∪}{∪}
 \Add_addition_like{\inter \cap ∩}{∩}
-\Add_addition_like{\squareinter \squarecap ⊓}(MathFonts.asana "⊓" 861)
-\Add_addition_like{\squareunion \squarecup ⊔}(MathFonts.asana "⊔" 862)
+\Add_addition_like{\squareinter \squarecap ⊓}(Maths.asana "⊓" 861)
+\Add_addition_like{\squareunion \squarecup ⊔}(Maths.asana "⊔" 862)
 
 \Add_addition_like{\mod}( fun env st->(Maths.glyphs "mod" (Maths.change_fonts env env.font) st) )
-\Add_addition_like{\vee ∨}(MathFonts.asana "∨" 754)
+\Add_addition_like{\vee ∨}(Maths.asana "∨" 754)
 \Add_addition_like{\setminus ∖}{∖}
 \Add_addition_like{\uplus ⊎}{⊎}
 
@@ -169,26 +167,26 @@
 \Add_product_like{/}{/}
 \Add_product_like{\divide ÷}{÷}
 \Add_product_like{\otimes ⊗}{⊗}
-\Add_product_like{\boxtimes ⊠}(MathFonts.asana "⊠" 874)
+\Add_product_like{\boxtimes ⊠}(Maths.asana "⊠" 874)
 \Add_product_like{\odot ⊙}{⊙}
 \Add_product_like{\bulletop ∙}{∙}
 \Add_product_like{\circ ∘}{∘}
-\Add_product_like{\wedge \gcd ∧}(MathFonts.asana "∧" 753)
+\Add_product_like{\wedge \gcd ∧}(Maths.asana "∧" 753)
 \Add_product_like{\ast ∗}{∗}
 \Add_product_like{\seq}{;}
 \Add_product_like{\para |}{|}
-\Add_product_like{\parallel ∥}(MathFonts.asana "∥" 385)
-\Add_product_like{\star ⋆}(MathFonts.asana "⋆" 912)
-\Add_product_like{\sslash //}(MathFonts.asana "//" 1643)
+\Add_product_like{\parallel ∥}(Maths.asana "∥" 385)
+\Add_product_like{\star ⋆}(Maths.asana "⋆" 912)
+\Add_product_like{\sslash //}(Maths.asana "//" 1643)
 
 =<
 
 \pagesBefore(1)
 => Connector symbols
 
-\Add_connector{\land &&}(MathFonts.asana "∧" 753)
-\Add_connector{\restriction ↾}(MathFonts.euler "↾" 248)
-\Add_connector{\lor}(MathFonts.asana "∨" 754)
+\Add_connector{\land &&}(Maths.asana "∧" 753)
+\Add_connector{\restriction ↾}(Maths.euler "↾" 248)
+\Add_connector{\lor}(Maths.asana "∨" 754)
 
 =<
 
@@ -209,24 +207,24 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_arrow{<==>\Longleftrightarrow ⟺}{⟺}
 \Add_arrow{<--> \longleftrightarrow ⟷}{⟷}
 \Add_arrow{<-> \equiv \leftrightarrow ↔}{↔}
-\Add_arrow{|-> \mapsto ↦}(MathFonts.euler "↦" 243)
+\Add_arrow{|-> \mapsto ↦}(Maths.euler "↦" 243)
 \Add_arrow{<-| \mapsfrom ↤}{↤}
-\Add_arrow{\epi ->> ↠}(MathFonts.asana "↠" 618)
-\Add_arrow{\mono >-> ↣}(MathFonts.asana "↣" 621)
-\Add_arrow{\hookrightarrow \inj ↪}(MathFonts.euler "↪" 245)
-\Add_arrow{\hookleftarrow \jni ↩}(MathFonts.euler "↩" 244)
+\Add_arrow{\epi ->> ↠}(Maths.asana "↠" 618)
+\Add_arrow{\mono >-> ↣}(Maths.asana "↣" 621)
+\Add_arrow{\hookrightarrow \inj ↪}(Maths.euler "↪" 245)
+\Add_arrow{\hookleftarrow \jni ↩}(Maths.euler "↩" 244)
 \Add_arrow{\ulharpoon ↼}{↼}
 \Add_arrow{\urharpoon ⇀}{⇀}
 \Add_arrow{\dlharpoon ↽}{↽}
 \Add_arrow{\drharpoon ⇁}{⇁}
 \Add_arrow{\tostar}{→*}
-\Add_arrow{↛ \nrightarrow}(MathFonts.asana "↛" 613)
-\Add_arrow{⇏ \nRightarrow}(MathFonts.asana "⇏" 635)
-\Add_arrow{\leadsto ~> ↝}(MathFonts.asana "↝" 615)
-\Add_arrow{\otsdael <~ ↜}(MathFonts.asana "↜" 614)
-\Add_arrow{\rtriangle}(MathFonts.asana "⇾" 712)
-\Add_arrow{\ltriangle}(MathFonts.asana "⇽" 711)
-\Add_arrow{\multimap -o ⊸}(MathFonts.asana "⊸" 998)
+\Add_arrow{↛ \nrightarrow}(Maths.asana "↛" 613)
+\Add_arrow{⇏ \nRightarrow}(Maths.asana "⇏" 635)
+\Add_arrow{\leadsto ~> ↝}(Maths.asana "↝" 615)
+\Add_arrow{\otsdael <~ ↜}(Maths.asana "↜" 614)
+\Add_arrow{\rtriangle}(Maths.asana "⇾" 712)
+\Add_arrow{\ltriangle}(Maths.asana "⇽" 711)
+\Add_arrow{\multimap -o ⊸}(Maths.asana "⊸" 998)
 
 =<
 
@@ -249,13 +247,13 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_relation{⊣ \dashv}{⊣}
 \Add_prefix{\bar}{|}
 \Add_prefix{\lnot \neg ¬}{¬}
-\Add_prefix{↑ \uparrow}( MathFonts.asana "up arrow" 603 )
-\Add_prefix{↓ \downarrow}( MathFonts.asana "down arrow" 605 )
-\Add_prefix{⇑ \Uparrow}( MathFonts.asana "Up arrow" 667 )
-\Add_prefix{⇓ \Downarrow}( MathFonts.asana "Down arrow" 669 )
-\Add_prefix{\diverge}( MathFonts.asana "up arrow" 667 )
-\Add_prefix{\converge}( MathFonts.asana "down arrow" 669 )
-\Add_symbol{\Updownarrow ⇕}( MathFonts.asana "Updownarrow" 671 )
+\Add_prefix{↑ \uparrow}( Maths.asana "up arrow" 603 )
+\Add_prefix{↓ \downarrow}( Maths.asana "down arrow" 605 )
+\Add_prefix{⇑ \Uparrow}( Maths.asana "Up arrow" 667 )
+\Add_prefix{⇓ \Downarrow}( Maths.asana "Down arrow" 669 )
+\Add_prefix{\diverge}( Maths.asana "up arrow" 667 )
+\Add_prefix{\converge}( Maths.asana "down arrow" 669 )
+\Add_symbol{\Updownarrow ⇕}( Maths.asana "Updownarrow" 671 )
 
 =<
 
@@ -272,11 +270,11 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 => Postfix and accent symbols
 
 \Add_postfix{!}{!}
-\Add_accent{* \words}(MathFonts.euler "'" 797)
-\Add_accent{'}(MathFonts.euler "'" 196)
-\Add_accent{''}(MathFonts.euler "'" 197)
-\Add_accent{'''}(MathFonts.euler "'" 198)
-\Add_accent{''''}(MathFonts.euler "'" 203)
+\Add_accent{* \words}(Maths.euler "'" 797)
+\Add_accent{'}(Maths.euler "'" 196)
+\Add_accent{''}(Maths.euler "'" 197)
+\Add_accent{'''}(Maths.euler "'" 198)
+\Add_accent{''''}(Maths.euler "'" 203)
 
 
 =<
@@ -350,54 +348,54 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \pagesBefore(1)
 => Gothic letters
 
-\Add_symbol{\frakA 𝔄}(MathFonts.euler "𝔄" 518)
-\Add_symbol{\frakB 𝔅}(MathFonts.euler "𝔅" 519)
-\Add_symbol{\frakD 𝔇}(MathFonts.euler "𝔇" 520)
-\Add_symbol{\frakE 𝔈}(MathFonts.euler "𝔈" 521)
-\Add_symbol{\frakF 𝔉}(MathFonts.euler "𝔉" 522)
-\Add_symbol{\frakG 𝔊}(MathFonts.euler "𝔊" 523)
-\Add_symbol{\frakJ 𝔍}(MathFonts.euler "𝔍" 524)
-\Add_symbol{\frakK 𝔎}(MathFonts.euler "𝔎" 525)
-\Add_symbol{\frakL 𝔏}(MathFonts.euler "𝔏" 526)
-\Add_symbol{\frakM 𝔐}(MathFonts.euler "𝔐" 527)
-\Add_symbol{\frakN 𝔑}(MathFonts.euler "𝔑" 528)
-\Add_symbol{\frakO 𝔒}(MathFonts.euler "𝔒" 529)
-\Add_symbol{\frakP 𝔓}(MathFonts.euler "𝔓" 530)
-\Add_symbol{\frakQ 𝔔}(MathFonts.euler "𝔔" 531)
-\Add_symbol{\frakS 𝔖}(MathFonts.euler "𝔖" 532)
-\Add_symbol{\frakT 𝔗}(MathFonts.euler "𝔗" 533)
-\Add_symbol{\frakU 𝔘}(MathFonts.euler "𝔘" 534)
-\Add_symbol{\frakV 𝔙}(MathFonts.euler "𝔙" 535)
-\Add_symbol{\frakW 𝔚}(MathFonts.euler "𝔚" 536)
-\Add_symbol{\frakX 𝔛}(MathFonts.euler "𝔛" 537)
-\Add_symbol{\frakY 𝔜}(MathFonts.euler "𝔜" 538)
+\Add_symbol{\frakA 𝔄}(Maths.euler "𝔄" 518)
+\Add_symbol{\frakB 𝔅}(Maths.euler "𝔅" 519)
+\Add_symbol{\frakD 𝔇}(Maths.euler "𝔇" 520)
+\Add_symbol{\frakE 𝔈}(Maths.euler "𝔈" 521)
+\Add_symbol{\frakF 𝔉}(Maths.euler "𝔉" 522)
+\Add_symbol{\frakG 𝔊}(Maths.euler "𝔊" 523)
+\Add_symbol{\frakJ 𝔍}(Maths.euler "𝔍" 524)
+\Add_symbol{\frakK 𝔎}(Maths.euler "𝔎" 525)
+\Add_symbol{\frakL 𝔏}(Maths.euler "𝔏" 526)
+\Add_symbol{\frakM 𝔐}(Maths.euler "𝔐" 527)
+\Add_symbol{\frakN 𝔑}(Maths.euler "𝔑" 528)
+\Add_symbol{\frakO 𝔒}(Maths.euler "𝔒" 529)
+\Add_symbol{\frakP 𝔓}(Maths.euler "𝔓" 530)
+\Add_symbol{\frakQ 𝔔}(Maths.euler "𝔔" 531)
+\Add_symbol{\frakS 𝔖}(Maths.euler "𝔖" 532)
+\Add_symbol{\frakT 𝔗}(Maths.euler "𝔗" 533)
+\Add_symbol{\frakU 𝔘}(Maths.euler "𝔘" 534)
+\Add_symbol{\frakV 𝔙}(Maths.euler "𝔙" 535)
+\Add_symbol{\frakW 𝔚}(Maths.euler "𝔚" 536)
+\Add_symbol{\frakX 𝔛}(Maths.euler "𝔛" 537)
+\Add_symbol{\frakY 𝔜}(Maths.euler "𝔜" 538)
 
-\Add_symbol{\fraka 𝔞}(MathFonts.euler "𝔞" 539)
-\Add_symbol{\frakb 𝔟}(MathFonts.euler "𝔟" 540)
-\Add_symbol{\frakc 𝔠}(MathFonts.euler "𝔠" 541)
-\Add_symbol{\frakd 𝔡}(MathFonts.euler "𝔡" 542)
-\Add_symbol{\frake 𝔢}(MathFonts.euler "𝔢" 543)
-\Add_symbol{\frakf 𝔣}(MathFonts.euler "𝔣" 544)
-\Add_symbol{\frakg 𝔤}(MathFonts.euler "𝔤" 545)
-\Add_symbol{\frakh 𝔥}(MathFonts.euler "𝔥" 546)
-\Add_symbol{\fraki 𝔦}(MathFonts.euler "𝔦" 547)
-\Add_symbol{\frakj 𝔧}(MathFonts.euler "𝔧" 548)
-\Add_symbol{\frakk 𝔨}(MathFonts.euler "𝔨" 549)
-\Add_symbol{\frakl 𝔩}(MathFonts.euler "𝔩" 550)
-\Add_symbol{\frakm 𝔪}(MathFonts.euler "𝔪" 551)
-\Add_symbol{\frakn 𝔫}(MathFonts.euler "𝔫" 552)
-\Add_symbol{\frako 𝔬}(MathFonts.euler "𝔬" 553)
-\Add_symbol{\frakp 𝔭}(MathFonts.euler "𝔭" 554)
-\Add_symbol{\frakq 𝔮}(MathFonts.euler "𝔮" 555)
-\Add_symbol{\frakr 𝔯}(MathFonts.euler "𝔯" 556)
-\Add_symbol{\fraks 𝔰}(MathFonts.euler "𝔰" 557)
-\Add_symbol{\frakt 𝔱}(MathFonts.euler "𝔱" 558)
-\Add_symbol{\fraku 𝔲}(MathFonts.euler "𝔲" 559)
-\Add_symbol{\frakv 𝔳}(MathFonts.euler "𝔳" 560)
-\Add_symbol{\frakw 𝔴}(MathFonts.euler "𝔴" 561)
-\Add_symbol{\frakx 𝔵}(MathFonts.euler "𝔵" 562)
-\Add_symbol{\fraky 𝔶}(MathFonts.euler "𝔶" 563)
-\Add_symbol{\frakz 𝔷}(MathFonts.euler "𝔷" 564)
+\Add_symbol{\fraka 𝔞}(Maths.euler "𝔞" 539)
+\Add_symbol{\frakb 𝔟}(Maths.euler "𝔟" 540)
+\Add_symbol{\frakc 𝔠}(Maths.euler "𝔠" 541)
+\Add_symbol{\frakd 𝔡}(Maths.euler "𝔡" 542)
+\Add_symbol{\frake 𝔢}(Maths.euler "𝔢" 543)
+\Add_symbol{\frakf 𝔣}(Maths.euler "𝔣" 544)
+\Add_symbol{\frakg 𝔤}(Maths.euler "𝔤" 545)
+\Add_symbol{\frakh 𝔥}(Maths.euler "𝔥" 546)
+\Add_symbol{\fraki 𝔦}(Maths.euler "𝔦" 547)
+\Add_symbol{\frakj 𝔧}(Maths.euler "𝔧" 548)
+\Add_symbol{\frakk 𝔨}(Maths.euler "𝔨" 549)
+\Add_symbol{\frakl 𝔩}(Maths.euler "𝔩" 550)
+\Add_symbol{\frakm 𝔪}(Maths.euler "𝔪" 551)
+\Add_symbol{\frakn 𝔫}(Maths.euler "𝔫" 552)
+\Add_symbol{\frako 𝔬}(Maths.euler "𝔬" 553)
+\Add_symbol{\frakp 𝔭}(Maths.euler "𝔭" 554)
+\Add_symbol{\frakq 𝔮}(Maths.euler "𝔮" 555)
+\Add_symbol{\frakr 𝔯}(Maths.euler "𝔯" 556)
+\Add_symbol{\fraks 𝔰}(Maths.euler "𝔰" 557)
+\Add_symbol{\frakt 𝔱}(Maths.euler "𝔱" 558)
+\Add_symbol{\fraku 𝔲}(Maths.euler "𝔲" 559)
+\Add_symbol{\frakv 𝔳}(Maths.euler "𝔳" 560)
+\Add_symbol{\frakw 𝔴}(Maths.euler "𝔴" 561)
+\Add_symbol{\frakx 𝔵}(Maths.euler "𝔵" 562)
+\Add_symbol{\fraky 𝔶}(Maths.euler "𝔶" 563)
+\Add_symbol{\frakz 𝔷}(Maths.euler "𝔷" 564)
 
 =<
 
@@ -405,32 +403,32 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 => Other symbols
 
 (*\Add_symbol{\sharp}(Maths.glyphs "#")*)
-\Add_symbol{\sharp ♯}(MathFonts.asana "♯" 1062)
-\Add_symbol{\natural ♮}(MathFonts.asana "♮" 1061)
-\Add_symbol{\flat ♭}(MathFonts.asana "♭" 1060)
+\Add_symbol{\sharp ♯}(Maths.asana "♯" 1062)
+\Add_symbol{\natural ♮}(Maths.asana "♮" 1061)
+\Add_symbol{\flat ♭}(Maths.asana "♭" 1060)
 \Add_symbol{\infty ∞}{∞}
 \Add_symbol{\partial ∂}{∂}
 \Add_symbol{\top ⊤}{⊤}
 \Add_symbol{\bottom \bot ⊥}{⊥}
-\Add_symbol{\dtop}(MathFonts.asana "\\dtop" 1626)
-\Add_symbol{\dbottom \dbot \bbot}(MathFonts.asana "\\dbottom" 1625)
+\Add_symbol{\dtop}(Maths.asana "\\dtop" 1626)
+\Add_symbol{\dbottom \dbot \bbot}(Maths.asana "\\dbottom" 1625)
 \Add_symbol{\emptyset ∅}{∅}
 \Add_symbol{… ... \dots}{…}
-\Add_symbol{\vdots ⋮}(MathFonts.asana "\\vdost" 952)
-\Add_symbol{\wc —}(MathFonts.asana "wild card" 382)
-\Add_symbol{\heartsuit ♥}( MathFonts.asana "white heartsuit" 1051 )
+\Add_symbol{\vdots ⋮}(Maths.asana "\\vdost" 952)
+\Add_symbol{\wc —}(Maths.asana "wild card" 382)
+\Add_symbol{\heartsuit ♥}( Maths.asana "white heartsuit" 1051 )
 \Add_symbol{⋯ \cdots}{⋯}
-\Add_symbol{□ \wbox \wsquare}(MathFonts.asana "□" 1666)
-\Add_symbol{■ \bbox \bsquare}(MathFonts.asana "■" 1665)
-\Add_symbol{\nabla ∇}(MathFonts.euler "nabla" 268)
-\Add_symbol{✓ \checkmark}(MathFonts.asana "✔" 1069)
+\Add_symbol{□ \wbox \wsquare}(Maths.asana "□" 1666)
+\Add_symbol{■ \bbox \bsquare}(Maths.asana "■" 1665)
+\Add_symbol{\nabla ∇}(Maths.euler "nabla" 268)
+\Add_symbol{✓ \checkmark}(Maths.asana "✔" 1069)
 \Add_symbol{\restrsymbol}{|}
 \Add_symbol{\lparen}{(}
 \Add_symbol{\rparen}{)}
 (* Work around the bug of ⌜ and ⌝  *)
-\Add_symbol{\uulcorner}( MathFonts.asana "uulcorner" 980 )
-\Add_symbol{\uurcorner}( MathFonts.asana "uurcorner" 981 )
-\Add_symbol{\bullet •}( MathFonts.asana "bullet symbol" 396 )
+\Add_symbol{\uulcorner}( Maths.asana "uulcorner" 980 )
+\Add_symbol{\uurcorner}( Maths.asana "uurcorner" 981 )
+\Add_symbol{\bullet •}( Maths.asana "bullet symbol" 396 )
 
 (* It seems Euler only has a glyph for alef, we'll use Asana-math instead
 \Add_symbol{\alef ℵ}{ℵ}
@@ -439,116 +437,116 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_symbol{\dalet ℸ}{ℸ}
 *)
 
-\Add_symbol{\alef ℵ}(MathFonts.asana "ℵ" 533)
-\Add_symbol{\bet ℶ}(MathFonts.asana "ℶ" 534)
-\Add_symbol{\gimel ℷ}(MathFonts.asana "ℷ" 535)
-\Add_symbol{\dalet ℸ}(MathFonts.asana "ℸ" 536)
+\Add_symbol{\alef ℵ}(Maths.asana "ℵ" 533)
+\Add_symbol{\bet ℶ}(Maths.asana "ℶ" 534)
+\Add_symbol{\gimel ℷ}(Maths.asana "ℷ" 535)
+\Add_symbol{\dalet ℸ}(Maths.asana "ℸ" 536)
 
 \Add_symbol{\$}{$}
 
 \Add_symbol{\ell ℓ}{ℓ}
 
-\Add_symbol{\circl}(MathFonts.asana "\\circl" 644)
-\Add_symbol{\circr}(MathFonts.asana "\\circr" 645)
+\Add_symbol{\circl}(Maths.asana "\\circl" 644)
+\Add_symbol{\circr}(Maths.asana "\\circr" 645)
 
 =<
 
 \pagesBefore(1)
 => Black bold letters
 
-\Add_symbol{\bbA 𝔸}(MathFonts.ams "bbA" 66)
-\Add_symbol{\bbB 𝔹}(MathFonts.ams "bbB" 67)
-\Add_symbol{\bbC ℂ}(MathFonts.ams "ℂ" 68)
-\Add_symbol{\bbD 𝔻}(MathFonts.ams "bbD" 69)
-\Add_symbol{\bbE 𝔼}(MathFonts.ams "bbE" 70)
-\Add_symbol{\bbF 𝔽}(MathFonts.ams "bbF" 71)
-\Add_symbol{\bbG 𝔾}(MathFonts.ams "bbG" 72)
-\Add_symbol{\bbH ℍ }(MathFonts.ams "ℍ" 73)
-\Add_symbol{\bbI  𝕀}(MathFonts.ams "bbI" 74)
-\Add_symbol{\bbJ  𝕁}(MathFonts.ams "bbJ" 75)
-\Add_symbol{\bbK 𝕂}(MathFonts.ams "bbK" 76)
-\Add_symbol{\bbL 𝕃}(MathFonts.ams "bbL" 77)
-\Add_symbol{\bbM 𝕄}(MathFonts.ams "bbM" 78)
-\Add_symbol{\bbN ℕ}(MathFonts.ams "ℕ" 79)
-\Add_symbol{\bbO 𝕆}(MathFonts.ams "bbO" 80)
-\Add_symbol{\bbP ℙ}(MathFonts.ams "ℙ" 81)
-\Add_symbol{\bbQ ℚ}(MathFonts.ams "ℚ" 82)
-\Add_symbol{\bbR ℝ}(MathFonts.ams "ℝ" 83)
-\Add_symbol{\bbS 𝕊}(MathFonts.ams "\\bbS" 84)
-\Add_symbol{\bbT 𝕋}(MathFonts.ams "\\bbT" 85)
-\Add_symbol{\bbU 𝕌}(MathFonts.ams "\\bbU" 86)
-\Add_symbol{\bbV 𝕍}(MathFonts.ams "\\bbV" 87)
-\Add_symbol{\bbW 𝕎}(MathFonts.ams "\\bbW" 88)
-\Add_symbol{\bbX 𝕏}(MathFonts.ams "\\bbX" 89)
-\Add_symbol{\bbY 𝕐}(MathFonts.ams "\\bbY" 90)
-\Add_symbol{\bbZ ℤ}(MathFonts.ams "ℤ" 91)
-\Add_symbol{\bb0 𝟘}(MathFonts.asana "𝟘" 2664)
-\Add_symbol{\bb1 𝟙}(MathFonts.asana "𝟙" 2665)
-\Add_symbol{\bb2 𝟚}(MathFonts.asana "𝟚" 2666)
-\Add_symbol{\bb3 𝟛}(MathFonts.asana "𝟛" 2667)
-\Add_symbol{\bb4 𝟜}(MathFonts.asana "𝟜" 2668)
-\Add_symbol{\bb5 𝟝}(MathFonts.asana "𝟝" 2669)
-\Add_symbol{\bb6 𝟞}(MathFonts.asana "𝟞" 2670)
-\Add_symbol{\bb7 𝟟}(MathFonts.asana "𝟟" 2671)
-\Add_symbol{\bb8 𝟠}(MathFonts.asana "𝟠" 2672)
-\Add_symbol{\bb9 𝟡}(MathFonts.asana "𝟡" 2673)
+\Add_symbol{\bbA 𝔸}(Maths.ams "bbA" 66)
+\Add_symbol{\bbB 𝔹}(Maths.ams "bbB" 67)
+\Add_symbol{\bbC ℂ}(Maths.ams "ℂ" 68)
+\Add_symbol{\bbD 𝔻}(Maths.ams "bbD" 69)
+\Add_symbol{\bbE 𝔼}(Maths.ams "bbE" 70)
+\Add_symbol{\bbF 𝔽}(Maths.ams "bbF" 71)
+\Add_symbol{\bbG 𝔾}(Maths.ams "bbG" 72)
+\Add_symbol{\bbH ℍ }(Maths.ams "ℍ" 73)
+\Add_symbol{\bbI  𝕀}(Maths.ams "bbI" 74)
+\Add_symbol{\bbJ  𝕁}(Maths.ams "bbJ" 75)
+\Add_symbol{\bbK 𝕂}(Maths.ams "bbK" 76)
+\Add_symbol{\bbL 𝕃}(Maths.ams "bbL" 77)
+\Add_symbol{\bbM 𝕄}(Maths.ams "bbM" 78)
+\Add_symbol{\bbN ℕ}(Maths.ams "ℕ" 79)
+\Add_symbol{\bbO 𝕆}(Maths.ams "bbO" 80)
+\Add_symbol{\bbP ℙ}(Maths.ams "ℙ" 81)
+\Add_symbol{\bbQ ℚ}(Maths.ams "ℚ" 82)
+\Add_symbol{\bbR ℝ}(Maths.ams "ℝ" 83)
+\Add_symbol{\bbS 𝕊}(Maths.ams "\\bbS" 84)
+\Add_symbol{\bbT 𝕋}(Maths.ams "\\bbT" 85)
+\Add_symbol{\bbU 𝕌}(Maths.ams "\\bbU" 86)
+\Add_symbol{\bbV 𝕍}(Maths.ams "\\bbV" 87)
+\Add_symbol{\bbW 𝕎}(Maths.ams "\\bbW" 88)
+\Add_symbol{\bbX 𝕏}(Maths.ams "\\bbX" 89)
+\Add_symbol{\bbY 𝕐}(Maths.ams "\\bbY" 90)
+\Add_symbol{\bbZ ℤ}(Maths.ams "ℤ" 91)
+\Add_symbol{\bb0 𝟘}(Maths.asana "𝟘" 2664)
+\Add_symbol{\bb1 𝟙}(Maths.asana "𝟙" 2665)
+\Add_symbol{\bb2 𝟚}(Maths.asana "𝟚" 2666)
+\Add_symbol{\bb3 𝟛}(Maths.asana "𝟛" 2667)
+\Add_symbol{\bb4 𝟜}(Maths.asana "𝟜" 2668)
+\Add_symbol{\bb5 𝟝}(Maths.asana "𝟝" 2669)
+\Add_symbol{\bb6 𝟞}(Maths.asana "𝟞" 2670)
+\Add_symbol{\bb7 𝟟}(Maths.asana "𝟟" 2671)
+\Add_symbol{\bb8 𝟠}(Maths.asana "𝟠" 2672)
+\Add_symbol{\bb9 𝟡}(Maths.asana "𝟡" 2673)
 
 =<
 
 \pagesBefore(1)
 => Calligraphic letters
 
-\Add_symbol{\calA 𝒜}(MathFonts.asana "cal A" 1904)
-\Add_symbol{\calB ℬ}(MathFonts.asana "cal B" 1905)
-\Add_symbol{\calC 𝒞}(MathFonts.asana "cal C" 1906)
-\Add_symbol{\calD 𝒟}(MathFonts.asana "cal D" 1907)
-\Add_symbol{\calE ℰ}(MathFonts.asana "cal E" 1908)
-\Add_symbol{\calF ℱ}(MathFonts.asana "cal F" 1909)
-\Add_symbol{\calG 𝒢}(MathFonts.asana "cal G" 1910)
-\Add_symbol{\calH ℋ}(MathFonts.asana "cal H" 1911)
-\Add_symbol{\calI ℐ}(MathFonts.asana "cal I" 1912)
-\Add_symbol{\calJ 𝒥}(MathFonts.asana "cal J" 1913)
-\Add_symbol{\calK 𝒦}(MathFonts.asana "cal K" 1914)
-\Add_symbol{\calL ℒ}(MathFonts.asana "cal L" 1915)
-\Add_symbol{\calM ℳ}(MathFonts.asana "cal M" 1916)
-\Add_symbol{\calN 𝒩}(MathFonts.asana "cal N" 1917)
-\Add_symbol{\calO 𝒪}(MathFonts.asana "cal O" 1918)
-\Add_symbol{\calP 𝒫}(MathFonts.asana "cal P" 1919)
-\Add_symbol{\calQ 𝒬}(MathFonts.asana "cal Q" 1920)
-\Add_symbol{\calR ℛ}(MathFonts.asana "cal R" 1921)
-\Add_symbol{\calS 𝒮}(MathFonts.asana "cal S" 1922)
-\Add_symbol{\calT 𝒯}(MathFonts.asana "cal T" 1923)
-\Add_symbol{\calU 𝒰}(MathFonts.asana "cal U" 1924)
-\Add_symbol{\calV 𝒱}(MathFonts.asana "cal V" 1925)
-\Add_symbol{\calW 𝒲}(MathFonts.asana "cal W" 1926)
-\Add_symbol{\calX 𝒳}(MathFonts.asana "cal X" 1927)
-\Add_symbol{\calY 𝒴}(MathFonts.asana "cal Y" 1928)
-\Add_symbol{\calZ 𝒵}(MathFonts.asana "cal Z" 1929)
+\Add_symbol{\calA 𝒜}(Maths.asana "cal A" 1904)
+\Add_symbol{\calB ℬ}(Maths.asana "cal B" 1905)
+\Add_symbol{\calC 𝒞}(Maths.asana "cal C" 1906)
+\Add_symbol{\calD 𝒟}(Maths.asana "cal D" 1907)
+\Add_symbol{\calE ℰ}(Maths.asana "cal E" 1908)
+\Add_symbol{\calF ℱ}(Maths.asana "cal F" 1909)
+\Add_symbol{\calG 𝒢}(Maths.asana "cal G" 1910)
+\Add_symbol{\calH ℋ}(Maths.asana "cal H" 1911)
+\Add_symbol{\calI ℐ}(Maths.asana "cal I" 1912)
+\Add_symbol{\calJ 𝒥}(Maths.asana "cal J" 1913)
+\Add_symbol{\calK 𝒦}(Maths.asana "cal K" 1914)
+\Add_symbol{\calL ℒ}(Maths.asana "cal L" 1915)
+\Add_symbol{\calM ℳ}(Maths.asana "cal M" 1916)
+\Add_symbol{\calN 𝒩}(Maths.asana "cal N" 1917)
+\Add_symbol{\calO 𝒪}(Maths.asana "cal O" 1918)
+\Add_symbol{\calP 𝒫}(Maths.asana "cal P" 1919)
+\Add_symbol{\calQ 𝒬}(Maths.asana "cal Q" 1920)
+\Add_symbol{\calR ℛ}(Maths.asana "cal R" 1921)
+\Add_symbol{\calS 𝒮}(Maths.asana "cal S" 1922)
+\Add_symbol{\calT 𝒯}(Maths.asana "cal T" 1923)
+\Add_symbol{\calU 𝒰}(Maths.asana "cal U" 1924)
+\Add_symbol{\calV 𝒱}(Maths.asana "cal V" 1925)
+\Add_symbol{\calW 𝒲}(Maths.asana "cal W" 1926)
+\Add_symbol{\calX 𝒳}(Maths.asana "cal X" 1927)
+\Add_symbol{\calY 𝒴}(Maths.asana "cal Y" 1928)
+\Add_symbol{\calZ 𝒵}(Maths.asana "cal Z" 1929)
 
 =<
 
 \pagesBefore(1)
 => Operators
 
-\Add_limits_operator{∑ \sum}(List.map (fun x -> vkern_percent_under (MathFonts.euler "∑" x) 0.20) [778;779])
-\Add_limits_operator{∏ \prod}(List.map (fun x -> vkern_percent_under (MathFonts.euler "∏" x) 0.20) [780;781])
-\Add_limits_operator{∐ \coprod}(List.map (fun x -> vkern_percent_under (MathFonts.euler "∐" x) 0.20) [784;785])
-\Add_operator{∫ \int}(List.map (MathFonts.euler "∫") [782;783])
-\Add_operator{∬ ∫∫ \dint}(List.map2 (fun g g' -> vkern_as (MathFonts.euler "∬" g) (MathFonts.euler "∫" g'))
+\Add_limits_operator{∑ \sum}(List.map (fun x -> vkern_percent_under (Maths.euler "∑" x) 0.20) [778;779])
+\Add_limits_operator{∏ \prod}(List.map (fun x -> vkern_percent_under (Maths.euler "∏" x) 0.20) [780;781])
+\Add_limits_operator{∐ \coprod}(List.map (fun x -> vkern_percent_under (Maths.euler "∐" x) 0.20) [784;785])
+\Add_operator{∫ \int}(List.map (Maths.euler "∫") [782;783])
+\Add_operator{∬ ∫∫ \dint}(List.map2 (fun g g' -> vkern_as (Maths.euler "∬" g) (Maths.euler "∫" g'))
 				        [1823;1822] [782;783])
-\Add_operator{∭ ∫∫∫ \tint}(List.map2 (fun g g' -> vkern_as (MathFonts.euler "∭" g) (MathFonts.euler "∫" g'))
+\Add_operator{∭ ∫∫∫ \tint}(List.map2 (fun g g' -> vkern_as (Maths.euler "∭" g) (Maths.euler "∫" g'))
 				        [1824;1826] [782;783])
-\Add_operator{⨌ \qint}(List.map2 (fun g g' -> vkern_as (MathFonts.euler "⨌" g) (MathFonts.euler "∫" g'))
+\Add_operator{⨌ \qint}(List.map2 (fun g g' -> vkern_as (Maths.euler "⨌" g) (Maths.euler "∫" g'))
 				        [1825;1827] [782;783])
-\Add_operator{∮ \oint}(List.map2 (fun g g' -> vkern_as (MathFonts.euler "∮" g) (MathFonts.euler "∫" g'))
+\Add_operator{∮ \oint}(List.map2 (fun g g' -> vkern_as (Maths.euler "∮" g) (Maths.euler "∫" g'))
 				        [776;777] [782;783])
-\Add_limits_operator{⋂ \biginter \bigcap}(List.map (fun x -> vkern_percent_under (MathFonts.euler "⋂" x) 0.20) [1761;1766;1768])
-\Add_limits_operator{⋃ \bigunion \bigcup}(List.map (fun x -> vkern_percent_under (MathFonts.euler "⋃" x) 0.20) [1762;1765;1767])
-\Add_limits_operator{\bigsquareinter \bigsquarecap}(List.map (MathFonts.asana "\\bigsquareinter") [3233;3234])
-\Add_limits_operator{\bigsquareunion \bigsquarecup}(List.map (MathFonts.asana "\\bigsquareunion") [3235;3236])
-\Add_limits_operator{\bigvee ⋁ \bigsup}(List.map (MathFonts.asana "\\bigvee") [3250;3251])
-\Add_limits_operator{\bigwedge ⋀ \biginf}(List.map (MathFonts.asana "\\bigvee") [3248;3249])
-\Add_limits_operator{\bigoplus}(List.map (MathFonts.asana "bigoplus") [1391])
+\Add_limits_operator{⋂ \biginter \bigcap}(List.map (fun x -> vkern_percent_under (Maths.euler "⋂" x) 0.20) [1761;1766;1768])
+\Add_limits_operator{⋃ \bigunion \bigcup}(List.map (fun x -> vkern_percent_under (Maths.euler "⋃" x) 0.20) [1762;1765;1767])
+\Add_limits_operator{\bigsquareinter \bigsquarecap}(List.map (Maths.asana "\\bigsquareinter") [3233;3234])
+\Add_limits_operator{\bigsquareunion \bigsquarecup}(List.map (Maths.asana "\\bigsquareunion") [3235;3236])
+\Add_limits_operator{\bigvee ⋁ \bigsup}(List.map (Maths.asana "\\bigvee") [3250;3251])
+\Add_limits_operator{\bigwedge ⋀ \biginf}(List.map (Maths.asana "\\bigvee") [3248;3249])
+\Add_limits_operator{\bigoplus}(List.map (Maths.asana "bigoplus") [1391])
 
 =<
 
@@ -560,6 +558,9 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_combining{ ̅ }{\oline}
 \Add_combining{ ˙ }{\od}
 \Add_combining{ ¨ }{\odd}
+
+\Configure_word_macro{\caml}{ syntax = caml; name = caml; }
+\Configure_math_macro{\caml}{ syntax = caml; name = caml; }
 
 \Configure_math_macro{\sqrt}{ syntax = math; name = Maths.sqrt; }
 \Configure_math_macro{\cal}{ syntax = math; name = mathcal; }
@@ -582,13 +583,13 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Configure_math_macro{\mathbb}{ syntax = math; }
 \Configure_math_macro{\mathbf}{ syntax = math; }
 \Configure_math_macro{\mathrm}{ syntax = math; }
-\Configure_math_macro{\mathsize}{ syntax = caml, math; }
 
-\Configure_word_macro{\vspaceBefore}{ syntax = caml; eat_right; eat_left; }
-\Configure_word_macro{\vspaceAfter}{ syntax = caml; eat_right; eat_left; }
-
-\Configure_word_macro{\linesBefore}{ syntax = caml; eat_right; eat_left; }
-\Configure_word_macro{\linesAfter}{ syntax = caml; eat_right; eat_left; }
+\Configure_math_macro{\size}{ syntax = float, math; name = mathsize; }
+\Configure_word_macro{\size}{ syntax = float, text; }
+\Configure_word_macro{\vspaceBefore}{ syntax = float; eat_right; eat_left; }
+\Configure_word_macro{\vspaceAfter}{ syntax = float; eat_right; eat_left; }
+\Configure_word_macro{\linesBefore}{ syntax = int; eat_right; eat_left; }
+\Configure_word_macro{\linesAfter}{ syntax = int; eat_right; eat_left; }
 
 (*\Configure_word_macro{\item}{ syntax =; eat_right; }
 \Configure_word_macro{\tableOfContents}{ syntax =;}*)
@@ -616,7 +617,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 =<
 
-\Add_symbol{\pitchforkrel}(MathFonts.asana "pitchfork" 1609)
+\Add_symbol{\pitchforkrel}(Maths.asana "pitchfork" 1609)
 \Add_symbol{\scongrel}{≡}
 \Add_symbol{\congrel \isorel}{≅}
 \Add_symbol{\comma}{,}
@@ -626,12 +627,12 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_symbol{\geqrel}{≥}
 \Add_symbol{\gtrel}{>}
 \Add_symbol{\mapstorel}{↦}
-\Add_symbol{\starsymbol ★}( MathFonts.asana "★" 912 (* 1072 *) )
+\Add_symbol{\starsymbol ★}( Maths.asana "★" 912 (* 1072 *) )
 \Add_symbol{\langlsymbol}{〈}
 \Add_symbol{\ranglsymbol}{〉}
 \Add_symbol{\bang}{!}
 \Add_symbol{\torel}{→}
-\Add_symbol{\daimon ✠}( MathFonts.asana "daimon" 1070 )
+\Add_symbol{\daimon ✠}( Maths.asana "daimon" 1070 )
 
 
 \Add_relation{\bnfeq ::=}{::=}
@@ -648,43 +649,43 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 
 
-\Add_symbol{\bf0}( MathFonts.euler "bf 0" 1404 )
-\Add_symbol{\bf1}( MathFonts.euler "bf 1" 1405 )
-\Add_symbol{\bf2}( MathFonts.euler "bf 2" 1406 )
-\Add_symbol{\bf3}( MathFonts.euler "bf 3" 1407 )
-\Add_symbol{\bf4}( MathFonts.euler "bf 4" 1408 )
-\Add_symbol{\bf5}( MathFonts.euler "bf 5" 1409 )
-\Add_symbol{\bf6}( MathFonts.euler "bf 6" 1410 )
-\Add_symbol{\bf7}( MathFonts.euler "bf 7" 1411 )
-\Add_symbol{\bf8}( MathFonts.euler "bf 8" 1412 )
-\Add_symbol{\bf9}( MathFonts.euler "bf 9" 1413 )
+\Add_symbol{\bf0}( Maths.euler "bf 0" 1404 )
+\Add_symbol{\bf1}( Maths.euler "bf 1" 1405 )
+\Add_symbol{\bf2}( Maths.euler "bf 2" 1406 )
+\Add_symbol{\bf3}( Maths.euler "bf 3" 1407 )
+\Add_symbol{\bf4}( Maths.euler "bf 4" 1408 )
+\Add_symbol{\bf5}( Maths.euler "bf 5" 1409 )
+\Add_symbol{\bf6}( Maths.euler "bf 6" 1410 )
+\Add_symbol{\bf7}( Maths.euler "bf 7" 1411 )
+\Add_symbol{\bf8}( Maths.euler "bf 8" 1412 )
+\Add_symbol{\bf9}( Maths.euler "bf 9" 1413 )
 
-\Add_symbol{\bfA 𝐀}(MathFonts.euler "bfA" 422)
-\Add_symbol{\bfB 𝐁}(MathFonts.euler "bfB" 423)
-\Add_symbol{\bfC 𝐂}(MathFonts.euler "bfC" 424)
-\Add_symbol{\bfD 𝐃}(MathFonts.euler "bfD" 425)
-\Add_symbol{\bfE 𝐄}(MathFonts.euler "bfE" 426)
-\Add_symbol{\bfF 𝐅}(MathFonts.euler "bfF" 427)
-\Add_symbol{\bfG 𝐆}(MathFonts.euler "bfG" 428)
-\Add_symbol{\bfH 𝐇}(MathFonts.euler "bfH" 429)
-\Add_symbol{\bfI 𝐈}(MathFonts.euler "bfI" 430)
-\Add_symbol{\bfJ 𝐉}(MathFonts.euler "bfJ" 431)
-\Add_symbol{\bfK 𝐊}(MathFonts.euler "bfK" 432)
-\Add_symbol{\bfL 𝐋}(MathFonts.euler "bfL" 433)
-\Add_symbol{\bfM 𝐌}(MathFonts.euler "bfM" 434)
-\Add_symbol{\bfN 𝐍}(MathFonts.euler "bfN" 435)
-\Add_symbol{\bfO 𝐎}(MathFonts.euler "bfO" 436)
-\Add_symbol{\bfP 𝐏}(MathFonts.euler "bfP" 437)
-\Add_symbol{\bfQ 𝐐}(MathFonts.euler "bfQ" 438)
-\Add_symbol{\bfR 𝐑}(MathFonts.euler "bfR" 439)
-\Add_symbol{\bfS 𝐒}(MathFonts.euler "bfS" 440)
-\Add_symbol{\bfT 𝐓}(MathFonts.euler "bfT" 441)
-\Add_symbol{\bfU 𝐔}(MathFonts.euler "bfU" 442)
-\Add_symbol{\bfV 𝐕}(MathFonts.euler "bfV" 443)
-\Add_symbol{\bfW 𝐖}(MathFonts.euler "bfW" 444)
-\Add_symbol{\bfX 𝐗}(MathFonts.euler "bfX" 445)
-\Add_symbol{\bfY 𝐘}(MathFonts.euler "bfY" 446)
-\Add_symbol{\bfZ 𝐙}(MathFonts.euler "bfZ" 447)
+\Add_symbol{\bfA 𝐀}(Maths.euler "bfA" 422)
+\Add_symbol{\bfB 𝐁}(Maths.euler "bfB" 423)
+\Add_symbol{\bfC 𝐂}(Maths.euler "bfC" 424)
+\Add_symbol{\bfD 𝐃}(Maths.euler "bfD" 425)
+\Add_symbol{\bfE 𝐄}(Maths.euler "bfE" 426)
+\Add_symbol{\bfF 𝐅}(Maths.euler "bfF" 427)
+\Add_symbol{\bfG 𝐆}(Maths.euler "bfG" 428)
+\Add_symbol{\bfH 𝐇}(Maths.euler "bfH" 429)
+\Add_symbol{\bfI 𝐈}(Maths.euler "bfI" 430)
+\Add_symbol{\bfJ 𝐉}(Maths.euler "bfJ" 431)
+\Add_symbol{\bfK 𝐊}(Maths.euler "bfK" 432)
+\Add_symbol{\bfL 𝐋}(Maths.euler "bfL" 433)
+\Add_symbol{\bfM 𝐌}(Maths.euler "bfM" 434)
+\Add_symbol{\bfN 𝐍}(Maths.euler "bfN" 435)
+\Add_symbol{\bfO 𝐎}(Maths.euler "bfO" 436)
+\Add_symbol{\bfP 𝐏}(Maths.euler "bfP" 437)
+\Add_symbol{\bfQ 𝐐}(Maths.euler "bfQ" 438)
+\Add_symbol{\bfR 𝐑}(Maths.euler "bfR" 439)
+\Add_symbol{\bfS 𝐒}(Maths.euler "bfS" 440)
+\Add_symbol{\bfT 𝐓}(Maths.euler "bfT" 441)
+\Add_symbol{\bfU 𝐔}(Maths.euler "bfU" 442)
+\Add_symbol{\bfV 𝐕}(Maths.euler "bfV" 443)
+\Add_symbol{\bfW 𝐖}(Maths.euler "bfW" 444)
+\Add_symbol{\bfX 𝐗}(Maths.euler "bfX" 445)
+\Add_symbol{\bfY 𝐘}(Maths.euler "bfY" 446)
+\Add_symbol{\bfZ 𝐙}(Maths.euler "bfZ" 447)
 
 
 \Save_Grammar

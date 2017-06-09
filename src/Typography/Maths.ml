@@ -1236,3 +1236,56 @@ let fit x =
     {env with size}
   in
   Env fn :: x
+
+let findFont = ConfigFindFont.findFont
+
+let asana_font=Lazy.from_fun (fun ()->Fonts.loadFont
+                                        (findFont FontPattern.({family = "Asana Math"; slant = Roman; weight = Regular})))
+
+let asana name code = symbol ~name (Lazy.force asana_font) [code]
+
+let euler_font=Lazy.from_fun (fun ()->Fonts.loadFont
+                                              (findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})))
+let euler name code = symbol ~name (Lazy.force euler_font) [code]
+
+let ams_font=Lazy.from_fun (fun ()->Fonts.loadFont
+                                            (findFont FontPattern.({family = "Euler"; slant = Roman; weight = Regular})))
+let ams name code = symbol ~name (Lazy.force ams_font) [code]
+
+
+let adjusted_asana_delimiters' name ls =
+  match ls with
+    [] -> assert false
+  | x::ls ->
+     let x0 = vkern_percent_under' x 0.166 in
+     (fun envs st -> snd (x0 envs st)) :: List.map (fun x envs st ->
+	                                      let center, _ = x0 envs st in vkern_center x center envs st) ls
+
+let adjusted_asana_delimiters name ls =
+  adjusted_asana_delimiters' name (List.map (asana name) ls)
+
+(* This function is for asana delimiters that are not compatible with other
+     Asana delimiters !!! *)
+let fix_asana_delimiters name ls =
+  let rec map2 f l1 l2 = (* allows for longer second list *)
+    match l1, l2 with
+      [], _ -> []
+    | _,[] -> []
+    | (x1::l1), (x2::l2) -> f x1 x2::map2 f l1 l2
+  in
+  adjusted_asana_delimiters' name (map2
+                                     (fun g g' -> vkern_as (asana name g)
+	                                                   (asana "[" g'))
+                                     ls [61;3340;3341;3342])
+
+let adjusted_euler_delimiters name ls =
+  let rec map2 f l1 l2 = (* allows for longer second list *)
+    match l1, l2 with
+      [], _ -> []
+    | _,[]->[]
+    | (x1::l1), (x2::l2) -> f x1 x2::map2 f l1 l2
+  in
+  adjusted_asana_delimiters' name (map2
+                                     (fun g g' -> vkern_as (euler name g)
+	                                                   (asana "[" g'))
+                                     ls [61;3340;3341;3342])

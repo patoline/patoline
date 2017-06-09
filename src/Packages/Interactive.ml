@@ -25,6 +25,10 @@ let strip s =
   done;
   String.sub s !i (!j - !i + 1)
 
+let group () = match !Db.sessid with
+  | None -> "guest"
+  | Some(_,g,_) -> g
+
 let read_file file =
   let ch = open_in file in
   let len = in_channel_length ch in
@@ -33,7 +37,6 @@ let read_file file =
   (*let res = strip str in*)
   close_in ch;
   str
-
 
 let arrow = tT ">>>" :: hspace(1.0)
 
@@ -106,6 +109,24 @@ let scoreBar ?(vertical=false) (module Diagram:Diagrams.Diagram) height width da
       if x1' -. x0' < 1.75 *. (x1 -. x0) then ignore (node Node.([at ((x0 +. x1) /. 2., h2); outerSep 0.0; innerSep 0.0; setZ (1.0)]) text);
       ignore (path Edge.([draw;fill (col:color);noStroke]) (x0, 0.0) [[x1, 0.0] ; [x1, height] ; [x0, height]]);
     ) data
+
+let battonDiagram barHeight barWidth data ?group values =
+  dynamic <<0123456789>> (fun () ->
+    let total, results =
+      data.distribution ?group:(match group with None -> None | Some g -> Some (g ())) () in
+    let res = List.map (fun (value,color,txt) ->
+                  (color, try List.assoc value results with Not_found -> 0)) values in
+    let anchors = List.map (fun _ -> `Base) values in
+    let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
+    let open Diagrams in
+    <<\diagram(
+     let m,ms = array  anchors (List.map (List.map Macros.mathsText) [
+     List.map (fun (color, value as c) ->
+     <<\diagram(
+          let _ = scoreBar ~vertical:true (module Diagram : Diagram)
+                           (barHeight *. float value /. float m) barWidth [c])>>)
+          res;
+     List.map (fun (value,color,txt) -> txt) values]))>>)
 
 let scoreBarProg diagram height width data =
   let data = List.sort (fun (x,_) (x',_) -> compare x x') data in
@@ -318,6 +339,17 @@ let mathMenu ?(visibility=Private) (items0: Maths.math list list) data =
 (*===========================================================================*)
 (*                      Editable text                                        *)
 (*===========================================================================*)
+
+(* read a file splitted in two or three parts, in which you usualy
+   write programming exercises *)
+let read_splited_file filename =
+  let str = read_file filename in
+  match
+    Str.(split (regexp "[ \t]*#==========[^\n]*") str)
+  with
+    [init; test] -> init, test
+  | [init; solution; test] -> init, test
+  | _ -> invalid_arg "read_splited_file"
 
 let ascii =
   let str = String.make (2*(128-32)) ' ' in
@@ -648,7 +680,6 @@ let editable_math ?(visibility=Private) ?test ?(sample=[]) name init =
 
   let gsample = match test with None -> [] | Some (g,_) -> Giac.gmath g in
   let open Maths in
-  let open DefaultFormat.MathsFormat in
   let default = <$123456 + 7 * 8 - 90 \times {\int}
                   \partial (abcdefghijklmnopqrstuvwxyz) [ABCDEFGHIJKLMNOPQRSTUVWXYZ]
                   a b c d e f g h i j k l m n o p q r s t u v w x y z

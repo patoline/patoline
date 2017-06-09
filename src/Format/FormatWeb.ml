@@ -27,9 +27,6 @@ open Fonts
 open FTypes
 open HtmlFonts
 
-module MathFonts=DefaultFormat.MathFonts
-module MathsFormat=DefaultFormat.MathsFormat
-
 
 type div={ div_children:page array; title:string }
 and page=Div of div | Par of string list

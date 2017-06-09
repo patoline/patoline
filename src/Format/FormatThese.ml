@@ -288,8 +288,6 @@ end
 
   let minipage=OutputDrawing.minipage
   let displayedFormula=Default.displayedFormula
-  let node=DefaultFormat.node
-  let paragraph=DefaultFormat.paragraph
 
 
   let alegreya=

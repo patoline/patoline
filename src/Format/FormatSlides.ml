@@ -29,9 +29,6 @@ open Typography.Box
 open Fonts
 open FTypes
 open Typography.Document
-open DefaultFormat
-module MathFonts=DefaultFormat.MathFonts
-module MathsFormat=DefaultFormat.MathsFormat
 
 let slideh=100.
 let slidew=phi*.slideh

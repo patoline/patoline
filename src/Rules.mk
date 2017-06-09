@@ -5,8 +5,6 @@ d := $(if $(d),$(d)/,)$(mod)
 # Useful directories, to be referenced from other Rules.ml
 SRC_DIR := $(d)
 PATOLINE_IN_SRC := $(d)/patobuild/patoline
-PA_PATOLINE_DIR := $(d)/pa_patoline
-PA_PATOLINE_IN_SRC := $(PA_PATOLINE_DIR)/pa_patoline
 PATOBUILD_DIR := $(d)/patobuild
 TYPOGRAPHY_DIR := $(d)/Typography
 RAWLIB_DIR := $(d)/rawlib
@@ -24,6 +22,9 @@ CONFIG_DIR := $(d)/config
 GRAMMAR_DIR := $(d)/grammar
 PACKAGES_DIR := $(d)/Packages
 DEFAULT_FORMAT_DIR := $(TYPOGRAPHY_DIR)/DefaultFormat
+PA_PATOLINE_DIR := $(d)/pa_patoline
+PA_PATOLINE_IN_SRC := $(PA_PATOLINE_DIR)/pa_patoline
+PA_PATOLINE_OPTS := --no-default-grammar --grammar $(GRAMMAR_DIR)/DefaultGrammar
 
 DEPS_DIR := -I $(PA_PATOLINE_DIR) -I $(PATOBUILD_DIR) -I $(PACKAGES_DIR) \
   -I $(TYPOGRAPHY_DIR) -I $(RAWLIB_DIR) -I $(DB_DIR) -I $(DRIVERS_DIR) \

@@ -43,14 +43,12 @@ module Format=functor (D:DocumentStructure)->struct
       Not_found->if s="" then [] else [s]
   let rec repeat x n=if n<=0 then [] else x::(repeat x (n-1))
 
-  let node=DefaultFormat.node
-  let paragraph=DefaultFormat.paragraph
   let postprocess_tree tree=
     fst (
       top (
         newChildBefore (tree,[])
           (fst
-             (DefaultFormat.paragraph
+             (paragraph
                 [ bB (fun env->
                        let w=env.normalMeasure/.2. in
                        let sender=match tree with

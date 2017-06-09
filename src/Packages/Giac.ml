@@ -99,9 +99,8 @@ and prl ch l =
 let print = print pTop
 let prev_prio = prev
 
-open DefaultFormat
+open Macros
 open Maths
-open MathsFormat
 open Document
 open Box
 

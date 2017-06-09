@@ -15,7 +15,7 @@ endif
 
 TYPOGRAPHY_MODS:= TypoLanguage FontPattern ConfigFindFont Distance Offset \
 	Box Badness Break Document Complete Maths OutputDrawing Geometry Proj3d \
-	Diagrams Verbatim Debug Typography
+	Diagrams Verbatim Euler Macros Debug Typography
 
 TYPOGRAPHY_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(TYPOGRAPHY_MODS)))
 TYPOGRAPHY_CMO:=$(TYPOGRAPHY_ML:.ml=.cmo)
@@ -69,9 +69,8 @@ $(d)/Break.cmx: $(d)/Break.ml
 	$(Q)$(OCAMLOPT) $(OFLAGS) -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 
 # Build DefaultFormat; The variable must be ordered
-DEFAULTFORMAT_ML := $(d)/DefaultFormat/Euler.ml $(d)/DefaultFormat/Numerals.ml \
-  $(d)/DefaultFormat/TableOfContents.ml $(d)/DefaultFormat/PageLayout.ml \
-  $(d)/DefaultFormat/DefaultFormat.ml
+DEFAULTFORMAT_ML := $(d)/DefaultFormat/Numerals.ml $(d)/DefaultFormat/TableOfContents.ml\
+  $(d)/DefaultFormat/PageLayout.ml $(d)/DefaultFormat/DefaultFormat.ml
 DEFAULTFORMAT_CMI:= $(DEFAULTFORMAT_ML:.ml=.cmi)
 DEFAULTFORMAT_CMX:= $(DEFAULTFORMAT_ML:.ml=.cmx)
 DEFAULTFORMAT_CMO:= $(DEFAULTFORMAT_ML:.ml=.cmo)

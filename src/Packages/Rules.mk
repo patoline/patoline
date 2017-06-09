@@ -19,16 +19,16 @@ endif
 endif
 
 # Everything here depends on Typography and pa_patoline
-$(CMO_$(d)): $(TYPOGRAPHY_DIR)/Typography.cma $(PA_PATOLINE)
-$(CMX_$(d)): $(TYPOGRAPHY_DIR)/Typography.cmxa $(PA_PATOLINE)
-$(PCMX_$(d)): $(TYPOGRAPHY_DIR)/Typography.cmxa $(PA_PATOLINE)
-$(DEPS_$(d)): $(PA_PATOLINE)
+$(CMO_$(d)): $(TYPOGRAPHY_DIR)/Typography.cma $(PA_PATOLINE_IN_SRC)
+$(CMX_$(d)): $(TYPOGRAPHY_DIR)/Typography.cmxa $(PA_PATOLINE_IN_SRC)
+$(PCMX_$(d)): $(TYPOGRAPHY_DIR)/Typography.cmxa $(PA_PATOLINE_IN_SRC)
+$(DEPS_$(d)): $(PA_PATOLINE_IN_SRC)
 
 # And compiles with it
-$(CMO_$(d)): private OCPP=$(PA_PATOLINE)
-$(CMX_$(d)): private OCPP=$(PA_PATOLINE)
-$(PCMX_$(d)): private OCPP=$(PA_PATOLINE)
-$(DEPS_$(d)): private OCPP=$(PA_PATOLINE)
+$(CMO_$(d)): private OCPP=$(PA_PATOLINE_IN_SRC) $(PA_PATOLINE_OPTS)
+$(CMX_$(d)): private OCPP=$(PA_PATOLINE_IN_SRC) $(PA_PATOLINE_OPTS)
+$(PCMX_$(d)): private OCPP=$(PA_PATOLINE_IN_SRC) $(PA_PATOLINE_OPTS)
+$(DEPS_$(d)): private OCPP=$(PA_PATOLINE_IN_SRC) $(PA_PATOLINE_OPTS)
 
 # FIXME: currently: one package = one file
 

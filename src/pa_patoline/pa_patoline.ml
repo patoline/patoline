@@ -426,6 +426,8 @@ let parser symbol_values =
 let parser lid = id:''[_a-z][_a-zA-Z0-9']*'' -> id
 let parser uid = id:''[A-Z][_a-zA-Z0-9']*''  -> id
 let parser num = n:''[0-9]+'' -> int_of_string n
+let parser int = n:''-?[0-9]+'' -> int_of_string n
+let parser float = n:''-?[0-9]+\(.[0-9]+\)?\([eE]-?[0-9]+\)?'' -> n
 
 let symbol ss =
   List.partition (fun s ->
@@ -434,7 +436,7 @@ let symbol ss =
 
 (* FIXME: more entry are possible : paragraphs, ...*)
 type entry = Caml | CamlStruct | String | Math | MathLine | MathMatrix
-           | Text | TextLine | TextMatrix | Current
+             | Text | TextLine | TextMatrix | Current | Int | Float
 
 type arg_config =
   { entry : entry;
@@ -478,8 +480,10 @@ let parser arg_type =
       | "text_matrix" -> TextMatrix
       | "caml" -> Caml
       | "struct" -> CamlStruct
-      | "string" -> String
       | "current" -> Current
+      | "int"     -> Int
+      | "float"   -> Float
+      | "string"  -> String
       | _ -> give_up ()
 
 let parser arg_description =
@@ -934,6 +938,10 @@ let parser macro_argument config =
 			      -> apply_expr_filter config e _loc
   | '{' e:text_matrix '}' when config.entry = TextMatrix
 			      -> apply_expr_filter config e _loc
+  | '{' e:int '}' when config.entry = Int
+			      -> apply_expr_filter config <:expr<$int:e$>> _loc
+  | '{' e:float '}' when config.entry = Float
+			      -> apply_expr_filter config <:expr<$float:e$>> _loc
   | e:wrapped_caml_expr when config.entry <> CamlStruct
 			      -> apply_expr_filter config e _loc
   | e:wrapped_caml_array when config.entry <> CamlStruct
@@ -1995,7 +2003,7 @@ let wrap basename _loc ast =
     open RawContent
     open Color
     open Driver
-    open DefaultFormat.MathsFormat
+    open Macros
 
     module Document = functor(Patoline_Output:DefaultFormat.Output)
       -> functor(D:DocumentStructure)->struct
@@ -2090,7 +2098,6 @@ let write_main_file driver form build_dir dir name =
       open Typography.Document
       open RawContent
       open Color
-      open DefaultFormat.MathsFormat
 
       let _ = Distance.read_cache $string:dcache$
 

@@ -26,7 +26,7 @@ open Util
 open Box
 (* open Binary *)
 
-let boxes_width env contents = 
+let boxes_width env contents =
   let boxes = boxify_scoped env contents in
   let w = List.fold_left
     (fun w x -> let _,a,_ = Box.box_interval x in w +. a)
@@ -35,13 +35,13 @@ let boxes_width env contents =
   in
   boxes, w
 
-let boxes_y0 boxes = 
+let boxes_y0 boxes =
   List.fold_left
     (fun res box -> min res (Box.lower_y box))
     0.
     boxes
 
-let boxes_y1 boxes = 
+let boxes_y1 boxes =
   List.fold_left
     (fun res box -> max res (Box.upper_y box))
     0.
@@ -53,7 +53,6 @@ module Euler=DefaultFormat.Euler
 module MakeFormat (D:DocumentStructure)
   (Default : module type of DefaultFormat.Format(D)) = struct
 
-  module MathFonts = DefaultFormat.MathFonts
   module Default = Default
   include Default
 
@@ -124,13 +123,13 @@ module Env_exercice=Default.Make_theorem
     let counterLevel=0
     let display num=alternative Bold [tT ("Exercice "^num^"."); (tT " ")]
    end)
-    module Env_preuve = Env_gproof (struct 
+    module Env_preuve = Env_gproof (struct
       let arg1 = italic [tT "Preuve.";bB (fun env->let w=env.size in [glue w w w])]
     end)
 
 (* module Env_proof=Default.Proof *)
 
-  let equation contents = 
+  let equation contents =
     let pars a b c d e f g line={(parameters a b c d e f g line) with
                               min_height_before=
         if line.lineStart=0 then a.lead else 0.;
