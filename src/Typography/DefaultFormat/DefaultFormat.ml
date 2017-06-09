@@ -1297,7 +1297,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
       let rec resolve tree i env0=
         if not !quiet then Printf.eprintf "Pass number %d\n%!" i;
         pass_number := i;
-        let env1,fig_params,params,new_page_list,new_line_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 tree in
+        let env1,fig_params,params,new_page_list,new_line_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees,states=flatten env0 tree in
         if not !quiet then
           Printf.eprintf "Optimization starts: %f s\n%!" (Sys.time ());
         let (logs,opt_pages,figs',user')=TS.typeset
@@ -1308,6 +1308,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
           ~new_page:new_page_list
           ~new_line:new_line_list
           ~badness:badness
+          ~states
           paragraphs
         in
         if not !quiet then

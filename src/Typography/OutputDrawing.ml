@@ -306,7 +306,7 @@ let output ?state paragraphs figures env (opt_pages:frame)=
 let minipage ?state ?(env_mod=fun e -> e) str=
   [bB (fun env->
     let env = env_mod env in
-    let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
+    let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees,states=flatten env (fst str) in
     let (_,pages,fig',user')=TS.typeset
       ~completeLine:compl
       ~figure_parameters:fig_params
@@ -315,6 +315,7 @@ let minipage ?state ?(env_mod=fun e -> e) str=
       ~new_page:new_page_list
       ~new_line:new_line_list
       ~badness:bads
+      ~states
       pars
     in
     let d,ms = output ?state pars figures env' pages in
@@ -324,7 +325,7 @@ let minipage ?state ?(env_mod=fun e -> e) str=
   )]
 
 let minipage' ?state env str=
-  let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
+  let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees,states=flatten env (fst str) in
   let (_,pages,fig',user')=TS.typeset
     ~completeLine:compl
     ~figure_parameters:fig_params
@@ -333,6 +334,7 @@ let minipage' ?state env str=
     ~new_page:new_page_list
     ~new_line:new_line_list
     ~badness:bads
+    ~states
     pars
   in
   let d,ms = output ?state pars figures env' pages in

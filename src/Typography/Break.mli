@@ -54,7 +54,8 @@ module Make(L : Line with type t = Box.line) :
                  float ->
                  L.t ->
                  Box.box array -> int -> Box.parameters -> float -> float)
-                array ->
+             array ->
+        states:int list array ->
         Box.box array array ->
         TypoLanguage.message list *
           Box.frame *

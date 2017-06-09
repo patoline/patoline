@@ -176,7 +176,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               drawing_y0=tit.drawing_y0-.margin_bottom_top;
               drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
               drawing_contents=(fun w->(List.map (fun a->RawContent.translate margin 0. (in_order 2 a)) (tit.drawing_contents w))@frame)
-            } in
+                   } in
             [bB (fun _->Drawing dr :: ms2 @ ms1);Env (fun _->env0)]
           with
               Invalid_argument _->[]
@@ -603,7 +603,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     | _->0
                   in
                   let env1,fig_params0,params0,new_page0,new_line0,compl0,badnesses0,paragraphs0,_,
-                    figures0,figure_trees0=flatten ~initial_path:path env0 tree
+                    figures0,figure_trees0,states0=flatten ~initial_path:path env0 tree
                   in
                   let max_state=
                     Array.fold_left (
@@ -622,42 +622,22 @@ module Format=functor (D:Document.DocumentStructure)->(
 
                   let rec typeset_states state reboot_ layout0 env=
                     if state>max_state then (reboot_,layout0,env) else (
-                      let real_par=ref 0 in
                       let par_map=ref IntMap.empty in
-                      let rec make_paragraphs t=match t with
-                          Paragraph p when List.mem state p.par_states
-                              || p.par_states=[] -> (
-                          (* Celui-ci, on le garde *)
-                                let x=try fst (IntMap.max_binding !par_map) with Not_found -> (-1) in
-                                par_map:=IntMap.add (x+1) !real_par !par_map;
-                                incr real_par
-                              )
-                        | Paragraph p->(
-                          incr real_par
-                        )
-                        | Node n->IntMap.iter (fun _ a->make_paragraphs a) n.children
-                        | _->()
-                      in
-                      make_paragraphs tree;
+                      Array.iteri
+                        (fun i states ->
+                          if List.mem state states || states=[] then
+                            let x=try fst (IntMap.max_binding !par_map) with Not_found -> (-1) in
+                            par_map:=IntMap.add (x+1) i !par_map)
+                        states0;
                       let fig_params=[||] and figures=[||] in
-                      let params=
-                        if IntMap.is_empty !par_map then [||] else
-                          Array.make (IntMap.cardinal !par_map) params0.(0)
-                      and new_page=
-                        if IntMap.is_empty !par_map then [||] else
-                          Array.make (IntMap.cardinal !par_map) new_page0.(0)
-                      and new_line=
-                        if IntMap.is_empty !par_map then [||] else
-                          Array.make (IntMap.cardinal !par_map) new_line0.(0)
-                      and paragraphs=
-                        if IntMap.is_empty !par_map then [||] else
-                          Array.make (IntMap.cardinal !par_map) paragraphs0.(0)
-                      and compl=
-                        if IntMap.is_empty !par_map then [||] else
-                          Array.make (IntMap.cardinal !par_map) compl0.(0)
-                      and badnesses=
-                        if IntMap.is_empty !par_map then [||] else
-                          Array.make (IntMap.cardinal !par_map) badnesses0.(0)
+                      let length = IntMap.cardinal !par_map in
+                      let params=     Array.make length params0.(0)
+                      and new_page=   Array.make length new_page0.(0)
+                      and new_line=   Array.make length new_line0.(0)
+                      and paragraphs= Array.make length paragraphs0.(0)
+                      and compl=      Array.make length compl0.(0)
+                      and badnesses=  Array.make length badnesses0.(0)
+                      and states=     Array.make length states0.(0)
                       in
                       IntMap.iter (fun k a->
                         params.(k)<-params0.(a);
@@ -665,6 +645,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         new_line.(k)<-new_line0.(a);
                         compl.(k)<-compl0.(a);
                         badnesses.(k)<-badnesses0.(a);
+                        states.(k)<-states0.(a);
                       ) !par_map;
                       let (logs_,opt_pages,figs',user')=TS.typeset
                         ~initial_line:{ uselessLine with layout=(Box.frame_top layout0) }
@@ -675,6 +656,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         ~new_page:new_page
                         ~new_line:new_line
                         ~badness:badnesses
+                        ~states
                         paragraphs
                       in
                       opts.(state)<-

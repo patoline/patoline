@@ -72,7 +72,7 @@ module Format (D : Document.DocumentStructure) = struct
              _->());
 
         let rec fix env n=
-          let (env,_,_,_,_,_,_,pars,_,figures,_)=flatten env structure in
+          let (env,_,_,_,_,_,_,pars,_,figures,_,_)=flatten env structure in
           let env=reset_counters env in
           if !(env.fixable) && n>0 then
             fix env (n-1)

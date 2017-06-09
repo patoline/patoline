@@ -1639,6 +1639,7 @@ let flatten ?(initial_path=[]) env0 str=
   let new_line_list=ref [] in
   let compl=ref [] in
   let bads=ref [] in
+  let states=ref [] in
   let n=ref 0 in
 
   let buf=ref [||] in
@@ -1656,6 +1657,7 @@ let flatten ?(initial_path=[]) env0 str=
     new_page_list:=(env.new_page)::(!new_page_list);
     new_line_list:=(env.new_line env)::(!new_line_list);
     bads:=(p.par_badness env)::(!bads);
+    states:=(p.par_states)::(!states);
     incr n;
     frees:=0;
     env
@@ -1769,7 +1771,8 @@ let flatten ?(initial_path=[]) env0 str=
    Array.of_list (List.rev !paragraphs),
    Array.of_list (List.rev !trees),
    Array.of_list (List.map snd (IntMap.bindings !figures)),
-   Array.of_list (List.map snd (IntMap.bindings !figure_trees)))
+   Array.of_list (List.map snd (IntMap.bindings !figure_trees)),
+   Array.of_list (List.rev !states))
 
 let rec make_struct positions = function
   | Node s ->
