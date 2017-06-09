@@ -229,6 +229,26 @@ module MkRadioButtons(X:sig type t val data : t data end) =
 
 let menuCache = Hashtbl.create 101
 
+let indexedMenus ?(visibility=Private) items0 values datas index  =
+  if items0 = [] then failwith "Invalid menu";
+  [C (fun env ->
+       let key = datas.name ^ string_of_int index in
+       let items, bname =
+         try Hashtbl.find menuCache key
+         with Not_found ->
+           let items = List.mapi (fun i c ->
+                           let act = record_write (fun () ->
+                                         !values.(index) <- i;
+                                         datas.write !values) in
+                           (act, draw env c)) items0 in
+           let res = (items, button_name ()) in
+           Hashtbl.add menuCache key res; res
+       in
+       let b : content list = List.nth items0 !values.(index) in
+       let btype = Menu(items) in
+       bB (fun _ -> [Marker (BeginLink (Button(btype, bname)))])::
+         b @ bB (fun _ -> [Marker EndLink]) :: [])]
+
 let menu ?(visibility=Private) items0 data =
   if items0 = [] then failwith "Invalid menu";
   [C (fun env ->
@@ -246,13 +266,37 @@ let menu ?(visibility=Private) items0 data =
        bB (fun _ -> [Marker (BeginLink (Button(btype, bname)))])::
          b @ bB (fun _ -> [Marker EndLink]) :: [])]
 
+
 let dataMenu ?(visibility=Private) items name =
   let data = db.create_data ~visibility default_coding name 0 in
   menu ~visibility items data
 
+let mathIndexedMenus ?(visibility=Private) items0 values datas index  =
+  if items0 = [] then failwith "Invalid menu";
+  [Maths.Ordinary (Maths.node (fun env st ->
+       let key = datas.name ^ string_of_int index in
+       let items, bname =
+         try Hashtbl.find menuCache key
+         with Not_found ->
+           let items = List.mapi (fun i c ->
+                           let act = record_write (fun () ->
+                                         !values.(index) <- i;
+                                         datas.write !values) in
+                           (act, draw env << $ \c $ >>)) items0 in
+           let res = (items, button_name ()) in
+           Hashtbl.add menuCache key res; res
+       in
+       let btype = Menu(items) in
+       boxify_scoped env
+         [C (fun env -> env_accessed := true;
+                        let b = List.nth items0 !values.(index) in
+                        bB (fun _ -> [Marker (BeginLink (Button(btype, bname)))])::
+                          << $ \b$ >> @ bB (fun _ -> [Marker EndLink]) :: [])]))]
+
+
 let mathMenu ?(visibility=Private) (items0: Maths.math list list) data =
   if items0 = [] then failwith "Invalid menu";
-  [Maths.Ordinary (Maths.node (fun env st->
+  [Maths.Ordinary (Maths.node (fun env st ->
      let items, bname =
        try Hashtbl.find menuCache data.name
        with Not_found ->

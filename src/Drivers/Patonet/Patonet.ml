@@ -239,16 +239,16 @@ setInterval(function () {
   websocket_send('ping');
 }, 50000);
 function websocket_msg(evt){
-     console.log('websocket message');
      var st=JSON.parse(evt.data);
      var ch = st.change;
      if (ch == 'Ping') {
        console.log('answer to ping');
      } else if (ch == 'Slide') {
+       console.log('load slide');
        var svg = Base64.decode(st.change_list);
        loadSlideString(st.slide,st.state,svg);
      } else if (ch == 'Dynamics' && current_slide == st.slide && current_state == st.state) {
-/*     var svg = Base64.decode(st.change_list);*/
+       console.log('dynamic changes (', st.change_list.length, ')');
        var parser=new DOMParser();
        for(var change in st.change_list) {
          var label = st.change_list[change].dyn_label;
@@ -267,12 +267,13 @@ function websocket_msg(evt){
        }
      }
 };
-function websocket_err(evt){
-  console.log('websocket error');
-  websocket=null;
-};
 function websocket_close(evt){
   console.log('websocket close');
+  websocket=null;
+};
+function websocket_error(evt){
+  console.log('websocket error');
+  websocket.close();
   websocket=null;
 };
 function start_socket(){
@@ -280,14 +281,13 @@ function start_socket(){
      alert('Your Browser does not seem to support websockets, this page will not work.');
      return false;
    }
-   if(websocket){delete websocket.onclose;delete websocket.onmessage;delete websocket.onerror;websocket.close();};
    if(location.protocol==\"https:\")
       websocket=new WebSocket(\"wss://\"+location.host+\"/%stire\"+\"_\"+current_slide+\"_\"+current_state);
    else
       websocket=new WebSocket(\"ws://\"+location.host+\"/%stire\"+\"_\"+current_slide+\"_\"+current_state);
    websocket.onclose=websocket_close;
+   websocket.onclose=websocket_error;
    websocket.onmessage = websocket_msg;
-   websocket.onerror = websocket_err;
 };
 window.onbeforeunload = function() {
     if (websocket) {
@@ -296,30 +296,15 @@ window.onbeforeunload = function() {
     }
 };
 function websocket_send(data){
-  if (websocket) {
-    console.log(\"websocket state:\", websocket.readyState);
-  }
-  else {
-    console.log(\"websocket unitialized\");
-  }
   if (!websocket || websocket.readyState != 1) {
-    if (!websocket || websocket.readyState != 0) start_socket();
-    function do_send(interval, tries) {
-      if (tries > 0) {
-        var timer = setInterval(function () {
-          clearInterval(timer);
-          if (websocket && websocket.readyState == 1) {
-             console.log(\"sending\",tries,\"==>\",data);
-             websocket.send(data);
-          } else if (websocket && websocket.readyState == 0) {
-             do_send(interval * 2, tries - 1);
-          }
-        }, interval)
-      }
+    start_socket();
+    websocket.onopen = function () {
+       console.log('sending delayed:',data);
+       websocket.onopen = null;
+       websocket.send(data);
     };
-    do_send(200,7);
   } else {
-    console.log(\"sending in else\",\"==>\",data);
+    console.log('sending immediate:',data);
     websocket.send(data);
   }
 }
@@ -411,28 +396,41 @@ var indrag = false;
 function start_swipe(touch,ev) {
   if (indrag ||
       (touch && ev.touches.length != 1)) return;
+  indrag = true;
   var x0 = touch ? ev.changedTouches[0].pageX : ev.pageX;
   var w = window.innerWidth;
   var t0 = new Date().getTime();
   var limit = Math.min(300,w/3);
-  function move_swipe(touch,ev) {
+  function move_swipe1 (ev) { move_swipe(true,true,ev); }
+  function move_swipe2 (ev) { move_swipe(false,true,ev); }
+  function move_swipe(end,touch,ev) {
     var x = touch ? ev.changedTouches[0].pageX : ev.pageX;
     var t = new Date().getTime();
-    if (touch) {
-      window.removeEventListener('touchend', move_swipe);
-    } else {
-      window.onmouseup = null;
+    var move = (t - t0) < 500 &&
+        (!touch || ev.changedTouches.length + ev.touches.length == 1) &&
+        Math.abs(x-x0) > limit;
+    if (move || end) {
+      if (!indrag) return;
+      indrag = false;
+      if (touch) {
+        window.removeEventListener('touchend', move_swipe1);
+        window.removeEventListener('touchmove', move_swipe2);
+      } else {
+        window.onmouseup = null;
+        window.onmousemouse = null;
+      }
     }
-    if ((t - t0) < 500 &&
-        (!touch || ev.changedTouches.length + ev.touches.length == 1)) {
+    if (move) {
       if (x - x0 > limit) previousPage(false);
       if (x0 - x > limit) nextPage(false);
     }
   }
   if (touch) {
-    window.addEventListener('touchend', function (ev) { move_swipe(true,ev); });
+    window.addEventListener('touchend',  move_swipe1);
+    window.addEventListener('touchmove', move_swipe2);
   } else {
-    window.onmouseup = function (ev) { move_swipe(false,ev); };
+    window.onmouseup = function (ev) { move_swipe(true,false,ev); };
+    window.onmousemove = function (ev) { move_swipe(false,false,ev); };
   }
 }
 
@@ -634,9 +632,18 @@ StringBuffer.prototype.toString = function toString()
     return this.buffer.join(\"\");
 };
 
+var codex = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\";
+var xedoc = Array(256);
+
+for (var i=0; i < codex.length; i++) {
+  xedoc[codex.charAt(i)] = i;
+}
+
 var Base64 =
 {
-    codex : \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\",
+    codex : codex,
+
+    xedoc : xedoc,
 
     encode : function (input)
     {
@@ -706,7 +713,6 @@ var Base64 =
         return output.toString();
     }
 }
-
 
 function Utf8EncodeEnumerator(input)
 {
@@ -789,10 +795,10 @@ Base64DecodeEnumerator.prototype =
         }
         else
         {
-            var enc1 = Base64.codex.indexOf(this._input.charAt(++this._index));
-            var enc2 = Base64.codex.indexOf(this._input.charAt(++this._index));
-            var enc3 = Base64.codex.indexOf(this._input.charAt(++this._index));
-            var enc4 = Base64.codex.indexOf(this._input.charAt(++this._index));
+            var enc1 = Base64.xedoc[this._input.charAt(++this._index)];
+            var enc2 = Base64.xedoc[this._input.charAt(++this._index)];
+            var enc3 = Base64.xedoc[this._input.charAt(++this._index)];
+            var enc4 = Base64.xedoc[this._input.charAt(++this._index)];
 
             var chr1 = (enc1 << 2) | (enc2 >> 4);
             var chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
@@ -842,17 +848,7 @@ function gotoSlide(n){
 %s" (Array.length pages - 1) mouse_script
   in
 
-  let onload =
-"start_socket();
-websocket_send(\"refresh_\"+h0+\"_\"+h1);
-"
-  in
-(*
-  let extrabody = "
-  <div id=\"leftpanel\" style=\"left: 0px; top: 0px; position: absolute; z-index: 10;\"><button onclick=\"previousPage(false);\" style=\"min_height: 5%; min_width: 5%;\"><<</button></div>
-  <div id=\"rightpanel\" style=\"right: 0px; top: 0px; position: absolute;  z-index: 10;\"><button onclick=\"nextPage(false);\">>></button></div>"
-  in
- *)
+  let onload = "websocket_send(\"refresh_\"+h0+\"_\"+h1);"  in
 
   let page,css=SVG.basic_html
     ~extraheader
@@ -1408,6 +1404,7 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
             let _ = reject_unlogged () in
             log_son num "css";
             serve_css ouc;
+            log_son num "css done";
             process_req master "" [] reste
 
           ) else if Str.string_match otf get 0 then (

@@ -597,7 +597,7 @@ let buffered_output' ?dynCache ?(structure:structure=empty_structure) pages pref
       let w,h=page.size in
       Rbuffer.add_string file0 (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <?xml-stylesheet href=\"style.css\" type=\"text/css\"?>
-<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
+<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\"><g>"
                                  (round (w)) (round (h)));
 
       let sorted_pages = sort_raw page.contents in
@@ -608,7 +608,7 @@ let buffered_output' ?dynCache ?(structure:structure=empty_structure) pages pref
       let svg,imgs0=draw ~fontCache:cache ?dynCache prefix w h sorted_pages in
       imgs:=StrMap.fold StrMap.add imgs0 !imgs;
       Rbuffer.add_buffer file svg;
-      Rbuffer.add_string file "</svg>\n";
+      Rbuffer.add_string file "</g></svg>\n";
       file0, file
     ) pi
   ) pages
@@ -795,29 +795,16 @@ function loadSlideString(slide,state,str){
 
     var parser=new DOMParser();
     var newSvg=parser.parseFromString(str,\"text/xml\");
-    newSvg=document.importNode(newSvg.documentElement,true);
-    svg=document.getElementById(\"svg_container\"+cur_anim);
-    cur_child=document.getElementById(\"svg_container\"+cur_anim).childNodes;
-    while (cur_child.length > 0) {
-       var elt = cur_child[0];
-       elt.parentNode.removeChild(elt);
-    };
+    newSvg=document.importNode(newSvg.documentElement,true).firstChild;
 
-var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        rect.setAttribute(\"fill\",\"white\");
-        rect.setAttribute(\"stroke\",\"white\");
-        rect.setAttribute(\"x\", \"0\");
-        rect.setAttribute(\"y\", \"0\");
-        rect.setAttribute(\"width\", \"%g\");
-        rect.setAttribute(\"height\", \"%g\");
-        svg.appendChild(rect);
+    cur_outer=document.getElementById('svg_outer'+cur_anim);
+    try {
+      svg_container=document.getElementById('svg_container'+cur_anim);
+      cur_outer.removeChild(svg_container);
+    } catch (e) {}
+    cur_outer.appendChild(newSvg);
+    newSvg.id ='svg_container'+cur_anim;
 
-    while(newSvg.firstChild) {
-        if(newSvg.firstChild.nodeType==document.ELEMENT_NODE) {
-           svg.appendChild(newSvg.firstChild);
-        }
-        else newSvg.removeChild(newSvg.firstChild);
-    }
     if (current_slide < slide) {
       var animO=document.getElementById(\"animation\"+old_anim);
       animO.setAttribute(\"values\",\"0;%d\");
@@ -834,12 +821,20 @@ var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       animT.setAttribute(\"values\",\"%d;0\");
       animT.beginElement();
     }
+
+    if (current_slide != slide) {
+      old_outer=document.getElementById('svg_outer'+old_anim);
+      try {
+        svg_container=document.getElementById('svg_container'+old_anim);
+        old_outer.removeChild(svg_container);
+      } catch (e) {}
+    }
     current_slide=slide;
     current_state=state;
     first_displayed=true;
     location.hash=slide+\"_\"+state;
 
-    setReaction(svg);
+    setReaction(newSvg);
 }
 
 function close_menu(n,i) {
@@ -863,7 +858,8 @@ function close_menu(n,i) {
      if (typeof websocket_send === 'function') {
        websocket_send('menu_'+(current_slide)+'_'+(current_state)+' '+n+' '+id);
      }
-     console.log('menu: ', n, id)});
+     //console.log('menu: ', n, id)
+  });
 }
 
 function make_menu(evt,name) {
@@ -874,7 +870,6 @@ function make_menu(evt,name) {
    var box = svg_svg.getBBox();
    var wsvg = svg_svg.getBoundingClientRect();
    var ratio = wsvg.width / box.width;
-   console.log(box,wsvg);
    var div = document.createElement('div');
    div.style.position = 'absolute';
    div.style.left = evt.pageX.toString() + 'px';
@@ -891,7 +886,12 @@ function make_menu(evt,name) {
      var ix = x.getAttribute('id');
      var iy = y.getAttribute('id');
      return(ix - iy)});
-   console.log(items.length);
+   // sometime duplicate append. How is this possible ?
+   for(var i=0;i<items.length-1;i++) {
+     var i1 = items[i].getAttribute('id');
+     var i2 = items[i+1].getAttribute('id');
+     if (i1 == i2) items.splice(i,1);
+   }
    for(var i=0;i<items.length;i++) {
       var row = document.createElement('tr');
       table.appendChild(row);
@@ -930,7 +930,6 @@ function loadSlide(n,state,force){
     document.body.style.cursor = 'default';
   }
 }"
-w h
       (-round w)
       (round w)
       (round w)
@@ -972,12 +971,12 @@ if(h0!=current_slide || h1!=current_state){
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg_div\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
   Rbuffer.add_string html extrabody;
-  Rbuffer.add_string html (Printf.sprintf "<svg id='svg_svg' xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\"><g>"
+  Rbuffer.add_string html (Printf.sprintf "<svg id='svg_svg' xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\"><g id='svg_outer0'>"
                              (round (w)) (round (h)));
   Rbuffer.add_string html
     (Printf.sprintf "<animateTransform attributeName=\"transform\" attributeType=\"XML\" id=\"animation0\" type=\"translate\" calcMode=\"spline\" fill=\"freeze\" keySplines=\"0.2 0 0.1 1\" values=\"0\" dur=\"0.7s\"/><g id=\"svg_container0\">"
     );
-  Rbuffer.add_string html (Printf.sprintf "</g></g><g transform=\"translate(%d,0)\"><animateTransform attributeName=\"transform\" attributeType=\"XML\" id=\"animation1\" type=\"translate\" calcMode=\"spline\" fill=\"freeze\" keySplines=\"0.2 0 0.1 1\" values=\"0\" dur=\"0.7s\"/><g id=\"svg_container1\">\n" (round w));
+  Rbuffer.add_string html (Printf.sprintf "</g></g><g transform=\"translate(%d,0)\" id='svg_outer1'><animateTransform attributeName=\"transform\" attributeType=\"XML\" id=\"animation1\" type=\"translate\" calcMode=\"spline\" fill=\"freeze\" keySplines=\"0.2 0 0.1 1\" values=\"0\" dur=\"0.7s\"/><g id=\"svg_container1\">\n" (round w));
 
   Rbuffer.add_string html (Printf.sprintf "</g></g>\n");
 
