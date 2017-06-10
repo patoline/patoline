@@ -1678,9 +1678,13 @@ let flatten ?(initial_path=[]) env0 str=
         match l with
         | []-> (env1, cur)
         | C(f)::s-> collect_nodes env1 (f env1@s) cur
-        | Scoped(f,s')::s-> let (_, cur) = collect_nodes (f env1) s' cur in
-                            collect_nodes env1 s cur
-        | Env f::s -> collect_nodes (f env1) s cur
+        | Scoped(f,s')::s->
+           let env2 = f env1 in
+           let (_, res) = collect_nodes env2 s' [] in
+           collect_nodes env1 s (Scoped((fun _ -> env2),List.rev res)::cur)
+        | Env f::s ->
+           let env1 = f env1 in
+           collect_nodes env1 s (Env (fun _ -> env1)::cur)
         | N n::s->
            let env1 = add_node env1 cur in
            let env1 = flatten flushes env1 path n in
