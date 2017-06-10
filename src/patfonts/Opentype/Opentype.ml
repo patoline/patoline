@@ -47,7 +47,9 @@ type ttfglyph={ ttf_font:ttf;
                 mutable ttf_x0:float;
                 mutable ttf_x1:float;
                 mutable ttf_y0:float;
-                mutable ttf_y1:float }
+                mutable ttf_y1:float;
+                ttf_cadratin:float;
+              }
 
 
 type glyph = CFFGlyph of (cff*CFF.glyph) | TTFGlyph of ttfglyph
@@ -203,6 +205,10 @@ let fontBBox f=
       (lsb,descender,xmax,ascender)
     )
 
+let cadratin f =
+  let (_,descender,_,ascender) = fontBBox f in
+  ascender - descender
+
 let italicAngle f=
   let file,offset0=match f with
       CFF font->
@@ -353,6 +359,7 @@ let loadGlyph f ?index:(idx=0) gl=
   match f with
       CFF (x)->CFFGlyph (x, CFF.loadGlyph x.cff_font ~index:idx gl)
     | TTF ttf->TTFGlyph { ttf_font=ttf;ttf_glyph_id=gl;
+                          ttf_cadratin = 1000.0 /. float (cadratin f);
                           ttf_width=infinity;ttf_y0=infinity;ttf_y1= -.infinity;ttf_x0=infinity;ttf_x1= -.infinity }
 
 
@@ -387,7 +394,7 @@ let read2dot14 file=
   let frac=(float_of_int (((x land 0x3fff) lsl 8) lor y))/.(float_of_int 0x4000) in
   mantissa+.frac
 
-let outlines gl=match gl with
+let outlines ?(orig=true) gl=match gl with
     CFFGlyph (_,x)->CFF.outlines x
   | TTFGlyph (ttfgl)->(
     let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
@@ -587,7 +594,10 @@ let outlines gl=match gl with
       )
     in
     let out,_,_=fetch_outlines ttfgl.ttf_glyph_id.glyph_index in
-    out
+    if orig then out else
+      List.map (List.map (fun (xs,ys) ->
+                    let f x = x *. ttfgl.ttf_cadratin in
+                    (Array.map f xs, Array.map f ys))) out
   )
 
 
@@ -604,26 +614,26 @@ let compute_bb gl=
     (outlines (TTFGlyph gl))
 
 
-let glyph_y0 gl=match gl with
+let glyph_y0 ?(orig=true) gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y0 x
   | TTFGlyph ttfgl->
     if ttfgl.ttf_y0 = infinity then compute_bb ttfgl;
-    ttfgl.ttf_y0
-let glyph_x0 gl=match gl with
+    if orig then ttfgl.ttf_y0 else ttfgl.ttf_y0 *. ttfgl.ttf_cadratin
+let glyph_x0 ?(orig=true) gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_x0 x
   | TTFGlyph ttfgl->
     if ttfgl.ttf_x0 = infinity then compute_bb ttfgl;
-    ttfgl.ttf_x0
-let glyph_y1 gl=match gl with
+    if orig then ttfgl.ttf_x0 else ttfgl.ttf_x0 *. ttfgl.ttf_cadratin
+let glyph_y1 ?(orig=true) gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y1 x
   | TTFGlyph ttfgl->
     if ttfgl.ttf_y1 = infinity then compute_bb ttfgl;
-    ttfgl.ttf_y1
-let glyph_x1 gl=match gl with
+    if orig then ttfgl.ttf_y1 else ttfgl.ttf_y1 *. ttfgl.ttf_cadratin
+let glyph_x1 ?(orig=true) gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_x1 x
   | TTFGlyph ttfgl->
     if ttfgl.ttf_x1 = infinity then compute_bb ttfgl;
-    ttfgl.ttf_x1
+    if orig then ttfgl.ttf_x1 else ttfgl.ttf_x1 *. ttfgl.ttf_cadratin
 
 
 (*
@@ -742,11 +752,11 @@ type ttfglyph={ ttf_font:ttf;
                 mutable ttf_y0:float;
                 mutable ttf_y1:float }
 *)
-let glyphWidth gl=
+let glyphWidth ?(orig=true) gl=
   match gl with
       CFFGlyph (_,x)->CFF.glyphWidth x
     | TTFGlyph (ttfgl)->
-      if ttfgl.ttf_width<infinity then ttfgl.ttf_width else (
+      if ttfgl.ttf_width<infinity then ttfgl.ttf_width *. ttfgl.ttf_cadratin else (
         let file,offset,x=ttfgl.ttf_font.ttf_file,ttfgl.ttf_font.ttf_offset,ttfgl.ttf_glyph_id in
         let file=open_in_bin_cached file in
         let num=x.glyph_index in
@@ -756,7 +766,7 @@ let glyphWidth gl=
         seek_in file (if num>=nh then (b+4*(nh-1)) else (b+4*num));
         let w=float_of_int (readInt2 file) in
         ttfgl.ttf_width<-w;
-        w
+        if orig then w else w *. ttfgl.ttf_cadratin
       )
 
 let otype_file font=match font with
@@ -1752,6 +1762,8 @@ let write_cff fontInfo=
   done;
   buf
 
+let floor x = round (floor x)
+let ceil x = round (ceil x)
 
 let make_tables font fontInfo cmap glyphs_idx=
   let glyphs=Array.map (loadGlyph font) glyphs_idx in
@@ -1856,14 +1868,14 @@ let make_tables font fontInfo cmap glyphs_idx=
   Printf.fprintf stderr "hmtx\n"; flush stderr;
 #endif
   (* hmtx *)
-  let numberOfHMetrics=ref (Array.length glyphs-1) in
-  let buf_hmtx=Bytes.create (4*Array.length glyphs) in
-  let advanceWidthMax=ref 0 in
-  for i=0 to Array.length glyphs-1 do
+  let numberOfGlyphs=Array.length glyphs in
+  let buf_hmtx=Bytes.create (4*numberOfGlyphs) in
+  let advanceWidthMax=ref 0.0 in
+  for i=0 to numberOfGlyphs-1 do
     let w=glyphWidth glyphs.(i) in
-    let x0=round (glyph_x0 glyphs.(i)) in
-    advanceWidthMax:=max !advanceWidthMax (round w);
-    strInt2 buf_hmtx (i*4) (round w);
+    let x0=floor (glyph_x0 glyphs.(i)) in
+    advanceWidthMax:=max !advanceWidthMax w;
+    strInt2 buf_hmtx (i*4) (ceil w);
     strInt2 buf_hmtx (i*4+2) x0
   done;
   fontInfo.tables<-StrMap.add "hmtx" buf_hmtx fontInfo.tables;
@@ -1880,7 +1892,7 @@ let make_tables font fontInfo cmap glyphs_idx=
   (try
      let minLSB=ref infinity in
      let minRSB=ref infinity in
-     for i=0 to Array.length glyphs-1 do
+     for i=0 to numberOfGlyphs-1 do
        let lsb=glyph_x0 glyphs.(i) in
        let x1=glyph_x1 glyphs.(i) in
        minLSB:=min !minLSB lsb;
@@ -1899,11 +1911,11 @@ let make_tables font fontInfo cmap glyphs_idx=
 #else
      strInt4 buf_hhea 0 0x00010000;        (* Version *)
 #endif
-     strInt2 buf_hhea 10 !advanceWidthMax;  (* advanceWidthMax (hmtx) *)
-     strInt2 buf_hhea 12 (round !minLSB);           (* minLeftSideBearing *)
-     strInt2 buf_hhea 14 (round !minRSB);           (* minRightSideBearing *)
-     strInt2 buf_hhea 16 (round (!minLSB+. !xMax-. !xMin)); (* xMaxExtent *)
-     strInt2 buf_hhea 34 (!numberOfHMetrics+1) (* numberOfHMetrics (hmtx) *)
+     strInt2 buf_hhea 10 (ceil !advanceWidthMax);  (* advanceWidthMax (hmtx) *)
+     strInt2 buf_hhea 12 (floor !minLSB);           (* minLeftSideBearing *)
+     strInt2 buf_hhea 14 (floor !minRSB);           (* minRightSideBearing *)
+     strInt2 buf_hhea 16 (ceil !xMax); (* xMaxExtent *)
+     strInt2 buf_hhea 34 numberOfGlyphs (* numberOfGlyphs (hmtx) *)
    with
        Not_found -> ());
 
@@ -1913,10 +1925,10 @@ let make_tables font fontInfo cmap glyphs_idx=
   (* head *)
   (try
      let buf_head=StrMap.find "head" fontInfo_tables in
-     strInt2 buf_head 32 (round !xMin);
-     strInt2 buf_head 34 (round !yMin);
-     strInt2 buf_head 36 (round !xMax);
-     strInt2 buf_head 38 (round !yMax)
+     strInt2 buf_head 32 (floor !xMin);
+     strInt2 buf_head 34 (floor !yMin);
+     strInt2 buf_head 36 (ceil !xMax);
+     strInt2 buf_head 38 (ceil !yMax)
    with
        Not_found->());
 
@@ -1990,11 +2002,7 @@ let make_tables font fontInfo cmap glyphs_idx=
   (* os/2 *)
   (try
      let buf_os2=StrMap.find "OS/2" fontInfo_tables in
-     let buf_os2=if String.length buf_os2 < 96 then Bytes.create 96 else buf_os2 in
-     strInt2 buf_os2 0 3;               (* version *)
-
      strInt2 buf_os2 2 ((round (!xAvgCharWidth/.float_of_int (Array.length glyphs))));
-     strInt2 buf_os2 8 0; (* fsType : fix IE10 limitation. Not sure how legally correct this is. *)
 #ifdef INT32
      let u1=ref 0l in
      let u2=ref 0l in
@@ -2012,25 +2020,9 @@ let make_tables font fontInfo cmap glyphs_idx=
      strInt4 buf_os2 50 !u3;
      strInt4 buf_os2 54 !u4;
 
-     strInt2 buf_os2 74 (fst (IntMap.min_binding cmap)); (* usFirstCharIndex *)
-     strInt2 buf_os2 76 (fst (IntMap.max_binding cmap)); (* usLastCharIndex *)
-     strInt2 buf_os2 92 (if IntMap.mem 0x20 cmap then 0x20 else (fst (IntMap.min_binding cmap))); (* usBreakChar *)
+     strInt2 buf_os2 64 (fst (IntMap.min_binding cmap)); (* usFirstCharIndex *)
+     strInt2 buf_os2 66 (fst (IntMap.max_binding cmap)); (* usLastCharIndex *)
 
-     strInt2 buf_os2 94 2;              (* usMaxContext *)
-
-     (* Il faut recopier sTypoAscender et sTypoDescender *)
-     let typoAsc=sgetInt2 buf_os2 68 in
-     let typoDesc=sgetInt2 buf_os2 70 in
-     let lineGap=sgetInt2 buf_os2 72 in
-     strInt2 buf_os2 74 (abs typoAsc);
-     strInt2 buf_os2 76 (abs typoDesc);
-     let buf_hhea=StrMap.find "hhea" fontInfo_tables in
-     strInt2 buf_hhea 4 typoAsc;
-     strInt2 buf_hhea 6 typoDesc;
-     strInt2 buf_hhea 8 lineGap;
-
-     (* strInt2 buf_os2 64 (round !yMax);              (\* usWinAscent *\) *)
-     (* strInt2 buf_os2 66 (max 0 (round (-. !yMin))); (\* usWinDescent *\) *)
      ()
 
      (* (try *)
@@ -2222,3 +2214,11 @@ let add_kerning info kerning_pairs=
   let lookups=[|make_kerning kerning_pairs|] in
   let buf=write_layout scr feat lookups in
   info.tables<-StrMap.add "GPOS" buf info.tables
+
+(* now everything must be scaled to 1000.0 *)
+let glyph_x0 = glyph_x0 ~orig:false
+let glyph_x1 = glyph_x1 ~orig:false
+let glyph_y0 = glyph_y0 ~orig:false
+let glyph_y1 = glyph_y1 ~orig:false
+let glyphWidth = glyphWidth ~orig:false
+let outlines = outlines ~orig:false

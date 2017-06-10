@@ -27,8 +27,6 @@ let loadFont ?offset:(offset = 0) ?size:(size = None) fn =
     invalid_arg "Font format not supported (unknown extension)"
 
 let cardinal  = function CFF f -> CFF.cardinal  f | OpT f -> OpT.cardinal  f
-let ascender  = function CFF f -> CFF.ascender  f | OpT f -> OpT.ascender  f
-let descender = function CFF f -> CFF.descender f | OpT f -> OpT.descender f
 
 let glyph_of_uchar : font -> UChar.t -> int = fun font c ->
   match font with
@@ -169,4 +167,3 @@ let is_cff : font -> bool = function
   | CFF _           -> true
   | OpT (OpT.CFF _) -> true
   | _               -> false
-

@@ -25,10 +25,6 @@ val loadFont : ?offset:int -> ?size:int option -> string -> font
 
 val cardinal : font -> int
 
-val ascender : font -> float
-
-val descender : font -> float
-
 (** Computes the index of a glyph corresponding to a given
     character in the font, but loses the link between the character
     and the glyph. It is your responsibility to maintain this link
