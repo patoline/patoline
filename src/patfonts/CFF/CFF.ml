@@ -413,6 +413,7 @@ let glyph_x1 gl=
   if gl.glyphX1 = -.infinity then compute_bb gl;
   gl.glyphX1
 
+let glyphLSB = glyph_x0
 
 let glyphNumber glyph=glyph.glyphNumber
 

@@ -360,7 +360,11 @@ let loadGlyph f ?index:(idx=0) gl=
       CFF (x)->CFFGlyph (x, CFF.loadGlyph x.cff_font ~index:idx gl)
     | TTF ttf->TTFGlyph { ttf_font=ttf;ttf_glyph_id=gl;
                           ttf_cadratin = 1000.0 /. float (cadratin f);
-                          ttf_width=infinity;ttf_y0=infinity;ttf_y1= -.infinity;ttf_x0=infinity;ttf_x1= -.infinity }
+                          ttf_width=infinity;
+                          ttf_y0=infinity;
+                          ttf_y1= -.infinity;
+                          ttf_x0=infinity;
+                          ttf_x1= -.infinity }
 
 
 (* Interpréteur truetype *)
@@ -635,12 +639,9 @@ let glyph_x1 ?(orig=true) gl=match gl with
     if ttfgl.ttf_x1 = infinity then compute_bb ttfgl;
     if orig then ttfgl.ttf_x1 else ttfgl.ttf_x1 *. ttfgl.ttf_cadratin
 
-
-(*
-let glyph_y0 gl=match gl with
+let font_glyph_y0 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y0 x
   | TTFGlyph (ttfgl)->(
-    if ttfgl.ttf_y0<infinity then ttfgl.ttf_y0 else (
       let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
       let off_size=
         let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
@@ -656,17 +657,12 @@ let glyph_y0 gl=match gl with
       in
       let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
       seek_in file (c+off+4);
-      let y0=float_of_int (sreadInt2 file) in
-      ttfgl.ttf_y0<-y0;
-      y0
-    )
+      float_of_int (sreadInt2 file)
   )
 
-let glyph_y1 gl=match gl with
+let font_glyph_y1 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y1 x
   | TTFGlyph (ttfgl)->(
-    if ttfgl.ttf_y1<infinity then ttfgl.ttf_y1 else (
-      (*
       let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
       let off_size=
         let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
@@ -682,55 +678,50 @@ let glyph_y1 gl=match gl with
       in
       let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
       seek_in file (c+off+8);
-      let y1=float_of_int (sreadInt2 file) in
-      *)
-      ttfgl.ttf_y1<-y1;
-      y1
-    )
+      float_of_int (sreadInt2 file)
   )
 
-let glyph_x0 gl=match gl with
+let font_glyph_x0 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_x0 x
   | TTFGlyph (ttfgl)->(
-    let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
-    let off_size=
-      let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
-      seek_in file (a+50);
-      if readInt2 file=0 then 2 else 4
-    in
+      let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
+      let off_size=
+        let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
+        seek_in file (a+50);
+        if readInt2 file=0 then 2 else 4
+      in
 
-    let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
-    seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
-    let off=
-      let off=readInt2 file in
-      if off_size=2 then 2*off else off
-    in
-    let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
-    seek_in file (c+off+2);
-    float_of_int (sreadInt2 file)
+      let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+      seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
+      let off=
+        let off=readInt2 file in
+        if off_size=2 then 2*off else off
+      in
+      let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
+      seek_in file (c+off+2);
+      float_of_int (sreadInt2 file)
   )
 
-let glyph_x1 gl=match gl with
+let font_glyph_x1 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_x1 x
   | TTFGlyph (ttfgl)->(
-    let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
-    let off_size=
-      let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
-      seek_in file (a+50);
-      if readInt2 file=0 then 2 else 4
-    in
+      let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
+      let off_size=
+        let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
+        seek_in file (a+50);
+        if readInt2 file=0 then 2 else 4
+      in
 
-    let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
-    seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
-    let off=
-      let off=readInt2 file in
-      if off_size=2 then 2*off else off
-    in
-    let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
-    seek_in file (c+off+6);
-    float_of_int (sreadInt2 file)
+      let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+      seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
+      let off=
+        let off=readInt2 file in
+        if off_size=2 then 2*off else off
+      in
+      let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
+      seek_in file (c+off+6);
+      float_of_int (sreadInt2 file)
   )
-*)
 
 let glyphNumber gl=match gl with
     CFFGlyph (_,x)->CFF.glyphNumber x
@@ -768,6 +759,19 @@ let glyphWidth ?(orig=true) gl=
         ttfgl.ttf_width<-w;
         if orig then w else w *. ttfgl.ttf_cadratin
       )
+
+let glyphLSB  gl=
+  match gl with
+      CFFGlyph (_,x)->CFF.glyphLSB x
+    | TTFGlyph (ttfgl)->
+        let file,offset,x=ttfgl.ttf_font.ttf_file,ttfgl.ttf_font.ttf_offset,ttfgl.ttf_glyph_id in
+        let file=open_in_bin_cached file in
+        let num=x.glyph_index in
+        let (a,_)=tableLookup "hhea" file offset in
+        let nh=(seek_in file (a+34); readInt2 file) in
+        let (b,_)=tableLookup "hmtx" file offset in
+        seek_in file (if num>=nh then (b+4*(nh-1)+2) else (b+4*num+2));
+        float_of_int (readInt2 file)
 
 let otype_file font=match font with
     CFF (font)->font.cff_font.file, font.cff_offset
@@ -1762,9 +1766,6 @@ let write_cff fontInfo=
   done;
   buf
 
-let floor x = round (floor x)
-let ceil x = round (ceil x)
-
 let make_tables font fontInfo cmap glyphs_idx=
   let glyphs=Array.map (loadGlyph font) glyphs_idx in
 
@@ -1873,10 +1874,11 @@ let make_tables font fontInfo cmap glyphs_idx=
   let advanceWidthMax=ref 0.0 in
   for i=0 to numberOfGlyphs-1 do
     let w=glyphWidth glyphs.(i) in
-    let x0=floor (glyph_x0 glyphs.(i)) in
+    let lsb = glyphLSB glyphs.(i) in
+    (*let lsb = glyph_x0 glyphs.(i) in*)
     advanceWidthMax:=max !advanceWidthMax w;
-    strInt2 buf_hmtx (i*4) (ceil w);
-    strInt2 buf_hmtx (i*4+2) x0
+    strInt2 buf_hmtx (i*4) (int_of_float w);
+    strInt2 buf_hmtx (i*4+2) (int_of_float lsb)
   done;
   fontInfo.tables<-StrMap.add "hmtx" buf_hmtx fontInfo.tables;
 
@@ -1892,16 +1894,25 @@ let make_tables font fontInfo cmap glyphs_idx=
   (try
      let minLSB=ref infinity in
      let minRSB=ref infinity in
+     let xMaxExtent = ref (-. infinity) in
      for i=0 to numberOfGlyphs-1 do
-       let lsb=glyph_x0 glyphs.(i) in
+       let x0=glyph_x0 glyphs.(i) in
+       let lsb = glyphLSB glyphs.(i) in
+       (*let lsb = x0 in*)
        let x1=glyph_x1 glyphs.(i) in
+       let y0=glyph_y0 glyphs.(i) in
+       let y1=glyph_y1 glyphs.(i) in
+       (*Printf.printf "LSB: %f, x0: %f, x1: %f, y0: %f, y1: %f\n%!" lsb x0 x1 y0 y1;*)
        minLSB:=min !minLSB lsb;
        let aw=glyphWidth glyphs.(i) in
-       minRSB:=min !minRSB (aw -. x1);
+       minRSB:=min !minRSB (aw -. (lsb +. x1 -. x0));
+       xMaxExtent := max !xMaxExtent (lsb +. (x1 -. x0));
+       (*minRSB:=min !minRSB (aw -. x1);
+       xMaxExtent := max !xMaxExtent x1;*)
        xMax:=max !xMax x1;
-       xMin:=min !xMin lsb;
-       yMax:=max !yMax (glyph_y1 glyphs.(i));
-       yMin:=min !yMin (glyph_y0 glyphs.(i));
+       xMin:=min !xMin x0;
+       yMax:=max !yMax y1;
+       yMin:=min !yMin y0;
        xAvgCharWidth:= !xAvgCharWidth+.aw
      done;
 
@@ -1911,10 +1922,10 @@ let make_tables font fontInfo cmap glyphs_idx=
 #else
      strInt4 buf_hhea 0 0x00010000;        (* Version *)
 #endif
-     strInt2 buf_hhea 10 (ceil !advanceWidthMax);  (* advanceWidthMax (hmtx) *)
-     strInt2 buf_hhea 12 (floor !minLSB);           (* minLeftSideBearing *)
-     strInt2 buf_hhea 14 (floor !minRSB);           (* minRightSideBearing *)
-     strInt2 buf_hhea 16 (ceil !xMax); (* xMaxExtent *)
+     strInt2 buf_hhea 10 (int_of_float !advanceWidthMax);  (* advanceWidthMax (hmtx) *)
+     strInt2 buf_hhea 12 (int_of_float !minLSB);           (* minLeftSideBearing *)
+     strInt2 buf_hhea 14 (int_of_float !minRSB);           (* minRightSideBearing *)
+     strInt2 buf_hhea 16 (int_of_float !xMaxExtent); (* xMaxExtent *)
      strInt2 buf_hhea 34 numberOfGlyphs (* numberOfGlyphs (hmtx) *)
    with
        Not_found -> ());
@@ -1925,10 +1936,17 @@ let make_tables font fontInfo cmap glyphs_idx=
   (* head *)
   (try
      let buf_head=StrMap.find "head" fontInfo_tables in
-     strInt2 buf_head 32 (floor !xMin);
-     strInt2 buf_head 34 (floor !yMin);
-     strInt2 buf_head 36 (ceil !xMax);
-     strInt2 buf_head 38 (ceil !yMax)
+     let old_xMin = sgetInt2 buf_head 36 in
+     let old_yMin = sgetInt2 buf_head 38 in
+     let old_xMax = sgetInt2 buf_head 40 in
+     let old_yMax = sgetInt2 buf_head 42 in
+     (*Printf.printf "%d %d %d %d %f %f %f %f\n%!"
+                   old_xMin old_yMin old_xMax old_yMax
+                   !xMin !yMin !xMax !yMax;*)
+     strInt2 buf_head 36 (int_of_float !xMin);
+     strInt2 buf_head 38 (int_of_float !yMin);
+     strInt2 buf_head 40 (int_of_float !xMax);
+     strInt2 buf_head 42 (int_of_float !yMax)
    with
        Not_found->());
 
@@ -2047,8 +2065,9 @@ let make_tables font fontInfo cmap glyphs_idx=
   Printf.fprintf stderr "CFF\n";flush stderr;
 #endif
   (* CFF  *)
-  (match font with
-      CFF (cff)->(
+  begin
+    match font with
+    | CFF (cff)->
         let name0=CFF.fontName cff.cff_font in
         let rec getName l m=match l with
             []->m
@@ -2071,13 +2090,9 @@ let make_tables font fontInfo cmap glyphs_idx=
                     glyphs_idx)
         in
         fontInfo.tables<-StrMap.add "CFF " (Rbuffer.contents cff') fontInfo.tables
-      )
-    | _->());
 
   (* truetype *)
-  begin
-    match font with
-        TTF _->(
+    | TTF _->
           try
             let locformat=
               let head=StrMap.find "head" fontInfo_tables in
@@ -2133,8 +2148,6 @@ let make_tables font fontInfo cmap glyphs_idx=
             fontInfo.tables<-StrMap.add "glyf" (Rbuffer.contents glyf) fontInfo.tables
           with
               Not_found->()
-        )
-      | _->()
   end;
 
   (* GSUB *)
