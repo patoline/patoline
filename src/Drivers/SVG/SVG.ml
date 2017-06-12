@@ -205,7 +205,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	with Not_found ->
 	  Printf.fprintf stderr "Missing glyph: %s\n%!" (Fonts.glyphNumber x.glyph).glyph_utf8
       )
-    | Path (args, l)->(
+      | Path (args, l)->(
       if !opened_tspan then (
         Rbuffer.add_string svg_buf "</tspan>\n";
         opened_tspan:=false
@@ -533,34 +533,35 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	Rbuffer.add_string svg_buf "</g>\n") a.anim_contents;
       Rbuffer.add_string svg_buf "</g>\n"
   in
-  let raws=
-    let x=List.fold_left (fun m x->
-      let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
-      IntMap.add (drawing_order x) (x::m') m
+  let ordered_map =
+    List.fold_left (fun m x->
+      let m'=try IntMap.find (- drawing_order x) m with Not_found->[] in
+      IntMap.add (- drawing_order x) (x::m') m
     ) IntMap.empty (drawing_sort contents)
-    in
-    let comp a b=match a,b with
-        Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
-          else compare gb.glyph_y ga.glyph_y
-      | Glyph ga,_-> -1
-      | _,Glyph gb->1
-      | _->0
-    in
-    let subsort a=match a with
-      | Link l->
-         let l = match l.link_kind with
-           | Button(Menu(items), name) ->
-              let items = List.map (fun (f,c) -> (f, List.sort comp c)) items in
-              let link_kind = Button(Menu(items), name) in
-              { l with link_kind }
-           | _ -> l
-         in
-         Link { l with link_contents=List.sort comp l.link_contents }
-      | b->b
-    in
-    IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
   in
-  List.iter output_contents_aux raws;
+  let comp a b=match a,b with
+      Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
+                         else compare gb.glyph_y ga.glyph_y
+    | Glyph ga,_-> -1
+    | _,Glyph gb->1
+    | _->0
+  in
+  let subsort a=match a with
+    | Link l->
+       let l = match l.link_kind with
+         | Button(Menu(items), name) ->
+            let items = List.map (fun (f,c) -> (f, List.sort comp c)) items in
+            let link_kind = Button(Menu(items), name) in
+            { l with link_kind }
+         | _ -> l
+       in
+       Link { l with link_contents=List.sort comp l.link_contents }
+    | b->b
+  in
+  IntMap.iter (fun _ l ->
+      List.iter output_contents_aux
+                (List.sort comp (List.map subsort l)))
+              ordered_map;
   if !opened_tspan then (
     Rbuffer.add_string svg_buf "</tspan>\n";
   );

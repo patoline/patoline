@@ -1897,7 +1897,6 @@ let make_tables font fontInfo cmap glyphs_idx=
     strInt2 buf_hmtx (i*4+2) (int_of_float lsb)
   done;
   for i=0 to IntMap.cardinal glyphMap - numberOfGlyphs - 1 do
-    Printf.printf "(%d %d) %d %x\n%!" numberOfGlyphs (IntMap.cardinal glyphMap) i i;
     strInt2 buf_hmtx (4*numberOfGlyphs + i*4) 0 ;(* lsb to 0 *)
     strInt2 buf_hmtx (4*numberOfGlyphs + i*4+2) 0 (* adv to 0 *)
   done;
@@ -1957,11 +1956,11 @@ let make_tables font fontInfo cmap glyphs_idx=
   (* head *)
   (try
      let buf_head=StrMap.find "head" fontInfo_tables in
-     let old_xMin = sgetInt2 buf_head 36 in
+     (*let old_xMin = sgetInt2 buf_head 36 in
      let old_yMin = sgetInt2 buf_head 38 in
      let old_xMax = sgetInt2 buf_head 40 in
      let old_yMax = sgetInt2 buf_head 42 in
-     (*Printf.printf "%d %d %d %d %f %f %f %f\n%!"
+     Printf.printf "%d %d %d %d %f %f %f %f\n%!"
                    old_xMin old_yMin old_xMax old_yMax
                    !xMin !yMin !xMax !yMax;*)
      strInt2 buf_head 36 (int_of_float !xMin);
