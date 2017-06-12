@@ -185,7 +185,6 @@ let draw ?fontCache ?dynCache prefix w h contents=
               let col = htmlColor col in
               Printf.sprintf "style=\"font-family:f%d; font-size:%gpx; %s\"" fam size col, cls
           in
-        (* let size=x.glyph_size in *)
           if cls <> !cur_cls
             || !cur_x<>x.glyph_x || !cur_y <>x.glyph_y
             || not !opened_tspan

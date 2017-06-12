@@ -468,7 +468,12 @@ let fontBBox ?index:(idx=0) font=
   let f=open_in_bin_cached font.file in
   try
     match findDict f font.dictIndex.(idx) font.dictIndex.(idx+1) 5 with
-        (a::b::c::d::_)->(int_of_num d,int_of_num c,int_of_num b,int_of_num a)
+      (a::b::c::d::_)->
+      let lsb = int_of_num d in
+      let descender = int_of_num c in
+      let xmax = int_of_num b in
+      let ascender = int_of_num a in
+      (lsb,descender,xmax,ascender)
       | _->(0,0,0,0)
   with
       Not_found->(0,0,0,0)

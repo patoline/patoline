@@ -32,6 +32,7 @@ type ttf={
   ttf_version:string;
   ttf_file:string;
   ttf_offset:int;
+  ttf_cadratin:float;
 }
 type cff={
   cff_font:CFF.font;
@@ -48,7 +49,6 @@ type ttfglyph={ ttf_font:ttf;
                 mutable ttf_x1:float;
                 mutable ttf_y0:float;
                 mutable ttf_y1:float;
-                ttf_cadratin:float;
               }
 
 
@@ -88,6 +88,37 @@ let tableList file off=
   in
     getTables (off+dirSize*(numTables-1)+offsetTable) []
 
+let fontBBox f=
+  match f with
+    CFF font->
+      CFF.fontBBox font.cff_font
+    | TTF ttf->(
+      let file,offset0=open_in_bin_cached ttf.ttf_file,ttf.ttf_offset in
+      let (a,b)=tableLookup "hhea" file offset0 in
+      seek_in file (a+4);
+      let ascender=sreadInt2 file in
+      let descender=sreadInt2 file in
+      seek_in file (a+12);
+      let lsb=sreadInt2 file in
+      (* let rsb=sreadInt2 file in *)
+      seek_in file (a+16);
+      let xmax=sreadInt2 file in
+      (lsb,descender,xmax,ascender)
+    )
+
+let cadratin f =
+  let res =
+    match f with
+    | CFF font-> 1000
+    | TTF ttf ->
+      let file,offset0=open_in_bin_cached ttf.ttf_file,ttf.ttf_offset in
+      let (a,b)=tableLookup "head" file offset0 in
+      seek_in file (a+18);
+      sreadInt2 file
+  in
+  Printf.printf "cadratin: %d\n%!" res;
+  res
+
 let loadFont ?offset:(off=0) ?size:(size=None) file=
   let f = open_in_bin_cached file in
   let typ = Bytes.create 4 in
@@ -98,7 +129,14 @@ let loadFont ?offset:(off=0) ?size:(size=None) file=
      let (a,b)=tableLookup "CFF " f off in
      CFF {cff_font=CFF.loadFont file ~offset:(off+a) ~size:(Some b);cff_offset=off}
   | version ->
-     TTF { ttf_version=version; ttf_offset=off; ttf_file=file }
+     let ttf = { ttf_version=version; ttf_offset=off;
+                 ttf_file=file; ttf_cadratin= 0.0 }
+     in
+     let ttf_cadratin =
+       let c = cadratin (TTF ttf) in
+       if c = 1000 then 1.0 else 1000.0 /. float_of_int c
+     in
+     TTF { ttf with ttf_cadratin }
 
 let uniqueName font=match font with
     CFF cff->CFF.uniqueName cff.cff_font
@@ -187,27 +225,6 @@ let cardinal f=
   let (a,b)=tableLookup "maxp" file offset0 in
   seek_in file (a+4);
   readInt2 file
-
-let fontBBox f=
-  match f with
-      CFF font->CFF.fontBBox font.cff_font
-    | TTF ttf->(
-      let file,offset0=open_in_bin_cached ttf.ttf_file,ttf.ttf_offset in
-      let (a,b)=tableLookup "hhea" file offset0 in
-      seek_in file (a+4);
-      let ascender=sreadInt2 file in
-      let descender=sreadInt2 file in
-      seek_in file (a+12);
-      let lsb=sreadInt2 file in
-      (* let rsb=sreadInt2 file in *)
-      seek_in file (a+16);
-      let xmax=sreadInt2 file in
-      (lsb,descender,xmax,ascender)
-    )
-
-let cadratin f =
-  let (_,descender,_,ascender) = fontBBox f in
-  ascender - descender
 
 let italicAngle f=
   let file,offset0=match f with
@@ -359,7 +376,6 @@ let loadGlyph f ?index:(idx=0) gl=
   match f with
       CFF (x)->CFFGlyph (x, CFF.loadGlyph x.cff_font ~index:idx gl)
     | TTF ttf->TTFGlyph { ttf_font=ttf;ttf_glyph_id=gl;
-                          ttf_cadratin = 1000.0 /. float (cadratin f);
                           ttf_width=infinity;
                           ttf_y0=infinity;
                           ttf_y1= -.infinity;
@@ -600,7 +616,7 @@ let outlines ?(orig=true) gl=match gl with
     let out,_,_=fetch_outlines ttfgl.ttf_glyph_id.glyph_index in
     if orig then out else
       List.map (List.map (fun (xs,ys) ->
-                    let f x = x *. ttfgl.ttf_cadratin in
+                    let f x = x *. ttfgl.ttf_font.ttf_cadratin in
                     (Array.map f xs, Array.map f ys))) out
   )
 
@@ -622,22 +638,22 @@ let glyph_y0 ?(orig=true) gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y0 x
   | TTFGlyph ttfgl->
     if ttfgl.ttf_y0 = infinity then compute_bb ttfgl;
-    if orig then ttfgl.ttf_y0 else ttfgl.ttf_y0 *. ttfgl.ttf_cadratin
+    if orig then ttfgl.ttf_y0 else ttfgl.ttf_y0 *. ttfgl.ttf_font.ttf_cadratin
 let glyph_x0 ?(orig=true) gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_x0 x
   | TTFGlyph ttfgl->
     if ttfgl.ttf_x0 = infinity then compute_bb ttfgl;
-    if orig then ttfgl.ttf_x0 else ttfgl.ttf_x0 *. ttfgl.ttf_cadratin
+    if orig then ttfgl.ttf_x0 else ttfgl.ttf_x0 *. ttfgl.ttf_font.ttf_cadratin
 let glyph_y1 ?(orig=true) gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y1 x
   | TTFGlyph ttfgl->
     if ttfgl.ttf_y1 = infinity then compute_bb ttfgl;
-    if orig then ttfgl.ttf_y1 else ttfgl.ttf_y1 *. ttfgl.ttf_cadratin
+    if orig then ttfgl.ttf_y1 else ttfgl.ttf_y1 *. ttfgl.ttf_font.ttf_cadratin
 let glyph_x1 ?(orig=true) gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_x1 x
   | TTFGlyph ttfgl->
     if ttfgl.ttf_x1 = infinity then compute_bb ttfgl;
-    if orig then ttfgl.ttf_x1 else ttfgl.ttf_x1 *. ttfgl.ttf_cadratin
+    if orig then ttfgl.ttf_x1 else ttfgl.ttf_x1 *. ttfgl.ttf_font.ttf_cadratin
 
 let font_glyph_y0 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y0 x
@@ -747,7 +763,7 @@ let glyphWidth ?(orig=true) gl=
   match gl with
       CFFGlyph (_,x)->CFF.glyphWidth x
     | TTFGlyph (ttfgl)->
-      if ttfgl.ttf_width<infinity then ttfgl.ttf_width *. ttfgl.ttf_cadratin else (
+      if ttfgl.ttf_width<infinity then ttfgl.ttf_width *. ttfgl.ttf_font.ttf_cadratin else (
         let file,offset,x=ttfgl.ttf_font.ttf_file,ttfgl.ttf_font.ttf_offset,ttfgl.ttf_glyph_id in
         let file=open_in_bin_cached file in
         let num=x.glyph_index in
@@ -757,7 +773,7 @@ let glyphWidth ?(orig=true) gl=
         seek_in file (if num>=nh then (b+4*(nh-1)) else (b+4*num));
         let w=float_of_int (readInt2 file) in
         ttfgl.ttf_width<-w;
-        if orig then w else w *. ttfgl.ttf_cadratin
+        if orig then w else w *. ttfgl.ttf_font.ttf_cadratin
       )
 
 let glyphLSB  gl=
@@ -1870,7 +1886,7 @@ let make_tables font fontInfo cmap glyphs_idx=
 #endif
   (* hmtx *)
   let numberOfGlyphs=Array.length glyphs in
-  let buf_hmtx=Bytes.create (4*numberOfGlyphs) in
+  let buf_hmtx=Bytes.create (4*IntMap.cardinal glyphMap) in
   let advanceWidthMax=ref 0.0 in
   for i=0 to numberOfGlyphs-1 do
     let w=glyphWidth glyphs.(i) in
@@ -1879,6 +1895,11 @@ let make_tables font fontInfo cmap glyphs_idx=
     advanceWidthMax:=max !advanceWidthMax w;
     strInt2 buf_hmtx (i*4) (int_of_float w);
     strInt2 buf_hmtx (i*4+2) (int_of_float lsb)
+  done;
+  for i=0 to IntMap.cardinal glyphMap - numberOfGlyphs - 1 do
+    Printf.printf "(%d %d) %d %x\n%!" numberOfGlyphs (IntMap.cardinal glyphMap) i i;
+    strInt2 buf_hmtx (4*numberOfGlyphs + i*4) 0 ;(* lsb to 0 *)
+    strInt2 buf_hmtx (4*numberOfGlyphs + i*4+2) 0 (* adv to 0 *)
   done;
   fontInfo.tables<-StrMap.add "hmtx" buf_hmtx fontInfo.tables;
 
@@ -1926,7 +1947,7 @@ let make_tables font fontInfo cmap glyphs_idx=
      strInt2 buf_hhea 12 (int_of_float !minLSB);           (* minLeftSideBearing *)
      strInt2 buf_hhea 14 (int_of_float !minRSB);           (* minRightSideBearing *)
      strInt2 buf_hhea 16 (int_of_float !xMaxExtent); (* xMaxExtent *)
-     strInt2 buf_hhea 34 numberOfGlyphs (* numberOfGlyphs (hmtx) *)
+     strInt2 buf_hhea 34 (IntMap.cardinal glyphMap) (* size of hmtx first array *)
    with
        Not_found -> ());
 
