@@ -219,10 +219,6 @@ type content =
   (* Simple text. *)
   | T of string * (box list IntMap.t option) ref
 
-  (* Simple text obtained by reading the corresponding file at the given
-     offset for the given number of bytes. *)
-  | FileRef of string * int * int
-
   (* Environment modification function. It can be used to register a name
      or modify the state of a counter for instance. *)
   | Env of (environment -> environment)
@@ -1158,7 +1154,6 @@ let includeVideo ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset
 
 
 (**/**)
-let sources=ref StrMap.empty
 let rStdGlue:(float*box) ref=ref (0.,glue 0. 0. 0.)
 (**/**)
 
@@ -1311,15 +1306,7 @@ let boxify buf nbuf env0 l=
            if keep_cache then cache := Some !l;
            IntMap.iter (fun _->List.iter (append buf nbuf)) !l;
            boxify keep_cache env s)
-    | FileRef (file,off,size)::s -> (
-        let i=try
-	  StrMap.find file !sources
-        with _-> (let i=open_in_bin file in sources:= StrMap.add file i !sources; i)
-        in
-        let buffer=Bytes.create size in
-        let _=seek_in i off; really_input i buffer 0 size in
-        boxify keep_cache env (tT buffer::s)
-      )
+
     | Scoped (fenv, p)::s->(
         let env'=fenv env in
         let _=boxify keep_cache env' p in
@@ -1689,7 +1676,7 @@ let flatten ?(initial_path=[]) env0 str=
            let env1 = add_node env1 cur in
            let env1 = flatten flushes env1 path n in
            collect_nodes env1 s []
-        | (T _ | FileRef _ | B _ as h)::s-> collect_nodes env1 s (h::cur)
+        | (T _ | B _ as h)::s-> collect_nodes env1 s (h::cur)
       in
       let (env1, cur) = collect_nodes env1 p.par_contents [] in
       let env1 = add_node env1 cur in
