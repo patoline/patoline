@@ -1,13 +1,13 @@
-let pattern     = parser | ''[^- \t\n\r{}]+''
-let hyphenation = parser | x:pattern xs:{"-" pattern}* -> x::xs
+let parser pattern = ''[^- \t\n\r{}]+''
+let parser hyphenation = x:pattern xs:{"-" pattern}* -> x::xs
 let hyphenation = Earley.change_layout hyphenation Earley.no_blank
 
-let patt = parser | "\\patterns" "{" pattern* "}"
-let hyph = parser | "\\hyphenation" "{" hyphenation* "}"
+let parser patt = "\\patterns" "{" pattern* "}"
+let parser hyph = "\\hyphenation" "{" hyphenation* "}"
 
 let parser cesure_file =
-  | ps:patt?[[]] hy:hyph?[[]] -> (ps, hy)
-  | hy:hyph?[[]] ps:patt?[[]] -> (ps, hy)
+  | ps:patt hy:hyph?[[]] -> (ps, hy)
+  | hy:hyph ps:patt?[[]] -> (ps, hy)
 
 let blank str pos =
   let rec fn state prev ((str, pos) as cur) =
