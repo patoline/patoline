@@ -29,16 +29,18 @@ open Driver
 let driver_options = []
 let filter_options argv = argv
 
-module FloatMap=Map.Make(struct type t=float let compare=compare end)
+module FloatMap = Map.Make(
+  struct
+    type t = float
+    let compare = compare
+  end)
 
-let filename file=try (Filename.chop_extension file)^".pdf" with _->file^".pdf"
-
-type pdfFont= { font:Fonts.font;
-                mutable fontVariants:(Fonts.glyph IntMap.t) IntMap.t;
-                mutable pdfObjects:int IntMap.t;
-                mutable fontGlyphs:(int*int*Fonts.glyph) IntMap.t;
-                mutable revFontGlyphs:(Fonts.glyph) IntMap.t }
-
+type pdfFont =
+  {         font          : Fonts.font
+  ; mutable fontVariants  : Fonts.glyph IntMap.t IntMap.t
+  ; mutable pdfObjects    : int IntMap.t
+  ; mutable fontGlyphs    : (int * int * Fonts.glyph) IntMap.t
+  ; mutable revFontGlyphs : Fonts.glyph IntMap.t }
 
 type state_data =
   { strokingColor      : color option
@@ -64,15 +66,14 @@ type state = state_data ref
 
 #ifdef CAMLZIP
 let stream buf=
-  let out_buf=Rbuffer.create 100000 in
-  let buf_pos=ref 0 in
-  Zlib.compress (fun zbuf->
-    let m=min (Rbuffer.length buf- !buf_pos) (String.length zbuf) in
-    for i=0 to m-1 do
+  let out_buf = Rbuffer.create 100000 in
+  let buf_pos = ref 0 in
+  Zlib.compress (fun zbuf ->
+    let m = min (Rbuffer.length buf - !buf_pos) (String.length zbuf) in
+    for i = 0 to m-1 do
       Bytes.set zbuf i (Rbuffer.nth buf (!buf_pos));
       incr buf_pos
-    done;
-    m
+    done; m
   )
     (fun buf len -> Rbuffer.add_substring out_buf buf 0 len);
   "/Filter [/FlateDecode]", out_buf
@@ -81,22 +82,18 @@ let stream buf="",buf
 #endif
 
 
-let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;children=[||]})
-    pages fileName=
-  let pages=if Array.length pages>0 then pages else
-      [|{size=(0.,0.);contents=[]}|]
-  in
-  let fileName = filename fileName in
-  if Sys.file_exists fileName then Unix.unlink fileName;
-  let outChan=open_out_bin fileName in
+let output ?(structure:structure=empty_structure) pages fname =
+  let pages = if pages <> [||] then pages else [| empty_page (0.0, 0.0) |] in
+  let fname = (try Filename.chop_extension fname with _ -> fname) ^ ".pdf" in
+  let oc = open_out_bin fname in
+
   let pageBuf=Rbuffer.create 100000 in
   let xref=ref (IntMap.singleton 1 0) in (* Le pagetree est toujours l'objet 1 *)
   (* let fonts=ref StrMap.empty in *)
   let resumeObject n=
-    flush outChan;
-    xref:=IntMap.add n (pos_out outChan) !xref;
-    fprintf outChan "%d 0 obj\n" n
+    flush oc;
+    xref:=IntMap.add n (pos_out oc) !xref;
+    fprintf oc "%d 0 obj\n" n
   in
   let beginObject ()=
     let n=IntMap.cardinal !xref in
@@ -108,7 +105,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       xref:=IntMap.add (n+1) (-1) !xref;
       n+1
   in
-  let endObject pdf=fprintf outChan "\nendobj\n" in
+  let endObject pdf=fprintf oc "\nendobj\n" in
   let pdf_string_buf=Rbuffer.create 1000 in
   let pdf_string utf=
     Rbuffer.clear pdf_string_buf;
@@ -129,7 +126,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let pageObjects=Array.make (Array.length pages) 0 in
   for i=0 to Array.length pageObjects-1 do pageObjects.(i)<-futureObject ()
   done;
-  fprintf outChan "%%PDF-1.7\n%%ãõẽũ\n";
+  fprintf oc "%%PDF-1.7\n%%ãõẽũ\n";
 
 
   let rec are_valid x i=
@@ -513,48 +510,48 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         let contentObj=beginObject () in
         let filt, data=stream pageBuf in
         let len=Rbuffer.length data in
-          fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
-          Rbuffer.output_buffer outChan data;
-          fprintf outChan "\nendstream";
+          fprintf oc "<< /Length %d %s>>\nstream\n" len filt;
+          Rbuffer.output_buffer oc data;
+          fprintf oc "\nendstream";
           endObject ();
           resumeObject pageObjects.(page);
           let w,h=pages.(page).size in
-          fprintf outChan "<< /Type /Page /Parent 1 0 R /MediaBox [ 0 0 %f %f ] " (pt_of_mm w) (pt_of_mm h);
-	  fprintf outChan "/Group << /Type /Group /S /Transparency /I false /K true /CS /DeviceRGB >>";
-          fprintf outChan "/Resources << /ProcSet [/PDF /Text%s] "
+          fprintf oc "<< /Type /Page /Parent 1 0 R /MediaBox [ 0 0 %f %f ] " (pt_of_mm w) (pt_of_mm h);
+	  fprintf oc "/Group << /Type /Group /S /Transparency /I false /K true /CS /DeviceRGB >>";
+          fprintf oc "/Resources << /ProcSet [/PDF /Text%s] "
             (if !pageImages=[] then "" else " /ImageB");
           if FloatMap.cardinal !sopacities > 1 || FloatMap.cardinal !nsopacities>1 then (
-            fprintf outChan "/ExtGState << ";
-            fprintf outChan "/GS%d <</Type /ExtGState /ca %f /CA %f>> " 0 1. 1.;
+            fprintf oc "/ExtGState << ";
+            fprintf oc "/GS%d <</Type /ExtGState /ca %f /CA %f>> " 0 1. 1.;
               FloatMap.iter (fun k a->
                 if a>0 then
-                  fprintf outChan "/GS%d <</Type /ExtGState /CA %f>> " a k
+                  fprintf oc "/GS%d <</Type /ExtGState /CA %f>> " a k
               ) !sopacities;
               FloatMap.iter (fun k a->
                 if a>0 then
-                  fprintf outChan "/GS%d <</Type /ExtGState /ca %f>> " a k
+                  fprintf oc "/GS%d <</Type /ExtGState /ca %f>> " a k
               ) !nsopacities;
-              fprintf outChan ">> "
+              fprintf oc ">> "
             );
-            if !pageImages<>[] then fprintf outChan " /XObject << ";
+            if !pageImages<>[] then fprintf oc " /XObject << ";
             let ii=ref 1 in
             let actual_pageImages=
               List.map (fun i->
                           let obj=futureObject () in
-                          fprintf outChan "/Im%d %d 0 R" !ii obj;
+                          fprintf oc "/Im%d %d 0 R" !ii obj;
                           incr ii;
                           (obj, !ii, i)) (List.rev !pageImages)
             in
-            if !pageImages<>[] then fprintf outChan ">>";
+            if !pageImages<>[] then fprintf oc ">>";
             if IntMap.cardinal !pageFonts >0 then (
-              fprintf outChan " /Font << ";
-              IntMap.iter (fun a b->fprintf outChan "/F%d %d 0 R " b a) !pageFonts;
-              fprintf outChan ">> "
+              fprintf oc " /Font << ";
+              IntMap.iter (fun a b->fprintf oc "/F%d %d 0 R " b a) !pageFonts;
+              fprintf oc ">> "
             );
-            fprintf outChan ">> /Contents %d 0 R " contentObj;
+            fprintf oc ">> /Contents %d 0 R " contentObj;
 
             if !pageLinks <> [] then (
-              fprintf outChan "/Annots [ ";
+              fprintf oc "/Annots [ ";
               List.iter (fun l->
                 let inf0=match classify_float l.link_x0 with FP_nan | FP_infinite->false
                   | _->true in
@@ -568,7 +565,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 		  match l.link_kind with
 		    Intern(label,dest_page,dest_x,dest_y)->
                       if dest_page>=0 && dest_page<Array.length pageObjects then (
-                        fprintf outChan
+                        fprintf oc
 			  "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
 			  (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
 			  (pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(dest_page)
@@ -580,16 +577,16 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
                         flush stderr;
                       )
 		  | Extern(uri) ->
-                    fprintf outChan
+                    fprintf oc
                       "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /A <</Type /Action /S /URI /URI (%s)>> /Border [0 0 0]  >> "
                       (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
                       (pt_of_mm l.link_x1) (pt_of_mm l.link_y1)
                       uri
 		  | _ -> ()
               ) !pageLinks;
-              fprintf outChan "]";
+              fprintf oc "]";
             );
-            fprintf outChan ">> ";
+            fprintf oc ">> ";
             endObject ();
 
             if !pageImages<>[] then (
@@ -682,18 +679,18 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 		| Some buf ->
                   let a,b=stream buf in
 		  let m = beginObject () in
-                  fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray /BitsPerComponent %d /Length %d %s>>\nstream\n" w h bits_per_component (Rbuffer.length b) a;
-		  Rbuffer.output_buffer outChan b;
+                  fprintf oc "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray /BitsPerComponent %d /Length %d %s>>\nstream\n" w h bits_per_component (Rbuffer.length b) a;
+		  Rbuffer.output_buffer oc b;
 		  let res = sprintf "/SMask %d 0 R" m in
-                  fprintf outChan "\nendstream";
+                  fprintf oc "\nendstream";
                   endObject ();
 		  res
 		in
                 resumeObject obj;
                 let a,b=stream img_buf in
-                fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /Device%s /BitsPerComponent %d /Length %d %s %s>>\nstream\n" w h device bits_per_component (Rbuffer.length b) mask a;
-                Rbuffer.output_buffer outChan b;
-                fprintf outChan "\nendstream";
+                fprintf oc "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /Device%s /BitsPerComponent %d /Length %d %s %s>>\nstream\n" w h device bits_per_component (Rbuffer.length b) mask a;
+                Rbuffer.output_buffer oc b;
+                fprintf oc "\nendstream";
                 endObject ()
               ) actual_pageImages
             )
@@ -702,14 +699,14 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
   let writeEncoding enc varGlyphs=
     resumeObject enc;
-    fprintf outChan "<< /Type /Encoding /Differences [";
+    fprintf oc "<< /Type /Encoding /Differences [";
     IntMap.iter (fun enc _->
-      fprintf outChan "%d /uni%d "
+      fprintf oc "%d /uni%d "
         enc enc
       (* (UChar.code (UTF8.look utf8 0)) *)
       (* (UChar.code (UTF8.look utf8 0)) *)
     ) varGlyphs;
-    fprintf outChan "]>>";
+    fprintf oc "]>>";
     endObject ();
   in
 
@@ -718,8 +715,8 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     try
       let pdffont=IntMap.find var font.pdfObjects in
       resumeObject pdffont;
-      fprintf outChan "<< /Type /Font /Subtype /Type3 ";
-      (* fprintf outChan "/Name %s " name; *)
+      fprintf oc "<< /Type /Font /Subtype /Type3 ";
+      (* fprintf oc "/Name %s " name; *)
       let varGlyphs=IntMap.find var font.fontVariants in
       let x0=ref infinity and x1=ref (-.infinity) and y0=ref infinity and y1=ref (-.infinity) in
       IntMap.iter (fun _ glyph->
@@ -729,45 +726,45 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         )) (Fonts.outlines glyph)
       ) varGlyphs;
       (if !x0<infinity && !x1>(-.infinity) && !y0<infinity && !y1>(-.infinity) then
-          fprintf outChan "/FontBBox [%f %f %f %f] " !x0 !y0 !x1 !y1
+          fprintf oc "/FontBBox [%f %f %f %f] " !x0 !y0 !x1 !y1
        else
-          fprintf outChan "/FontBBox [0 0 0 0] ");
-      fprintf outChan "/FontMatrix [0.001 0 0 0.001 0 0] ";
+          fprintf oc "/FontBBox [0 0 0 0] ");
+      fprintf oc "/FontMatrix [0.001 0 0 0.001 0 0] ";
       let charprocs_obj=futureObject () in
-      fprintf outChan "/CharProcs %d 0 R " charprocs_obj;
+      fprintf oc "/CharProcs %d 0 R " charprocs_obj;
       let enc=futureObject () in
-      fprintf outChan "/Encoding %d 0 R " enc;
+      fprintf oc "/Encoding %d 0 R " enc;
 
       let firstChar,_=IntMap.min_binding varGlyphs in
       let lastChar,_=IntMap.max_binding varGlyphs in
-      fprintf outChan "/FirstChar %d " firstChar;
-      fprintf outChan "/LastChar %d " lastChar;
+      fprintf oc "/FirstChar %d " firstChar;
+      fprintf oc "/LastChar %d " lastChar;
       let widths=futureObject () in
-      fprintf outChan "/Widths %d 0 R " widths;
-      fprintf outChan ">>";
+      fprintf oc "/Widths %d 0 R " widths;
+      fprintf oc ">>";
       endObject();
 
 
       resumeObject widths;
-      fprintf outChan "[";
+      fprintf oc "[";
       for i=firstChar to lastChar do
-        fprintf outChan "%f " (try Fonts.glyphWidth (IntMap.find i varGlyphs) with Not_found->0.)
+        fprintf oc "%f " (try Fonts.glyphWidth (IntMap.find i varGlyphs) with Not_found->0.)
       done;
-      fprintf outChan "]";
+      fprintf oc "]";
       endObject ();
 
 
       resumeObject charprocs_obj;
-      fprintf outChan "<< ";
+      fprintf oc "<< ";
       let charprocs=IntMap.fold (fun enc glyph m->
         let o=futureObject () in
         let w=Fonts.glyphWidth glyph in
         let outlines=Fonts.outlines glyph in
-        fprintf outChan "/uni%d %d 0 R " enc o;(* (UChar.code (UTF8.look utf8 0)) o; *)
+        fprintf oc "/uni%d %d 0 R " enc o;(* (UChar.code (UTF8.look utf8 0)) o; *)
         (o,w,outlines)::m
       ) varGlyphs []
       in
-      fprintf outChan ">>";
+      fprintf oc ">>";
       endObject ();
 
       let bu=Rbuffer.create 1000 in
@@ -787,9 +784,9 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         let filt, data=stream bu in
         let len=Rbuffer.length data in
         resumeObject o;
-        fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
-        Rbuffer.output_buffer outChan data;
-        fprintf outChan "\nendstream";
+        fprintf oc "<< /Length %d %s>>\nstream\n" len filt;
+        Rbuffer.output_buffer oc data;
+        fprintf oc "\nendstream";
         endObject ();
       ) charprocs;
 
@@ -806,29 +803,29 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       let cff = cff_only font.font in
       let pdffont=IntMap.find var font.pdfObjects in
       resumeObject pdffont;
-      fprintf outChan "<< /Type /Font /Subtype /Type1 ";
+      fprintf oc "<< /Type /Font /Subtype /Type1 ";
       let name=CFF.fontName cff in
-      fprintf outChan "/BaseFont /%s " name.postscript_name;
+      fprintf oc "/BaseFont /%s " name.postscript_name;
       let varGlyphs=IntMap.find var font.fontVariants in
       let firstChar,_=IntMap.min_binding varGlyphs in
       let lastChar,_=IntMap.max_binding varGlyphs in
-      fprintf outChan "/FirstChar %d " firstChar;
-      fprintf outChan "/LastChar %d " lastChar;
+      fprintf oc "/FirstChar %d " firstChar;
+      fprintf oc "/LastChar %d " lastChar;
       let widths=futureObject () in
-      fprintf outChan "/Widths %d 0 R " widths;
+      fprintf oc "/Widths %d 0 R " widths;
       let descr=futureObject () in
-      fprintf outChan "/FontDescriptor %d 0 R " descr;
+      fprintf oc "/FontDescriptor %d 0 R " descr;
       let enc=futureObject () in
-      fprintf outChan "/Encoding %d 0 R " enc;
-      fprintf outChan ">>";
+      fprintf oc "/Encoding %d 0 R " enc;
+      fprintf oc ">>";
       endObject();
 
       writeEncoding enc varGlyphs;
 
       resumeObject descr;
-      fprintf outChan "<< /Type /FontDescriptor ";
-      fprintf outChan "/FontName /%s " name.postscript_name;
-      fprintf outChan "/Flags 4 ";
+      fprintf oc "<< /Type /FontDescriptor ";
+      fprintf oc "/FontName /%s " name.postscript_name;
+      fprintf oc "/Flags 4 ";
 
       let x0=ref infinity and x1=ref (-.infinity) and y0=ref infinity and y1=ref (-.infinity) in
       IntMap.iter (fun _ glyph->
@@ -838,20 +835,20 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         )) (Fonts.outlines glyph)
       ) varGlyphs;
       (if !x0<infinity && !x1>(-.infinity) && !y0<infinity && !y1>(-.infinity) then
-          fprintf outChan "/FontBBox [%f %f %f %f] " !x0 !y0 !x1 !y1
+          fprintf oc "/FontBBox [%f %f %f %f] " !x0 !y0 !x1 !y1
        else
-          fprintf outChan "/FontBBox [0 0 0 0] ");
-      fprintf outChan "/ItalicAngle 0 /Ascent %f /Descent %f /CapHeight %f " (max 0. !y1) (min 0. !y0) (max 0. !y1);
+          fprintf oc "/FontBBox [0 0 0 0] ");
+      fprintf oc "/ItalicAngle 0 /Ascent %f /Descent %f /CapHeight %f " (max 0. !y1) (min 0. !y0) (max 0. !y1);
       let fontfile=futureObject () in
-      fprintf outChan "/StemV 10 /FontFile3 %d 0 R >>" fontfile;
+      fprintf oc "/StemV 10 /FontFile3 %d 0 R >>" fontfile;
       endObject ();
 
       resumeObject widths;
-      fprintf outChan "[";
+      fprintf oc "[";
       for i=firstChar to lastChar do
-        fprintf outChan "%f " (try Fonts.glyphWidth (IntMap.find i varGlyphs) with Not_found->0.)
+        fprintf oc "%f " (try Fonts.glyphWidth (IntMap.find i varGlyphs) with Not_found->0.)
       done;
-      fprintf outChan "]";
+      fprintf oc "]";
       endObject ();
 
       resumeObject fontfile;
@@ -865,9 +862,9 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       let cffdata=CFF.subset cff fontinfo enc glyphs in
       let filt, data=stream cffdata in
       let len=Rbuffer.length data in
-      fprintf outChan "<< /Length %d /Subtype /Type1C %s>>\nstream\n" len filt;
-      Rbuffer.output_buffer outChan data;
-      fprintf outChan "\nendstream";
+      fprintf oc "<< /Length %d /Subtype /Type1C %s>>\nstream\n" len filt;
+      Rbuffer.output_buffer oc data;
+      fprintf oc "\nendstream";
       endObject ();
     with
         Not_found->()
@@ -1006,9 +1003,9 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         resumeObject x.fontToUnicode;
         let filt, data=stream buf in
         let len=Rbuffer.length data in
-        fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
-        Rbuffer.output_buffer outChan data;
-        fprintf outChan "\nendstream";
+        fprintf oc "<< /Length %d %s>>\nstream\n" len filt;
+        Rbuffer.output_buffer oc data;
+        fprintf oc "\nendstream";
         endObject ()
       )
     ) !fonts;
@@ -1016,11 +1013,11 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   *)
 
     (* Ecriture du pageTree *)
-    flush outChan;
-    xref:=IntMap.add 1 (pos_out outChan) !xref;
-    fprintf outChan "1 0 obj\n<< /Type /Pages /Count %d /Kids [" (Array.length pages);
-    Array.iter (fun a->fprintf outChan " %d 0 R" a) pageObjects;
-    fprintf outChan "] >>";
+    flush oc;
+    xref:=IntMap.add 1 (pos_out oc) !xref;
+    fprintf oc "1 0 obj\n<< /Type /Pages /Count %d /Kids [" (Array.length pages);
+    Array.iter (fun a->fprintf oc " %d 0 R" a) pageObjects;
+    fprintf oc "] >>";
     endObject ();
 
     (* Ecriture du catalogue *)
@@ -1061,10 +1058,10 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
     Rbuffer.add_string rdf "<?xpacket end='w'?>\n";
 
     let metadata=beginObject () in
-    fprintf outChan "<< /Length %d /Type /Metadata /Subtype /XML >>\nstream\n"
+    fprintf oc "<< /Length %d /Type /Metadata /Subtype /XML >>\nstream\n"
       (Rbuffer.length rdf);
-    Rbuffer.output_buffer outChan rdf;
-    fprintf outChan "\nendstream\n";
+    Rbuffer.output_buffer oc rdf;
+    fprintf oc "\nendstream\n";
     endObject ();
 
     let markinfo="<< /Marked true /UserProperties null /Suspects null >>" in
@@ -1074,13 +1071,13 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
 
     (* Encore plus de metadonnees ! structtree *)
     let structTreeRoot=beginObject () in
-    fprintf outChan "<< /Type /StructTreeRoot /S /Document >>\n";
+    fprintf oc "<< /Type /StructTreeRoot /S /Document >>\n";
     endObject ();
 
     let cat=futureObject () in
     if structure.name="" && Array.length structure.children=0 then (
       resumeObject cat;
-      fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Metadata %d 0 R /MarkInfo %s %s /StructTreeRoot %d 0 R >>" metadata markinfo outputIntents structTreeRoot;
+      fprintf oc "<< /Type /Catalog /Pages 1 0 R /Metadata %d 0 R /MarkInfo %s %s /StructTreeRoot %d 0 R >>" metadata markinfo outputIntents structTreeRoot;
       endObject ()
     ) else (
       let count=ref 0 in
@@ -1091,18 +1088,18 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
           incr count;
 
           resumeObject hijosObjs.(i);
-          fprintf outChan "<< /Title <%s> /Parent %d 0 R " (pdf_string str.children.(i).name) par;
-          if i>0 then fprintf outChan "/Prev %d 0 R " hijosObjs.(i-1);
-          if i<Array.length str.children-1 then fprintf outChan "/Next %d 0 R " hijosObjs.(i+1);
+          fprintf oc "<< /Title <%s> /Parent %d 0 R " (pdf_string str.children.(i).name) par;
+          if i>0 then fprintf oc "/Prev %d 0 R " hijosObjs.(i-1);
+          if i<Array.length str.children-1 then fprintf oc "/Next %d 0 R " hijosObjs.(i+1);
           if a>0 then
-            fprintf outChan "/First %d 0 R /Last %d 0 R /Count %d "
+            fprintf oc "/First %d 0 R /Last %d 0 R /Count %d "
               a b (Array.length str.children.(i).children);
 
           if str.children.(i).page>=0 && str.children.(i).page<Array.length pageObjects then
-            fprintf outChan "/Dest [%d 0 R /XYZ %f %f null] " pageObjects.(str.children.(i).page)
+            fprintf oc "/Dest [%d 0 R /XYZ %f %f null] " pageObjects.(str.children.(i).page)
               (pt_of_mm str.children.(i).struct_x)
               (pt_of_mm str.children.(i).struct_y);
-          fprintf outChan ">> ";
+          fprintf oc ">> ";
           endObject ()
         done;
         if Array.length hijosObjs>0 then
@@ -1123,32 +1120,34 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
       (*let a,b=make_outlines structure outlines in*)
 
       resumeObject outlines;
-      fprintf outChan "<< /Type /Outlines /First %d 0 R /Last %d 0 R /Count %d >>" a b !count;
+      fprintf oc "<< /Type /Outlines /First %d 0 R /Last %d 0 R /Count %d >>" a b !count;
       endObject ();
       resumeObject cat;
-      fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Outlines %d 0 R /Metadata %d 0 R /MarkInfo %s %s /StructTreeRoot %d 0 R >>" outlines metadata markinfo outputIntents structTreeRoot;
+      fprintf oc "<< /Type /Catalog /Pages 1 0 R /Outlines %d 0 R /Metadata %d 0 R /MarkInfo %s %s /StructTreeRoot %d 0 R >>" outlines metadata markinfo outputIntents structTreeRoot;
       endObject ()
     );
 
     (* Ecriture de xref *)
-    flush outChan;
-    let xref_pos=pos_out outChan in
-    fprintf outChan "xref\n0 %d \n0000000000 65535 f \n" (1+IntMap.cardinal !xref);
-    IntMap.iter (fun _ a->fprintf outChan "%010d 00000 n \n" a) !xref;
+    flush oc;
+    let xref_pos=pos_out oc in
+    fprintf oc "xref\n0 %d \n0000000000 65535 f \n" (1+IntMap.cardinal !xref);
+    IntMap.iter (fun _ a->fprintf oc "%010d 00000 n \n" a) !xref;
 
     (* Trailer *)
-    let file_id=(Digest.to_hex (Digest.string fileName)) in
-    fprintf outChan "trailer\n<< /Size %d /Root %d 0 R /ID [(%s) (%s)] >>\nstartxref\n%d\n%%%%EOF\n"
-      (1+IntMap.cardinal !xref) cat file_id file_id xref_pos;
-    close_out outChan;
-    (* Printf.fprintf stderr "File %s written.\n" fileName; *)
-    flush stderr
+    let file_id = Digest.to_hex (Digest.string fname) in
+    fprintf oc "trailer\n";
+    fprintf oc "<< /Size %d /Root %d 0 R /ID [(%s) (%s)] >>\n"
+      (1+IntMap.cardinal !xref) cat file_id file_id;
+    fprintf oc "startxref\n";
+    fprintf oc "%d\n" xref_pos;
+    fprintf oc "%%EOF\n";
+    close_out oc
 
 let output' = output_to_prime output
 
 let _ =
   Hashtbl.add DynDriver.drivers "Pdf" (
     module struct
-      let output = output
+      let output  = output
       let output' = output'
     end:OutputDriver)
