@@ -125,6 +125,8 @@
 \Add_relation{\pred ≺}(Maths.asana "\\pred" 836)
 \Add_relation{\succeq ≽}(Maths.asana "\\succeq" 839)
 \Add_relation{\predeq ≼}(Maths.asana "\\predeq" 838)
+\Add_relation{\dsucc ⪼}(Maths.asana "\\dsucc" 1578)
+\Add_relation{\dpred ⪻}(Maths.asana "\\dpred" 1577)
 \Add_relation{\unlhd ⊴}(Maths.asana "\\unlhd" 894)
 \Add_relation{\unrhd ⊵}(Maths.asana "\\unrhd" 895)
 

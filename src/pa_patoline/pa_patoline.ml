@@ -673,6 +673,7 @@ type grammar_state =
   ; mutable postfix_symbols  : postfix PrefixTree.t (* key are macro_names or utf8_names mixed *)
   ; mutable quantifier_symbols : atom_symbol PrefixTree.t (* key are macro_names or utf8_names mixed *)
   ; mutable atom_symbols     : atom_symbol PrefixTree.t
+  ; mutable any_symbols      : atom_symbol PrefixTree.t
   ; mutable accent_symbols   : atom_symbol PrefixTree.t
   ; mutable left_delimiter_symbols: delimiter PrefixTree.t
   ; mutable right_delimiter_symbols: delimiter PrefixTree.t
@@ -694,6 +695,7 @@ let state =
   ; postfix_symbols    = PrefixTree.empty
   ; quantifier_symbols    = PrefixTree.empty
   ; atom_symbols     = PrefixTree.empty
+  ; any_symbols     = PrefixTree.empty
   ; accent_symbols     = PrefixTree.empty
   ; left_delimiter_symbols= PrefixTree.empty
   ; right_delimiter_symbols= PrefixTree.empty
@@ -731,6 +733,7 @@ let empty_state =
   ; postfix_symbols    = PrefixTree.empty
   ; quantifier_symbols    = PrefixTree.empty
   ; atom_symbols     = PrefixTree.empty
+  ; any_symbols     = PrefixTree.empty
   ; accent_symbols     = PrefixTree.empty
   ; left_delimiter_symbols= PrefixTree.empty
   ; right_delimiter_symbols= PrefixTree.empty
@@ -748,6 +751,7 @@ let local_state =
   ; postfix_symbols    = PrefixTree.empty
   ; quantifier_symbols    = PrefixTree.empty
   ; atom_symbols     = PrefixTree.empty
+  ; any_symbols     = PrefixTree.empty
   ; accent_symbols     = PrefixTree.empty
   ; left_delimiter_symbols= PrefixTree.empty
   ; right_delimiter_symbols= PrefixTree.empty
@@ -765,6 +769,7 @@ let merge_states : grammar_state -> grammar_state -> unit = fun s1 s2 ->
   s1.postfix_symbols         <- PrefixTree.union s1.postfix_symbols s2.postfix_symbols;
   s1.quantifier_symbols      <- PrefixTree.union s1.quantifier_symbols s2.quantifier_symbols;
   s1.atom_symbols            <- PrefixTree.union s1.atom_symbols s2.atom_symbols;
+  s1.any_symbols             <- PrefixTree.union s1.any_symbols s2.any_symbols;
   s1.accent_symbols          <- PrefixTree.union s1.accent_symbols s2.accent_symbols;
   s1.left_delimiter_symbols  <- PrefixTree.union s1.left_delimiter_symbols s2.left_delimiter_symbols;
   s1.right_delimiter_symbols <- PrefixTree.union s1.right_delimiter_symbols s2.right_delimiter_symbols;
@@ -780,6 +785,7 @@ let math_postfix_symbol, set_math_postfix_symbol = grammar_family "postfix"
 let math_operator, set_math_operator = grammar_family "operator"
 let math_infix_symbol, set_math_infix_symbol = grammar_family "infix"
 let math_atom_symbol = new_grammar "atom_symbol"
+let math_any_symbol = new_grammar "any_symbol"
 let math_quantifier_symbol = new_grammar "quantifier"
 let math_accent_symbol = new_grammar "accent"
 let math_left_delimiter = new_grammar "left delimiter"
@@ -835,6 +841,7 @@ let build_grammar () =
     tree_to_grammar ~filter:(fun s -> s.operator_prio = p) "operator_symbol" state.operator_symbols);
   set_grammar math_quantifier_symbol (tree_to_grammar "quantifier_symbol" state.quantifier_symbols);
   set_grammar math_atom_symbol (tree_to_grammar "atom_symbol" state.atom_symbols);
+  set_grammar math_any_symbol (tree_to_grammar "any_symbol" state.any_symbols);
   set_grammar math_accent_symbol (tree_to_grammar "accent_symbol" state.accent_symbols);
   set_grammar math_left_delimiter (tree_to_grammar "left_delimiter_symbol" state.left_delimiter_symbols);
   set_grammar math_right_delimiter (tree_to_grammar "right_delimiter_symbol" state.right_delimiter_symbols);
@@ -1116,6 +1123,12 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
   let insert map name = PrefixTree.add name sym map in
   state.infix_symbols <- List.fold_left insert state.infix_symbols sym_names;
   local_state.infix_symbols <- List.fold_left insert local_state.infix_symbols sym_names;
+  let asym = { symbol_macro_names = infix_macro_names;
+               symbol_utf8_names = infix_utf8_names;
+               symbol_value = infix_value } in
+  let insert map name = PrefixTree.add name asym map in
+  state.any_symbols <- List.fold_left insert state.any_symbols sym_names;
+  local_state.any_symbols <- List.fold_left insert local_state.any_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -1174,11 +1187,18 @@ let new_accent_symbol _loc sym_names symbol_value =
 (* FIXME: |- A and -x should have distinct priority and spacing *)
 let new_prefix_symbol _loc sym_names prefix_value =
   let prefix_macro_names, prefix_utf8_names = symbol sym_names in
-  let sym = { prefix_prio = IProd; prefix_space = 3; prefix_no_space = false; prefix_macro_names; prefix_utf8_names; prefix_value } in
+  let sym = { prefix_prio = IProd; prefix_space = 3; prefix_no_space = false;
+              prefix_macro_names; prefix_utf8_names; prefix_value } in
   quail_out prefix_macro_names prefix_utf8_names;
   let insert map name = PrefixTree.add name sym map in
   state.prefix_symbols <- List.fold_left insert state.prefix_symbols sym_names;
   local_state.prefix_symbols <- List.fold_left insert local_state.prefix_symbols sym_names;
+  let asym = { symbol_macro_names = prefix_macro_names;
+               symbol_utf8_names = prefix_utf8_names;
+               symbol_value = prefix_value } in
+  let insert map name = PrefixTree.add name asym map in
+  state.any_symbols <- List.fold_left insert state.any_symbols sym_names;
+  local_state.any_symbols <- List.fold_left insert local_state.any_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -1197,6 +1217,12 @@ let new_postfix_symbol _loc sym_names postfix_value =
   let insert map name = PrefixTree.add name sym map in
   state.postfix_symbols <- List.fold_left insert state.postfix_symbols sym_names;
   local_state.postfix_symbols <- List.fold_left insert local_state.postfix_symbols sym_names;
+  let asym = { symbol_macro_names = postfix_macro_names;
+               symbol_utf8_names = postfix_utf8_names;
+               symbol_value = postfix_value } in
+  let insert map name = PrefixTree.add name asym map in
+  state.any_symbols <- List.fold_left insert state.any_symbols sym_names;
+  local_state.any_symbols <- List.fold_left insert local_state.any_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -1215,6 +1241,8 @@ let new_quantifier_symbol _loc sym_names symbol_value =
   let insert map name = PrefixTree.add name sym map in
   state.quantifier_symbols <- List.fold_left insert state.quantifier_symbols sym_names;
   local_state.quantifier_symbols <- List.fold_left insert local_state.quantifier_symbols sym_names;
+  state.any_symbols <- List.fold_left insert state.any_symbols sym_names;
+  local_state.any_symbols <- List.fold_left insert local_state.any_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -1284,6 +1312,12 @@ let new_operator_symbol _loc operator_kind sym_names operator_values =
   let insert map name = PrefixTree.add name sym map in
   state.operator_symbols <- List.fold_left insert state.operator_symbols sym_names;
   local_state.operator_symbols <- List.fold_left insert local_state.operator_symbols sym_names;
+  let asym = { symbol_macro_names = operator_macro_names;
+               symbol_utf8_names = operator_utf8_names;
+               symbol_value = CamlSym <:expr<List.hd $operator_values$>> } in
+  let insert map name = PrefixTree.add name asym map in
+  state.any_symbols <- List.fold_left insert state.any_symbols sym_names;
+  local_state.any_symbols <- List.fold_left insert local_state.any_symbols sym_names;
   add_reserved sym_names;
   (* Displaying no the document. *)
   if state.verbose then
@@ -1378,12 +1412,7 @@ let parser right_indices =
 		   | "_" -> Down
 		   | "^" -> Up
 
-let parser any_symbol =
-  | sym:                        math_quantifier_symbol              -> sym.symbol_value
-  | sym:(alternatives (List.map math_infix_symbol      math_prios)) -> sym.infix_value
-  | sym:(alternatives (List.map math_prefix_symbol     math_prios)) -> sym.prefix_value
-  | sym:(alternatives (List.map math_postfix_symbol    math_prios)) -> sym.postfix_value
-  | sym:(alternatives (List.map math_operator    math_prios)) -> CamlSym <:expr<List.hd $sym.operator_values$>>
+let parser any_symbol = sym:math_any_symbol -> sym.symbol_value
 
 let merge_indices indices ind =
   assert(ind.down_left = None);
@@ -2052,9 +2081,9 @@ let parser directive =
     [])
 let extra_structure = directive :: extra_structure
 
-let parser patoline_quotations _ =
-  | "<<" par:simple_text     ">>" -> par
-  | "<$" mat:math_toplevel "$>" -> mat
+let parser patoline_quotations (_,lvl) =
+  | "<<" par:simple_text     ">>" when lvl = Atom -> par
+  | "<$" mat:math_toplevel "$>" when lvl = Atom -> mat
 
 let _ =
   let reserved = ["<<"; ">>"; "<$"; "$>"; "<<$"; "$>>"] in
