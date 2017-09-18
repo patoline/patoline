@@ -15,5 +15,5 @@ module OutputDrawing = OutputDrawing
 module Proj3d = Proj3d
 module TypoLanguage = TypoLanguage
 module Euler = Euler
-module Macros = Macros
+module DefaultMacros = DefaultMacros
 module Debug = Debug

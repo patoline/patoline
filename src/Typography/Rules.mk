@@ -15,7 +15,7 @@ endif
 
 TYPOGRAPHY_MODS:= TypoLanguage FontPattern ConfigFindFont Distance Offset \
 	Box Badness Break Document Complete Maths OutputDrawing Geometry Proj3d \
-	Diagrams Verbatim Euler Macros Debug Typography
+	Diagrams Verbatim Euler DefaultMacros Debug Typography
 
 TYPOGRAPHY_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(TYPOGRAPHY_MODS)))
 TYPOGRAPHY_CMO:=$(TYPOGRAPHY_ML:.ml=.cmo)

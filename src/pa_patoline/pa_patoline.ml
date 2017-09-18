@@ -2032,7 +2032,7 @@ let wrap basename _loc ast =
     open RawContent
     open Color
     open Driver
-    open Macros
+    open DefaultMacros
 
     module Document = functor(Patoline_Output:DefaultFormat.Output)
       -> functor(D:DocumentStructure)->struct

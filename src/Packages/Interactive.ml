@@ -120,7 +120,7 @@ let battonDiagram barHeight barWidth data ?group values =
     let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
     let open Diagrams in
     <<\diagram(
-     let m,ms = array  anchors (List.map (List.map Macros.mathsText) [
+     let m,ms = array  anchors (List.map (List.map DefaultMacros.mathsText) [
      List.map (fun (color, value as c) ->
      <<\diagram(
           let _ = scoreBar ~vertical:true (module Diagram : Diagram)
