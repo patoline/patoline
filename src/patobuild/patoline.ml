@@ -142,10 +142,10 @@ let usage =
 let _ =
   match Sys.argv with
   | [| _ ; "drivers" |] -> let f = Printf.printf "%s\n" in
-                           List.iter f patoconfig.drivers
+                           List.iter f patoconfig.drivers; exit 0
   | [| _ ; "formats" |] -> let f = Printf.printf "%s\n" in
-                           List.iter f patoconfig.formats
-  | [| _ ; "config"  |] -> print_config stdout
+                           List.iter f patoconfig.formats; exit 0
+  | [| _ ; "config"  |] -> print_config stdout; exit 0
   | _                   -> Arg.parse spec add_file (usage Sys.argv.(0))
 
 (* The data after parsing the command-line arguments. *)
@@ -173,8 +173,7 @@ let cfg =
   ; path
   ; pat_format = !pat_format
   ; pat_driver = !pat_driver
-  ; run_binary = !run_bin
-  }
+  ; run_binary = !run_bin }
 
 (* Cleaning if required. *)
 let _ = if !do_clean then Build.clean_build_dirs cfg
