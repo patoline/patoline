@@ -163,13 +163,21 @@ let read_deps dep_file =
   let parse_deps fn =
     try handle_exception (parse_file deps no_blank) fn
     with _ ->
-      Printf.eprintf "Problem while parsing dependency file %S." fn;
+      Printf.eprintf "Problem while parsing dependency file %S.\n%!" fn;
       exit 1
   in
   let deps = parse_deps dep_file in
   (* Hacks due to ocamldep limitations. *)
   let is_native f = List.exists (Filename.check_suffix f) [".cmx"; ".cmi"] in
   let deps = List.filter (fun (s,_) -> is_native s) deps in
+  let check_not_circular (t,ds) =
+    if List.mem t ds then
+      begin
+        Printf.eprintf "Circular dependency on %s\n%!" t;
+        exit 1
+      end
+  in
+  List.iter check_not_circular deps;
   let to_build_dir fn =
     if Filename.basename fn = fn then Filename.concat build_dir fn else fn
   in
