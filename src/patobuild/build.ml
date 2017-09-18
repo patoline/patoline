@@ -269,11 +269,15 @@ let compile_targets config deps targets =
         begin
           match lock_file t with
           | None   -> () (* Already being created. *)
-          | Some m -> do_compile all_deps t; Mutex.unlock m
+          | Some m ->
+              if !verbose > 2 then eprintf "[%2i] working on %S\n%!" i t;
+              do_compile all_deps t; Mutex.unlock m;
+              if !verbose > 2 then eprintf "[%2i] done with %S\n%!" i t
         end
       else
         begin
           add_tasks (deps @ [t]);
+          if !verbose > 2 then eprintf "[%2i] pushed tasks for %S\n%!" i t;
           (* Wait for up to 250ms *)
           ignore (Unix.select [] [] [] (Random.float 0.25))
         end
