@@ -427,7 +427,7 @@ let parser lid = id:''[_a-z][_a-zA-Z0-9']*'' -> id
 let parser uid = id:''[A-Z][_a-zA-Z0-9']*''  -> id
 let parser num = n:''[0-9]+'' -> int_of_string n
 let parser int = n:''-?[0-9]+'' -> int_of_string n
-let parser float = n:''-?[0-9]+\(.[0-9]+\)?\([eE]-?[0-9]+\)?'' -> n
+let parser float = n:''-?[0-9]+\(.[0-9]*\)?\([eE]-?[0-9]+\)?'' -> n
 
 let symbol ss =
   List.partition (fun s ->
