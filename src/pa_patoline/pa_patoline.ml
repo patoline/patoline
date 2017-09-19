@@ -933,36 +933,51 @@ let text_matrix = parser
   | l:text_line ls:{ "\\\\" m:text_line }* -> <:expr< $l$ :: $list:ls$ >>
 
 let parser macro_argument config =
-  | '{' m:math_toplevel '}' when config.entry = Math
-			      -> apply_expr_filter config m _loc
-  | '{' m:math_line '}' when config.entry = MathLine
-			      -> apply_expr_filter config m _loc
-  | '{' m:math_matrix '}' when config.entry = MathMatrix
-			      -> apply_expr_filter config m _loc
-  | '{' e:simple_text '}' when config.entry = Text
-			      -> apply_expr_filter config e _loc
-  | '{' e:text_line '}' when config.entry = TextLine
-			      -> apply_expr_filter config e _loc
-  | '{' e:text_matrix '}' when config.entry = TextMatrix
-			      -> apply_expr_filter config e _loc
-  | '{' e:int '}' when config.entry = Int
-			      -> apply_expr_filter config <:expr<$int:e$>> _loc
-  | '{' e:float '}' when config.entry = Float
-			      -> apply_expr_filter config <:expr<$float:e$>> _loc
-  | e:wrapped_caml_expr when config.entry <> CamlStruct
-			      -> apply_expr_filter config e _loc
-  | e:wrapped_caml_array when config.entry <> CamlStruct
-                              -> apply_expr_filter config <:expr<$array:e$>> _loc
-  | e:wrapped_caml_list when config.entry <> CamlStruct
-                              -> apply_expr_filter config <:expr<$list:e$>> _loc
-  | s:wrapped_caml_structure when config.entry = CamlStruct
-			      -> apply_struct_filter config s _loc
-  | '{' e:caml_expr '}' when config.entry = Caml
-			      -> apply_expr_filter config e _loc
-  | '{' s:caml_structure '}' when config.entry = CamlStruct
-			      -> apply_struct_filter config s _loc
-  | '{' s:(change_layout br_string no_blank) '}' when config.entry = String
-			      -> apply_string_filter config s _loc
+  | '{' m:math_toplevel '}'
+      when config.entry = Math
+      -> apply_expr_filter config m _loc
+  | '{' m:math_line '}'
+      when config.entry = MathLine
+      -> apply_expr_filter config m _loc
+  | '{' m:math_matrix '}'
+      when config.entry = MathMatrix
+      -> apply_expr_filter config m _loc
+  | '{' e:simple_text '}'
+      when config.entry = Text
+      -> apply_expr_filter config e _loc
+  | '{' e:text_line '}'
+      when config.entry = TextLine
+      -> apply_expr_filter config e _loc
+  | '{' e:text_matrix '}'
+      when config.entry = TextMatrix
+      -> apply_expr_filter config e _loc
+  | '{' e:int '}'
+      when config.entry = Int
+      -> apply_expr_filter config <:expr<$int:e$>> _loc
+  | '{' e:float '}'
+      when config.entry = Float
+      -> apply_expr_filter config <:expr<$float:e$>> _loc
+  | e:wrapped_caml_expr
+      when config.entry <> CamlStruct
+      -> apply_expr_filter config e _loc
+  | e:wrapped_caml_array
+      when config.entry <> CamlStruct
+      -> apply_expr_filter config <:expr<$array:e$>> _loc
+  | e:wrapped_caml_list
+      when config.entry <> CamlStruct
+      -> apply_expr_filter config <:expr<$list:e$>> _loc
+  | s:wrapped_caml_structure
+      when config.entry = CamlStruct
+      -> apply_struct_filter config s _loc
+  | '{' e:caml_expr '}'
+      when config.entry = Caml
+      -> apply_expr_filter config e _loc
+  | '{' s:caml_structure '}'
+      when config.entry = CamlStruct
+      -> apply_struct_filter config s _loc
+  | '{' s:(change_layout br_string no_blank) '}'
+      when config.entry = String
+      -> apply_string_filter config s _loc
 
 let parser simple_text_macro_argument =
   | '{' l:simple_text?$ '}' ->
