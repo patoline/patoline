@@ -7,18 +7,27 @@ let verbose = ref 2
 (* Build directory. *)
 let build_dir = ".patobuild"
 
-(* Decompose a filename into directory, basename and extension. *)
-let decompose_filename : string -> string * string * string = fun fn ->
-  let dir  = Filename.dirname  fn in
-  let base = Filename.basename fn in
-  let name = Filename.chop_extension base in
-  let base_len = String.length base in
-  let name_len = String.length name in
-  let ext =
-    if base_len = name_len then ""
-    else String.sub base name_len (base_len - name_len)
-  in
-  (dir, name, ext)
+module Filename =
+  struct
+    include Filename
+
+    (* Decompose a filename into directory, basename and extension. *)
+    let decompose : string -> string * string * string = fun fn ->
+      let dir  = dirname  fn in
+      let base = basename fn in
+      let name = chop_extension base in
+      let base_len = String.length base in
+      let name_len = String.length name in
+      let ext =
+        if base_len = name_len then ""
+        else String.sub base name_len (base_len - name_len)
+      in
+      (dir, name, ext)
+
+    (* Set the extension of the given file. *)
+    let set_extension : string -> string -> string = fun fn ext ->
+      chop_extension fn ^ ext
+  end
 
 (* Type of a compilation configuration. *)
 type config =
@@ -52,6 +61,22 @@ let command : string -> string -> string -> unit = fun n fn cmd ->
       exit 1
     end
 
+(* Time representation as a float. *)
+type time = float
+
+(* Obtain the modification time of a file, minus infinity being used in the
+   case where the file does not exist. *)
+let mod_time : string -> time = fun fname ->
+  if Sys.file_exists fname then Unix.((stat fname).st_mtime)
+  else neg_infinity
+
+(* Modification time of the current binary. *)
+let binary_time : float = mod_time "/proc/self/exe"
+
+(* Test if a file is more recent than another file (or the binary). *)
+let more_recent : string -> string -> bool = fun source target ->
+  mod_time source > mod_time target || binary_time > mod_time target
+
 (* Transform a directory into the corresponding build directory. *)
 let to_build_dir d =
   if d = "." then build_dir else Filename.concat d build_dir
@@ -70,11 +95,6 @@ let clean_build_dirs config =
   in
   iter clean_build_dir config.path
 
-(* Test if a file is more recent than another file. *)
-let more_recent source target =
-  not (Sys.file_exists target) ||
-  Unix.((stat source).st_mtime > (stat target).st_mtime)
-
 let add_pp_args config args =
   { config with pp_args = args @ config.pp_args }
 
@@ -82,7 +102,7 @@ let driver_changed config target =
   let new_driver = match config.pat_driver with
     | None -> "Pdf" | Some d -> d
   in
-  let driver_file = (Filename.chop_extension target) ^ "_.driver" in
+  let driver_file = Filename.set_extension target "_.driver" in
   let record_driver res =
     if res then
       begin
@@ -106,7 +126,7 @@ let pp_if_more_recent config is_main source target =
                || (is_main && driver_changed config target)
   in
   (* Also update if main file does not exist (only when processing main). *)
-  let main = (Filename.chop_extension target) ^ "_.ml" in
+  let main = Filename.set_extension target "_.ml" in
   if update || (is_main && not (Sys.file_exists main)) then
   let pp_args =
     match config.pat_driver with
@@ -306,7 +326,7 @@ let rec get_cmxs deps cmx =
 
 (* Produce the binary of the document. *)
 let produce_binary config deps main =
-  let target = (Filename.chop_extension main) ^ ".opt" in
+  let target = Filename.set_extension main ".opt" in
   let cmxs = get_cmxs deps main in
   let args = ["-o"; target; "-linkpkg"] @ cmxs in
   let optcmd = opt_command config in
@@ -377,7 +397,7 @@ let compile config file =
   iter create_build_dir config.path;
   (* Updating the source files that have changed in the build directories. *)
   let update_file fn =
-    let (dir, base, ext) = decompose_filename fn in
+    let (dir, base, ext) = Filename.decompose fn in
     let bdir = Filename.concat dir build_dir in
     let target_ext = match ext with ".txp" -> ".ml" | e -> e in
     let target = Filename.concat bdir (base ^ target_ext) in
@@ -391,7 +411,7 @@ let compile config file =
   let deps = read_deps depfile in
   (* Building the primary target. *)
   let to_target fn =
-    let (dir, base, ext) = decompose_filename fn in
+    let (dir, base, ext) = Filename.decompose fn in
     let target_ext = if ext = ".txp" then "_.cmx" else ".cmx" in
     let bdir =
       if dir = "." then build_dir else Filename.concat dir build_dir
@@ -406,7 +426,7 @@ let compile config file =
   if config.run_binary then
     begin
       let to_bin fn =
-        let (dir, base, ext) = decompose_filename fn in
+        let (dir, base, ext) = Filename.decompose fn in
         let bdir = to_build_dir dir in
         let target_ext = match ext with ".txp" -> "_.opt" | e -> ".opt" in
         Filename.concat bdir (base ^ target_ext)
