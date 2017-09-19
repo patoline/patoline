@@ -366,17 +366,17 @@ let extend_config config ls =
   in
   let combine config (k,vo) =
     match (k, vo) with
-    | ("FORMAT", Some f) -> set_format config f
-    | ("DRIVER", Some d) -> set_driver config d
-    | ("FORMAT", None  ) -> eprintf "Pragma FORMAT needs an argument.\n%!";
-                            config
-    | ("DRIVER", None  ) -> eprintf "Pragma FORMAT needs an argument.\n%!";
-                            config
+    | ("FORMAT" , Some f) -> set_format config f
+    | ("DRIVER" , Some d) -> set_driver config d
+    | ("FORMAT" , None  ) -> eprintf "Pragma FORMAT needs an argument.\n%!";
+                             config
+    | ("DRIVER" , None  ) -> eprintf "Pragma FORMAT needs an argument.\n%!";
+                             config
     | ("PACKAGE", Some p) -> add_package config p
     | ("PACKAGE", None  ) -> eprintf "Pragma PACKAGE needs an argument.\n%!";
                              config
-    | _                  -> eprintf "Unknown pragma %s\n%!" k;
-                            config
+    | _                   -> eprintf "Unknown pragma %s\n%!" k;
+                             config
   in
   List.fold_left combine config ls
 
