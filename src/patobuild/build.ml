@@ -1,12 +1,6 @@
 open Parallel
 open PatConfig
 
-(* Verbosity level (0 is none). *)
-let verbose = ref 2
-
-(* Build directory. *)
-let build_dir = ".patobuild"
-
 (* Some useful functions for manipulating files. *)
 module Filename =
   struct
@@ -28,7 +22,46 @@ module Filename =
     (* Set the extension of the given file. *)
     let set_extension : string -> string -> string = fun fn ext ->
       chop_extension fn ^ ext
+
+    (* Ensure that concat ignores the "." directory. *)
+    let concat : string -> string -> string = fun dir fn ->
+      if dir = "." then fn else concat dir fn
   end
+
+(* Time representation as a float. *)
+module Time =
+  struct
+    type time = float
+
+    (* Obtain the modification time of a file, minus infinity being used in the
+       case where the file does not exist. *)
+    let mod_time : string -> time = fun fname ->
+      if Sys.file_exists fname then Unix.((stat fname).st_mtime)
+      else neg_infinity
+
+    (* Modification time of the current binary. *)
+    let binary_time : float = mod_time "/proc/self/exe"
+
+    (* Test if a file is more recent than another file (or the binary). *)
+    let more_recent : string -> string -> bool = fun source target ->
+      mod_time source > mod_time target || binary_time > mod_time target
+  end
+open Time
+
+(* Verbosity level (0 is none). *)
+let verbose = ref 2
+
+(* Transform a directory into the corresponding build directory. *)
+let to_build_dir dir =
+  Filename.concat dir ".patobuild"
+
+(* Put a filename in the corrsponding build directory (checking first that
+   it is not already in a build directory). *)
+let file_to_build_dir fn =
+  let dir  = Filename.dirname fn in
+  if Filename.basename dir = ".patobuild" then fn else
+  let base = Filename.basename fn in
+  Filename.concat (to_build_dir dir) base
 
 (* Type of a compilation configuration. *)
 type config =
@@ -57,29 +90,6 @@ let command : string -> string -> string -> unit = fun n fn cmd ->
       exit 1
     end
 
-(* Time representation as a float. *)
-module Time =
-  struct
-    type time = float
-
-    (* Obtain the modification time of a file, minus infinity being used in the
-       case where the file does not exist. *)
-    let mod_time : string -> time = fun fname ->
-      if Sys.file_exists fname then Unix.((stat fname).st_mtime)
-      else neg_infinity
-
-    (* Modification time of the current binary. *)
-    let binary_time : float = mod_time "/proc/self/exe"
-
-    (* Test if a file is more recent than another file (or the binary). *)
-    let more_recent : string -> string -> bool = fun source target ->
-      mod_time source > mod_time target || binary_time > mod_time target
-  end
-open Time
-
-(* Transform a directory into the corresponding build directory. *)
-let to_build_dir d =
-  if d = "." then build_dir else Filename.concat d build_dir
 
 (* Remove the build directory in the given directory, if it exists. *)
 let clean_build_dirs config =
@@ -139,7 +149,9 @@ let pp_if_more_recent config is_main source target =
     | Some f -> "--format" :: f :: pp_args
   in
   let pp_args = if is_main then "--main" :: pp_args else pp_args in
-  let pp_args = "--build-dir" :: build_dir :: pp_args in
+  let bdir = Filename.dirname target in
+  eprintf "COUCOU %S\n%!" bdir;
+  let pp_args = "--build-dir" :: (Filename.dirname target) :: pp_args in
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
@@ -197,10 +209,7 @@ let read_deps dep_file =
       end
   in
   List.iter check_not_circular deps;
-  let to_build_dir fn =
-    if Filename.basename fn = fn then Filename.concat build_dir fn else fn
-  in
-  List.map (fun (n,ds) -> (n, List.map to_build_dir ds)) deps
+  List.map (fun (n,ds) -> (n, List.map file_to_build_dir ds)) deps
 
 (* Produce the ocamlopt command using the configuration. *)
 let opt_command config =
@@ -287,7 +296,11 @@ let compile_targets config deps targets =
     (* Obtain a new task, and compute its dependencies. *)
     let t = get_task () in
     if !verbose > 2 then eprintf "[%2i] got task %S\n%!" i t;
-    let all_deps = try List.assoc t deps with Not_found -> assert false in
+    let all_deps =
+      try List.assoc t deps with Not_found ->
+        eprintf "Unable to find %S in deps...\n%!" t;
+        assert false
+    in
     (* Quick (unreliable) filter on dependencies. *)
     let deps = List.filter (fun f -> not (unsafe_exists f)) all_deps in
     (* Actually do some work. *)
@@ -388,8 +401,10 @@ let compile config file =
   let sources = source_files config.path in
   (* Making sure the build directories exist. *)
   let create_build_dir dir =
+    eprintf "DEBUG %S\n%!" dir;
     if Sys.file_exists dir && Sys.is_directory dir then
-    let bdir = Filename.concat dir build_dir in
+    let bdir = to_build_dir dir in
+    eprintf "DEBUG2 %S\n%!" bdir;
     if not (Sys.file_exists bdir) then
     Unix.mkdir bdir 0o700
   in
@@ -397,7 +412,7 @@ let compile config file =
   (* Updating the source files that have changed in the build directories. *)
   let update_file fn =
     let (dir, base, ext) = Filename.decompose fn in
-    let bdir = Filename.concat dir build_dir in
+    let bdir = to_build_dir dir in
     let target_ext = match ext with ".txp" -> ".ml" | e -> e in
     let target = Filename.concat bdir (base ^ target_ext) in
     let is_main = ext = ".txp" && fn = file in
@@ -405,16 +420,14 @@ let compile config file =
   in
   iter update_file sources;
   (* Computing dependencies. *)
-  let depfile = Filename.concat build_dir "depend" in
+  let depfile = Filename.concat (to_build_dir ".") "depend" in
   run_deps config.path depfile;
   let deps = read_deps depfile in
   (* Building the primary target. *)
   let to_target fn =
     let (dir, base, ext) = Filename.decompose fn in
     let target_ext = if ext = ".txp" then "_.cmx" else ".cmx" in
-    let bdir =
-      if dir = "." then build_dir else Filename.concat dir build_dir
-    in
+    let bdir = to_build_dir dir in
     Filename.concat bdir (base ^ target_ext)
   in
   let target = to_target file in

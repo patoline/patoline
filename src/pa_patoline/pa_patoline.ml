@@ -40,7 +40,7 @@ let add_patoline_grammar g =
 
 let in_ocamldep = ref false
 
-let build_dir = ref "_patobuild"
+let build_dir = ref "."
 let set_build_dir d = build_dir := d
 
 let quail_out_name=ref "" (* filename to output quail.el shortcut for emacs *)
@@ -851,7 +851,7 @@ let build_grammar () =
 let add_grammar g =
   let open PatConfig in
   let (gpath, gpaths) = patoconfig.grammars_dir in
-  let path = "." :: "_patobuild" :: ".patobuild" :: gpath :: gpaths in
+  let path = "." :: ".patobuild" :: gpath :: gpaths in
   if !no_default_grammar && g = "DefaultGrammar" then () else
     let g = findPath (g ^ ".tgy") path in
     (*Printf.eprintf "Reading grammar %s\n%!" g;*)
@@ -2190,12 +2190,11 @@ let _ =
        let base = chop_extension' (Filename.basename s) in
        let name = base ^ ".tgy" in
        let build_dir = !build_dir in
-       let patobuild_dir = Filename.concat dir build_dir in
-       let name = Filename.concat patobuild_dir name in
+       let name = Filename.concat build_dir name in
        if !debug then Printf.eprintf "Writing grammar %s\n%!" name;
        (* Check if the build directory needs to be created *)
-       if not (Sys.file_exists patobuild_dir)
-       then Unix.mkdir patobuild_dir 0o700;
+       if not (Sys.file_exists build_dir)
+       then Unix.mkdir build_dir 0o700;
        if local_state <> empty_state then begin
          (* Now write the grammar *)
          let ch = open_out_bin name in
@@ -2206,7 +2205,7 @@ let _ =
        (* Writing the main file. *)
        if !is_main then
          let (drv, fmt) = (!patoline_driver, !patoline_format) in
-         write_main_file drv fmt patobuild_dir dir base
+         write_main_file drv fmt build_dir dir base
     | _ -> ()
 
   with e ->
