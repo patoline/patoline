@@ -11,8 +11,8 @@ $(EDITORS_DIR)/emacs/quail.el: $(d)/DefaultGrammar.ml
 
 $(d)/DefaultGrammar.ml: $(d)/DefaultGrammar.txp $(PA_PATOLINE_IN_SRC)
 	$(ECHO) "[PPP] $@"
-	$(Q)$(PA_PATOLINE_IN_SRC) --build-dir . --main --no-default-grammar --ascii \
-		--quail-out $(EDITORS_DIR)/emacs/quail.el $< > $@
+	$(Q)$(PA_PATOLINE_IN_SRC) --build-dir src/grammar --main --no-default-grammar \
+		--ascii --quail-out $(EDITORS_DIR)/emacs/quail.el $< > $@
 
 $(d)/DefaultGrammar_.ml: $(d)/DefaultGrammar.ml
 

@@ -149,8 +149,6 @@ let pp_if_more_recent config is_main source target =
     | Some f -> "--format" :: f :: pp_args
   in
   let pp_args = if is_main then "--main" :: pp_args else pp_args in
-  let bdir = Filename.dirname target in
-  eprintf "COUCOU %S\n%!" bdir;
   let pp_args = "--build-dir" :: (Filename.dirname target) :: pp_args in
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
@@ -401,10 +399,8 @@ let compile config file =
   let sources = source_files config.path in
   (* Making sure the build directories exist. *)
   let create_build_dir dir =
-    eprintf "DEBUG %S\n%!" dir;
     if Sys.file_exists dir && Sys.is_directory dir then
     let bdir = to_build_dir dir in
-    eprintf "DEBUG2 %S\n%!" bdir;
     if not (Sys.file_exists bdir) then
     Unix.mkdir bdir 0o700
   in
