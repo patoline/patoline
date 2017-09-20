@@ -42,15 +42,14 @@ type config =
   ; run_binary : bool
   } (* Patoline driver. *)
 
-(* Run a command. The first argument is a short command name like "OPT", the
-   second argument is the file concerned by the command. Errors are handled
-   by given an error message in case of failure. *)
+(* Run a command. The first argument is a 3 character command name (e.g.,
+   "OPT"), the second argument is the file concerned by the command. Errors
+   are handled by given an error message in case of failure. *)
 let command : string -> string -> string -> unit = fun n fn cmd ->
   if !verbose > 0 then
     begin
-      let pad = String.make (max 0 (3 - (String.length n))) ' ' in
-      if !verbose = 1 then printf "[%s] %s%s\n%!" n pad fn
-      else printf "[%s] %s%s\n%!" n pad cmd
+      if !verbose = 1 then printf "[%s] %s\n%!" n fn
+      else printf "[%s] %s\n%!" n cmd
     end;
   if Sys.command cmd <> 0 then
     begin
