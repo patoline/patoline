@@ -43,8 +43,8 @@ type config =
   } (* Patoline driver. *)
 
 (* Run a command. The first argument is a short command name like "OPT", the
-   second argument is the file concerned by the command. The return value is
-   true if everything went well, false otherwise. *)
+   second argument is the file concerned by the command. Errors are handled
+   by given an error message in case of failure. *)
 let command : string -> string -> string -> unit = fun n fn cmd ->
   if !verbose > 0 then
     begin
