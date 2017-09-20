@@ -7,6 +7,7 @@ let verbose = ref 2
 (* Build directory. *)
 let build_dir = ".patobuild"
 
+(* Some useful functions for manipulating files. *)
 module Filename =
   struct
     include Filename
@@ -44,38 +45,38 @@ type config =
 (* Run a command. The first argument is a short command name like "OPT", the
    second argument is the file concerned by the command. The return value is
    true if everything went well, false otherwise. *)
-let run_command : string -> string -> string -> bool = fun n fn cmd ->
+let command : string -> string -> string -> unit = fun n fn cmd ->
   if !verbose > 0 then
     begin
       let pad = String.make (max 0 (3 - (String.length n))) ' ' in
       if !verbose = 1 then printf "[%s] %s%s\n%!" n pad fn
       else printf "[%s] %s%s\n%!" n pad cmd
     end;
-  Sys.command cmd = 0
-
-(* Same as run_command, but exits the program in case of failure. *)
-let command : string -> string -> string -> unit = fun n fn cmd ->
-  if not (run_command n fn cmd) then
+  if Sys.command cmd <> 0 then
     begin
-      eprintf "Command failure...\n%!";
+      eprintf "\027[31m%s failed on %S...\027[39m\n%!" n fn;
       exit 1
     end
 
 (* Time representation as a float. *)
-type time = float
+module Time =
+  struct
+    type time = float
 
-(* Obtain the modification time of a file, minus infinity being used in the
-   case where the file does not exist. *)
-let mod_time : string -> time = fun fname ->
-  if Sys.file_exists fname then Unix.((stat fname).st_mtime)
-  else neg_infinity
+    (* Obtain the modification time of a file, minus infinity being used in the
+       case where the file does not exist. *)
+    let mod_time : string -> time = fun fname ->
+      if Sys.file_exists fname then Unix.((stat fname).st_mtime)
+      else neg_infinity
 
-(* Modification time of the current binary. *)
-let binary_time : float = mod_time "/proc/self/exe"
+    (* Modification time of the current binary. *)
+    let binary_time : float = mod_time "/proc/self/exe"
 
-(* Test if a file is more recent than another file (or the binary). *)
-let more_recent : string -> string -> bool = fun source target ->
-  mod_time source > mod_time target || binary_time > mod_time target
+    (* Test if a file is more recent than another file (or the binary). *)
+    let more_recent : string -> string -> bool = fun source target ->
+      mod_time source > mod_time target || binary_time > mod_time target
+  end
+open Time
 
 (* Transform a directory into the corresponding build directory. *)
 let to_build_dir d =
@@ -88,7 +89,7 @@ let clean_build_dirs config =
     if Sys.file_exists d then
       begin
         if !verbose > 2 then printf "Removing directory %S\n" d;
-        command "RM" d ("rm -rf " ^ d)
+        command "RMV" d ("rm -rf " ^ d)
       end
     else if !verbose > 2 then
       printf "Directory %S does not exist\n" d
@@ -143,8 +144,7 @@ let pp_if_more_recent config is_main source target =
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
-  if not (run_command "PPP" source cmd) then
-    eprintf "\027[93mFailed to parse file %S...\027[39m\n%!" source
+  command "PPP" source cmd
 
 (* Compute the list of all the source files in the path. *)
 let source_files path =
