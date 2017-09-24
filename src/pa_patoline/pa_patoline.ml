@@ -684,10 +684,6 @@ type grammar_state =
   ; mutable math_macros      : (string * config list) list
   ; mutable environment      : (string * config list) list }
 
-let new_grammar str =
-  let res = declare_grammar str in set_grammar res
-                                (parser ERROR("empty grammar: " ^str)); res
-
 let state =
   { verbose          = false
   ; infix_symbols    = PrefixTree.empty
@@ -784,15 +780,15 @@ let math_prefix_symbol, set_math_prefix_symbol  = grammar_family "prefix"
 let math_postfix_symbol, set_math_postfix_symbol = grammar_family "postfix"
 let math_operator, set_math_operator = grammar_family "operator"
 let math_infix_symbol, set_math_infix_symbol = grammar_family "infix"
-let math_atom_symbol = new_grammar "atom_symbol"
-let math_any_symbol = new_grammar "any_symbol"
-let math_quantifier_symbol = new_grammar "quantifier"
-let math_accent_symbol = new_grammar "accent"
-let math_left_delimiter = new_grammar "left delimiter"
-let math_right_delimiter = new_grammar "right delimiter"
-let math_combining_symbol = new_grammar "combining"
-let math_punctuation_symbol = new_grammar "punctuation"
-let math_relation_symbol = new_grammar "relation"
+let math_atom_symbol = declare_grammar "atom_symbol"
+let math_any_symbol = declare_grammar "any_symbol"
+let math_quantifier_symbol = declare_grammar "quantifier"
+let math_accent_symbol = declare_grammar "accent"
+let math_left_delimiter = declare_grammar "left delimiter"
+let math_right_delimiter = declare_grammar "right delimiter"
+let math_combining_symbol = declare_grammar "combining"
+let math_punctuation_symbol = declare_grammar "punctuation"
+let math_relation_symbol = declare_grammar "relation"
 
 let macro_char : Charset.t =
   Charset.union (Charset.range 'a' 'z') (Charset.range 'A' 'Z')
@@ -1849,12 +1845,8 @@ let _ = set_grammar math_toplevel (parser
     | "\\begin" '{' idb:lid '}' ->>
         let config = try List.assoc idb state.environment with Not_found -> [] in
           args:(macro_arguments idb Text config)
-          ps:(change_layout paragraphs blank2) {
-      "\\end" '{' { STR(idb) |
-                    ERROR(Printf.sprintf
-                            "\\begin{%s} mismatch at %s" idb (string_location _loc_idb)) }
-              '}'
-      |  ERROR(Printf.sprintf "\\begin{%s} unclosed at %s" idb (string_location _loc_idb)) }
+          ps:(change_layout paragraphs blank2)
+          "\\end" '{' STR(idb) '}'
       ->
          (fun indent_first ->
            let m1 = freshUid () in
