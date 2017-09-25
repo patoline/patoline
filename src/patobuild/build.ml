@@ -167,7 +167,7 @@ let source_files path =
       let fn = if d = "." then fn else Filename.concat d fn in
       if not (Sys.is_directory fn) then
       if List.exists (Filename.check_suffix fn) [".ml"; ".mli"; ".txp"] then
-      files := fn :: !files
+      if fn.[0] <> '.' then files := fn :: !files
     in Array.iter add_file fs;
   in
   List.iter read_dir path; !files
