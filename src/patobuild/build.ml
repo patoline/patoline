@@ -77,8 +77,8 @@ type config =
 (* Run a command. The first argument is a 3 character command name (e.g.,
    "OPT"), the second argument is the file concerned by the command. Errors
    are handled by given an error message in case of failure. *)
-let command : ?on_failure:(unit -> unit) -> string -> string -> string
-    -> unit = fun ?(on_failure=fun _ -> ()) n fn cmd ->
+let command : ?cleanup:(unit -> unit) -> string -> string -> string -> unit =
+  fun ?(cleanup=fun _ -> ()) n fn cmd ->
   if !verbose > 0 then
     begin
       if !verbose = 1 then printf "[%s] %s\n%!" n fn
@@ -86,7 +86,7 @@ let command : ?on_failure:(unit -> unit) -> string -> string -> string
     end;
   if Sys.command cmd <> 0 then
     begin
-      on_failure ();
+      cleanup ();
       eprintf "\027[31m%s failed on %S...\027[39m\n%!" n fn;
       exit 1
     end
@@ -153,8 +153,8 @@ let pp_if_more_recent config is_main source target =
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
-  let on_failure () = command "RMV" target ("rm -f " ^ target) in
-  command ~on_failure "PPP" source cmd
+  let cleanup () = command "RMV" target ("rm -f " ^ target) in
+  command ~cleanup "PPP" source cmd
 
 (* Compute the list of all the source files in the path. *)
 let source_files path =
@@ -329,17 +329,17 @@ let compile_targets config deps targets =
   let ths = Array.init !Parallel.nb_threads fn in
   Array.iter Thread.join ths
 
-let rec get_cmxs deps cmx =
-  let is_cmx f = Filename.check_suffix f ".cmx" in
-  let ds = List.filter is_cmx (List.assoc cmx deps) in
-  let cmxs = List.concat (List.map (get_cmxs deps) ds) @ [cmx] in
-  let fn acc f = if List.mem f acc then acc else f::acc in
-  List.rev (List.fold_left fn [] cmxs)
-
 (* Produce the binary of the document. *)
 let produce_binary config deps main =
   let target = Filename.set_extension main ".opt" in
-  let cmxs = get_cmxs deps main in
+  let rec get_cmxs cmx =
+    let is_cmx f = Filename.check_suffix f ".cmx" in
+    let ds = List.filter is_cmx (List.assoc cmx deps) in
+    let cmxs = List.concat (List.map get_cmxs ds) @ [cmx] in
+    let fn acc f = if List.mem f acc then acc else f::acc in
+    List.rev (List.fold_left fn [] cmxs)
+  in
+  let cmxs = get_cmxs main in
   let args = ["-o"; target; "-linkpkg"] @ cmxs in
   let optcmd = opt_command config in
   let cmd = optcmd ^ (String.concat " " args) in
