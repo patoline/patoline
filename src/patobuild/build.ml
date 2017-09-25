@@ -130,7 +130,7 @@ let driver_changed config target =
   with _ -> record_driver true
 
 (* Compute the dependences for the given file. *)
-let file_dep : config -> string -> string list =
+let file_deps : config -> string -> string list =
   let includes = Hashtbl.create 7 in
   fun config fn ->
     assert (List.exists (Filename.check_suffix fn) [".ml"; ".mli"]);
@@ -140,7 +140,7 @@ let file_dep : config -> string -> string list =
         Hashtbl.add includes config s; s
     in
     let cmd = "ocamldep " ^ includes in
-    let cmd = cmd ^ " -one-line -native -ml-synonym .txp" in
+    let cmd = cmd ^ " -one-line -native -ml-synonym .txp " ^ fn in
     if !verbose > 0 then
       begin
         if !verbose = 1 then printf "[DEP] %s\n%!" fn
@@ -206,45 +206,6 @@ let source_files path =
   in
   List.iter read_dir path; !files
 
-(* Computing dependencies *)
-let run_deps path target =
-  let build_dirs = List.map to_build_dir path in
-  let includes = List.map (fun n -> "-I " ^ n) build_dirs in
-  let includes = String.concat " " includes in
-  let patterns =
-    List.map (fun n -> Printf.sprintf "%s/*.ml %s/*.mli" n n) build_dirs
-  in
-  let patterns = String.concat " " patterns in
-  let cmd =
-    Printf.sprintf "ocamldep -one-line %s %s > %s" includes patterns target
-  in command "DEP" target cmd
-
-(* Parsing dependencies. *)
-let read_deps dep_file =
-  let open Earley in
-  let file = parser f:''[^ \n]+'' in
-  let line = parser t:file " :" ds:{' ' d:file}* '\n' in
-  let deps = parser line* in
-  let parse_deps fn =
-    try handle_exception (parse_file deps no_blank) fn
-    with _ ->
-      Printf.eprintf "Problem while parsing dependency file %S.\n%!" fn;
-      exit 1
-  in
-  let deps = parse_deps dep_file in
-  (* Hacks due to ocamldep limitations. *)
-  let is_native f = List.exists (Filename.check_suffix f) [".cmx"; ".cmi"] in
-  let deps = List.filter (fun (s,_) -> is_native s) deps in
-  let check_not_circular (t,ds) =
-    if List.mem t ds then
-      begin
-        Printf.eprintf "Circular dependency on %s\n%!" t;
-        exit 1
-      end
-  in
-  List.iter check_not_circular deps;
-  List.map (fun (n,ds) -> (n, List.map file_to_build_dir ds)) deps
-
 (* Produce the ocamlopt command using the configuration. *)
 let opt_command config =
   let packs = String.concat "," config.packages in
@@ -253,17 +214,20 @@ let opt_command config =
   Printf.sprintf "ocamlfind ocamlopt -package %s %s " packs includes
 
 (* Compilation function. *)
-let compile_targets config deps targets =
+let compile_targets config (deps : (string, string list) Hashtbl.t) target =
   (* Stack of tasks, and its mutex. *)
-  let tasks = ref targets in
+  let tasks = ref [target] in
+  let stop  = ref false in
   let m_tasks = Mutex.create () in
+  let m_deps = Mutex.create () in
 
   (* Function used to obtain a new task (i.e. a new file to produce). *)
-  let get_task : unit -> string = fun () ->
+  let get_task : unit -> string option = fun () ->
+    if !stop then Thread.exit ();
     Mutex.lock m_tasks;
     match !tasks with
-    | t::ts -> tasks := ts; Mutex.unlock m_tasks; t
-    | []    -> Mutex.unlock m_tasks; Thread.exit (); assert false
+    | t::ts -> tasks := ts; Mutex.unlock m_tasks; Some(t)
+    | []    -> Mutex.unlock m_tasks; None
   in
 
   (* Function used to add a list of tasks on top of the task stack. *)
@@ -328,12 +292,30 @@ let compile_targets config deps targets =
 
   let rec thread_fun i =
     (* Obtain a new task, and compute its dependencies. *)
+    if !verbose > 3 then eprintf "[%2i] trying to get task (%i)\n%!" i (List.length !tasks);
     let t = get_task () in
-    if !verbose > 2 then eprintf "[%2i] got task %S\n%!" i t;
+    match t with
+    | None    -> ignore (Unix.select [] [] [] (Random.float 0.25));
+                 thread_fun i
+    | Some(t) ->
+
+    if !verbose > 2 then
+      eprintf "[%2i] got task %S\n%!" i t;
+    if !verbose > 3 then
+      eprintf "[%2i] remaining tasks: %S\n%!" i (String.concat ", " !tasks);
     let all_deps =
-      try List.assoc t deps with Not_found ->
-        eprintf "Unable to find %S in deps...\n%!" t;
-        assert false
+      try Hashtbl.find deps t with Not_found ->
+        if !verbose > 2 then eprintf "%S not in deps...\n%!" t;
+        let ml =
+          if Filename.check_suffix t ".cmx" then
+            Filename.set_extension t ".ml"
+          else if Filename.check_suffix t ".cmi" then
+            Filename.set_extension t ".mli"
+          else
+            assert false
+        in
+        let fs = file_deps config ml in
+        Mutex.lock m_deps; Hashtbl.add deps t fs; Mutex.unlock m_deps; fs
     in
     (* Quick (unreliable) filter on dependencies. *)
     let deps = List.filter (fun f -> not (unsafe_exists f)) all_deps in
@@ -341,6 +323,7 @@ let compile_targets config deps targets =
     begin
       if deps = [] then
         begin
+          if t = target then stop := true;
           match lock_file t with
           | None   -> () (* Already being created. *)
           | Some m ->
@@ -366,6 +349,9 @@ let compile_targets config deps targets =
 (* Produce the binary of the document. *)
 let produce_binary config deps main =
   let target = Filename.set_extension main ".opt" in
+  let deps_ref = ref [] in
+  Hashtbl.iter (fun k v -> deps_ref := (k,v) :: !deps_ref) deps;
+  let deps = !deps_ref in
   let rec get_cmxs cmx =
     let is_cmx f = Filename.check_suffix f ".cmx" in
     let ds = List.filter is_cmx (List.assoc cmx deps) in
@@ -451,10 +437,6 @@ let compile config file =
     pp_if_more_recent config is_main fn target
   in
   iter update_file sources;
-  (* Computing dependencies. *)
-  let depfile = Filename.concat (to_build_dir ".") "depend" in
-  run_deps config.path depfile;
-  let deps = read_deps depfile in
   (* Building the primary target. *)
   let to_target fn =
     let (dir, base, ext) = Filename.decompose fn in
@@ -464,7 +446,8 @@ let compile config file =
   in
   let target = to_target file in
   (* Actually compiling. *)
-  compile_targets config deps [target];
+  let deps = Hashtbl.create 37 in
+  compile_targets config deps target;
   produce_binary config deps target;
   (* Producing the document. *)
   if config.run_binary then
