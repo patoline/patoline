@@ -65,15 +65,14 @@ let file_to_build_dir fn =
 
 (* Type of a compilation configuration. *)
 type config =
-  { bin_args   : string list     (* Arguments to be fed to the executable. *)
-  ; opt_args   : string list     (* Arguments to be fed to ocamlopt. *)
-  ; pp_args    : string list     (* Arguments to be fed to pa_patoline. *)
-  ; packages   : string list     (* Packages (ocamlfind) to include. *)
-  ; path       : string list     (* Source directories. *)
-  ; pat_format : string option   (* Patoline format. *)
-  ; pat_driver : string option
-  ; run_binary : bool
-  } (* Patoline driver. *)
+  { bin_args   : string list   (* Arguments to be fed to the executable. *)
+  ; opt_args   : string list   (* Arguments to be fed to ocamlopt. *)
+  ; pp_args    : string list   (* Arguments to be fed to pa_patoline. *)
+  ; packages   : string list   (* Packages (ocamlfind) to include. *)
+  ; path       : string list   (* Source directories. *)
+  ; pat_format : string option (* Patoline format. *)
+  ; pat_driver : string option (* Patoline driver. *)
+  ; run_binary : bool          (* Run the binary only if true. *) }
 
 (* Run a command. The first argument is a 3 character command name (e.g.,
    "OPT"), the second argument is the file concerned by the command. Errors
