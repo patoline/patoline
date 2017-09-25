@@ -78,7 +78,8 @@ type config =
 (* Run a command. The first argument is a 3 character command name (e.g.,
    "OPT"), the second argument is the file concerned by the command. Errors
    are handled by given an error message in case of failure. *)
-let command : string -> string -> string -> unit = fun n fn cmd ->
+let command : ?on_failure:(unit -> unit) -> string -> string -> string
+    -> unit = fun ?(on_failure=fun _ -> ()) n fn cmd ->
   if !verbose > 0 then
     begin
       if !verbose = 1 then printf "[%s] %s\n%!" n fn
@@ -86,10 +87,10 @@ let command : string -> string -> string -> unit = fun n fn cmd ->
     end;
   if Sys.command cmd <> 0 then
     begin
+      on_failure ();
       eprintf "\027[31m%s failed on %S...\027[39m\n%!" n fn;
       exit 1
     end
-
 
 (* Remove the build directory in the given directory, if it exists. *)
 let clean_build_dirs config =
@@ -153,7 +154,8 @@ let pp_if_more_recent config is_main source target =
   let cmd =
     String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
   in
-  command "PPP" source cmd
+  let on_failure () = command "RMV" target ("rm -f " ^ target) in
+  command ~on_failure "PPP" source cmd
 
 (* Compute the list of all the source files in the path. *)
 let source_files path =
