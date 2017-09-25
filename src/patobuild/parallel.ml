@@ -26,3 +26,29 @@ let iter : ('a -> unit) -> 'a list -> unit = fun f ls ->
   in
   let ths = Array.init !nb_threads (fun _ -> Thread.create thread_fun ()) in
   Array.iter Thread.join ths
+
+module TaskBag =
+  struct
+    type 'a t =
+      { mutex         : Mutex.t
+      ; cond          : Condition.t
+      ; mutable state : 'a list }
+
+    let create : unit -> 'a t = fun _ ->
+      { mutex = Mutex.create ()
+      ; cond  = Condition.create ()
+      ; state = [] }
+
+    let wait : 'a t -> 'a = fun s ->
+      Mutex.lock s.mutex;
+      while s.state = [] do
+        Condition.wait s.cond s.mutex
+      done;
+      let task = List.hd s.state in
+      s.state <- List.tl s.state;
+      Mutex.unlock s.mutex; task
+
+    let post : 'a t -> 'a list -> unit = fun s tasks ->
+      Mutex.lock s.mutex; s.state <- s.state @ tasks; Mutex.unlock s.mutex;
+      Condition.signal s.cond
+  end

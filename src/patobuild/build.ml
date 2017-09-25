@@ -214,28 +214,13 @@ let opt_command config =
   Printf.sprintf "ocamlfind ocamlopt -package %s %s " packs includes
 
 (* Compilation function. *)
-let compile_targets config (deps : (string, string list) Hashtbl.t) target =
+let compile_targets config deps target =
   (* Stack of tasks, and its mutex. *)
-  let tasks = ref [target] in
-  let stop  = ref false in
-  let m_tasks = Mutex.create () in
-  let m_deps = Mutex.create () in
+  let tasks   = TaskBag.create () in
+  let m_deps  = Mutex.create () in
 
-  (* Function used to obtain a new task (i.e. a new file to produce). *)
-  let get_task : unit -> string option = fun () ->
-    if !stop then Thread.exit ();
-    Mutex.lock m_tasks;
-    match !tasks with
-    | t::ts -> tasks := ts; Mutex.unlock m_tasks; Some(t)
-    | []    -> Mutex.unlock m_tasks; None
-  in
-
-  (* Function used to add a list of tasks on top of the task stack. *)
-  let add_tasks ts =
-    Mutex.lock m_tasks;
-    tasks := ts @ !tasks;
-    Mutex.unlock m_tasks
-  in
+  (* Add initial task. *)
+  TaskBag.post tasks [target];
 
   (* The raw compilation command. *)
   let optcmd = opt_command config in
@@ -270,6 +255,11 @@ let compile_targets config (deps : (string, string list) Hashtbl.t) target =
     with Not_found -> false
   in
 
+  let not_handled fn =
+    try ignore (List.assoc fn !files); false
+    with Not_found -> true
+  in
+
   (* Find out if a file has been generated (or is being generated), and if
      it is the case returns None. Otherwise, insert the file with a fresh
      locked mutex, and returns the mutex. *)
@@ -290,19 +280,17 @@ let compile_targets config (deps : (string, string list) Hashtbl.t) target =
     end
   in
 
+  let done_signal = "<DONE>" in
+  let stop_signal () =
+    let l = Array.to_list (Array.make !Parallel.nb_threads done_signal) in
+    TaskBag.post tasks l
+  in
+
   let rec thread_fun i =
     (* Obtain a new task, and compute its dependencies. *)
-    if !verbose > 3 then eprintf "[%2i] trying to get task (%i)\n%!" i (List.length !tasks);
-    let t = get_task () in
-    match t with
-    | None    -> ignore (Unix.select [] [] [] (Random.float 0.25));
-                 thread_fun i
-    | Some(t) ->
-
-    if !verbose > 2 then
-      eprintf "[%2i] got task %S\n%!" i t;
-    if !verbose > 3 then
-      eprintf "[%2i] remaining tasks: %S\n%!" i (String.concat ", " !tasks);
+    let t = TaskBag.wait tasks in
+    if !verbose > 2 then eprintf "[%2i] got task %S\n%!" i t;
+    if t = done_signal then Thread.exit ();
     let all_deps =
       try Hashtbl.find deps t with Not_found ->
         if !verbose > 2 then eprintf "%S not in deps...\n%!" t;
@@ -323,7 +311,7 @@ let compile_targets config (deps : (string, string list) Hashtbl.t) target =
     begin
       if deps = [] then
         begin
-          if t = target then stop := true;
+          if t = target then stop_signal ();
           match lock_file t with
           | None   -> () (* Already being created. *)
           | Some m ->
@@ -333,7 +321,8 @@ let compile_targets config (deps : (string, string list) Hashtbl.t) target =
         end
       else
         begin
-          add_tasks (deps @ [t]);
+          let deps = List.filter not_handled deps in
+          TaskBag.post tasks (deps @ [t]);
           if !verbose > 2 then eprintf "[%2i] pushed tasks for %S\n%!" i t;
           (* Wait for up to 250ms *)
           ignore (Unix.select [] [] [] (Random.float 0.25))
