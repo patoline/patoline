@@ -129,6 +129,40 @@ let driver_changed config target =
     record_driver (driver <> new_driver)
   with _ -> record_driver true
 
+(* Compute the dependences for the given file. *)
+let file_dep : config -> string -> string list =
+  let includes = Hashtbl.create 7 in
+  fun config fn ->
+    assert (List.exists (Filename.check_suffix fn) [".ml"; ".mli"]);
+    let includes =
+      try Hashtbl.find includes config with Not_found ->
+        let s = String.concat " " (List.map ((^) "-I ") config.path) in
+        Hashtbl.add includes config s; s
+    in
+    let cmd = "ocamldep " ^ includes in
+    let cmd = cmd ^ " -one-line -native -ml-synonym .txp" in
+    if !verbose > 0 then
+      begin
+        if !verbose = 1 then printf "[DEP] %s\n%!" fn
+        else printf "[DEP] %s\n%!" cmd
+      end;
+    let ic = Unix.open_process_in cmd in
+    let parse_dep =
+      let file = parser f:''[^ \n]+'' in
+      let dep = parser _:file " :" ds:{' ' d:file}* '\n' in
+      Earley.parse_channel dep Earley.no_blank
+    in
+    let deps =
+      try Earley.handle_exception parse_dep ic with _ ->
+        Printf.eprintf "Problem while parsing dependency file %S.\n%!" fn;
+        exit 1
+    in
+    match Unix.close_process_in ic with
+    | Unix.WEXITED 0 -> List.map file_to_build_dir deps
+    | _              ->
+        Printf.eprintf "Problem while parsing dependency file %S.\n%!" fn;
+        exit 1
+
 (* Preprocessor command. *)
 let pp_if_more_recent config is_main source target =
   (* Update if source more recent that target. *)
