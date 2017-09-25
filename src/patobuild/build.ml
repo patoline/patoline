@@ -254,10 +254,29 @@ let compile_targets config deps target =
       if Mutex.try_lock m then (Mutex.unlock m; true) else false
     with Not_found -> false
   in
+  let filter_deps = List.filter (fun f -> not (unsafe_exists f)) in
 
   let not_handled fn =
     try ignore (List.assoc fn !files); false
     with Not_found -> true
+  in
+  let unhandled_files = List.filter not_handled in
+
+  (* Set of tasks that are not ready (missing dependencies). *)
+  let waiting = ref [] in
+  let m_wait  = Mutex.create () in
+
+  let update_waiting () =
+    Mutex.lock m_wait;
+    let new_waiting = ref [] in
+    let fn (t, deps) =
+      match filter_deps deps with
+      | []   -> TaskBag.post tasks [t]
+      | deps -> new_waiting := (t,deps) :: !new_waiting
+    in
+    List.iter fn !waiting;
+    waiting := !new_waiting;
+    Mutex.unlock m_wait
   in
 
   (* Find out if a file has been generated (or is being generated), and if
@@ -288,6 +307,8 @@ let compile_targets config deps target =
 
   let rec thread_fun i =
     (* Obtain a new task, and compute its dependencies. *)
+    if !verbose > 2 then
+      eprintf "[%2i] trying to get a task (%i)\n%!" i (TaskBag.size tasks);
     let t = TaskBag.wait tasks in
     if !verbose > 2 then eprintf "[%2i] got task %S\n%!" i t;
     if t = done_signal then Thread.exit ();
@@ -306,7 +327,7 @@ let compile_targets config deps target =
         Mutex.lock m_deps; Hashtbl.add deps t fs; Mutex.unlock m_deps; fs
     in
     (* Quick (unreliable) filter on dependencies. *)
-    let deps = List.filter (fun f -> not (unsafe_exists f)) all_deps in
+    let deps = filter_deps all_deps in
     (* Actually do some work. *)
     begin
       if deps = [] then
@@ -317,15 +338,18 @@ let compile_targets config deps target =
           | Some m ->
               if !verbose > 2 then eprintf "[%2i] working on %S\n%!" i t;
               do_compile all_deps t; Mutex.unlock m;
-              if !verbose > 2 then eprintf "[%2i] done with %S\n%!" i t
+              if !verbose > 2 then eprintf "[%2i] done with %S\n%!" i t;
+              update_waiting ();
         end
       else
         begin
-          let deps = List.filter not_handled deps in
-          TaskBag.post tasks (deps @ [t]);
-          if !verbose > 2 then eprintf "[%2i] pushed tasks for %S\n%!" i t;
-          (* Wait for up to 250ms *)
-          ignore (Unix.select [] [] [] (Random.float 0.25))
+          if !verbose > 2 then eprintf "[%2i] %S is not ready\n%!" i t;
+          Mutex.lock m_wait;
+          let deps = filter_deps deps in
+          waiting := (t, deps) :: !waiting;
+          let not_handled = unhandled_files deps in
+          TaskBag.post tasks not_handled;
+          Mutex.unlock m_wait
         end
     end;
     (* Continue to work. *)

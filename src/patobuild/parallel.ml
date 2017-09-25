@@ -39,6 +39,8 @@ module TaskBag =
       ; cond  = Condition.create ()
       ; state = [] }
 
+    let size : 'a t -> int = fun s -> List.length s.state
+
     let wait : 'a t -> 'a = fun s ->
       Mutex.lock s.mutex;
       while s.state = [] do
@@ -50,5 +52,5 @@ module TaskBag =
 
     let post : 'a t -> 'a list -> unit = fun s tasks ->
       Mutex.lock s.mutex; s.state <- s.state @ tasks; Mutex.unlock s.mutex;
-      Condition.signal s.cond
+      List.iter (fun _ -> Condition.signal s.cond) tasks
   end
