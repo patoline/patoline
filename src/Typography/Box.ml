@@ -380,8 +380,8 @@ let drawing ?(adjust_before=false) ?(vcenter=false) ?(hcenter=false)
       drawing_max_width=if hcenter then (c-.a) else c;
       drawing_width_fixed = width_fixed;
       drawing_adjust_before = adjust_before;
-      drawing_y0=offset +. (if vcenter then b -. e else b);
-      drawing_y1=offset +. (if vcenter then d -. e else d);
+      drawing_y0=offset +. (if vcenter then b -. e else 0.0);
+      drawing_y1=offset +. (if vcenter then d -. e else d -. b);
       drawing_badness=(fun _->0.);
       drawing_break_badness=0.;
       drawing_states=states;
