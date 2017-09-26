@@ -190,22 +190,43 @@ let file_deps : config -> string -> string list =
         if !verbose = 1 then printf "[DEP] %s\n%!" fn
         else printf "[DEP] %s\n%!" cmd
       end;
-    let ic = Unix.open_process_in cmd in
+    let deps =
+      let ic = Unix.open_process_in cmd in
+      let line =
+        try input_line ic with End_of_file ->
+          eprintf "dependency analysis failed on %S:\n%!" fn;
+          eprintf "  (unable to read the output line)\n%!";
+          exit 1
+      in
+      let _ =
+        try
+          ignore (input_line ic);
+          eprintf "dependency analysis failed on %S:\n%!" fn;
+          eprintf "  (output contains multiple lines)\n%!";
+          exit 1
+        with End_of_file -> ()
+      in
+      if Unix.close_process_in ic <> Unix.WEXITED 0 then
+        begin
+          eprintf "dependency analysis failed on %S:\n%!" fn;
+          eprintf "  (the process failed)\n%!";
+          exit 1
+        end;
+      line
+    in
     let parse_dep =
       let file = parser f:''[^ \n]+'' in
-      let dep = parser _:file " :" ds:{' ' d:file}* '\n' in
-      Earley.parse_channel dep Earley.no_blank
+      let dep = parser _:file " :" ds:{' ' d:file}* in
+      Earley.parse_string dep Earley.no_blank
     in
     let deps =
-      try Earley.handle_exception parse_dep ic with _ ->
-        Printf.eprintf "Problem while parsing dependency file %S.\n%!" fn;
+      try Earley.handle_exception parse_dep deps with _ ->
+        eprintf "dependency analysis failed on %S:\n%!" fn;
+        eprintf "  (parsing failed)\n%!";
         exit 1
     in
-    match Unix.close_process_in ic with
-    | Unix.WEXITED 0 -> List.map file_to_build_dir deps
-    | _              ->
-        Printf.eprintf "Problem while parsing dependency file %S.\n%!" fn;
-        exit 1
+    List.map file_to_build_dir deps
+    
 
 (* Preprocessor command. *)
 let run_pp ?(is_main=false) config source =
@@ -221,69 +242,23 @@ let run_pp ?(is_main=false) config source =
   (* Create the build directory if necessary. *)
   if not (Sys.file_exists bdir) then Unix.mkdir bdir 0o700;
   (* Build the command. *)
-  let pp_args = ["--build_dir"; bdir] @ config.pp_args in
-  let pp_args =
-    if not is_main then pp_args else
-    let pp_args =
-      match config.pat_driver with
-      | None   -> pp_args
-      | Some d -> "--driver" :: d :: pp_args
-    in
-    let pp_args =
-      match config.pat_format with
-      | None   -> pp_args
-      | Some f -> "--format" :: f :: pp_args
-    in
-    "--main" :: pp_args
-  in
-  let args = String.concat " " pp_args in
-  let cmd = Printf.sprintf "pa_patoline %s %s > %s" args source target in
-  (* Run the command. *)
-  let cleanup () = command "RMV" target ("rm -f " ^ target) in
-  command ~cleanup "PPP" source cmd
-
-(* Preprocessor command. *)
-let pp_if_more_recent config is_main source target =
-  (* Update if source more recent that target. *)
-  let update = more_recent source target
-               || (is_main && driver_changed config target)
-  in
-  (* Also update if main file does not exist (only when processing main). *)
-  let main = Filename.set_extension target "_.ml" in
-  if update || (is_main && not (Sys.file_exists main)) then
-  let pp_args =
-    match config.pat_driver with
-    | None   -> config.pp_args
-    | Some d -> "--driver" :: d :: config.pp_args
-  in
+  let pp_args = ["--build-dir"; bdir] @ config.pp_args in
   let pp_args =
     match config.pat_format with
     | None   -> pp_args
     | Some f -> "--format" :: f :: pp_args
   in
-  let pp_args = if is_main then "--main" :: pp_args else pp_args in
-  let pp_args = "--build-dir" :: (Filename.dirname target) :: pp_args in
-  let cmd =
-    String.concat " " ("pa_patoline" :: pp_args @ [source ; ">" ; target])
+  let pp_args =
+    match config.pat_driver with
+    | None   -> pp_args
+    | Some d -> "--driver" :: d :: pp_args
   in
+  let pp_args = if not is_main then pp_args else "--main" :: pp_args in
+  let args = String.concat " " pp_args in
+  let cmd = Printf.sprintf "pa_patoline %s %s > %s" args source target in
+  (* Run the command. *)
   let cleanup () = command "RMV" target ("rm -f " ^ target) in
   command ~cleanup "PPP" source cmd
-
-(* Compute the list of all the source files in the path. *)
-let source_files path =
-  let files = ref [] in
-  let read_dir d =
-    if Sys.file_exists d then
-    let fs = Sys.readdir d in
-    let add_file fn =
-      if fn.[0] <> '.' then
-      let fn = if d = "." then fn else Filename.concat d fn in
-      if not (Sys.is_directory fn) then
-      if List.exists (Filename.check_suffix fn) [".ml"; ".mli"; ".txp"] then
-      files := fn :: !files
-    in Array.iter add_file fs;
-  in
-  List.iter read_dir path; !files
 
 (* Produce the ocamlopt command using the configuration. *)
 let opt_command config =
@@ -387,17 +362,13 @@ let compile_targets config deps target =
   let get_source t =
     let src_build = build_source t in
     let src_orig  = original_source t in
-    if more_recent src_orig src_build then
-      begin
-        eprintf "DEBUG (need pp) %S → %S\n%!" src_orig src_build
-      end;
+    if more_recent src_orig src_build then run_pp config src_orig;
     src_build
   in
 
   let rec thread_fun i =
     (* Obtain a new task, and compute its dependencies. *)
-    if !verbose > 2 then
-      eprintf "[%2i] trying to get a task (%i)\n%!" i (TaskBag.size tasks);
+    if !verbose > 2 then eprintf "[%2i] ready for a new task\n%!" i;
     let t = TaskBag.wait tasks in
     if !verbose > 2 then eprintf "[%2i] got task %S\n%!" i t;
     if t = done_signal then Thread.exit ();
@@ -512,26 +483,8 @@ let compile config file =
   (* Reading configurations in the file. *)
   let pragmas = Pragma.pragma_from_file file in
   let config = extend_config config pragmas in
-  (* Finding all the source files. *)
-  let sources = source_files config.path in
-  (* Making sure the build directories exist. *)
-  let create_build_dir dir =
-    if Sys.file_exists dir && Sys.is_directory dir then
-    let bdir = to_build_dir dir in
-    if not (Sys.file_exists bdir) then
-    Unix.mkdir bdir 0o700
-  in
-  iter create_build_dir config.path;
-  (* Updating the source files that have changed in the build directories. *)
-  let update_file fn =
-    let (dir, base, ext) = Filename.decompose fn in
-    let bdir = to_build_dir dir in
-    let target_ext = match ext with ".txp" -> ".ml" | e -> e in
-    let target = Filename.concat bdir (base ^ target_ext) in
-    let is_main = ext = ".txp" && fn = file in
-    pp_if_more_recent config is_main fn target
-  in
-  iter update_file sources;
+  (* Preprocessing the main file. *)
+  run_pp ~is_main:true config file;
   (* Building the primary target. *)
   let to_target fn =
     let (dir, base, ext) = Filename.decompose fn in
