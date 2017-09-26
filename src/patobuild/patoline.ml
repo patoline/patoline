@@ -126,6 +126,9 @@ let spec = Arg.align
   ; ( "--bin"
     , Arg.Clear run_bin
     , " Does not run the produced binary, only produces it." )
+  ; ( "--ascii"
+    , Arg.Unit (fun _ -> add_pp_args ["--ascii"])
+    , " Preprocess to ASCII files." )
 
   (* Forwarding of arguments to the compiler or to the preprocessor. *)
   ; ( "--opt-args"
