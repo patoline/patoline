@@ -340,6 +340,7 @@ let defaultEnv:environment=
     adjust_epsilon=5e-2;
     adjust_min_space=1./.9.;
     math_break_badness = 250.0; (* testé juste sur tests/test_break_badness *)
+    stdGlue = (2./.9., 1./.3.,1./.2.);
   }
 
     let sourcePosition(file,line,column,char) =

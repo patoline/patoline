@@ -185,6 +185,7 @@ type environment={
   adjust_epsilon:float;
   adjust_min_space:float;
   math_break_badness:float; (* pas dans l'environement math, car aucun sens en dehors du TextStyle *)
+  stdGlue:float*float*float;
 }
 
 let env_accessed=ref false
@@ -1161,7 +1162,13 @@ let rStdGlue:(float*box) ref=ref (0.,glue 0. 0. 0.)
 (** Makes a glue from the unicode character code given in the argument. *)
 let makeGlue env x0=
   let stdGlue=
-    (if fst !rStdGlue <> env.size then rStdGlue:=(env.size, glue (2.*.env.size/.9.) (env.size/.3.) (env.size/.2.)));
+
+    if fst !rStdGlue <> env.size then
+      begin
+        let (mi,no,ma) = env.stdGlue in
+        rStdGlue:=(env.size,
+                   glue (mi*.env.size) (no*.env.size) (ma*.env.size))
+      end;
     snd !rStdGlue
   in
   if (x0>=0x0009 && x0<=0x000d) || x0=0x0020 then stdGlue else
