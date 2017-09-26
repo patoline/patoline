@@ -23,6 +23,10 @@ module Filename =
     let set_extension : string -> string -> string = fun fn ext ->
       chop_extension fn ^ ext
 
+    (* Get the extension of the given file. *)
+    let get_extension : string -> string = fun fn ->
+      let (_,_,ext) = decompose fn in ext
+
     (* Ensure that concat ignores the "." directory. *)
     let concat : string -> string -> string = fun dir fn ->
       if dir = "." then fn else concat dir fn
@@ -62,6 +66,46 @@ let file_to_build_dir fn =
   if Filename.basename dir = ".patobuild" then fn else
   let base = Filename.basename fn in
   Filename.concat (to_build_dir dir) base
+
+let build_source fn =
+  let (dir, base, ext) = Filename.decompose fn in
+  let ext =
+    match ext with
+    | ".cmi" -> ".mli"
+    | ".cmx" -> ".ml"
+    | _      -> assert false
+  in
+  Filename.concat dir (base ^ ext)
+
+let original_source fn =
+  let (dir, base, ext) = Filename.decompose fn in
+  let dir =
+    let name = Filename.basename dir in
+    let path = Filename.dirname  dir in
+    if name = ".patobuild" then path else dir
+  in
+  match ext with
+  | ".cmi" -> let mli = Filename.concat dir (base ^ ".mli") in
+              if Sys.file_exists mli then mli else assert false
+  | ".cmx" -> let ml  = Filename.concat dir (base ^ ".ml" ) in
+              let txp = Filename.concat dir (base ^ ".txp") in
+              if Sys.file_exists ml then ml else
+              if Sys.file_exists txp then txp else
+              let base_len = String.length base in
+              if base.[base_len - 1] = '_' then
+                let main_base = String.sub base 0 (base_len - 1) in
+                let main = Filename.concat dir (main_base ^ ".txp") in
+                if Sys.file_exists main then main else
+                begin
+                  eprintf "Cannot find file %S\n%!" main;
+                  exit 1
+                end
+              else
+                begin
+                  eprintf "Cannot find file %S (or %S)\n%!" txp ml;
+                  exit 1
+                end
+  | _      -> assert false
 
 (* Type of a compilation configuration. *)
 type config =
@@ -162,6 +206,41 @@ let file_deps : config -> string -> string list =
     | _              ->
         Printf.eprintf "Problem while parsing dependency file %S.\n%!" fn;
         exit 1
+
+(* Preprocessor command. *)
+let run_pp ?(is_main=false) config source =
+  let (dir, base, ext) = Filename.decompose source in
+  (* Check that source is not already in the build directory... *)
+  assert (Filename.basename dir <> ".patobuild");
+  (* Obtain the build dir and target. *)
+  let bdir = to_build_dir dir in
+  let target =
+    let ext = match ext with ".txp" -> ".ml" | _ -> ext in
+    Filename.concat bdir (base ^ ext)
+  in
+  (* Create the build directory if necessary. *)
+  if not (Sys.file_exists bdir) then Unix.mkdir bdir 0o700;
+  (* Build the command. *)
+  let pp_args = ["--build_dir"; bdir] @ config.pp_args in
+  let pp_args =
+    if not is_main then pp_args else
+    let pp_args =
+      match config.pat_driver with
+      | None   -> pp_args
+      | Some d -> "--driver" :: d :: pp_args
+    in
+    let pp_args =
+      match config.pat_format with
+      | None   -> pp_args
+      | Some f -> "--format" :: f :: pp_args
+    in
+    "--main" :: pp_args
+  in
+  let args = String.concat " " pp_args in
+  let cmd = Printf.sprintf "pa_patoline %s %s > %s" args source target in
+  (* Run the command. *)
+  let cleanup () = command "RMV" target ("rm -f " ^ target) in
+  command ~cleanup "PPP" source cmd
 
 (* Preprocessor command. *)
 let pp_if_more_recent config is_main source target =
@@ -305,6 +384,16 @@ let compile_targets config deps target =
     TaskBag.post tasks l
   in
 
+  let get_source t =
+    let src_build = build_source t in
+    let src_orig  = original_source t in
+    if more_recent src_orig src_build then
+      begin
+        eprintf "DEBUG (need pp) %S → %S\n%!" src_orig src_build
+      end;
+    src_build
+  in
+
   let rec thread_fun i =
     (* Obtain a new task, and compute its dependencies. *)
     if !verbose > 2 then
@@ -315,14 +404,7 @@ let compile_targets config deps target =
     let all_deps =
       try Hashtbl.find deps t with Not_found ->
         if !verbose > 2 then eprintf "%S not in deps...\n%!" t;
-        let ml =
-          if Filename.check_suffix t ".cmx" then
-            Filename.set_extension t ".ml"
-          else if Filename.check_suffix t ".cmi" then
-            Filename.set_extension t ".mli"
-          else
-            assert false
-        in
+        let ml = get_source t in
         let fs = file_deps config ml in
         Mutex.lock m_deps; Hashtbl.add deps t fs; Mutex.unlock m_deps; fs
     in
