@@ -1655,11 +1655,9 @@ let flatten ?(initial_path=[]) env0 str=
     | Paragraph p -> (
       let env1 = p.par_env env0 in
       let add_node env cur =
-        if cur<>[] then
           add_paragraph env tree path
                         { p with par_paragraph = List.length !paragraphs;
                                  par_contents=List.rev cur }
-        else env
       in
       let rec collect_nodes env1 l cur =
         match l with
