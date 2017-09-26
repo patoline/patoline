@@ -240,7 +240,11 @@ let run_pp ?(is_main=false) config source =
     Filename.concat bdir (base ^ ext)
   in
   (* Create the build directory if necessary. *)
-  if not (Sys.file_exists bdir) then Unix.mkdir bdir 0o700;
+  if not (Sys.file_exists bdir) then
+    begin
+      eprintf "[DIR] %s\n%!" bdir;
+      Unix.mkdir bdir 0o700
+    end;
   (* Build the command. *)
   let pp_args = ["--build-dir"; bdir] @ config.pp_args in
   let pp_args =
@@ -258,7 +262,7 @@ let run_pp ?(is_main=false) config source =
   let cmd = Printf.sprintf "pa_patoline %s %s > %s" args source target in
   (* Run the command. *)
   let cleanup () = command "RMV" target ("rm -f " ^ target) in
-  command ~cleanup "PPP" source cmd
+  command ~cleanup "PPP" target cmd
 
 (* Produce the ocamlopt command using the configuration. *)
 let opt_command config =
