@@ -682,10 +682,8 @@ let envSize fsize env=
 let size fsize t=
   [Scoped (envSize fsize, t)]
 
-let envScale alpha env=
-  { env with
-      size=env.size *. alpha;
-      lead=env.lead *. alpha }
+let envScale alpha env =
+  { env with size = env.size *. alpha }
 
 (* Changer de taille dans un scope *)
 let scale alpha t=
