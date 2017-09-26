@@ -35,7 +35,7 @@ $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.ml $(d)/DefaultGrammar.cmx \
 		-o $@ $(@:.tmx=.cmx) $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) \
-	$(HYPHENATION_DIR)/hyph-en-us.hdict
+	$(HYPHENATION_DIR)/hyph-en-us.hdict $(UNICODE_DIR)/UnicodeData.data
 	$(ECHO) "[TMX] $@"
 	$(Q)$< --quiet --extra-fonts-dir $(FONTS_DIR) \
 		--extra-hyph-dir $(HYPHENATION_DIR) --driver Pdf
