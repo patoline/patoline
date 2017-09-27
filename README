@@ -1,0 +1,19 @@
+This repository contains the source code of Patoline (https://patoline.org).
+
+Compilation :
+  > make configure
+  > ./configure
+  > make -j 4
+  > make -j 4 packages
+  > make install
+
+Developpers and contributors:
+ - Pierre-Étienne Meunier
+ - Christophe Raffalli
+ - Rodolphe Lepigre
+ - Tom Hirschowitz
+ - Florian Hatat
+ - Pierre Hyvernat
+ - Guillaume Theyssier
+ - Vincent Laporte
+ - Alan Schmitt
