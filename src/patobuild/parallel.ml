@@ -32,14 +32,18 @@ module TaskBag =
     type 'a t =
       { mutex         : Mutex.t
       ; cond          : Condition.t
+      ; eq            : 'a -> 'a -> bool
       ; mutable state : 'a list }
 
-    let create : unit -> 'a t = fun _ ->
+    let create : ('a -> 'a -> bool) -> 'a t = fun eq ->
       { mutex = Mutex.create ()
       ; cond  = Condition.create ()
+      ; eq    = eq
       ; state = [] }
 
     let size : 'a t -> int = fun s -> List.length s.state
+
+    let get : 'a t -> 'a list = fun s -> s.state
 
     let wait : 'a t -> 'a = fun s ->
       Mutex.lock s.mutex;
@@ -51,6 +55,16 @@ module TaskBag =
       Mutex.unlock s.mutex; task
 
     let post : 'a t -> 'a list -> unit = fun s tasks ->
+      Mutex.lock s.mutex;
+      let insert tasks t =
+        if List.exists (s.eq t) tasks then tasks else tasks @ [t]
+      in
+      s.state <- List.fold_left insert s.state tasks;
+      Mutex.unlock s.mutex;
+      List.iter (fun _ -> Condition.signal s.cond) tasks
+
+    let raw_post : 'a t -> 'a list -> unit = fun s tasks ->
       Mutex.lock s.mutex; s.state <- s.state @ tasks; Mutex.unlock s.mutex;
       List.iter (fun _ -> Condition.signal s.cond) tasks
+
   end

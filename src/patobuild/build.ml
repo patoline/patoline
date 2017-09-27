@@ -133,7 +133,8 @@ let command : ?cleanup:(unit -> unit) -> string -> string -> string -> unit =
       cleanup ();
       eprintf "\027[31m%s failed on %S...\027[39m\n%!" n fn;
       exit 1
-    end
+    end;
+  if !verbose > 2 then printf "[%s] DONE (%s)\n%!" n fn
 
 (* Remove the build directory in the given directory, if it exists. *)
 let clean_build_dirs config =
@@ -274,7 +275,7 @@ let opt_command config =
 (* Compilation function. *)
 let compile_targets config deps target =
   (* Stack of tasks, and its mutex. *)
-  let tasks   = TaskBag.create () in
+  let tasks   = TaskBag.create (=) in
   let m_deps  = Mutex.create () in
 
   (* Add initial task. *)
@@ -329,7 +330,8 @@ let compile_targets config deps target =
     let new_waiting = ref [] in
     let fn (t, deps) =
       match filter_deps deps with
-      | []   -> TaskBag.post tasks [t]
+      | []   -> if !verbose > 2 then eprintf "%S is ready\n%!" t;
+                TaskBag.post tasks [t]
       | deps -> new_waiting := (t,deps) :: !new_waiting
     in
     List.iter fn !waiting;
@@ -357,10 +359,17 @@ let compile_targets config deps target =
     end
   in
 
+  let is_ready fn =
+    try
+      let m = List.assoc fn !files in
+      if Mutex.try_lock m then (Mutex.unlock m; true) else false
+    with Not_found -> false
+  in
+
   let done_signal = "<DONE>" in
   let stop_signal () =
     let l = Array.to_list (Array.make !Parallel.nb_threads done_signal) in
-    TaskBag.post tasks l
+    TaskBag.raw_post tasks l
   in
 
   let get_source t =
@@ -372,35 +381,52 @@ let compile_targets config deps target =
 
   let rec thread_fun i =
     (* Obtain a new task, and compute its dependencies. *)
-    if !verbose > 2 then eprintf "[%2i] ready for a new task\n%!" i;
+    if !verbose > 2 then eprintf "[%3i] ready for a new task\n%!" i;
+    if !verbose > 4 then
+      begin
+        let msg = String.concat ", " (TaskBag.get tasks) in
+        eprintf "[BUG] Tasks: %s\n%!" msg
+      end;
     let t = TaskBag.wait tasks in
-    if !verbose > 2 then eprintf "[%2i] got task %S\n%!" i t;
+    if !verbose > 2 then eprintf "[%3i] got task %S\n%!" i t;
+    (* Exit if this is the dummy end task. *)
     if t = done_signal then Thread.exit ();
-    let all_deps =
-      try Hashtbl.find deps t with Not_found ->
-        if !verbose > 2 then eprintf "%S not in deps...\n%!" t;
-        let ml = get_source t in
-        let fs = file_deps config ml in
-        Mutex.lock m_deps; Hashtbl.add deps t fs; Mutex.unlock m_deps; fs
+    (* Preprocess and compute dependencies if necessary. *)
+    let source_ready =
+      let src_build = build_source t in
+      match lock_file src_build with
+      | None   -> is_ready src_build
+      | Some m ->
+          if !verbose > 2 then eprintf "[%3i] working on %S\n%!" i src_build;
+          let ml = get_source t in
+          let fs = file_deps config ml in
+          Mutex.lock m_deps; Hashtbl.add deps t fs; Mutex.unlock m_deps;
+          Mutex.unlock m;
+          if !verbose > 2 then eprintf "[%3i] done with %S\n%!" i src_build;
+          true
     in
+    (* Stop there if the source is not ready (handled by another thread). *)
+    if not source_ready then thread_fun i else
+    (* Get dependencies. *)
+    let all_deps = Hashtbl.find deps t in
     (* Quick (unreliable) filter on dependencies. *)
     let deps = filter_deps all_deps in
     (* Actually do some work. *)
     begin
       if deps = [] then
         begin
-          if t = target then stop_signal ();
           match lock_file t with
           | None   -> () (* Already being created. *)
           | Some m ->
-              if !verbose > 2 then eprintf "[%2i] working on %S\n%!" i t;
+              if t = target then stop_signal ();
+              if !verbose > 2 then eprintf "[%3i] working on %S\n%!" i t;
               do_compile all_deps t; Mutex.unlock m;
-              if !verbose > 2 then eprintf "[%2i] done with %S\n%!" i t;
+              if !verbose > 2 then eprintf "[%3i] done with %S\n%!" i t;
               update_waiting ();
         end
       else
         begin
-          if !verbose > 2 then eprintf "[%2i] %S is not ready\n%!" i t;
+          if !verbose > 2 then eprintf "[%3i] %S is not ready\n%!" i t;
           Mutex.lock m_wait;
           let deps = filter_deps deps in
           waiting := (t, deps) :: !waiting;
