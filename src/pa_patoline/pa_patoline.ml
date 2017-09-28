@@ -1600,7 +1600,7 @@ let parser math_aux prio =
         r { indices with up_left = Some s }
      )
 
-and math_prefix prio =
+and parser math_prefix prio =
   | p:(math_postfix prio) -> p
 
   | sym:(math_prefix_symbol prio) ind:with_indices m:(math_prefix prio) ->
@@ -1612,7 +1612,7 @@ and math_prefix prio =
        <:expr<[Maths.bin $int:psp$ (Maths.Normal(true,$md$,$bool:pnsp$)) [] $m no_ind$]>>
      )
 
-and math_postfix prio =
+and parser math_postfix prio =
   | p:(math_aux prio) -> p
 
   | m:(math_postfix prio) sym:(math_postfix_symbol prio) ->
@@ -1623,7 +1623,7 @@ and math_postfix prio =
         let m = m no_ind in
         <:expr<[Maths.bin $int:psp$ (Maths.Normal($bool:nsp$,$md$,true)) $m$ []] >>)
 
-and with_indices =
+and parser with_indices =
   | EMPTY -> no_ind
 
   | i:with_indices h:right_indices - r:(math_aux Accent) ->
@@ -1660,7 +1660,7 @@ and with_indices =
      in
     (o, i)*)
 
-and math_punc_list =
+and parser math_punc_list =
   | m:(math_aux Ind) -> m no_ind
   | l:math_punc_list s:math_punctuation_symbol m:(math_aux Ind) ->
     let nsl = s.infix_no_left_space in
@@ -1674,7 +1674,7 @@ and math_punc_list =
     in
     <:expr<[Maths.bin 3 $inter$ $l$ $r$]>>
 
-and long_math_declaration =
+and parser long_math_declaration =
   | m:math_punc_list -> m
   | l:long_math_declaration s:math_relation_symbol ind:with_indices r:math_punc_list ->
     let nsl = s.infix_no_left_space in
@@ -1686,7 +1686,7 @@ and long_math_declaration =
     in
     <:expr<[Maths.bin 2 $inter$ $l$ $r$] >>
 
-and math_declaration =
+and parser math_declaration =
     | '{' m:long_math_declaration '}' -> m
     | no_brace m:(math_aux Ind) -> m no_ind
     | no_brace m:(math_aux Ind) s:math_relation_symbol ind:with_indices r:(math_aux Ind) ->
@@ -1966,7 +1966,7 @@ let parser text_item lvl =
     (fun indent lvl -> (true, lvl, ps indent))
 
 
-and topleveltext lvl = l:(text_item lvl)* ->
+and parser topleveltext lvl = l:(text_item lvl)* ->
   (fun indent lvl ->
     let fn (indent, lvl, ast) txt =
       let indent, lvl, ast' = txt indent lvl in
@@ -1975,7 +1975,7 @@ and topleveltext lvl = l:(text_item lvl)* ->
     let _,_,r = List.fold_left fn (indent, lvl, []) l in r)
 
 
-and text = txt:(topleveltext 0) -> txt true 0
+and parser text = txt:(topleveltext 0) -> txt true 0
 
 (* Header, title, main Patoline entry point *********************************)
 
