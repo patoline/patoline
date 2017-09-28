@@ -91,6 +91,7 @@ distclean: distclean-configure
 .PHONY: distclean-configure
 distclean-configure:
 	rm -f configure configure.cmi configure.cmx configure.o
+	find -type f -name "*~" -exec rm {} \;
 
 # When configure is ok, include the main make rules.
 ifneq "$(wildcard ./configure)" ""

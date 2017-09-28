@@ -1,4 +1,3 @@
-
 type giac =
   | Symbol of string
   | Number of string
@@ -47,7 +46,7 @@ let parser giac lvl =
   | e:(giac PSum) "==" f:(giac PSum) when lvl = Pred -> Eq(e,f)
   | e:(giac (prev lvl))             when lvl > PAtm -> e
 
-and gs =
+and parser gs =
   | EMPTY -> []
   | e:(giac pTop) l:{_:',' (giac pTop)}* -> e::l
 

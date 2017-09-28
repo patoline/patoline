@@ -69,9 +69,9 @@ all: $(d)/fonts.cmxa $(d)/fonts.cma $(LIBFONTS_CMI)
 
 # Cleaning
 CLEAN += $(d)/fonts.cma $(d)/fonts.cmxa $(d)/fonts.a $(d)/fonts.cmxs \
-  $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o \
-  $(d)/CFF/*.cmo $(d)/CFF/*.cmx $(d)/CFF/*.cmi \
-	$(d)/Opentype/*.cmo $(d)/Opentype/*.cmx $(d)/Opentype/*.cmi
+  $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/CFF/*.cmo $(d)/CFF/*.cmx \
+	$(d)/CFF/*.cmi $(d)/CFF/*.o $(d)/Opentype/*.cmo $(d)/Opentype/*.cmx \
+	$(d)/Opentype/*.cmi $(d)/Opentype/*.o
 
 DISTCLEAN += $(wildcard $(d)/*.depends) \
 	     $(wildcard $(d)/CFF/*.depends) \
