@@ -176,7 +176,9 @@ let blank_sline buf pos =
          begin
            let comment = Buffer.sub ocamldoc_buf 0 (Buffer.length ocamldoc_buf - 2) in
            Buffer.clear ocamldoc_buf;
-           ocamldoc_comments := (p,next,comment)::!ocamldoc_comments;
+           (* FIXME: Do we want to do the same as for OCaml, skipping comments ?*)
+           let lnum = Input.line_num (fst p) in
+           ocamldoc_comments := (p,next,comment,lnum)::!ocamldoc_comments;
            ocamldoc := false
          end;
        fn `Ini s curr next nl
@@ -918,7 +920,7 @@ let math_matrix = parser
   | EMPTY -> <:expr< [] >>
   | l:math_line ls:{ "\\\\" m:math_line }* -> <:expr< $l$ :: $list:ls$ >>
 
-let simple_text = change_layout (paragraph_basic_text TagSet.empty) blank1
+let simple_text = change_layout (paragraph_basic_text TagSet.empty) ~new_blank_after:false blank1
 
 let text_line = parser
   | m:simple_text?[nil] ls:{ _:'&' l:simple_text?[nil]}*
@@ -1894,8 +1896,11 @@ let _ = set_grammar math_toplevel (parser
     | l:paragraph_basic_text -> l
     | s:symbol_def -> fun _ -> s
 
-  let _ = set_grammar paragraph (change_layout (parser e:paragraph_elt l:paragraph_elt* ->
-						fun i -> List.flatten (e i :: List.map (fun r -> r false) l)) blank1)
+  let _ = set_grammar paragraph
+                      (change_layout
+                         (parser e:paragraph_elt l:paragraph_elt*
+                            -> fun i -> List.flatten (e i :: List.map (fun r -> r false) l)
+                         ) ~new_blank_after:false blank1)
 
   let _ = set_grammar paragraphs (
     parser p:paragraph ps:paragraph* ->
@@ -2089,8 +2094,8 @@ let parser directive =
 let extra_structure = directive :: extra_structure
 
 let parser patoline_quotations (_,lvl) =
-  | "<<" par:simple_text     ">>" when lvl = Atom -> par
-  | "<$" mat:math_toplevel "$>" when lvl = Atom -> mat
+  | "<<" par:simple_text     ">>" when lvl <= Atom -> par
+  | "<$" mat:math_toplevel "$>" when lvl <= Atom -> mat
 
 let _ =
   let reserved = ["<<"; ">>"; "<$"; "$>"; "<<$"; "$>>"] in
