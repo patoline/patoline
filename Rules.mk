@@ -112,7 +112,7 @@ EDITORS_DIR := editors
 # Compilers and various tools
 OCAML := ocaml
 OCAMLFIND := ocamlfind
-OCAMLOPT_SIMPLE = ocamlfind ocamlopt -cclib -lpthread
+OCAMLOPT_SIMPLE = ocamlfind ocamlopt
 OCAMLC_SIMPLE = ocamlfind ocamlc
 OCAMLC_NOPP = $(OCAMLC_SIMPLE)
 OCAMLC = $(OCAMLC_SIMPLE) $(if $(OCPP),-pp '$(OCPP)',)

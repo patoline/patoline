@@ -10,18 +10,15 @@ include UTF.Make(
      * Raise invalid_arg if i is not in the unicode range.
      *)
     let encode : uchar -> string = fun u ->
-      let res =
-        if u < 0 || u > 0x10FFFF || (u >= 0xD800 && u <= 0xDFFF) then
-          raise (invalid_arg "UF16.encode")
-        else
-          let s = Bytes.create 4 in
-          Bytes.set s 0 (char_of_int ((u lsr 24) land 0xFF));
-          Bytes.set s 1 (char_of_int ((u lsr 16) land 0xFF));
-          Bytes.set s 2 (char_of_int ((u lsr 8) land 0xFF));
-          Bytes.set s 3 (char_of_int (u land 0xFF));
-          s
-      in
-      Bytes.to_string res
+      if u < 0 || u > 0x10FFFF || (u >= 0xD800 && u <= 0xDFFF) then
+        raise (invalid_arg "UF16.encode")
+      else
+        let s = Bytes.create 4 in
+        Bytes.set s 0 (char_of_int ((u lsr 24) land 0xFF));
+        Bytes.set s 1 (char_of_int ((u lsr 16) land 0xFF));
+        Bytes.set s 2 (char_of_int ((u lsr 8) land 0xFF));
+        Bytes.set s 3 (char_of_int (u land 0xFF));
+        s
 
     (*
      * Decode a UTF32 character at a given position in a string.
