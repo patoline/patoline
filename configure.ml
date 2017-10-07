@@ -38,6 +38,7 @@ let languages =
   let f = open_in "src/Typography/TypoLanguage.ml" in
   let buf = Bytes.create (in_channel_length f) in
   really_input f buf 0 (in_channel_length f);
+  let buf = Bytes.to_string buf in
   close_in f;
   let rec make_str i acc =
     if i > String.length buf - 7 then acc
@@ -717,6 +718,7 @@ let _=
         let buf = Bytes.create custom_meta_len in
         really_input custom_meta_fd buf 0 custom_meta_len;
         close_in custom_meta_fd;
+        let buf = Bytes.to_string buf in
         Printf.fprintf meta "%s\n" buf
       with Sys_error _ ->
         Printf.fprintf meta

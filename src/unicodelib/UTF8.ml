@@ -10,31 +10,34 @@ include UTF.Make(
      * Raise invalid_arg if i is not in the U+0000..U+10FFFF range.
      *)
     let encode : uchar -> string = fun i ->
-      if i < 0 then
-        raise (invalid_arg "UF8.encode")
-      else if i <= 0x7F then
-        String.make 1 (char_of_int i)
-      else if i <= 0x077F then
-        let c0 = char_of_int (((i lsr 6) land 0b00011111) lor 0b11000000) in
-        let c1 = char_of_int ((i         land 0b00111111) lor 0b10000000) in
-        let s = Bytes.create 2 in Bytes.set s 0 c0; Bytes.set s 1 c1; s
-      else if i <= 0xFFFF then
-        let c0 = char_of_int (((i lsr 12) land 0b00001111) lor 0b11100000) in
-        let c1 = char_of_int (((i lsr 6)  land 0b00111111) lor 0b10000000) in
-        let c2 = char_of_int ((i          land 0b00111111) lor 0b10000000) in
-        let s = Bytes.create 3 in
-        Bytes.set s 0 c0; Bytes.set s 1 c1;
-        Bytes.set s 2 c2; s
-      else if i <= 0x10FFFF then
-        let c0 = char_of_int (((i lsr 18) land 0b00000111) lor 0b11110000) in
-        let c1 = char_of_int (((i lsr 12) land 0b00111111) lor 0b10000000) in
-        let c2 = char_of_int (((i lsr 6)  land 0b00111111) lor 0b10000000) in
-        let c3 = char_of_int ((i          land 0b00111111) lor 0b10000000) in
-        let s = Bytes.create 4 in
-        Bytes.set s 0 c0; Bytes.set s 1 c1;
-        Bytes.set s 2 c2; Bytes.set s 3 c3; s
-      else
-        raise (invalid_arg "UTF8.encode")
+      let res =
+        if i < 0 then
+          raise (invalid_arg "UF8.encode")
+        else if i <= 0x7F then
+          Bytes.create 1
+        else if i <= 0x077F then
+          let c0 = char_of_int (((i lsr 6) land 0b00011111) lor 0b11000000) in
+          let c1 = char_of_int ((i         land 0b00111111) lor 0b10000000) in
+          let s = Bytes.create 2 in Bytes.set s 0 c0; Bytes.set s 1 c1; s
+        else if i <= 0xFFFF then
+          let c0 = char_of_int (((i lsr 12) land 0b00001111) lor 0b11100000) in
+          let c1 = char_of_int (((i lsr 6)  land 0b00111111) lor 0b10000000) in
+          let c2 = char_of_int ((i          land 0b00111111) lor 0b10000000) in
+          let s = Bytes.create 3 in
+          Bytes.set s 0 c0; Bytes.set s 1 c1;
+          Bytes.set s 2 c2; s
+        else if i <= 0x10FFFF then
+          let c0 = char_of_int (((i lsr 18) land 0b00000111) lor 0b11110000) in
+          let c1 = char_of_int (((i lsr 12) land 0b00111111) lor 0b10000000) in
+          let c2 = char_of_int (((i lsr 6)  land 0b00111111) lor 0b10000000) in
+          let c3 = char_of_int ((i          land 0b00111111) lor 0b10000000) in
+          let s = Bytes.create 4 in
+          Bytes.set s 0 c0; Bytes.set s 1 c1;
+          Bytes.set s 2 c2; Bytes.set s 3 c3; s
+        else
+          raise (invalid_arg "UTF8.encode")
+      in
+      Bytes.to_string res
 
     (*
      * Decode a UTF8 character at a given position in a string.

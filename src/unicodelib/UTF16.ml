@@ -10,23 +10,26 @@ include UTF.Make(
      * Raise invalid_arg if i is not in the U+0000..U+10FFFF range.
      *)
     let encode : uchar -> string = fun u ->
-      if u < 0 || u > 0x10FFFF then
-        raise (invalid_arg "UF16.encode")
-      else if u < 0x10000 then
-        let s = Bytes.create 2 in
-        Bytes.set s 0 (char_of_int ((u lsr 8) land 0xFF));
-        Bytes.set s 1 (char_of_int (u land 0xFF));
-        s
-      else
-        let u' = u - 0x10000 in
-        let w1 = ((u' lsr 10) land 0b1111111111) lor 0xD800 in
-        let w2 = (u' land 0b1111111111) lor 0xDC00 in
-        let s = Bytes.create 4 in
-        Bytes.set s 0 (char_of_int ((w1 lsr 8) land 0xFF));
-        Bytes.set s 1 (char_of_int (w1 land 0xFF));
-        Bytes.set s 2 (char_of_int ((w2 lsr 8) land 0xFF));
-        Bytes.set s 3 (char_of_int (w2 land 0xFF));
-        s
+      let res =
+        if u < 0 || u > 0x10FFFF then
+          raise (invalid_arg "UF16.encode")
+        else if u < 0x10000 then
+          let s = Bytes.create 2 in
+          Bytes.set s 0 (char_of_int ((u lsr 8) land 0xFF));
+          Bytes.set s 1 (char_of_int (u land 0xFF));
+          s
+        else
+          let u' = u - 0x10000 in
+          let w1 = ((u' lsr 10) land 0b1111111111) lor 0xD800 in
+          let w2 = (u' land 0b1111111111) lor 0xDC00 in
+          let s = Bytes.create 4 in
+          Bytes.set s 0 (char_of_int ((w1 lsr 8) land 0xFF));
+          Bytes.set s 1 (char_of_int (w1 land 0xFF));
+          Bytes.set s 2 (char_of_int ((w2 lsr 8) land 0xFF));
+          Bytes.set s 3 (char_of_int (w2 land 0xFF));
+          s
+      in
+      Bytes.to_string res
 
     (*
      * Decode a UTF16 character at a given position in a string.

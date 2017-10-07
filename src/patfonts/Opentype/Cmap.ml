@@ -40,29 +40,30 @@ let write_cmap_table cmap format lang file=
          premier octet, puis à préparer les structures pour réutiliser
          des rangs *)
       let firstCode=Bytes.create 256 in
-      let entryCount=String.make 256 (char_of_int 0) in
+      let entryCount=Bytes.make 256 (char_of_int 0) in
       let idDelta=Array.make 256 0 in
       let arr=Array.init 256 (fun _->Rbuffer.create 0) in
-      let last=String.make 256 (char_of_int 0) in
+      let last=Bytes.make 256 (char_of_int 0) in
       let sh_length=ref 0 in            (* Longueur des subHeaders *)
       let ga_length=ref 0 in            (* Longueur du glyphIndexArray *)
 
       IntMap.fold (fun k a _->
         if k<=0xffff && a<=0xffff then (
           let i=k lsr 8 in
-          (if int_of_char (entryCount.[i])=0 then (
+          (if int_of_char (Bytes.get entryCount i)=0 then (
             Bytes.set firstCode i (char_of_int (k land 0xff));
             idDelta.(i)<-a;
             sh_length:= !sh_length+8
            ));
-          for j=int_of_char last.[i]+1 to (k land 0xff)-1 do
+          for j=int_of_char (Bytes.get last i)+1 to (k land 0xff)-1 do
             Rbuffer.add_char arr.(i) (char_of_int 0);
             Rbuffer.add_char arr.(i) (char_of_int 0);
             ga_length:= !ga_length+2
           done;
           Bytes.set last i (char_of_int (k land 0xff));
 
-          Bytes.set entryCount i (char_of_int ((k land 0xff) - int_of_char firstCode.[i] + 1));
+          Bytes.set entryCount i (char_of_int ((k land 0xff) -
+                                                 int_of_char (Bytes.get firstCode i) + 1));
           let x=a-idDelta.(i) in
           Rbuffer.add_char arr.(i) (char_of_int (x lsr 8));
           Rbuffer.add_char arr.(i) (char_of_int (x land 0xff));
@@ -104,10 +105,10 @@ let write_cmap_table cmap format lang file=
           let idRangeOffset= (!sh_length - (Rbuffer.length subHeaders+8)) + idRangeOffset_ in
           (* firstCode *)
           Rbuffer.add_char subHeaders (char_of_int 0);
-          Rbuffer.add_char subHeaders (firstCode.[i]);
+          Rbuffer.add_char subHeaders (Bytes.get firstCode i);
           (* entryCount *)
           Rbuffer.add_char subHeaders (char_of_int 0);
-          Rbuffer.add_char subHeaders (entryCount.[i]);
+          Rbuffer.add_char subHeaders (Bytes.get entryCount i);
           (* idDelta *)
           Rbuffer.add_char subHeaders (char_of_int (idDelta.(i) lsr 8));
           Rbuffer.add_char subHeaders (char_of_int (idDelta.(i) land 0xff));

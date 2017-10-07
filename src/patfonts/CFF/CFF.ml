@@ -142,7 +142,7 @@ let index f idx_off=
 
 let strIndex f idx_off=
   let off=index f idx_off in
-  let str=Array.make (Array.length off-1) "" in
+  let str=Array.make (Array.length off-1) (Bytes.create 0) in
     for i=0 to Array.length off-2 do
       seek_in f (off.(i));
       str.(i)<-Bytes.create (off.(i+1)-off.(i));
@@ -162,7 +162,7 @@ let indexGet f idx_off idx=
          let buf=Bytes.create (off1-off0) in
            seek_in f (idx_off+2+(count+1)*idx_offSize+off0);
            really_input f buf 0 (off1-off0);
-           buf
+           Bytes.to_string buf
       )
 let readDict f a b=
   let rec dict' stack l=
@@ -210,21 +210,21 @@ let readEncoding f off=
     let nCodes=input_byte f in
     let buf=Bytes.create (2+nCodes) in
       seek_in f off;
-      really_input f buf 0 (String.length buf);
+      really_input f buf 0 (Bytes.length buf);
       buf
   ) else (
     let nCodes=input_byte f in
     let buf=Bytes.create (2+2*nCodes) in
       seek_in f off;
-      really_input f buf 0 (String.length buf);
+      really_input f buf 0 (Bytes.length buf);
       buf
   )
   in
   let supl=
     let nSups=input_byte f in
     let buf=Bytes.create (1+3*nSups) in
-      seek_in f (off+String.length enc);
-      really_input f buf 0 (String.length buf);
+      seek_in f (off+Bytes.length enc);
+      really_input f buf 0 (Bytes.length buf);
       buf
   in
     enc,supl
@@ -296,7 +296,7 @@ let loadFont ?offset:(off=0) ?size:(size=None) file=
             offset::size::_->(
               try
                 let subrsOffset=int_of_num (List.hd (findDict f (off+int_of_num offset) (off+int_of_num offset+int_of_num size) 19)) in
-                subrs.(idx) <- strIndex f (off+int_of_num offset+subrsOffset);
+                subrs.(idx) <- Array.map Bytes.to_string (strIndex f (off+int_of_num offset+subrsOffset));
               with
                   Not_found -> ()
             )
@@ -311,8 +311,9 @@ let loadFont ?offset:(off=0) ?size:(size=None) file=
     let gsubr=Array.make (Array.length offIndex-1) "" in
     for i=0 to Array.length gsubr-1 do
       seek_in f (offIndex.(i));
-      gsubr.(i)<-Bytes.create (offIndex.(i+1)-offIndex.(i));
-      really_input f gsubr.(i) 0 (offIndex.(i+1)-offIndex.(i))
+      let buf = Bytes.create (offIndex.(i+1)-offIndex.(i)) in
+      really_input f buf 0 (offIndex.(i+1)-offIndex.(i));
+      gsubr.(i)<-Bytes.to_string buf
     done;
     gsubr
   in
@@ -433,7 +434,7 @@ let fontName ?index:(idx=0) font=
       let b=Bytes.create (off1-off0) in
       seek_in f off0;
       really_input f b 0 (off1-off0);
-      b
+      Bytes.to_string b
     )
   in
   (* family name *)
@@ -441,7 +442,7 @@ let fontName ?index:(idx=0) font=
   let full_name=retrieve_name 2 in
   let subfamily_name=retrieve_name 4 in
   {
-    postscript_name=buf;
+    postscript_name=Bytes.to_string buf;
     full_name=full_name;
     family_name=family_name;
     subfamily_name=subfamily_name
@@ -461,7 +462,7 @@ let glyphName glyph=
     let b=Bytes.create (off1-off0) in
     seek_in f off0;
     really_input f b 0 (off1-off0);
-    b
+    Bytes.to_string b
   )
 
 let fontBBox ?index:(idx=0) font=
@@ -678,10 +679,11 @@ let readIndex f idx_off=
     for i=1 to count do
       seek_in f (idx_off+3+i*idx_offSize);
       let idx=readInt f idx_offSize in
-        idx_arr.(i-1)<-Bytes.create (idx - !last_idx);
+        let buf = Bytes.create (idx - !last_idx) in
         seek_in f (idx_off+2+(count+1)*idx_offSize+ !last_idx);
-        really_input f (idx_arr.(i-1)) 0 (idx - !last_idx);
+        really_input f buf 0 (idx - !last_idx);
         last_idx:=idx;
+        idx_arr.(i-1)<-Bytes.to_string buf;
     done;
     idx_arr
 
@@ -700,15 +702,15 @@ let copyIndex f=
       seek_in f idx_off;
       let buf=Bytes.create 2 in
         really_input f buf 0 2;
-        buf
+        Bytes.to_string buf
     ) else (
       let idx_offSize=input_byte f in
         seek_in f (idx_off+3+count*idx_offSize);
         let off=readInt f idx_offSize in
         let buf=Bytes.create (2+(count+1)*idx_offSize+off) in
           seek_in f idx_off;
-          really_input f buf 0 (String.length buf);
-          buf
+          really_input f buf 0 (Bytes.length buf);
+          Bytes.to_string buf
     )
 
 type fontInfo={
@@ -1087,8 +1089,8 @@ let subset(* _encoded *) font info cmap gls=
   let name=
     let buf_=Bytes.create (font.nameIndex.(1)-font.nameIndex.(0)) in
     seek_in f (font.nameIndex.(0));
-    really_input f buf_ 0 (String.length buf_);
-    buf_
+    really_input f buf_ 0 (Bytes.length buf_);
+    Bytes.to_string buf_
   in
   writeIndex buf [|name|];
 
@@ -1126,7 +1128,7 @@ let subset(* _encoded *) font info cmap gls=
                 let s=Bytes.create (s1-s0) in
                 seek_in f s0;
                 really_input f s 0 (s1-s0);
-                let sid=getSid s in
+                let sid=getSid (Bytes.to_string s) in
                 (CFFInt sid)
               with
                   _->(CFFInt 0))
@@ -1150,13 +1152,13 @@ let subset(* _encoded *) font info cmap gls=
       if a<0x100 then m+1 else m
     ) cmap 0
     in
-    let enc=String.make (size+2) (char_of_int 0) in
+    let enc=Bytes.make (size+2) (char_of_int 0) in
     Bytes.set enc 0 (char_of_int 0);
     Bytes.set enc 1 (char_of_int size);
     IntMap.iter (fun k a->
       if a<0x100 && a>0 then Bytes.set enc (1+a) (char_of_int k)
     ) cmap;
-    enc
+    Bytes.to_string enc
   in
   let charset=
     let reverseEncoding=
@@ -1167,7 +1169,7 @@ let subset(* _encoded *) font info cmap gls=
          Voir la page
          http://www.adobe.com/devnet/opentype/archives/glyph.html
          pour savoir comment on les nomme. *)
-      let str=String.make (2*Array.length gls-1) (char_of_int 0) in
+      let str=Bytes.make (2*Array.length gls-1) (char_of_int 0) in
       (*let glbuf=Buffer.create 64 in*)
       let altmap=ref StrMap.empty in
       let names=Array.make (Array.length gls) "" in
@@ -1225,7 +1227,7 @@ let subset(* _encoded *) font info cmap gls=
         Bytes.set str (2*i-1) (char_of_int (num lsr 8));
         Bytes.set str (2*i) (char_of_int (num land 0xff))
       done;
-      str
+      Bytes.to_string str
     with
         Not_found -> String.make (2*Array.length gls-1) (char_of_int 0)
   in

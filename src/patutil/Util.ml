@@ -36,15 +36,19 @@ let readInt f n0=
   in
     readInt_ 0 0
 
-let buf="    "
+let buf=Bytes.create 4
 
 let readInt2 f=
   really_input f buf 0 2;
-  let d=((int_of_char buf.[0]) lsl 8) lor (int_of_char buf.[1]) in
-    d
+  let d=((int_of_char (Bytes.get buf 0)) lsl 8) lor
+          (int_of_char (Bytes.get buf 1))
+  in
+  d
+
 let sreadInt2 f=
   really_input f buf 0 2;
-  let d=((int_of_char buf.[0]) lsl 8) lor (int_of_char buf.[1]) in
+  let d=((int_of_char (Bytes.get buf 0)) lsl 8) lor
+          (int_of_char (Bytes.get buf 1)) in
   if d>=0x8000 then d-0x10000 else d
 
 let strInt2 s i x=
@@ -84,15 +88,15 @@ let strInt4_int=strInt4
 
 #endif
 
-let buf2="  "
+let buf2=Bytes.create 2
 let writeInt2 f x=
   strInt2 buf2 0 x;
-  output_string f buf2
+  output_bytes f buf2
 
-let buf4="    "
+let buf4=Bytes.create 4
 let writeInt4 f x=
   strInt4 buf4 0 x;
-  output_string f buf4
+  output_bytes f buf4
 
 
 let bufInt1 b x=
@@ -156,10 +160,10 @@ let readInt4_int f=
 #else
 let readInt4 f=
   really_input f buf 0 4;
-  let a=(int_of_char buf.[0]) lsl 8 in
-  let b=(a lor (int_of_char buf.[1])) lsl 8 in
-  let c=(b lor (int_of_char buf.[2])) lsl 8 in
-  let d=c lor (int_of_char buf.[3]) in
+  let a=(int_of_char (Bytes.get buf 0)) lsl 8 in
+  let b=(a lor (int_of_char (Bytes.get buf 1))) lsl 8 in
+  let c=(b lor (int_of_char (Bytes.get buf 2))) lsl 8 in
+  let d=c lor (int_of_char (Bytes.get buf 3)) in
     d
 let readInt4_int=readInt4
 #endif
@@ -285,7 +289,7 @@ let copy_file a b=
   let fb=open_out b in
   let s=Bytes.create 1000 in
   let rec copy ()=
-    let x=input fa s 0 (String.length s) in
+    let x=input fa s 0 (Bytes.length s) in
     if x>0 then (
       output fb s 0 x;
       copy ()
@@ -402,10 +406,10 @@ let base64_encode s0=
     )
   in
   encode 0;
-  let str=Buffer.contents buf in
-  if m>=1 then Bytes.set str (String.length str-1) '=';
-  if m=1  then Bytes.set str (String.length str-2) '=';
-  str
+  let str=Bytes.of_string (Buffer.contents buf) in
+  if m>=1 then Bytes.set str (Bytes.length str-1) '=';
+  if m=1  then Bytes.set str (Bytes.length str-2) '=';
+  Bytes.to_string str
 
 (* A type needed both by Db and RawContent *)
 type visibility = Private | Group | Public
