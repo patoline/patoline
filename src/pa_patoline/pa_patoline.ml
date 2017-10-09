@@ -903,7 +903,7 @@ let no_brace =
 
 let parser br_string =
   | EMPTY -> ""
-  | s1:br_string s2:''[^{}]*'' -> s1^s2
+  | s1:br_string s2:''[^{}]+'' -> s1^s2
   | s1:br_string '{' s2:br_string '}' -> s1 ^ "{" ^ s2 ^ "}"
   | s1:br_string '\n' -> s1 ^ "\n"
 
