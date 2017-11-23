@@ -20,11 +20,9 @@
 #define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
 #include <OpenGL/glext.h>
 #else
 #include <GL/gl.h>
-#include <GL/glu.h>
 #include <GL/glext.h>
 #endif
 
@@ -58,8 +56,17 @@ void testGL(char* msg) {
 
   while((errCode = glGetError()) != GL_NO_ERROR)
     {
-      errString = gluErrorString(errCode);
-      fprintf(stderr,"GL_ERROR: %s in %s\n", errString, msg);
+      char* err;
+      switch (errCode) {
+	case GL_INVALID_ENUM:      err = "Invalid enum"; break;
+	case GL_INVALID_VALUE:     err = "Invalid value"; break;
+	case GL_INVALID_OPERATION: err = "Invalid operation"; break;
+	case GL_STACK_OVERFLOW:    err = "Stack overflow"; break;
+	case GL_STACK_UNDERFLOW:   err = "Stack underflow"; break;
+	case GL_OUT_OF_MEMORY:     err = "Out of memory"; break;
+	default:                   err = "Unknown GL error";
+      }
+      fprintf(stderr,"GL_ERROR: %s in %s\n", err, msg);
     }
 
 }
