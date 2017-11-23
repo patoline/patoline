@@ -37,6 +37,7 @@ module TOC = TableOfContents
 let findFont = ConfigFindFont.findFont
 
 let sprint_page_number = ref string_of_int
+let page_number_vpos   = ref 30.0
 let max_iterations     = ref patoconfig.max_iter
 let quiet = ref false
 
@@ -1596,7 +1597,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
             let num=boxify_scoped defaultEnv [tT (!sprint_page_number (i+1))] in
             let _,w,_=boxes_interval (Array.of_list num) in
             page.contents<-
-                List.map (translate ((fst page.size-.w)/.2.) 30.)
+                List.map (translate ((fst page.size-.w)/.2.) !page_number_vpos)
               (draw_boxes env num)
             @page.contents;
 
