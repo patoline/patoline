@@ -257,7 +257,7 @@ let local_packages =
   ; { package_name = "proof"
     ; macro_suffix = "PROOF"
     ; local_deps   = ["rawlib"] (* Pdf Driver added by hand *)
-    ; extern_deps  = ["bytes"]
+    ; extern_deps  = ["bytes";"zip"]
     ; subdirs      = []
     ; has_meta     = false }
 
@@ -603,7 +603,7 @@ let _=
     let h x = if x = "" then "" else "-package " ^ x in
     Printf.fprintf make "PACK_%s := %s %s\n"
       macro (h
-      (String.concat "," (gen_pack_line (f (packages_local local) @ f extern))))
+      (String.concat "," (gen_pack_line (f extern @ f (packages_local local)))))
       (includes_local name))
     local_packages;
 
