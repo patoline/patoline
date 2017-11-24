@@ -1505,7 +1505,7 @@ let parser math_aux prio =
      (fun indices ->
        let l = print_math_symbol _loc_l (MultiSym l.delimiter_values) in
        let r = print_math_symbol _loc_r (MultiSym r.delimiter_values) in
-       print_math_deco _loc <:expr<[Maths.Decoration ((Maths.open_close $l$ $r$), $m no_ind$)]>> indices)
+       print_math_deco _loc (<:expr<[Maths.Decoration ((Maths.open_close $l$ $r$), $m no_ind$)]>>) indices)
 
   | name:''[a-zA-Z][a-zA-Z0-9]*'' when prio = AtomM ->
      (fun indices ->
@@ -1529,8 +1529,8 @@ let parser math_aux prio =
      (fun indices ->
        let m = real_name _loc id config in
        (* TODO special macro properties to be handled. *)
-       let apply acc arg = <:expr<$acc$ $arg$>> in
-       let e = List.fold_left apply <:expr<$m$>> args in
+       let apply acc arg = <:expr<$acc$ $arg$ >> in
+       let e = List.fold_left apply <:expr<$m$ >> args in
        print_math_deco _loc_id e indices
      )
   | m:(math_aux Accent) sym:math_combining_symbol when prio = Accent ->
