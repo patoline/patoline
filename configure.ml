@@ -34,17 +34,18 @@ let get_config name default =
   with _ -> default
 
 (* List of supported languages. *)
-let languages =
-  let f = open_in "src/Typography/TypoLanguage.ml" in
-  let buf = Bytes.create (in_channel_length f) in
-  really_input f buf 0 (in_channel_length f);
-  close_in f;
-  let rec make_str i acc =
-    if i > String.length buf - 7 then acc
-    else if String.sub buf i 5 = "LANG_" then
-      make_str (i+7) (String.sub buf (i+5) 2 :: acc)
-    else make_str (i+1) acc
-  in make_str 0 []
+let languages : string list =
+  let languages = ref [] in
+  let find line =
+    for i = 0 to String.length line - 7 do
+      if String.sub line i 5 = "LANG_" then
+        languages := String.sub line (i+5) 2 :: !languages
+    done
+  in
+  let ic = open_in "src/Typography/TypoLanguage.ml" in
+  try while true do find (input_line ic) done; [] with End_of_file ->
+  close_in ic;
+  List.sort_uniq String.compare !languages
 
 (* Default configurations. *)
 let default_prefix   = get_config "prefix"   "/usr/local"
@@ -717,7 +718,7 @@ let _=
         let buf = Bytes.create custom_meta_len in
         really_input custom_meta_fd buf 0 custom_meta_len;
         close_in custom_meta_fd;
-        Printf.fprintf meta "%s\n" buf
+        Printf.fprintf meta "%s\n" (Bytes.to_string buf)
       with Sys_error _ ->
         Printf.fprintf meta
           "package \"%s\" (\nrequires=\"rawlib,Typography\"\narchive(native)=\"%s\"\narchive(byte)=\"%s\"\n)\n"

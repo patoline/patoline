@@ -18,7 +18,7 @@ include UTF.Make(
         Bytes.set s 1 (char_of_int ((u lsr 16) land 0xFF));
         Bytes.set s 2 (char_of_int ((u lsr 8) land 0xFF));
         Bytes.set s 3 (char_of_int (u land 0xFF));
-        s
+        Bytes.to_string s
 
     (*
      * Decode a UTF32 character at a given position in a string.
