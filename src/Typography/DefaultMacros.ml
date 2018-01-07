@@ -108,6 +108,29 @@ let oline a=
           }]
   ))]
 
+let odiag a=
+  [Maths.Ordinary
+     (Maths.node
+        (fun envs st->
+          let dr=draw_boxes envs (Maths.draw [envs] a) in
+          let env=Maths.env_style envs.mathsEnvironment st in
+          let (x0,y0,x1,y1)=RawContent.bounding_box_full dr in
+          let drawn=(drawing ~offset:y0 dr) in
+          let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
+          [Drawing {
+               drawn with
+               drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
+               drawing_contents=
+                 (fun w->
+                   RawContent.Path ({RawContent.default_path_param with
+                                      RawContent.fillColor=Some envs.fontColor;
+                                      RawContent.strokingColor=Some envs.fontColor;
+                                      RawContent.lineWidth=rul},
+                                    [[|[|x0;x1|],[|y0;y1|]|]])
+                   ::drawn.drawing_contents w)
+          }]
+  ))]
+
 let mnot a=
   [Maths.Ordinary
      (Maths.node
