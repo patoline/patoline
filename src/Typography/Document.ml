@@ -420,13 +420,13 @@ let uB f = C(fun _->env_accessed:=true;[bB f])
 let tT f = T(f,ref None)
 let uT f = C(fun _->env_accessed:=true;[tT f])
 let string_of_contents l =
-  let buf=Rbuffer.create 1000 in
+  let buf=Buffer.create 1000 in
   let rec fill_buf t=match t with
       T (str,_)::s->(
-        if Rbuffer.length buf>0 then (
-          Rbuffer.add_string buf " ";
+        if Buffer.length buf>0 then (
+          Buffer.add_string buf " ";
         );
-        Rbuffer.add_string buf str;
+        Buffer.add_string buf str;
         fill_buf s
       )
     (* | C f::s->( *)
@@ -437,7 +437,7 @@ let string_of_contents l =
     | []->()
   in
   fill_buf l;
-  Rbuffer.contents buf
+  Buffer.contents buf
 
 let _names env=
   env.names

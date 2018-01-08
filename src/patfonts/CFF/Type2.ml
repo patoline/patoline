@@ -481,7 +481,7 @@ let outlines_ subrs gsubrs gl onlyWidth=
 
 
 let rec unsubr subrs gsubrs gl=
-  let buf=Rbuffer.create 1000 in
+  let buf=Buffer.create 1000 in
   let changed=ref false in
   (*  Random.init (int_of_char gl.type2.[0]);*)
   let rstack=ref (Array.make 48 0.) in
@@ -551,17 +551,17 @@ let rec unsubr subrs gsubrs gl=
             RMOVETO->
               (moveto (!x +. (!rstack).(!stackC-2)) (!y +. (!rstack).(!stackC-1));
                stackC:=0;
-               Rbuffer.add_char buf op;
+               Buffer.add_char buf op;
                incr pc)
           | HMOVETO->
               (moveto (!x +. (!rstack).(!stackC-1)) !y;
                stackC:=0;
-               Rbuffer.add_char buf op;
+               Buffer.add_char buf op;
                incr pc)
           | VMOVETO->
               (moveto !x (!y +. (!rstack).(!stackC-1));
                stackC:=0;
-               Rbuffer.add_char buf op;
+               Buffer.add_char buf op;
                incr pc)
           | RLINETO->
               (let c=ref 0 in
@@ -570,10 +570,10 @@ let rec unsubr subrs gsubrs gl=
                    c:= !c+2
                  done;
                  stackC:=0;
-                 Rbuffer.add_char buf op;
+                 Buffer.add_char buf op;
                  incr pc)
-          | HLINETO->(hlineto 0;Rbuffer.add_char buf op;incr pc)
-          | VLINETO->(vlineto 0;Rbuffer.add_char buf op;incr pc)
+          | HLINETO->(hlineto 0;Buffer.add_char buf op;incr pc)
+          | VLINETO->(vlineto 0;Buffer.add_char buf op;incr pc)
           | RRCURVETO->
               (let c=ref 0 in
                  while !c <= !stackC-6 do
@@ -587,10 +587,10 @@ let rec unsubr subrs gsubrs gl=
                      c:= !c+6
                  done;
                  stackC:=0;
-                 Rbuffer.add_char buf op;
+                 Buffer.add_char buf op;
                  incr pc)
-          | VHCURVETO->(vhcurveto 0; Rbuffer.add_char buf op;incr pc)
-          | HVCURVETO->(hvcurveto 0; Rbuffer.add_char buf op;incr pc)
+          | VHCURVETO->(vhcurveto 0; Buffer.add_char buf op;incr pc)
+          | HVCURVETO->(hvcurveto 0; Buffer.add_char buf op;incr pc)
           | HHCURVETO->
               (let c=ref 0 in
                let dy1=if (!stackC) land 1 = 1 then (incr c; (!rstack).(0)) else 0. in
@@ -605,7 +605,7 @@ let rec unsubr subrs gsubrs gl=
                      c:= !c+4
                  done;
                  stackC:=0;
-                 Rbuffer.add_char buf op;
+                 Buffer.add_char buf op;
                  incr pc)
           | VVCURVETO->
               (let c=ref 0 in
@@ -621,7 +621,7 @@ let rec unsubr subrs gsubrs gl=
                      c:= !c+4
                  done;
                  stackC:=0;
-                 Rbuffer.add_char buf op;
+                 Buffer.add_char buf op;
                  incr pc)
           | RCURVELINE->
               (let c=ref 0 in
@@ -637,7 +637,7 @@ let rec unsubr subrs gsubrs gl=
                  done;
                  lineto (!x +. (!rstack).(!c)) (!y +. (!rstack).(!c+1));
                  stackC:=0;
-                 Rbuffer.add_char buf op;
+                 Buffer.add_char buf op;
                  incr pc)
           | RLINECURVE->
               (let c=ref 0 in
@@ -653,25 +653,25 @@ let rec unsubr subrs gsubrs gl=
                  let y3=y2 +. (!rstack).(!c+5) in
                    curveto x1 y1 x2 y2 x3 y3;
                    stackC:=0;
-                   Rbuffer.add_char buf op;
+                   Buffer.add_char buf op;
                    incr pc)
           | HSTEM | VSTEM | HSTEMHM
           | VSTEMHM->(
               hints := !hints + !stackC / 2 ;
-            Rbuffer.add_char buf op;
+            Buffer.add_char buf op;
               stackC:=0 ; incr pc
             )
           | HINTMASK | CNTRMASK ->(
               hints:= !hints+ !stackC/2;
-            Rbuffer.add_char buf op;
+            Buffer.add_char buf op;
               stackC:=0 ; pc := !pc + 1 + (if !hints land 7=0 then (!hints/8) else (!hints/8+1))
             )
           | ENDCHAR->
               (if !opened && (!x <> !x0 || !y <> !y0) then lineto !x0 !y0;
                match !resultat with []::s -> resultat:=s | _->();
-                 Rbuffer.add_char buf op;
+                 Buffer.add_char buf op;
                pc:=String.length program)
-          | RETURN->(Rbuffer.add_char buf op;pc:=String.length program)
+          | RETURN->(Buffer.add_char buf op;pc:=String.length program)
           | CALLSUBR->
               (let subrBias=
                  if Array.length subrs < 1240 then 107 else
@@ -680,8 +680,8 @@ let rec unsubr subrs gsubrs gl=
                let subr=((subrBias + (int_of_float (pop ())))) in
                changed:=true;
                Printf.fprintf stderr "unsubring %d %d\n" subr (Array.length subrs);flush stderr;
-               Rbuffer.add_char buf (char_of_int DROP);
-               Rbuffer.add_string buf subrs.(subr);
+               Buffer.add_char buf (char_of_int DROP);
+               Buffer.add_string buf subrs.(subr);
                  (* execute subrs.(subr); *)
                incr pc)
           | SHORTINT->
@@ -689,7 +689,7 @@ let rec unsubr subrs gsubrs gl=
                let b=int_of_char (program.[!pc+2]) in
                  stWrite (!stackC) (float_of_int ((((a land 0x7f) lsl 8) lor b) - (if a>=128 then 1 lsl 15 else 0)));
                incr stackC;
-               Rbuffer.add_char buf op;
+               Buffer.add_char buf op;
                pc:= !pc+3)
           | CALLGSUBR->
               (let gsubrBias=
@@ -697,12 +697,12 @@ let rec unsubr subrs gsubrs gl=
                    if Array.length gsubrs < 33900 then 1131 else 32768
                in
                execute (gsubrs.(gsubrBias + (int_of_float (pop ()))));
-               Rbuffer.add_char buf op;
+               Buffer.add_char buf op;
                incr pc)
           | ESCAPE->
               (let op2= (program.[!pc+1]) in
-               Rbuffer.add_char buf op;
-               Rbuffer.add_char buf op2;
+               Buffer.add_char buf op;
+               Buffer.add_char buf op2;
                  match int_of_char op2 with
                     FLEX->
                       (if !stackC>=12 then
@@ -869,5 +869,5 @@ let rec unsubr subrs gsubrs gl=
       done
   in
   execute gl;
-  if !changed then unsubr subrs gsubrs (Rbuffer.contents buf) else
-    (Rbuffer.contents buf)
+  if !changed then unsubr subrs gsubrs (Buffer.contents buf) else
+    (Buffer.contents buf)

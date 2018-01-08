@@ -25,7 +25,7 @@ $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ml $(TYPOGRAPHY_CMXA)
 	$(Q)$(OCAMLOPT_SIMPLE) $(PACK_FORMAT) -c -o $@ $<
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.ml $(d)/DefaultGrammar.cmx \
-                         $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa \
+                         $(UTIL_DIR)/patutil.cmxa \
                          $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
                          $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa
 	$(ECHO) "[OPT] $@"

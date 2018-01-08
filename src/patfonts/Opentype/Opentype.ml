@@ -1661,8 +1661,8 @@ let fontInfo font=
 
 let rec checksum32 x=
   let cs=ref 0l in
-  for i=0 to Rbuffer.length x-1 do
-    cs:=Int32.add !cs (Int32.of_int (int_of_char (Rbuffer.nth x i)))
+  for i=0 to Buffer.length x-1 do
+    cs:=Int32.add !cs (Int32.of_int (int_of_char (Buffer.nth x i)))
   done;
   !cs
 let rec str_checksum32 x=
@@ -1680,11 +1680,11 @@ let rec str_checksum32 x=
 let rec buf_checksum32 x=
   let cs=ref 0l in
   let i=ref 0 in
-  while !i<Rbuffer.length x do
-    let a=Int32.of_int (int_of_char (Rbuffer.nth x !i)) in
-    let b=if !i+1<Rbuffer.length x then Int32.of_int (int_of_char (Rbuffer.nth x (!i+1))) else 0l in
-    let c=if !i+2<Rbuffer.length x then Int32.of_int (int_of_char (Rbuffer.nth x (!i+2))) else 0l in
-    let d=if !i+3<Rbuffer.length x then Int32.of_int (int_of_char (Rbuffer.nth x (!i+3))) else 0l in
+  while !i<Buffer.length x do
+    let a=Int32.of_int (int_of_char (Buffer.nth x !i)) in
+    let b=if !i+1<Buffer.length x then Int32.of_int (int_of_char (Buffer.nth x (!i+1))) else 0l in
+    let c=if !i+2<Buffer.length x then Int32.of_int (int_of_char (Buffer.nth x (!i+2))) else 0l in
+    let d=if !i+3<Buffer.length x then Int32.of_int (int_of_char (Buffer.nth x (!i+3))) else 0l in
     cs:=Int32.add !cs (Int32.logor (Int32.shift_left (Int32.logor (Int32.shift_left (Int32.logor (Int32.shift_left a 8) b) 8) c) 8) d);
     i:= !i+4
   done;
@@ -1697,8 +1697,8 @@ let total_checksum a b c=
 
 let rec checksum32 x=
   let cs=ref 0 in
-  for i=0 to Rbuffer.length x-1 do
-    cs:= (!cs+int_of_char (Rbuffer.nth x i)) land 0xffffffff
+  for i=0 to Buffer.length x-1 do
+    cs:= (!cs+int_of_char (Buffer.nth x i)) land 0xffffffff
   done;
   !cs
 let rec str_checksum32 x=
@@ -1716,11 +1716,11 @@ let rec str_checksum32 x=
 let rec buf_checksum32 x=
   let cs=ref 0 in
   let i=ref 0 in
-  while !i<Rbuffer.length x do
-    let a=int_of_char (Rbuffer.nth x !i) in
-    let b=if !i+1<Rbuffer.length x then int_of_char (Rbuffer.nth x (!i+1)) else 0 in
-    let c=if !i+2<Rbuffer.length x then int_of_char (Rbuffer.nth x (!i+2)) else 0 in
-    let d=if !i+3<Rbuffer.length x then int_of_char (Rbuffer.nth x (!i+3)) else 0 in
+  while !i<Buffer.length x do
+    let a=int_of_char (Buffer.nth x !i) in
+    let b=if !i+1<Buffer.length x then int_of_char (Buffer.nth x (!i+1)) else 0 in
+    let c=if !i+2<Buffer.length x then int_of_char (Buffer.nth x (!i+2)) else 0 in
+    let d=if !i+3<Buffer.length x then int_of_char (Buffer.nth x (!i+3)) else 0 in
     cs:= (!cs+((((((a lsl 8) lor b) lsl 8) lor c) lsl 8) lor d)) land 0xffffffff;
     i:= !i+4
   done;
@@ -1733,28 +1733,28 @@ let total_checksum a b c=
 
 let write_cff fontInfo=
 
-  let buf=Rbuffer.create 256 in
-  Rbuffer.add_string buf fontInfo.fontType;
+  let buf=Buffer.create 256 in
+  Buffer.add_string buf fontInfo.fontType;
   bufInt2 buf (StrMap.cardinal fontInfo.tables);
   let rec searchRange a b k=if a=1 then b lsl 4,k else searchRange (a lsr 1) (b lsl 1) (k+1) in
   let sr,log2=searchRange (StrMap.cardinal fontInfo.tables) 1 0 in
   bufInt2 buf sr;
   bufInt2 buf log2;
   bufInt2 buf ((StrMap.cardinal fontInfo.tables lsl 4) - sr);
-  let buf_tables=Rbuffer.create 256 in
-  let buf_headers=Rbuffer.create 256 in
+  let buf_tables=Buffer.create 256 in
+  let buf_headers=Buffer.create 256 in
   let write_tables checksums=
     StrMap.fold (fun k a _->
       (* Printf.fprintf stderr "writing table %S\n" k; *)
-      while (Rbuffer.length buf_tables) land 3 <> 0 do
-        Rbuffer.add_char buf_tables (char_of_int 0)
+      while (Buffer.length buf_tables) land 3 <> 0 do
+        Buffer.add_char buf_tables (char_of_int 0)
       done;
-      Rbuffer.add_string buf_headers k;
+      Buffer.add_string buf_headers k;
       let cs=StrMap.find k checksums in
       bufInt4 buf_headers cs;
-      bufInt4_int buf_headers (12+16*StrMap.cardinal fontInfo.tables+Rbuffer.length buf_tables);
+      bufInt4_int buf_headers (12+16*StrMap.cardinal fontInfo.tables+Buffer.length buf_tables);
       bufInt4_int buf_headers (String.length a);
-      Rbuffer.add_string buf_tables a
+      Buffer.add_string buf_tables a
     ) fontInfo.tables ()
   in
   (try
@@ -1767,18 +1767,18 @@ let write_cff fontInfo=
        (buf_checksum32 buf_headers)
        (buf_checksum32 buf_tables)
      in
-     Rbuffer.clear buf_tables;
-     Rbuffer.clear buf_headers;
+     Buffer.clear buf_tables;
+     Buffer.clear buf_headers;
      strInt4 buf_head 8 check;
      (* Printf.fprintf stderr "total checksum=%x %x\n" (total_checksum) (Int32.to_int check); *)
      write_tables checksums
    with
        Not_found->failwith "no head table"
   );
-  Rbuffer.add_buffer buf buf_headers;
-  Rbuffer.add_buffer buf buf_tables;
-  while (Rbuffer.length buf) land 3 <> 0 do
-    Rbuffer.add_char buf (char_of_int 0)
+  Buffer.add_buffer buf buf_headers;
+  Buffer.add_buffer buf buf_tables;
+  while (Buffer.length buf) land 3 <> 0 do
+    Buffer.add_char buf (char_of_int 0)
   done;
   buf
 
@@ -1874,9 +1874,9 @@ let make_tables font fontInfo cmap glyphs_idx=
   let r_cmap=ref IntMap.empty in
   (try
      r_cmap:=IntMap.filter (fun _ a->a<Array.length glyphs && a>=0) cmap;
-     let buf=Rbuffer.create 256 in
+     let buf=Buffer.create 256 in
      Cmap.write_cmap ~formats:[4] !r_cmap buf;
-     fontInfo.tables<-StrMap.add "cmap" (Rbuffer.contents buf) fontInfo.tables
+     fontInfo.tables<-StrMap.add "cmap" (Buffer.contents buf) fontInfo.tables
    with
        Not_found->());
   let cmap= !r_cmap in
@@ -2001,10 +2001,10 @@ let make_tables font fontInfo cmap glyphs_idx=
              )
            in
            let strings=get_pascal_string (34+2*Array.length glyphs) IntMap.empty in
-           let buf_post'=Rbuffer.create 256 in
-           Rbuffer.add_string buf_post' (String.sub buf_post 0 32);
+           let buf_post'=Buffer.create 256 in
+           Buffer.add_string buf_post' (String.sub buf_post 0 32);
            bufInt2 buf_post' (Array.length glyphs_idx);
-           let strBuf=Rbuffer.create 256 in
+           let strBuf=Buffer.create 256 in
            let strs=ref 0 in
            for i=0 to Array.length glyphs_idx-1 do
              let idx=getInt2 buf_post (34+2*glyphs_idx.(i).glyph_index) in
@@ -2012,22 +2012,22 @@ let make_tables font fontInfo cmap glyphs_idx=
                let off,len=IntMap.find (idx-258) strings in
                bufInt2 buf_post' (258+ !strs);
                for i=off to off+len do
-                 Rbuffer.add_char strBuf buf_post.[i]
+                 Buffer.add_char strBuf buf_post.[i]
                done;
                incr strs
              )
            done;
-           Rbuffer.add_buffer buf_post' strBuf;
-           fontInfo.tables<-StrMap.add "post" (Rbuffer.contents buf_post') fontInfo.tables
+           Buffer.add_buffer buf_post' strBuf;
+           fontInfo.tables<-StrMap.add "post" (Buffer.contents buf_post') fontInfo.tables
          )
        | 0x25000->(
-          let buf_post'=Rbuffer.create 256 in
-          Rbuffer.add_string buf_post' (String.sub buf_post 0 32);
+          let buf_post'=Buffer.create 256 in
+          Buffer.add_string buf_post' (String.sub buf_post 0 32);
           bufInt2 buf_post' (Array.length glyphs_idx);
           for i=0 to Array.length glyphs_idx-1 do
-            Rbuffer.add_char buf_post' buf_post.[34+glyphs_idx.(i).glyph_index]
+            Buffer.add_char buf_post' buf_post.[34+glyphs_idx.(i).glyph_index]
           done;
-          fontInfo.tables<-StrMap.add "post" (Rbuffer.contents buf_post') fontInfo.tables
+          fontInfo.tables<-StrMap.add "post" (Buffer.contents buf_post') fontInfo.tables
        )
        | _->()
    with
@@ -2109,7 +2109,7 @@ let make_tables font fontInfo cmap glyphs_idx=
                     IntMap.empty
                     glyphs_idx)
         in
-        fontInfo.tables<-StrMap.add "CFF " (Rbuffer.contents cff') fontInfo.tables
+        fontInfo.tables<-StrMap.add "CFF " (Buffer.contents cff') fontInfo.tables
 
   (* truetype *)
     | TTF _->
@@ -2120,8 +2120,8 @@ let make_tables font fontInfo cmap glyphs_idx=
             in
             let buf_loca=StrMap.find "loca" fontInfo_tables in
             let buf_glyf=StrMap.find "glyf" fontInfo_tables in
-            let glyf=Rbuffer.create 256 in
-            let loca=Rbuffer.create 256 in
+            let glyf=Buffer.create 256 in
+            let loca=Buffer.create 256 in
 
             let revGlyphMap=Array.make (IntMap.cardinal glyphMap) 0 in
             IntMap.iter (fun old_index gl->revGlyphMap.(gl)<-old_index) glyphMap;
@@ -2139,7 +2139,7 @@ let make_tables font fontInfo cmap glyphs_idx=
                   else
                     getInt4 buf_loca (4*old_index+4)
               in
-              if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2) else bufInt4_int loca (Rbuffer.length glyf);
+              if locformat=0 then bufInt2 loca (Buffer.length glyf/2) else bufInt4_int loca (Buffer.length glyf);
               let str=String.sub buf_glyf off0 (off1-off0) in
               if String.length str>0 then (
                 let numberOfContours=sgetInt2 str 0 in
@@ -2160,12 +2160,12 @@ let make_tables font fontInfo cmap glyphs_idx=
                   in
                   replace_glyphs 10
                 ));
-              Rbuffer.add_string glyf str
+              Buffer.add_string glyf str
             done;
 
-            if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2) else bufInt4_int loca (Rbuffer.length glyf);
-            fontInfo.tables<-StrMap.add "loca" (Rbuffer.contents loca) fontInfo.tables;
-            fontInfo.tables<-StrMap.add "glyf" (Rbuffer.contents glyf) fontInfo.tables
+            if locformat=0 then bufInt2 loca (Buffer.length glyf/2) else bufInt4_int loca (Buffer.length glyf);
+            fontInfo.tables<-StrMap.add "loca" (Buffer.contents loca) fontInfo.tables;
+            fontInfo.tables<-StrMap.add "glyf" (Buffer.contents glyf) fontInfo.tables
           with
               Not_found->()
   end;
@@ -2187,7 +2187,7 @@ let make_tables font fontInfo cmap glyphs_idx=
   (* names *)
   begin
     try
-      let buf=Rbuffer.create 256 in
+      let buf=Buffer.create 256 in
       let names=List.fold_left (fun l (language,name,str)->
         let utf16=
           try
@@ -2210,18 +2210,18 @@ let make_tables font fontInfo cmap glyphs_idx=
       bufInt2 buf 0;                    (* format *)
       bufInt2 buf (List.length names);
       bufInt2 buf (6+12*(List.length names));
-      let buf'=Rbuffer.create 256 in
+      let buf'=Buffer.create 256 in
       List.iter (fun (a,b,c,d,s)->
         bufInt2 buf a;
         bufInt2 buf b;
         bufInt2 buf c;
         bufInt2 buf d;
         bufInt2 buf (String.length s);
-        bufInt2 buf (Rbuffer.length buf');
-        Rbuffer.add_string buf' s
+        bufInt2 buf (Buffer.length buf');
+        Buffer.add_string buf' s
       ) names;
-      Rbuffer.add_buffer buf buf';
-      fontInfo.tables<-StrMap.add "name" (Rbuffer.contents buf) fontInfo.tables
+      Buffer.add_buffer buf buf';
+      fontInfo.tables<-StrMap.add "name" (Buffer.contents buf) fontInfo.tables
     with
         Not_found->()
   end

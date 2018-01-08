@@ -96,11 +96,11 @@ let writeInt4 f x=
 
 
 let bufInt1 b x=
-  Rbuffer.add_char b (char_of_int (x land 0xff))
+  Buffer.add_char b (char_of_int (x land 0xff))
 
 let bufInt2 b x=
-  Rbuffer.add_char b (char_of_int ((x lsr 8) land 0xff));
-  Rbuffer.add_char b (char_of_int (x land 0xff))
+  Buffer.add_char b (char_of_int ((x lsr 8) land 0xff));
+  Buffer.add_char b (char_of_int (x land 0xff))
 
 #ifdef INT32
 
@@ -108,19 +108,19 @@ let bufInt4 b x=
   let u=Int32.shift_right x 8 in
   let v=Int32.shift_right u 8 in
   let w=Int32.shift_right v 8 in
-  Rbuffer.add_char b (char_of_int (Int32.to_int (Int32.logand w 0xffl)));
-  Rbuffer.add_char b (char_of_int (Int32.to_int (Int32.logand v 0xffl)));
-  Rbuffer.add_char b (char_of_int (Int32.to_int (Int32.logand u 0xffl)));
-  Rbuffer.add_char b (char_of_int (Int32.to_int (Int32.logand x 0xffl)))
+  Buffer.add_char b (char_of_int (Int32.to_int (Int32.logand w 0xffl)));
+  Buffer.add_char b (char_of_int (Int32.to_int (Int32.logand v 0xffl)));
+  Buffer.add_char b (char_of_int (Int32.to_int (Int32.logand u 0xffl)));
+  Buffer.add_char b (char_of_int (Int32.to_int (Int32.logand x 0xffl)))
 
 let bufInt4_int b x=
   let u=x lsr 8 in
   let v=u lsr 8 in
   let w=v lsr 8 in
-  Rbuffer.add_char b (char_of_int (w land 0xff));
-  Rbuffer.add_char b (char_of_int (v land 0xff));
-  Rbuffer.add_char b (char_of_int (u land 0xff));
-  Rbuffer.add_char b (char_of_int (x land 0xff))
+  Buffer.add_char b (char_of_int (w land 0xff));
+  Buffer.add_char b (char_of_int (v land 0xff));
+  Buffer.add_char b (char_of_int (u land 0xff));
+  Buffer.add_char b (char_of_int (x land 0xff))
 
 #else
 
@@ -128,10 +128,10 @@ let bufInt4 b x=
   let u=x lsr 8 in
   let v=u lsr 8 in
   let w=v lsr 8 in
-  Rbuffer.add_char b (char_of_int (w land 0xff));
-  Rbuffer.add_char b (char_of_int (v land 0xff));
-  Rbuffer.add_char b (char_of_int (u land 0xff));
-  Rbuffer.add_char b (char_of_int (x land 0xff))
+  Buffer.add_char b (char_of_int (w land 0xff));
+  Buffer.add_char b (char_of_int (v land 0xff));
+  Buffer.add_char b (char_of_int (u land 0xff));
+  Buffer.add_char b (char_of_int (x land 0xff))
 
 let bufInt4_int=bufInt4
 

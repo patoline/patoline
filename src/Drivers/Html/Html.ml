@@ -50,7 +50,7 @@ let output ?(structure:structure=empty_structure) pages fileName =
 <title>%s</title>
 <style type=\"text/css\">
 body{line-height:0;}\n" structure.name;
-    Rbuffer.output_buffer o (make_style cache);
+    Buffer.output_buffer o (make_style cache);
     Printf.fprintf o "</style></head><body>\n";
 
     let w,h=pages.(i).size in

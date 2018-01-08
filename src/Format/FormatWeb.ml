@@ -95,59 +95,59 @@ module Format (D : Document.DocumentStructure) = struct
         *)
         let classname=ref (-1) in
         let span_open=ref false in
-        let style_buffer=Rbuffer.create 1000 in
+        let style_buffer=Buffer.create 1000 in
         let pages=Array.map (fun page->
-          let buf=Rbuffer.create 1000 in
+          let buf=Buffer.create 1000 in
           let rec output_contents b=
             match b with
               GlyphBox g->(
                 let cl=className cache g in
                 if !classname<>cl || not !span_open then (
                   if !classname<>(-1) then (
-                    Rbuffer.add_string buf "</span>";
+                    Buffer.add_string buf "</span>";
                     span_open:=false
                   );
                   classname:=cl;
-                  Rbuffer.add_string buf (Printf.sprintf "<span class=\"f%d\">" cl);
+                  Buffer.add_string buf (Printf.sprintf "<span class=\"f%d\">" cl);
                   span_open:=true;
                 );
                 (* Display only first glyph, HtmlFonts does the rest (for ligatures). *)
                 let utf=(Fonts.glyphNumber g.glyph).glyph_utf8 in
-                Rbuffer.add_substring buf utf 0 (UTF8.next utf 0);
+                Buffer.add_substring buf utf 0 (UTF8.next utf 0);
                 if UTF8.next utf 0<String.length utf then (
-                  Rbuffer.add_string buf "<span class=\"i\">"; (* invisible *)
-                  Rbuffer.add_substring buf utf (UTF8.next utf 0) (String.length utf-UTF8.next utf 0);
-                  Rbuffer.add_string buf "</span>";
+                  Buffer.add_string buf "<span class=\"i\">"; (* invisible *)
+                  Buffer.add_substring buf utf (UTF8.next utf 0) (String.length utf-UTF8.next utf 0);
+                  Buffer.add_string buf "</span>";
                 )
 
               )
             | Kerning x->output_contents x.kern_contents
             | Hyphen x->Array.iter output_contents x.hyphen_normal
-            | Glue g->Rbuffer.add_string buf " "
+            | Glue g->Buffer.add_string buf " "
             | Drawing d->(
               let i = assert false in (* FIXME FIXME FIXME *)
               (*let i = SVG.images_of_boxes ~cache:cache ~css:"" prefix env [|[b]|] in *)
               if Array.length i>0 then
-                Rbuffer.add_string buf i.(0)
+                Buffer.add_string buf i.(0)
             )
             | Marker (Label a)->(
-              Rbuffer.add_string buf "<a name=\"";
-              Rbuffer.add_string buf a;
-              Rbuffer.add_string buf "\"></a>";
+              Buffer.add_string buf "<a name=\"";
+              Buffer.add_string buf a;
+              Buffer.add_string buf "\"></a>";
             )
             | Marker (BeginLink (Extern a))->(
-              Rbuffer.add_string buf "<a href=\"";
-              Rbuffer.add_string buf a;
-              Rbuffer.add_string buf "\">";
+              Buffer.add_string buf "<a href=\"";
+              Buffer.add_string buf a;
+              Buffer.add_string buf "\">";
             )
             | Marker (BeginLink (Intern a))->(
-              Rbuffer.add_string buf "<a href=\"#";
-              Rbuffer.add_string buf a;
-              Rbuffer.add_string buf "\">";
+              Buffer.add_string buf "<a href=\"#";
+              Buffer.add_string buf a;
+              Buffer.add_string buf "\">";
             )
             | Marker (BeginLink _)->()
             | Marker EndLink->(
-              Rbuffer.add_string buf "</a>";
+              Buffer.add_string buf "</a>";
             )
             | _->(
               Printf.fprintf stderr "Box not shown: ";
@@ -156,22 +156,22 @@ module Format (D : Document.DocumentStructure) = struct
             )
           in
           Array.iter (fun par->
-            Rbuffer.add_string buf "<p>";
+            Buffer.add_string buf "<p>";
             List.iter output_contents (Array.to_list par);
             if !span_open then (
-              Rbuffer.add_string buf "</span>";
+              Buffer.add_string buf "</span>";
               span_open:=false
             );
-            Rbuffer.add_string buf "</p>";
+            Buffer.add_string buf "</p>";
           ) page;
           buf
         ) [|pars|]
         in
 
         let st=open_out (Filename.concat prefix "style.css") in
-        Rbuffer.output_buffer st style_buffer;
-        Rbuffer.output_buffer st (SVG.make_defs prefix cache);
-        Rbuffer.output_buffer st (SVG.make_defs ~output_fonts:true ~units:"mm" ~class_prefix:"f"
+        Buffer.output_buffer st style_buffer;
+        Buffer.output_buffer st (SVG.make_defs prefix cache);
+        Buffer.output_buffer st (SVG.make_defs ~output_fonts:true ~units:"mm" ~class_prefix:"f"
                                     prefix cache);
         output_string st ".i { font-size:0; }\n";
         close_out st;
@@ -182,7 +182,7 @@ module Format (D : Document.DocumentStructure) = struct
           let out_file=open_out (Filename.concat prefix (Printf.sprintf "%d.html" i)) in
           Printf.fprintf out_file "<html><meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\"/><body>";
           Printf.fprintf out_file "<link rel=\"stylesheet\" href=\"style.css\">";
-          Rbuffer.output_buffer out_file pages.(i);
+          Buffer.output_buffer out_file pages.(i);
           Printf.fprintf out_file "</body></html>";
           close_out out_file
         done

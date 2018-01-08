@@ -88,7 +88,7 @@ let resp_slave fd data=
 
 (* Decoding for websocket *)
 let decode_slave fd =
-  let res = Rbuffer.create 256 in
+  let res = Buffer.create 256 in
   let rec fn () =
     let c = int_of_char (input_char fd) in
     let fin = 0x80 land c <> 0 in
@@ -127,9 +127,9 @@ let decode_slave fd =
     for i = 0 to length - 1 do
       let c = input_char fd in
       let c = char_of_int (int_of_char c lxor mask_array.(i land 0x3)) in
-      Rbuffer.add_char res c;
+      Buffer.add_char res c;
     done;
-    if fin then Rbuffer.contents res else fn ()
+    if fin then Buffer.contents res else fn ()
   in fn ()
 
 let master_page=ref ""
@@ -858,26 +858,26 @@ function gotoSlide(n){
     cache structure pages ""
   in
 
-  let slides = Array.map (Array.map (fun (x,y) -> Rbuffer.contents x, Rbuffer.contents y)) slides in
-  let page = Rbuffer.contents page in
-  let css = Rbuffer.contents css in
+  let slides = Array.map (Array.map (fun (x,y) -> Buffer.contents x, Buffer.contents y)) slides in
+  let page = Buffer.contents page in
+  let css = Buffer.contents css in
 
   let output_cache out i j =
-    Rbuffer.add_string out "<defs id=\"svg_defs\">";
+    Buffer.add_string out "<defs id=\"svg_defs\">";
     Hashtbl.iter (fun k (d, ptr, _, _) ->
       try
         let c = match !ptr with
             Some c -> (*Printf.eprintf "From cache\n%!";*)  c
           | None -> let c = try d.dyn_contents () with _ -> "" in ptr := Some c; c
         in
-        Rbuffer.add_string out (Printf.sprintf "<g id=\"@%s\">%s</g>" d.dyn_label c)
+        Buffer.add_string out (Printf.sprintf "<g id=\"@%s\">%s</g>" d.dyn_label c)
       with e ->
         let e = Printexc.to_string e in
         Printf.eprintf "[ERROR]uncaught exception %s from dyn_contents %s\n%!" e d.dyn_label;
         Printexc.print_backtrace stderr;
-        Rbuffer.add_string out (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label e)
+        Buffer.add_string out (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label e)
     ) (fst dynCache.(i).(j));
-    Rbuffer.add_string out "</defs>";
+    Buffer.add_string out "</defs>";
   in
 
   let reset_cache () =
@@ -890,11 +890,11 @@ function gotoSlide(n){
 
   let build_svg i j =
     let prefix,suffix = slides.(i).(j) in
-    let buf = Rbuffer.create 256 in
-    Rbuffer.add_string buf prefix;
+    let buf = Buffer.create 256 in
+    Buffer.add_string buf prefix;
     output_cache buf i j;
-    Rbuffer.add_string buf suffix;
-    Rbuffer.contents buf;
+    Buffer.add_string buf suffix;
+    Buffer.contents buf;
   in
 
   let pushto ?(change=Ping) num a =
@@ -1015,9 +1015,9 @@ function gotoSlide(n){
       Printf.eprintf "building slide %d_%d for %d\n%!" i j num;
       try
         let prefix,suffix = slides.(i).(j) in
-        let dyns = Rbuffer.create 256 in
+        let dyns = Buffer.create 256 in
         output_cache dyns i j;
-        let dyns = Rbuffer.contents dyns in
+        let dyns = Buffer.contents dyns in
         Printf.eprintf "start sent image/svg+xml %d %s\n%!" num sessid;
         http_send 200 "image/svg+xml" [prefix; dyns; suffix] ouc;
       Printf.eprintf "sent image/svg+xml %d %s\n%!" num sessid;
@@ -1030,7 +1030,7 @@ function gotoSlide(n){
   let fonts = StrMap.fold (fun key font acc ->
   (*  Printf.eprintf "Font: %S\n%!" key;*)
     let key = List.hd (List.rev (Util.split '/' key)) in
-    StrMap.add key (Rbuffer.contents font) acc) cache.fontBuffers StrMap.empty
+    StrMap.add key (Buffer.contents font) acc) cache.fontBuffers StrMap.empty
   in
 
   let serve_font font ouc=

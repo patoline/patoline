@@ -42,7 +42,7 @@ let write_cmap_table cmap format lang file=
       let firstCode=Bytes.create 256 in
       let entryCount=String.make 256 (char_of_int 0) in
       let idDelta=Array.make 256 0 in
-      let arr=Array.init 256 (fun _->Rbuffer.create 0) in
+      let arr=Array.init 256 (fun _->Buffer.create 0) in
       let last=String.make 256 (char_of_int 0) in
       let sh_length=ref 0 in            (* Longueur des subHeaders *)
       let ga_length=ref 0 in            (* Longueur du glyphIndexArray *)
@@ -56,16 +56,16 @@ let write_cmap_table cmap format lang file=
             sh_length:= !sh_length+8
            ));
           for j=int_of_char last.[i]+1 to (k land 0xff)-1 do
-            Rbuffer.add_char arr.(i) (char_of_int 0);
-            Rbuffer.add_char arr.(i) (char_of_int 0);
+            Buffer.add_char arr.(i) (char_of_int 0);
+            Buffer.add_char arr.(i) (char_of_int 0);
             ga_length:= !ga_length+2
           done;
           Bytes.set last i (char_of_int (k land 0xff));
 
           Bytes.set entryCount i (char_of_int ((k land 0xff) - int_of_char firstCode.[i] + 1));
           let x=a-idDelta.(i) in
-          Rbuffer.add_char arr.(i) (char_of_int (x lsr 8));
-          Rbuffer.add_char arr.(i) (char_of_int (x land 0xff));
+          Buffer.add_char arr.(i) (char_of_int (x lsr 8));
+          Buffer.add_char arr.(i) (char_of_int (x land 0xff));
           ga_length:= !ga_length+2
         )
       ) cmap ();
@@ -78,48 +78,48 @@ let write_cmap_table cmap format lang file=
       let subHeaders=
         if !sh_length<8*256 then(
           sh_length:= !sh_length+8;
-          let buf=Rbuffer.create !sh_length in
-          for i=0 to 7 do Rbuffer.add_char buf (char_of_int 0) done;
+          let buf=Buffer.create !sh_length in
+          for i=0 to 7 do Buffer.add_char buf (char_of_int 0) done;
           buf
         ) else
-          Rbuffer.create !sh_length
+          Buffer.create !sh_length
       in
-      let glyphIndex=Rbuffer.create !ga_length in
-      let buffers=Array.map Rbuffer.contents arr in
+      let glyphIndex=Buffer.create !ga_length in
+      let buffers=Array.map Buffer.contents arr in
       (* Ecriture des subHeaderKeys, il y en a toujours 256 *)
       for i=0 to 255 do
         if String.length buffers.(i)=0 then (
           bufInt2 file 0
         ) else (
-          bufInt2 file (Rbuffer.length subHeaders);
+          bufInt2 file (Buffer.length subHeaders);
           let idRangeOffset_=           (* Offset par rapport au début du glyphIndexArray *)
             try StrMap.find buffers.(i) !indexArrays with
                 Not_found->(
-                  indexArrays:=StrMap.add buffers.(i) (Rbuffer.length glyphIndex) !indexArrays;
-                  let x=Rbuffer.length glyphIndex in
-                  Rbuffer.add_string glyphIndex buffers.(i);
+                  indexArrays:=StrMap.add buffers.(i) (Buffer.length glyphIndex) !indexArrays;
+                  let x=Buffer.length glyphIndex in
+                  Buffer.add_string glyphIndex buffers.(i);
                   x
                 )
           in
-          let idRangeOffset= (!sh_length - (Rbuffer.length subHeaders+8)) + idRangeOffset_ in
+          let idRangeOffset= (!sh_length - (Buffer.length subHeaders+8)) + idRangeOffset_ in
           (* firstCode *)
-          Rbuffer.add_char subHeaders (char_of_int 0);
-          Rbuffer.add_char subHeaders (firstCode.[i]);
+          Buffer.add_char subHeaders (char_of_int 0);
+          Buffer.add_char subHeaders (firstCode.[i]);
           (* entryCount *)
-          Rbuffer.add_char subHeaders (char_of_int 0);
-          Rbuffer.add_char subHeaders (entryCount.[i]);
+          Buffer.add_char subHeaders (char_of_int 0);
+          Buffer.add_char subHeaders (entryCount.[i]);
           (* idDelta *)
-          Rbuffer.add_char subHeaders (char_of_int (idDelta.(i) lsr 8));
-          Rbuffer.add_char subHeaders (char_of_int (idDelta.(i) land 0xff));
+          Buffer.add_char subHeaders (char_of_int (idDelta.(i) lsr 8));
+          Buffer.add_char subHeaders (char_of_int (idDelta.(i) land 0xff));
           (* idRangeOffset *)
-          Rbuffer.add_char subHeaders (char_of_int (idRangeOffset lsr 8));
-          Rbuffer.add_char subHeaders (char_of_int (idRangeOffset land 0xff));
+          Buffer.add_char subHeaders (char_of_int (idRangeOffset lsr 8));
+          Buffer.add_char subHeaders (char_of_int (idRangeOffset land 0xff));
         )
       done;
       (* Ecriture des subHeaders *)
-      Rbuffer.add_buffer file subHeaders;
+      Buffer.add_buffer file subHeaders;
       (* Ecriture du glyphIndexArray *)
-      Rbuffer.add_buffer file glyphIndex
+      Buffer.add_buffer file glyphIndex
     )
     | 4->(
       let _,_,cmap=IntMap.split 0x19 cmap in
@@ -156,7 +156,7 @@ let write_cmap_table cmap format lang file=
       let searchRange=(2 lsl entrySel) in
       let rangeShift=segCountX2 - searchRange in
 
-      let buf_segments=Rbuffer.create 256 in
+      let buf_segments=Buffer.create 256 in
 
       bufInt2 buf_segments lang;
       bufInt2 buf_segments segCountX2;
@@ -168,9 +168,9 @@ let write_cmap_table cmap format lang file=
       List.iter (fun (x,_,_)->bufInt2 buf_segments x) ranges; (* startCount *)
 
       let off=ref segCountX2 in
-      let buf_idDelta=Rbuffer.create 256 in
-      let buf_idRangeOffset=Rbuffer.create 256 in
-      let buf_array=Rbuffer.create 256 in
+      let buf_idDelta=Buffer.create 256 in
+      let buf_idRangeOffset=Buffer.create 256 in
+      let buf_array=Buffer.create 256 in
       List.iter (fun (u,v,x)->
         (* if List.length x=v-u+1 then ( *)
         (*   flush stderr; *)
@@ -181,7 +181,7 @@ let write_cmap_table cmap format lang file=
         (*   off:= !off-2 *)
         (* ) else *) (
           bufInt2 buf_idDelta 0;                      (* idDelta *)
-          bufInt2 buf_idRangeOffset (!off+Rbuffer.length buf_array); (* idRangeOffset *)
+          bufInt2 buf_idRangeOffset (!off+Buffer.length buf_array); (* idRangeOffset *)
           off:= !off-2;
           let rec write_range k l=
             if k>v then () else (
@@ -201,13 +201,13 @@ let write_cmap_table cmap format lang file=
       ) ranges;
 
 
-      Rbuffer.add_buffer buf_segments buf_idDelta;
-      Rbuffer.add_buffer buf_segments buf_idRangeOffset;
-      Rbuffer.add_buffer buf_segments buf_array;
+      Buffer.add_buffer buf_segments buf_idDelta;
+      Buffer.add_buffer buf_segments buf_idRangeOffset;
+      Buffer.add_buffer buf_segments buf_array;
 
       bufInt2 file 4;
-      bufInt2 file (4+Rbuffer.length buf_segments);
-      Rbuffer.add_buffer file buf_segments
+      bufInt2 file (4+Buffer.length buf_segments);
+      Buffer.add_buffer file buf_segments
     )
     | 6->(
       let rec find_min m=
@@ -235,7 +235,7 @@ let write_cmap_table cmap format lang file=
 
 let write_cmap ?(formats=[0;4;6]) ?(lang=0) cmap buf0=
   let bufs=List.map (fun x->
-    let buf=Rbuffer.create 256 in
+    let buf=Buffer.create 256 in
     write_cmap_table cmap x lang buf;
     buf) formats
   in
@@ -246,9 +246,9 @@ let write_cmap ?(formats=[0;4;6]) ?(lang=0) cmap buf0=
     bufInt2 buf0 3;                     (* windows *)
     bufInt2 buf0 1;                     (* unicode bmp *)
     bufInt4_int buf0 (!total);
-    total:= !total+Rbuffer.length b
+    total:= !total+Buffer.length b
   ) bufs;
-  List.iter (Rbuffer.add_buffer buf0) bufs
+  List.iter (Buffer.add_buffer buf0) bufs
 
 
 let read_cmap file a=

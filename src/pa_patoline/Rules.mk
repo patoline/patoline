@@ -4,7 +4,7 @@ d := $(if $(d),$(d)/,)$(mod)
 
 all: $(d)/pa_patoline
 
-PA_PATOLINE_INCLUDES := -I $(d) -I $(PATOBUILD_DIR) -I $(CONFIG_DIR) -I $(CONFIG_DIR) -I $(RBUFFER_DIR) -I $(UTIL_DIR) -I $(UNICODE_DIR)
+PA_PATOLINE_INCLUDES := -I $(d) -I $(PATOBUILD_DIR) -I $(CONFIG_DIR) -I $(CONFIG_DIR) -I $(UTIL_DIR) -I $(UNICODE_DIR)
 
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PA_PATOLINE_INCLUDES)
 
@@ -22,11 +22,11 @@ endif
 $(d)/%.cmx $(d)/%.ml.depends: private OCPP=pa_ocaml
 $(d)/%.cmx: private OFLAGS+=-package earley,earley_ocaml
 
-$(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa $(CONFIG_DIR)/patoconfig.cmxa $(RBUFFER_DIR)/rbuffer.cmxa $(UNICODE_DIR)/unicodelib.cmxa
+$(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa $(CONFIG_DIR)/patoconfig.cmxa $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[NAT] $@"
 	$(Q)$(OCAMLOPT) -package patutil,imagelib,dynlink,str,earley,earley.str,earley_ocaml,compiler-libs \
 		-I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -o $@ \
-		bigarray.cmxa unicodelib.cmxa rbuffer.cmxa patutil.cmxa unix.cmxa \
+		bigarray.cmxa unicodelib.cmxa patutil.cmxa unix.cmxa \
 		str.cmxa ocamlcommon.cmxa earley.cmxa earleyStr.cmxa earley_ocaml.cmxa \
 		Subsup.cmx prefixTree.cmx $(CONFIG_DIR)/patoconfig.cmxa $<
 
