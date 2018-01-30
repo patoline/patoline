@@ -272,7 +272,7 @@ and node =
   ; node_tags     : (string * string) list
   (* Environment modification function applied when entering the node : *)
   ; node_env      : environment -> environment
-  (* Environment modification function applied when leavind the node : *)
+  (* Environment modification function applied when leaving the node : *)
   ; node_post_env : environment -> environment -> environment
   (* Page states in which the contents is visible. *)
   ; node_states   : int list
