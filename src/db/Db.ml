@@ -134,9 +134,7 @@ let do_record_read  = fun d v -> List.iter (fun f -> f d.name v) !read_hook
 let do_record_write = fun d v -> List.iter (fun f -> f d.name v) !write_hook
 
 let init_db table_name db_info =
-#ifdef MYSQL
   let log_name = table_name ^"_log" in
-#endif
   match db_info with
   | Memory -> (* The model does not nor use the provided coding, not needed *)
     let total_table = Hashtbl.create 1001 in

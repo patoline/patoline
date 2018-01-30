@@ -1,0 +1,5 @@
+# Building DefaultGrammar.txp generates a lot of different files, which
+# should all be ignored except the source DefaultGrammar.ml itself.
+DefaultGrammar.*
+DefaultGrammar_.*
+!DefaultGrammar.txp
