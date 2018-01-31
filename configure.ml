@@ -6,9 +6,9 @@ let error fmt = Printf.printf ("\027[31m" ^^ fmt ^^ "\027[0m")
 let _ =
   (* Check OCaml version. *)
   let version = Scanf.sscanf Sys.ocaml_version "%u.%u" (fun i j -> (i,j)) in
-  if version < (4, 1) then
+  if version < (4, 3) then
     begin
-      error "You need at least OCaml 4.01 for Patoline.\n%!";
+      error "You need at least OCaml 4.03 for Patoline.\n%!";
       error "Current version: %s\n%!" Sys.ocaml_version;
       exit 1
     end;
