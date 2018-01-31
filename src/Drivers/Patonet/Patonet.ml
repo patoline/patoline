@@ -870,7 +870,7 @@ function gotoSlide(n){
             Some c -> (*Printf.eprintf "From cache\n%!";*)  c
           | None -> let c = try d.dyn_contents () with _ -> "" in ptr := Some c; c
         in
-        Buffer.add_string out (Printf.sprintf "<g id=\"@%s\">%s</g>" d.dyn_label c)
+        Buffer.add_string out (Printf.sprintf "<g id=\"%@%s\">%s</g>" d.dyn_label c)
       with e ->
         let e = Printexc.to_string e in
         Printf.eprintf "[ERROR]uncaught exception %s from dyn_contents %s\n%!" e d.dyn_label;

@@ -232,7 +232,7 @@ let className ?(create_new_class=true) cache gl_=
 let make_style cache=
   let style_buf=Buffer.create 256 in
   StrMap.iter (fun _ (full, class_name) ->
-    Buffer.add_string style_buf (Printf.sprintf "@font-face { font-family:f%d;
+    Buffer.add_string style_buf (Printf.sprintf "%@font-face { font-family:f%d;
 src:url(\"%s.otf\") format(\"opentype\"); }
 .f%d { font-family:f%d; }\n"
                                     class_name full class_name class_name)

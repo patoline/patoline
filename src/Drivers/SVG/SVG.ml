@@ -63,7 +63,7 @@ let htmlColor col =
 let output_fontCache def_buf fontCache units class_prefix =
   StrMap.iter (fun _ (full, class_name) ->
       Buffer.add_string def_buf
-        (Printf.sprintf "@font-face { font-family:f%d; src:url(\"" class_name);
+        (Printf.sprintf "%@font-face { font-family:f%d; src:url(\"" class_name);
       Buffer.add_string def_buf full;
       Buffer.add_string def_buf ".otf\") format(\"opentype\"); }\n"
     ) fontCache.fontFamilies;
@@ -722,7 +722,7 @@ function setReaction(svg) {
       var defs = defs_elt.childNodes;
       for (var i = 0; i < defs.length; i++) {
         var id = defs[i].id;
-        id=id.substring(1,id.length); // remove leading @
+        id=id.substring(1,id.length); // remove leading %@
 	var dest = document.getElementById(id);
 	while (defs[i].hasChildNodes()) {
 	  dest.appendChild(defs[i].lastChild);
