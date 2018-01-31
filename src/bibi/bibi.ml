@@ -19,7 +19,7 @@
 *)
 open Printf
 open Sqlite3
-open UsualMake
+open Extra
 
 let fields=[
   "id","INTEGER PRIMARY KEY AUTOINCREMENT";
@@ -693,7 +693,8 @@ module EtAl=struct
     if List.length auteurs<=2 then
       List.concat (intercalate [tT ", "] auteurs)
     else
-      List.concat (intercalate [tT ", "] (take 1 auteurs)) @ [tT " et al."]
+      List.concat (intercalate [tT ", "] (List.take 1 auteurs))
+      @ [tT " et al."]
 end
 
 

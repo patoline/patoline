@@ -23,7 +23,7 @@ open Typography.Complete
 open Typography.Break
 open FTypes
 open Util
-open UsualMake
+open Extra
 open Fonts
 open Box
 open PatConfig
@@ -107,20 +107,15 @@ module type Output=
 module Format=functor (D:Document.DocumentStructure)->(
   struct
 
-let hyphenate_dict dict=
+let hyphenate_dict dict = (* Should probably move to Hyphen *)
   try
-    let i=open_in_bin (findHyphen dict) in
-    let inp=input_value i in
-    close_in i;
-    (fun str->
-     let hyphenated=Hyphen.hyphenate inp str in
-     Array.of_list (hyphenated)
-    )
-  with
-      FilenameExtra.No_matching_path (f,p)->
-	(Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;
-         List.iter (Printf.fprintf stderr "%s\n") p;
-         fun x->[||])
+    let ic = open_in_bin (findHyphen dict) in
+    let inp = input_value ic in
+    close_in ic;
+    (fun str-> Array.of_list (Hyphen.hyphenate inp str))
+  with Not_found ->
+	  Printf.eprintf "Warning: hyphenation dictionary %s not found...\n" dict;
+    (fun x -> [||])
 
 
 
@@ -452,7 +447,7 @@ let defaultEnv:environment=
               [C (fun env->
                   let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                   bB (fun _->[Marker (Structure path)])
-                  ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
+                  ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (List.drop 1 b))))
                   ::tT " "
                   ::n.displayname
                  )]
@@ -688,7 +683,7 @@ let figure_drawing ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) dra
   let dr=resize_drawing scale dr in
   let lvl,num=try StrMap.find "figure" env.counters with Not_found -> -1,[] in
   let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
-  let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
+  let sect_num=List.drop (List.length str_counter - max 0 lvl+1) str_counter in
   let caption, env, ms = (* FIXME: ms lost !!! no label inside caption will work *)
     OutputDrawing.minipage' {env with normalLeftMargin=0.}
 	                     (paragraph ((
@@ -925,7 +920,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
               (fun env0 env1->
                 let cou=try
                           let lvl,enum=StrMap.find "enumerate" env1.counters in
-                          StrMap.add "enumerate" (lvl,drop 1 enum) env1.counters
+                          StrMap.add "enumerate" (lvl,List.drop 1 enum) env1.counters
                   with Not_found-> env1.counters
                 in
                 { env0 with names=env1.names;user_positions=env1.user_positions;counters=cou });
@@ -1223,7 +1218,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                                   StrMap.find "_structure" env.counters
                 with Not_found -> -1,[0]
               in
-              let sect_num=drop (max 1 (List.length str_counter - lvl+1))
+              let sect_num=List.drop (max 1 (List.length str_counter - lvl+1))
                 str_counter
               in
               Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) ((List.rev sect_num)@num)))

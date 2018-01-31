@@ -20,7 +20,7 @@
 open Fonts
 open Printf
 open Util
-open UsualMake
+open Extra
 open FTypes
 open RawContent
 open Color

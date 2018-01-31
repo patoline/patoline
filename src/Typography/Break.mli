@@ -22,21 +22,21 @@ module Make(L : Line with type t = Box.line) :
         ?initial_line:Box.line->
         completeLine:(Box.box array array ->
                       Box.drawingBox array ->
-                      figurePosition UsualMake.IntMap.t ->
+                      figurePosition Extra.IntMap.t ->
                       L.t Box.MarkerMap.t -> Box.line -> bool -> L.t list)
                      array ->
         figures:Box.drawingBox array ->
         figure_parameters:(Box.box array array ->
                            Box.drawingBox array ->
                            Box.parameters ->
-                           figurePosition UsualMake.IntMap.t ->
+                           figurePosition Extra.IntMap.t ->
                            L.t Box.MarkerMap.t ->
                            LineMap.key -> Box.line -> Box.parameters)
                           array ->
         parameters:(Box.box array array ->
                     Box.drawingBox array ->
                     Box.parameters ->
-                    figurePosition UsualMake.IntMap.t ->
+                    figurePosition Extra.IntMap.t ->
                     L.t Box.MarkerMap.t ->
                     LineMap.key -> L.t -> Box.parameters)
                    array ->
@@ -46,7 +46,7 @@ module Make(L : Line with type t = Box.line) :
                   float->float) array ->
         badness:(Box.box array array ->
                  Box.drawingBox array ->
-                 figurePosition UsualMake.IntMap.t ->
+                 figurePosition Extra.IntMap.t ->
                  LineMap.key ->
                  Box.box array ->
                  int ->
@@ -59,5 +59,5 @@ module Make(L : Line with type t = Box.line) :
         Box.box array array ->
         TypoLanguage.message list *
           Box.frame *
-          figurePosition UsualMake.IntMap.t * L.t Box.MarkerMap.t
+          figurePosition Extra.IntMap.t * L.t Box.MarkerMap.t
   end

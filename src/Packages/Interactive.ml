@@ -5,7 +5,7 @@ open RawContent
 open Color
 open Box
 open Util
-open UsualMake
+open Extra
 open Verbatim
 
 module type ModDb = sig

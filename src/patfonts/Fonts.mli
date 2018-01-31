@@ -10,7 +10,7 @@
     informations such as their outlines. *)
 
 (** Type font *)
-open UsualMake
+open Extra
 open FTypes
 
 type font

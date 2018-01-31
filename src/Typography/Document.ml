@@ -19,7 +19,7 @@
 *)
 
 open Util
-open UsualMake
+open Extra
 open Fonts
 open FTypes
 open RawContent
@@ -460,7 +460,7 @@ let pop_counter name env=
   { env with
     last_changed_counter=name;
     counters=
-      StrMap.add name (let a,b=StrMap.find name env.counters in (a,drop 1 b)) env.counters }
+      StrMap.add name (let a,b=StrMap.find name env.counters in (a, List.drop 1 b)) env.counters }
 
 let push_counter name env=
   { env with
@@ -1035,7 +1035,7 @@ let lref ?refType name=
       in
       let refType=match refType with Some x->x | None->refType_ in
       let lvl,num_=StrMap.find refType counters in
-      let num=if refType="_structure" then drop 1 num_ else num_ in
+      let num=if refType="_structure" then List.drop 1 num_ else num_ in
       let str_counter=
         try
           let _,str_counter=StrMap.find "_structure" counters in
@@ -1043,7 +1043,7 @@ let lref ?refType name=
         with
             Not_found->[]
       in
-      let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
+      let sect_num = List.drop (List.length str_counter - max 0 lvl+1) str_counter in
       [bB (fun _->[Marker (BeginLink (Intern name))]);
        tT (String.concat "." (List.map (fun x->string_of_int (x+1))
                                 (List.rev (num@sect_num))));

@@ -18,12 +18,12 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open UsualMake
+open Extra
 
-(** [pt_of_mm] converts a length expressed in Adobe points to millimeters. *)
+(** [pt_of_mm l] converts [l] from Adobe points to millimeters. *)
 let pt_of_mm : float -> float = fun x -> (72.0 *. x) /. 25.4
 
-(** [mm_of_pt] converts a length expressed in millimeters to Adobe points. *)
+(** [mm_of_pt l] converts [l] from millimeters to Adobe points. *)
 let mm_of_pt : float -> float = fun x -> (25.4 *. x) /. 72.0
 
 (** Width and height of the A4 page format (in millimeters). *)
@@ -31,7 +31,6 @@ let a4 : float * float = (210.0, 297.0)
 
 (** Golden ratio. *)
 let phi : float = (1.0 +. sqrt 5.0) /. 2.0
-
 
 let readInt f n0 =
   let rec aux n x =
@@ -183,37 +182,6 @@ let round x=
 
 let round_float x=float_of_int (round x)
 
-
-let rec span f=function
-    []->([],[])
-  | h::s when f h->let (a,b)=span f s in (h::a, b)
-  | l->([],l)
-
-let rec break f=function
-    []->([],[])
-  | h::s when not (f h)->let (a,b)=break f s in (h::a, b)
-  | l->([],l)
-
-let rec take x l=
-  if x<=0 then [] else
-    match l with
-        []->[]
-      | h::s->h::(take (x-1) s)
-
-let rec drop x l=
-  if x<=0 then l else
-    match l with
-        []->[]
-      | _::s->drop (x-1) s
-
-let rec last=function
-    [h]->h
-  | _::s->last s
-  | _-> raise Not_found
-
-let rec init=function
-    [_] | [] ->[]
-  | h::s->h::init s
 
 let is_space x0=
   let x=UChar.code x0 in

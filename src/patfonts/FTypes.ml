@@ -24,9 +24,6 @@ type name =
 exception Glyph_not_found of string*string
 
 
-open UsualMake
-
-
 let empty_kern a =
   { advance_height = 0.0; advance_width = 0.0; kern_x0 = 0.0; kern_y0 = 0.0;
     kern_contents = a }

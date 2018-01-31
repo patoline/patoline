@@ -22,7 +22,7 @@ open Complete
 open Break
 open FTypes
 open Util
-open UsualMake
+open Extra
 open Fonts
 open Box
 open PatConfig

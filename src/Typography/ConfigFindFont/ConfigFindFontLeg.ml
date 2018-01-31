@@ -1,6 +1,5 @@
 (** Finds a font given some criteria, as a FontPattern.t list. *)
 open FontPattern
-open FilenameExtra
 
 let alegreya_variants = function
   | {family = _; slant = Roman; weight = Regular} -> "Regular"

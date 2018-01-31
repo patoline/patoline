@@ -21,7 +21,7 @@ open Typography
 open FTypes
 open Box
 open Util
-open UsualMake
+open Extra
 open HtmlFonts
 open Driver
 open RawContent

@@ -18,7 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open FTypes
-open UsualMake
+open Extra
 open Util
 open CFF
 

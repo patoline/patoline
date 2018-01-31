@@ -22,7 +22,7 @@ open Typography.Document
 open FTypes
 open Typography.Box
 open Util
-open UsualMake
+open Extra
 
 
 let centered parameters str tree _=
@@ -58,7 +58,7 @@ let centered parameters str tree _=
                 in
                 let chi=if List.mem_assoc "numbered" s.node_tags then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
-                let count=drop 1 b in
+                let count = List.drop 1 b in
                 let in_toc=List.mem_assoc "intoc" s.node_tags in
                   if in_toc && count<>[] then (
                     let labl=String.concat "_" ("_"::List.map string_of_int path) in
@@ -151,7 +151,7 @@ let these parameters str tree max_level=
                 in
                 let chi=if List.mem_assoc "numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
-                let count=(List.rev (drop 1 b)) in
+                let count = List.rev (List.drop 1 b) in
                 let spacing=env.size/.phi in
                 let in_toc=List.mem_assoc "intoc" s.node_tags in
                 let numbered=List.mem_assoc "numbered" s.node_tags in
@@ -234,7 +234,7 @@ let slides ?(hidden_color=Color.rgb 0.8 0.8 0.8) parameters str tree max_level=
                 in
                 let chi=if List.mem_assoc "numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
-                let count=(List.rev (drop 1 b)) in
+                let count = List.rev (List.drop 1 b) in
                 let spacing=env.size in
                 let in_toc=List.mem_assoc "intoc" s.node_tags in
                 let numbered=List.mem_assoc "numbered" s.node_tags in

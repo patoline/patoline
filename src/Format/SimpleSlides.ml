@@ -1,6 +1,6 @@
 open RawContent
 open Util
-open UsualMake
+open Extra
 
 open Typography
 open Typography.Box

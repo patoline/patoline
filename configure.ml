@@ -229,7 +229,7 @@ let local_packages =
 
   ; { package_name = "patobuild"
     ; macro_suffix = "PATOBUILD"
-    ; local_deps   = []
+    ; local_deps   = ["patutil"]
     ; extern_deps  = ["earley";"earley.str";"bytes";"compiler-libs"]
     ; subdirs      = []
     ; has_meta     = false }

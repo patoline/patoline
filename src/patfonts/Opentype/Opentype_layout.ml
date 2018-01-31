@@ -18,7 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open UsualMake
+open Extra
 open Util
 
 (* Deux scripts ne peuvent pas avoir un langage en commun (ou alors il

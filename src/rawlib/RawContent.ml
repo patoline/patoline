@@ -425,7 +425,7 @@ let bounding_box_full = bounding_box_opt
 
 (* Sorting a list of raw contents according to its drawing order. *)
 let drawing_sort l =
-  let open UsualMake in
+  let open Extra in
   let rec make_list acc = function
     | []            -> acc
     | States s :: l ->
@@ -445,7 +445,7 @@ let drawing_sort l =
 
 (* ??? *)
 let sort_raw l =
-  let open UsualMake in
+  let open Extra in
   let f m x =
     let m' = try IntMap.find (drawing_order x) m with Not_found -> [] in
     IntMap.add (drawing_order x) (x :: m') m

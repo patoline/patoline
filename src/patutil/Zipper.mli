@@ -17,7 +17,7 @@ module Make(D : TreeData) :
     (** Type of a tree. *)
     type tree =
       (** A node carries data and a map of children. *)
-      | Node of (node * tree UsualMake.IntMap.t)
+      | Node of (node * tree Extra.IntMap.t)
       (** A leaf only carries data. *)
       | Leaf of leaf
 
@@ -28,7 +28,7 @@ module Make(D : TreeData) :
     val leaf : leaf -> tree
 
     (** Type of a zipper. *)
-    type zipper = tree * (int * (node * tree UsualMake.IntMap.t)) list
+    type zipper = tree * (int * (node * tree Extra.IntMap.t)) list
 
     (** Convert a tree into a zipper pointing at its root. *)
     val tree_to_zipper : tree -> zipper

@@ -22,7 +22,7 @@ open Fonts
 open FTypes
 open Typography.Document
 open Util
-open UsualMake
+open Extra
 open Typography.Box
 open Printf
 
@@ -145,7 +145,7 @@ let postprocess_tree tree=
                   List.map (RawContent.in_order 1)
                     (draw {env with size=env.size*.(sz-.h);fontColor=Color.gray }
                        [tT (String.concat "." (List.map (fun x->string_of_int (x+1))
-                                                 (List.rev (drop 1 b))))])
+                                                 (List.rev (List.drop 1 b))))])
                 else
                   []
               in
@@ -191,7 +191,7 @@ let postprocess_tree tree=
               [C (fun env->
                 let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                 bB (fun _->[Marker (Structure path)])
-                ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
+                ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (List.drop 1 b))))
                 ::tT " "
                 ::n.displayname
               )]

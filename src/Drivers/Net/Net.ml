@@ -18,7 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open UsualMake
+open Extra
 open HtmlFonts
 open Driver
 
@@ -211,7 +211,11 @@ function gotoSlide(n){
   let patonet =
     let open PatConfig in
     let paths = ["."] in
-    let pato = FilenameExtra.findPath "patonet.c" paths in
+    let pato =
+      try Filename.find_file "patonet.c" paths with Not_found ->
+        Printf.eprintf "patonet.c not found...\n%!";
+        exit 1
+    in
     let patof=open_in pato in
     let s=Bytes.create (in_channel_length patof) in
     really_input patof s 0 (Bytes.length s);

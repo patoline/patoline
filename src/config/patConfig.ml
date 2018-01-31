@@ -60,8 +60,6 @@ let patoconfig : patoconfig =
   ; max_iter     = get_i "max_iter"
   ; user_dir     = get_s "user_dir" }
 
-exception File_not_found of string
-
 let findPath ?(subdir=false) (path, paths) fname =
   if debug then Printf.eprintf "########## Looking for %S in:\n%!" fname;
   if debug then List.iter (Printf.eprintf " - %S\n%!") (path :: paths);
@@ -79,7 +77,7 @@ let findPath ?(subdir=false) (path, paths) fname =
       else raise Not_found
   in
   let rec find = function
-    | []    -> raise (File_not_found fname)
+    | []    -> raise Not_found
     | p::ps -> try search p with Not_found -> find ps
   in find (List.rev (path :: paths))
 

@@ -21,7 +21,7 @@
 (* This file only contains printing functions and stuff that are only
    useful for debuging. *)
 
-open UsualMake
+open Extra
 open RawContent
 open FTypes
 open Box

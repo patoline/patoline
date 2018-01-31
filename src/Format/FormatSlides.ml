@@ -22,7 +22,7 @@ open Typography.Document
 open RawContent
 open Color
 open Util
-open UsualMake
+open Extra
 open Driver
 
 open Typography.Box
@@ -207,7 +207,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                               StrMap.find "_structure" env.counters
             with Not_found -> -1,[0]
           in
-          let sect_num=drop (max 1 (List.length str_counter - lvl+1))
+          let sect_num=List.drop (max 1 (List.length str_counter - lvl+1))
             str_counter
           in
           Th.display (String.concat "." (List.map (fun x->string_of_int (x+1))

@@ -1,6 +1,5 @@
 open Earley
-open UsualMake
-open FilenameExtra
+open Extra
 open Pa_ocaml_prelude
 
 let _ = Sys.catch_break true
@@ -851,7 +850,7 @@ let add_grammar g =
   let (gpath, gpaths) = patoconfig.grammars_dir in
   let path = "." :: ".patobuild" :: gpath :: gpaths in
   if !no_default_grammar && g = "DefaultGrammar" then () else
-    let g = findPath (g ^ ".tgy") path in
+    let g = Filename.find_file (g ^ ".tgy") path in
     (*Printf.eprintf "Reading grammar %s\n%!" g;*)
     let ch = open_in_bin g in
     let st = input_value ch in
@@ -1820,7 +1819,7 @@ let _ = set_grammar math_toplevel (parser
     | "\\Caml" s:wrapped_caml_structure -> (fun _ -> s)
     | "\\Include" '{' id:uid '}' -> (fun _ ->
          incr nb_includes;
-         (try add_grammar id; build_grammar () with _ -> ());
+         (try add_grammar id; build_grammar () with Not_found -> ());
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
          <:struct< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output )(D)
                    open $uid:temp_id$>>)
@@ -2066,9 +2065,8 @@ let parser init =
                  | None -> ""
                  | Some f -> f
     in
-    let basename = chop_extension' (Filename.basename file) in
-    cache := "cache_" ^ basename;
-    basename)
+    let (_,basename,_) = Filename.decompose file in
+    cache := "cache_" ^ basename; basename)
 
 let parser full_text =
   | h:header basename:{basename:init -> basename ()} t:{tx1:text t:title}? tx2:text EOF ->
@@ -2183,8 +2181,7 @@ let _ =
     let open PaExt in
     match !Pa_ocaml_prelude.file, !in_ocamldep with
     | Some s, false ->
-       let dir = Filename.dirname s in
-       let base = chop_extension' (Filename.basename s) in
+       let (dir, base, _) = Filename.decompose s in
        let name = base ^ ".tgy" in
        let build_dir = !build_dir in
        let name = Filename.concat build_dir name in

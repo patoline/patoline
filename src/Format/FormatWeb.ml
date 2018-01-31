@@ -21,7 +21,7 @@
 open Typography
 open Typography.Document
 open RawContent
-open UsualMake
+open Extra
 open Box
 open Fonts
 open FTypes

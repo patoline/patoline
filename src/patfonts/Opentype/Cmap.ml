@@ -17,7 +17,7 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open UsualMake
+open Extra
 open Util
 
 let write_cmap_table cmap format lang file=
