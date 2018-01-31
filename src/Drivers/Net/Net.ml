@@ -214,9 +214,9 @@ function gotoSlide(n){
     let pato = FilenameExtra.findPath "patonet.c" paths in
     let patof=open_in pato in
     let s=Bytes.create (in_channel_length patof) in
-    really_input patof s 0 (String.length s);
+    really_input patof s 0 (Bytes.length s);
     close_in patof;
-    s
+    Bytes.to_string s
   in
   Printf.fprintf o "# 1 \"patonet.c\"\n%s\n" patonet;
   close_out o;

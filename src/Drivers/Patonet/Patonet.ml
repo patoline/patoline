@@ -51,7 +51,7 @@ exception Send_error
 (* Encoding for websocket *)
 let resp_slave fd data=
   let chunk_size = 1000000 in
-  let pos = ref 0 and len = String.length data in
+  let pos = ref 0 and len = Bytes.length data in
   while !pos < len do
   let x=Buffer.create 128 in
     let size = min (len - !pos) chunk_size in
@@ -335,7 +335,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         let len = in_channel_length ch in
         let buf = Bytes.create len in
         really_input ch buf 0 len;
-        buf
+        Bytes.to_string buf
     in
     StrMap.add filename buf m) imgs StrMap.empty
   in
@@ -925,11 +925,11 @@ function gotoSlide(n){
            let full = "[" ^ String.concat "," l ^"]" in
            i, j, "\"Dynamics\"", full
       in
-      resp_slave a (
+      resp_slave a (Bytes.of_string (
         Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"change\":%s, \"change_list\":%s }"
           slide state
           change change_list
-      );
+      ));
     with
     | Exit -> ()
     | e-> log_son num "unexpected exception in pushto: %s" (Printexc.to_string e)

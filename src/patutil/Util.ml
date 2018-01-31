@@ -17,35 +17,40 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open UsualMake
 
-(** Convertir en points Adobe une longueur en millimètres *)
-let pt_of_mm x=(72.*.x)/.25.4
-(** Convertir en millimètres une longueur en points Adobe *)
-let mm_of_pt x=(25.4*.x)/.72.
+(** [pt_of_mm] converts a length expressed in Adobe points to millimeters. *)
+let pt_of_mm : float -> float = fun x -> (72.0 *. x) /. 25.4
+
+(** [mm_of_pt] converts a length expressed in millimeters to Adobe points. *)
+let mm_of_pt : float -> float = fun x -> (25.4 *. x) /. 72.0
+
+(** Width and height of the A4 page format (in millimeters). *)
+let a4 : float * float = (210.0, 297.0)
+
+(** Golden ratio. *)
+let phi : float = (1.0 +. sqrt 5.0) /. 2.0
 
 
-let a4=(210.,297.)
-let phi=(1.+.(sqrt 5.))/.2.
-
-
-let readInt f n0=
-  let rec readInt_ n x=
-    if n=n0 then x else
-      readInt_ (n+1) ((x lsl 8) + (input_byte f))
+let readInt f n0 =
+  let rec aux n x =
+    if n = n0 then x
+    else aux (n+1) ((x lsl 8) + (input_byte f))
   in
-    readInt_ 0 0
+  aux 0 0
 
-let buf="    "
+let buf = Bytes.make 4 ' '
 
-let readInt2 f=
+let readInt2 f =
   really_input f buf 0 2;
-  let d=((int_of_char buf.[0]) lsl 8) lor (int_of_char buf.[1]) in
-    d
-let sreadInt2 f=
-  really_input f buf 0 2;
-  let d=((int_of_char buf.[0]) lsl 8) lor (int_of_char buf.[1]) in
-  if d>=0x8000 then d-0x10000 else d
+  let c0 = int_of_char (Bytes.get buf 0) in
+  let c1 = int_of_char (Bytes.get buf 1) in
+  (c0 lsl 8) lor c1
+
+let sreadInt2 f =
+  let d = readInt2 f in
+  if d >= 0x8000 then d - 0x10000 else d
 
 let strInt2 s i x=
   Bytes.set s i (char_of_int ((x lsr 8) land 0xff));
@@ -84,15 +89,17 @@ let strInt4_int=strInt4
 
 #endif
 
-let buf2="  "
-let writeInt2 f x=
-  strInt2 buf2 0 x;
-  output_string f buf2
+let buf2 = Bytes.make 2 ' '
 
-let buf4="    "
+let writeInt2 f x =
+  strInt2 buf2 0 x;
+  output_bytes f buf2
+
+let buf4 = Bytes.make 4 ' '
+
 let writeInt4 f x=
   strInt4 buf4 0 x;
-  output_string f buf4
+  output_bytes f buf4
 
 
 let bufInt1 b x=
@@ -156,11 +163,11 @@ let readInt4_int f=
 #else
 let readInt4 f=
   really_input f buf 0 4;
-  let a=(int_of_char buf.[0]) lsl 8 in
-  let b=(a lor (int_of_char buf.[1])) lsl 8 in
-  let c=(b lor (int_of_char buf.[2])) lsl 8 in
-  let d=c lor (int_of_char buf.[3]) in
-    d
+  let r = (int_of_char (Bytes.get buf 0)) lsl 8 in
+  let r = (r lor (int_of_char (Bytes.get buf 1))) lsl 8 in
+  let r = (r lor (int_of_char (Bytes.get buf 2))) lsl 8 in
+  r lor (int_of_char (Bytes.get buf 3))
+
 let readInt4_int=readInt4
 #endif
 
@@ -281,15 +288,12 @@ let open_in_cached f=
 #endif
 
 let copy_file a b=
-  let fa=open_in a in
-  let fb=open_out b in
-  let s=Bytes.create 1000 in
-  let rec copy ()=
-    let x=input fa s 0 (String.length s) in
-    if x>0 then (
-      output fb s 0 x;
-      copy ()
-    )
+  let fa = open_in a in
+  let fb = open_out b in
+  let s = Bytes.create 1000 in
+  let rec copy () =
+    let x = input fa s 0 1000 in
+    if x > 0 then (output fb s 0 x; copy ())
   in
   copy ();
   close_in fa;
@@ -373,7 +377,7 @@ let base64_decode s=
   read_all ();
   Buffer.contents buf
 
-let base64_encode s0=
+let base64_encode : string -> string = fun s0 ->
   let m=String.length s0 mod 3 in
   let s=
     if m=1 then (s0^String.make 2 (char_of_int 0)) else
@@ -402,10 +406,10 @@ let base64_encode s0=
     )
   in
   encode 0;
-  let str=Buffer.contents buf in
-  if m>=1 then Bytes.set str (String.length str-1) '=';
-  if m=1  then Bytes.set str (String.length str-2) '=';
-  str
+  let str = Buffer.to_bytes buf in
+  if m >= 1 then Bytes.set str (Bytes.length str-1) '=';
+  if m = 1  then Bytes.set str (Bytes.length str-2) '=';
+  Bytes.to_string str
 
 (* A type needed both by Db and RawContent *)
 type visibility = Private | Group | Public

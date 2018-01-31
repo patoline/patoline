@@ -69,13 +69,13 @@ let stream buf=
   let out_buf = Buffer.create 100000 in
   let buf_pos = ref 0 in
   Zlib.compress (fun zbuf ->
-    let m = min (Buffer.length buf - !buf_pos) (String.length zbuf) in
+    let m = min (Buffer.length buf - !buf_pos) (Bytes.length zbuf) in
     for i = 0 to m-1 do
       Bytes.set zbuf i (Buffer.nth buf (!buf_pos));
       incr buf_pos
     done; m
   )
-    (fun buf len -> Buffer.add_substring out_buf buf 0 len);
+    (fun buf len -> Buffer.add_subbytes out_buf buf 0 len);
   "/Filter [/FlateDecode]", out_buf
 #else
 let stream buf="",buf

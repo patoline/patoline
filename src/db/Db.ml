@@ -575,7 +575,8 @@ let make_sessid () =
     in
     Bytes.set str i d;
   done;
-  sessid:=Some (str, "guest", []);
+  let str = Bytes.to_string str in
+  sessid := Some (str, "guest", []);
   str
 
 let friends_from_string str =

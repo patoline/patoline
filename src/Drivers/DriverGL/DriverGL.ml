@@ -1489,9 +1489,10 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	       ignore (Sys.command (editor ^ " " ^ filename));
 	       let ch = open_in filename in
 	       let len = in_channel_length ch in
-	       let buf = String.make len ' ' in
+	       let buf = Bytes.make len ' ' in
 	       let _ = really_input ch buf 0 len in
 	       close_in ch;
+         let buf = Bytes.to_string buf in
 	       send_events (act buf)
 	    | Button(Drag(act),name) ->
                match !motion_ref with

@@ -41,12 +41,12 @@ let seek_s f i=match f with
 let mmap sf i=match sf with
     Stream f->(
       if !buf_start=(-1) || !buf_start>i || !buf_end <=i then (
-        let p=max 0 (min i (in_channel_length f - String.length buf)) in
+        let p=max 0 (min i (in_channel_length f - Bytes.length buf)) in
         seek_in f p;
-        let read=input f buf 0 (String.length buf) in
+        let read=input f buf 0 (Bytes.length buf) in
         buf_start:=p;buf_end:=p+read;
       );
-      buf.[i - !buf_start]
+      Bytes.get buf (i - !buf_start)
     )
   | Buffer b->Buffer.nth b.bu i
 
@@ -114,7 +114,7 @@ let parse file=
         let pos3=skip_while is_space f pos2 in
         read_int f pos3
       ) else
-        find_xref f (pos-String.length buf)
+        find_xref f (pos-Bytes.length buf)
     )
   in
   let sf=Stream f in
@@ -250,8 +250,8 @@ let parse file=
           if iscompressed then (
             seek_in f pos_stream;
             let out_buf=Buffer.create 10000 in
-            Zlib.uncompress (fun zbuf->input f zbuf 0 (String.length zbuf))
-              (fun buf len -> Buffer.add_substring out_buf buf 0 len);
+            Zlib.uncompress (fun zbuf->input f zbuf 0 (Bytes.length zbuf))
+              (fun buf len -> Buffer.add_subbytes out_buf buf 0 len);
             0,Buffer { bu=out_buf;bupos=0 }
           ) else
             pos_stream,Stream f

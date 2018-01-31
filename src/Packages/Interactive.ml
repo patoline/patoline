@@ -36,7 +36,7 @@ let read_file file =
   let _ = input ch str 0 len in
   (*let res = strip str in*)
   close_in ch;
-  str
+  Bytes.to_string str
 
 let arrow = tT ">>>" :: hspace(1.0)
 
@@ -352,10 +352,11 @@ let read_splited_file filename =
   | _ -> invalid_arg "read_splited_file"
 
 let ascii =
-  let str = String.make (2*(128-32)) ' ' in
+  let str = Bytes.make (2*(128-32)) ' ' in
   for i = 32 to 127 do
     Bytes.set str (2*(i-32)) (Char.chr i)
   done;
+  let str = Bytes.to_string str in
   [Scoped(verbEnv, [tT str] @ bold [tT str])]
 
 let strip_empty lines =

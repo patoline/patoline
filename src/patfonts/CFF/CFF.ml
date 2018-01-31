@@ -142,28 +142,28 @@ let index f idx_off=
 
 let strIndex f idx_off=
   let off=index f idx_off in
-  let str=Array.make (Array.length off-1) "" in
+  let str=Array.make (Array.length off-1) (Bytes.of_string "") in
     for i=0 to Array.length off-2 do
       seek_in f (off.(i));
       str.(i)<-Bytes.create (off.(i+1)-off.(i));
       really_input f (str.(i)) 0 (off.(i+1)-off.(i))
     done;
-    str
+    Array.map Bytes.to_string str
 
 exception CFF_Not_found of (int*int)
 let indexGet f idx_off idx=
   seek_in f idx_off;
   let count=readInt f 2 in
-    if idx>=count || idx<0 then raise (CFF_Not_found (idx,count)) else
-      (let idx_offSize=input_byte f in
-         seek_in f (idx_off+3+idx*idx_offSize);
-         let off0=readInt f idx_offSize in
-         let off1=readInt f idx_offSize in
-         let buf=Bytes.create (off1-off0) in
-           seek_in f (idx_off+2+(count+1)*idx_offSize+off0);
-           really_input f buf 0 (off1-off0);
-           buf
-      )
+  if idx>=count || idx<0 then raise (CFF_Not_found (idx,count));
+  let idx_offSize=input_byte f in
+  seek_in f (idx_off+3+idx*idx_offSize);
+  let off0=readInt f idx_offSize in
+  let off1=readInt f idx_offSize in
+  let buf=Bytes.create (off1-off0) in
+  seek_in f (idx_off+2+(count+1)*idx_offSize+off0);
+  really_input f buf 0 (off1-off0);
+  Bytes.to_string buf
+
 let readDict f a b=
   let rec dict' stack l=
     if pos_in f >= b then l else
@@ -210,21 +210,21 @@ let readEncoding f off=
     let nCodes=input_byte f in
     let buf=Bytes.create (2+nCodes) in
       seek_in f off;
-      really_input f buf 0 (String.length buf);
+      really_input f buf 0 (Bytes.length buf);
       buf
   ) else (
     let nCodes=input_byte f in
     let buf=Bytes.create (2+2*nCodes) in
       seek_in f off;
-      really_input f buf 0 (String.length buf);
+      really_input f buf 0 (Bytes.length buf);
       buf
   )
   in
   let supl=
     let nSups=input_byte f in
     let buf=Bytes.create (1+3*nSups) in
-      seek_in f (off+String.length enc);
-      really_input f buf 0 (String.length buf);
+      seek_in f (off+Bytes.length enc);
+      really_input f buf 0 (Bytes.length buf);
       buf
   in
     enc,supl
@@ -287,8 +287,8 @@ let loadFont ?offset:(off=0) ?size:(size=None) file=
   let nameIndex=index f (off+hdrSize) in
   let dictIndex=index f (nameIndex.(Array.length nameIndex-1)) in
   let stringIndex=index f (dictIndex.(Array.length dictIndex-1)) in
-  let subrIndex=
-    let subrs=Array.make (Array.length dictIndex-1) [||] in
+  let subrIndex =
+    let subrs : string array array =Array.make (Array.length dictIndex-1) [||] in
     for idx=0 to Array.length dictIndex-2 do
       try
         let privOffset=findDict f (dictIndex.(idx)) (dictIndex.(idx+1)) 18 in
@@ -308,13 +308,13 @@ let loadFont ?offset:(off=0) ?size:(size=None) file=
   in
   let gsubrIndex=
     let offIndex=index f (stringIndex.(Array.length stringIndex-1)) in
-    let gsubr=Array.make (Array.length offIndex-1) "" in
+    let gsubr=Array.make (Array.length offIndex-1) (Bytes.of_string "") in
     for i=0 to Array.length gsubr-1 do
       seek_in f (offIndex.(i));
       gsubr.(i)<-Bytes.create (offIndex.(i+1)-offIndex.(i));
       really_input f gsubr.(i) 0 (offIndex.(i+1)-offIndex.(i))
     done;
-    gsubr
+    Array.map Bytes.to_string gsubr
   in
   let nominalWidth,defaultWidth=
     try
@@ -433,7 +433,7 @@ let fontName ?index:(idx=0) font=
       let b=Bytes.create (off1-off0) in
       seek_in f off0;
       really_input f b 0 (off1-off0);
-      b
+      Bytes.to_string b
     )
   in
   (* family name *)
@@ -441,7 +441,7 @@ let fontName ?index:(idx=0) font=
   let full_name=retrieve_name 2 in
   let subfamily_name=retrieve_name 4 in
   {
-    postscript_name=buf;
+    postscript_name=Bytes.to_string buf;
     full_name=full_name;
     family_name=family_name;
     subfamily_name=subfamily_name
@@ -461,7 +461,7 @@ let glyphName glyph=
     let b=Bytes.create (off1-off0) in
     seek_in f off0;
     really_input f b 0 (off1-off0);
-    b
+    Bytes.to_string b
   )
 
 let fontBBox ?index:(idx=0) font=
@@ -674,7 +674,7 @@ let readIndex f idx_off=
   let count=readInt f 2 in
   let idx_offSize=input_byte f in
   let last_idx=ref 1 in
-  let idx_arr=Array.make count "" in
+  let idx_arr=Array.make count (Bytes.of_string "") in
     for i=1 to count do
       seek_in f (idx_off+3+i*idx_offSize);
       let idx=readInt f idx_offSize in
@@ -707,7 +707,7 @@ let copyIndex f=
         let off=readInt f idx_offSize in
         let buf=Bytes.create (2+(count+1)*idx_offSize+off) in
           seek_in f idx_off;
-          really_input f buf 0 (String.length buf);
+          really_input f buf 0 (Bytes.length buf);
           buf
     )
 
@@ -1087,10 +1087,10 @@ let subset(* _encoded *) font info cmap gls=
   let name=
     let buf_=Bytes.create (font.nameIndex.(1)-font.nameIndex.(0)) in
     seek_in f (font.nameIndex.(0));
-    really_input f buf_ 0 (String.length buf_);
+    really_input f buf_ 0 (Bytes.length buf_);
     buf_
   in
-  writeIndex buf [|name|];
+  writeIndex buf [|Bytes.to_string name|];
 
   let strings=ref StrMap.empty in
   let getSid s=
@@ -1126,8 +1126,7 @@ let subset(* _encoded *) font info cmap gls=
                 let s=Bytes.create (s1-s0) in
                 seek_in f s0;
                 really_input f s 0 (s1-s0);
-                let sid=getSid s in
-                (CFFInt sid)
+                CFFInt(getSid (Bytes.to_string s))
               with
                   _->(CFFInt 0))
          ) u
@@ -1150,7 +1149,7 @@ let subset(* _encoded *) font info cmap gls=
       if a<0x100 then m+1 else m
     ) cmap 0
     in
-    let enc=String.make (size+2) (char_of_int 0) in
+    let enc = Bytes.make (size+2) (char_of_int 0) in
     Bytes.set enc 0 (char_of_int 0);
     Bytes.set enc 1 (char_of_int size);
     IntMap.iter (fun k a->
@@ -1159,15 +1158,15 @@ let subset(* _encoded *) font info cmap gls=
     enc
   in
   let charset=
-    let reverseEncoding=
-      IntMap.fold (fun k a m->IntMap.add a k m) cmap IntMap.empty
+    let reverseEncoding =
+      IntMap.fold (fun k a m -> IntMap.add a k m) cmap IntMap.empty
     in
     try
       (* Les glyphs sont tous renommés avec leur contenu unicode.
          Voir la page
          http://www.adobe.com/devnet/opentype/archives/glyph.html
          pour savoir comment on les nomme. *)
-      let str=String.make (2*Array.length gls-1) (char_of_int 0) in
+      let str=Bytes.make (2*Array.length gls-1) (char_of_int 0) in
       (*let glbuf=Buffer.create 64 in*)
       let altmap=ref StrMap.empty in
       let names=Array.make (Array.length gls) "" in
@@ -1193,14 +1192,15 @@ let subset(* _encoded *) font info cmap gls=
         Buffer.clear glbuf;
         let str=make_name 0 in
         *)
-        let str=Printf.sprintf "uni%d"
-          (try IntMap.find i reverseEncoding with
-              Not_found->(
-                int_of_char ' '
-              ))
+        let str =
+          let i =
+            try IntMap.find i reverseEncoding
+            with Not_found -> int_of_char ' '
+          in
+          Printf.sprintf "uni%d" i
         in
-        let alt=try StrMap.find str !altmap with _->0 in
-        altmap:=StrMap.add str (alt+1) !altmap;
+        let alt = try StrMap.find str !altmap with Not_found -> 0 in
+        altmap := StrMap.add str (alt+1) !altmap;
 
         names.(i)<-if str="" then "space" else str;
         alternates.(i)<-alt
@@ -1225,7 +1225,7 @@ let subset(* _encoded *) font info cmap gls=
         Bytes.set str (2*i-1) (char_of_int (num lsr 8));
         Bytes.set str (2*i) (char_of_int (num land 0xff))
       done;
-      str
+      Bytes.to_string str
     with
         Not_found -> String.make (2*Array.length gls-1) (char_of_int 0)
   in
@@ -1253,17 +1253,18 @@ let subset(* _encoded *) font info cmap gls=
     with
         Not_found | CFFNum _-> IntMap.empty
   in
-  let subr=try (
-    match findDict f (font.dictIndex.(0)) (font.dictIndex.(1)) 18 with
-        offset::size::_->(
+  let subr =
+    try
+      match findDict f (font.dictIndex.(0)) (font.dictIndex.(1)) 18 with
+      | offset::size::_ ->
           let off_subr=List.hd (IntMap.find 19 priv) in
           seek_in f (font.offset+int_of_num offset+int_of_num off_subr);
-          copyIndex f
-        )
-      | _->let bubu=Buffer.create 2 in writeIndex bubu [||];Buffer.contents bubu
-  ) with
-      Not_found
-    | CFFNum _-> ""
+          Bytes.to_string (copyIndex f)
+      | _               ->
+          let bubu = Buffer.create 2 in
+          writeIndex bubu [||];
+          Buffer.contents bubu
+    with Not_found | CFFNum _ -> ""
   in
 
 
@@ -1294,8 +1295,8 @@ let subset(* _encoded *) font info cmap gls=
   let topDict=
     (IntMap.add 17
        [CFFInt (Buffer.length buf + (Buffer.length topDictBuf) +
-                  Buffer.length strIndex + String.length gsubr +
-                  String.length encoding + String.length charset)]
+                  Buffer.length strIndex + Bytes.length gsubr +
+                  Bytes.length encoding + String.length charset)]
        topDict)
   in
   (* Avec l'adresse et la taille du dictionnaire privé *)
@@ -1303,8 +1304,8 @@ let subset(* _encoded *) font info cmap gls=
     IntMap.add 18
       [CFFInt (Buffer.length privDict);
        CFFInt (Buffer.length buf + (Buffer.length topDictBuf) +
-                 Buffer.length strIndex + String.length gsubr +
-                 String.length encoding + String.length charset +
+                 Buffer.length strIndex + Bytes.length gsubr +
+                 Bytes.length encoding + String.length charset +
                  Buffer.length charStrings)]
       topDict
   in
@@ -1312,15 +1313,15 @@ let subset(* _encoded *) font info cmap gls=
   let topDict=
     IntMap.add 16
       [CFFInt (Buffer.length buf + (Buffer.length topDictBuf) +
-                 Buffer.length strIndex + String.length gsubr)]
+                 Buffer.length strIndex + Bytes.length gsubr)]
       topDict
   in
   (* Avec le charset *)
   let topDict=
     IntMap.add 15
       [CFFInt (Buffer.length buf + (Buffer.length topDictBuf) +
-                 Buffer.length strIndex + String.length gsubr +
-                 String.length encoding)]
+                 Buffer.length strIndex + Bytes.length gsubr +
+                 Bytes.length encoding)]
       topDict
   in
 
@@ -1330,8 +1331,8 @@ let subset(* _encoded *) font info cmap gls=
   writeIndex buf [|Buffer.contents topDictBuf_|];
 
   Buffer.add_buffer buf strIndex;
-  Buffer.add_string buf gsubr;
-  Buffer.add_string buf encoding;
+  Buffer.add_bytes buf gsubr;
+  Buffer.add_bytes buf encoding;
   Buffer.add_string buf charset;
   Buffer.add_buffer buf charStrings;
   Buffer.add_buffer buf privDict;
