@@ -22,7 +22,6 @@ open Typography.Document
 open Typography.Complete
 open Typography.Break
 open FTypes
-open Util
 open Extra
 open Fonts
 open Box
@@ -282,10 +281,10 @@ let defaultEnv:environment=
     footnote_y=10.;
     size=fsize;
     lead=13./.10.*.fsize;
-    normalMeasure=(fst a4)*.2./.3.;
+    normalMeasure=(fst Util.a4)*.2./.3.;
     normalLead=13./.10.*.fsize;
     normalLeftMargin=0.;
-    normalPageFormat=a4;
+    normalPageFormat=Util.a4;
     par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
                             drawing_max_width= 4.0 *. phi;
 			    drawing_width_fixed = true;

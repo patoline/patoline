@@ -17,11 +17,11 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Typography
 open Fonts
 open FTypes
 open Typography.Document
-open Util
 open Extra
 open Typography.Box
 open Printf
@@ -513,9 +513,6 @@ end
     include Th
     module Env_proof=Default.Proof
   end
-
-  open Util
-
 
   let utf8Char x=[tT (UTF8.init 1 (fun _->UChar.chr x))]
   let glyph x=

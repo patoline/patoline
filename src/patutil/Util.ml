@@ -172,17 +172,6 @@ let readInt4_int=readInt4
 
 let int16 x=if x<0x8000 then x else x-0x10000
 
-let round x=
-  let c=ceil x in
-    if (c-.x) < 0.5 && (c-.x)> -0.5 then int_of_float c else
-      if c-.x=0.5 || c-.x=(-0.5) then
-        if int_of_float (floor x) mod 2=0 then int_of_float (floor x) else int_of_float c
-      else
-        int_of_float (floor x)
-
-let round_float x=float_of_int (round x)
-
-
 let is_space x0=
   let x=UChar.code x0 in
     (x>=0x0009 && x<=0x000d)
@@ -210,15 +199,6 @@ let unspace s=
   in
   let a=rem0 0 and b=rem1 (UTF8.last s) in
   String.sub s a (b-a)
-
-let compose f g x=f (g x)
-
-let unique l= List.sort_uniq compare l
-
-type 'a tree=
-    N of ('a tree) IntMap.t
-  | L of 'a
-
 
 let bin_cache:in_channel StrMap.t ref=ref StrMap.empty
 let cache:in_channel StrMap.t ref=ref StrMap.empty
@@ -299,85 +279,6 @@ let split c s =
   in
   split s []
 *)
-
-
-
-let base64_decode s=
-  let buf=Buffer.create (String.length s) in
-  let value i=
-    let x=s.[i] in
-    if x>='A' && x<='Z' then (int_of_char x)-(int_of_char 'A') else
-      if x>='a' && x<='z' then 26+(int_of_char x)-(int_of_char 'a') else
-        if x>='0' && x<='9' then 52+(int_of_char x)-(int_of_char '0') else
-          if x='+' then 62 else
-            if x='/' then 63 else if x='=' then 64 else (-1)
-  in
-  let ii=ref 0 in
-  let rec next ()=
-    let x=value !ii in
-    incr ii;
-    if x>=0 then x else next ()
-  in
-  let rec read_all ()=
-    if !ii<String.length s-3 then (
-      let a=next() in
-      let b=next() in
-      let c=next() in
-      let d=next() in
-      if d=64 then (
-        if c=64 then (
-          let x=(a lsl 6) lor b in
-          Buffer.add_char buf  (char_of_int ((x lsr 4) land 0xff));
-        ) else (
-          let x=(((a lsl 6) lor b) lsl 6) lor c in
-          Buffer.add_char buf (char_of_int ((x lsr 10) land 0xff));
-          Buffer.add_char buf (char_of_int ((x lsr 2) land 0xff));
-        )
-      ) else (
-        let x=(((((a lsl 6) lor b) lsl 6) lor c) lsl 6) lor d in
-        Buffer.add_char buf (char_of_int ((x lsr 16) land 0xff));
-        Buffer.add_char buf (char_of_int ((x lsr 8) land 0xff));
-        Buffer.add_char buf (char_of_int (x land 0xff));
-      );
-      read_all ()
-    )
-  in
-  read_all ();
-  Buffer.contents buf
-
-let base64_encode : string -> string = fun s0 ->
-  let m=String.length s0 mod 3 in
-  let s=
-    if m=1 then (s0^String.make 2 (char_of_int 0)) else
-      if m=2 then (s0^String.make 1 (char_of_int 0)) else s0
-  in
-  let buf=Buffer.create (String.length s*2) in
-  let base64 x=
-    let y=x land 0x3f in
-    if y<26 then (char_of_int (y+int_of_char 'A')) else
-      if y<52 then (char_of_int (y-26+int_of_char 'a')) else
-        if y<62 then (char_of_int (y-52+int_of_char '0')) else
-          if y=62 then '+' else '/'
-  in
-  let rec encode i=
-    if i<=String.length s-3 then (
-      let a=int_of_char s.[i]
-      and b=int_of_char s.[i+1]
-      and c=int_of_char s.[i+2]
-      in
-      let x=(((a lsl 8) lor b) lsl 8) lor c in
-      Buffer.add_char buf (base64 (x lsr 18));
-      Buffer.add_char buf (base64 (x lsr 12));
-      Buffer.add_char buf (base64 (x lsr 6));
-      Buffer.add_char buf (base64 x);
-      encode (i+3)
-    )
-  in
-  encode 0;
-  let str = Buffer.to_bytes buf in
-  if m >= 1 then Bytes.set str (Bytes.length str-1) '=';
-  if m = 1  then Bytes.set str (Bytes.length str-2) '=';
-  Bytes.to_string str
 
 (* A type needed both by Db and RawContent *)
 type visibility = Private | Group | Public

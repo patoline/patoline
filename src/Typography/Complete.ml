@@ -17,10 +17,10 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Box
-open Util
-open Break
 open Document
+
 (** {[normal]} measure paragraphs figures {already placed figures} {already placed user boxes}
 {beginning of line to complete} {is this a desperate try ?} *)
 let normal env paragraphs figures last_figures last_users line allow_impossible=

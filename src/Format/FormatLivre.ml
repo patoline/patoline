@@ -22,7 +22,6 @@ open Fonts
 open FTypes
 (* open Typography.Constants *)
 open Typography.Document
-open Util
 open Box
 (* open Binary *)
 open Extra
@@ -163,13 +162,6 @@ module Env_exercice=Default.Make_theorem
 (*     let counterLevel=0 *)
 (*     let display num=toggleItalic [T ("("^num^")"); (T " ")] *)
 (*    end) *)
-
-
-
-
-
-  open Util
-  (* open Binary *)
 
 
   let utf8Char x=[tT (UTF8.init 1 (fun _->UChar.chr x))]

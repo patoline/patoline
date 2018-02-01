@@ -21,7 +21,6 @@ open Typography
 open Fonts
 open FTypes
 open Typography.Document
-open Util
 open Extra
 open Typography.Box
 open Printf

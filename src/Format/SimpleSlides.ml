@@ -1,5 +1,4 @@
 open RawContent
-open Util
 open Extra
 
 open Typography

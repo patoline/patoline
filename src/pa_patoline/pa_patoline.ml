@@ -2036,7 +2036,6 @@ let parser title =
 let wrap basename _loc ast =
   <:struct<
     open Typography
-    open Util
     open Typography.Box
     open Typography.Document
     open Typography.Maths

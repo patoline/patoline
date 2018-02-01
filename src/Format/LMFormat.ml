@@ -17,14 +17,15 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Typography
 open Typography.Document
 open Typography.Complete
 open FTypes
-open Util
 open Fonts
 open Typography.Box
 open DefaultFormat
+open Extra
 
 let _=Random.self_init ()
 
@@ -145,7 +146,7 @@ let lmEnv env=
     lead=13./.10.*.fsize;
     normalMeasure=150.;
     normalLead=13./.10.*.fsize;
-    normalLeftMargin=(fst a4-.150.)/.2.;
+    normalLeftMargin=(fst Util.a4-.150.)/.2.;
     normalPageFormat=env.normalPageFormat;
     par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
                             drawing_max_width= 4.0 *. phi;

@@ -19,7 +19,6 @@
 *)
 open RawContent
 open Driver
-open Util
 open Color 
 
 let driver_options = []

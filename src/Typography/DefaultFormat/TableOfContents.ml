@@ -17,13 +17,12 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Typography
 open Typography.Document
 open FTypes
 open Typography.Box
-open Util
 open Extra
-
 
 let centered parameters str tree _=
   newPar str ~environment:(fun x->{x with par_indent=[]}) Complete.normal parameters [

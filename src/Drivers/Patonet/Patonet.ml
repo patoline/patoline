@@ -21,7 +21,6 @@
 open Db
 open RawContent
 open Driver
-open Util
 open Extra
 open HtmlFonts
 
@@ -904,7 +903,7 @@ function gotoSlide(n){
           Ping -> present.cur_slide, present.cur_state, "\"Ping\"", "[]"
         | Slide(i,j) ->
           let svg = build_svg i j in
-          i, j, "\"Slide\"", Printf.sprintf "\"%s\"" (base64_encode svg)
+          i, j, "\"Slide\"", Printf.sprintf "\"%s\"" (Base64.encode svg)
         | Dynamics(i,j,l) ->
            let l = List.fold_left
                      (fun acc label ->
@@ -918,7 +917,7 @@ function gotoSlide(n){
                          | Some c -> c
                        in
                        Printf.sprintf "{\"dyn_label\":\"%s\", \"dyn_contents\":\"%s\"}"
-                                      d.dyn_label (base64_encode c)::acc)
+                                      d.dyn_label (Base64.encode c)::acc)
                      [] l
            in
            if l = [] then raise Exit;
@@ -1275,7 +1274,7 @@ function gotoSlide(n){
             try
               match Util.split ' ' rest with
                 [name;contents] ->
-                  name, base64_decode contents
+                  name, Base64.decode contents
               | _ -> raise Not_found
             with _ -> failwith "Bad edit"
           in
@@ -1383,7 +1382,7 @@ function gotoSlide(n){
                   let sha=Cryptokit.Hash.sha1 () in
                   sha#add_string websocket_key;
                   sha#add_string "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-                  base64_encode (sha#result)
+                  Base64.encode (sha#result)
                 in
                 output_string ouc "HTTP/1.1 101 Switching\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-WebSocket-Accept: ";
                 output_string ouc key;

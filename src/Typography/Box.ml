@@ -18,7 +18,6 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open RawContent
-open Util
 open Extra
 open FTypes
 open Bezier
@@ -368,7 +367,7 @@ let empty_drawing_box=
 let drawing ?(adjust_before=false) ?(vcenter=false) ?(hcenter=false)
             ?(offset=0.) ?(width_fixed=true) ?(states=[]) cont=
   let states=List.fold_left (fun st0 x->match x with
-      States s-> unique (st0@s.states_states)
+      States s-> List.sort_uniq compare (st0@s.states_states)
     | _->st0
   ) states cont
   in
@@ -401,7 +400,7 @@ let drawing_blit a x0 y0 b=
       drawing_y0=min a.drawing_y0 (y0+.b.drawing_y0);
       drawing_y1=max a.drawing_y1 (y0+.b.drawing_y1);
       drawing_break_badness=0.;
-      drawing_states=unique (a.drawing_states@b.drawing_states);
+      drawing_states=List.sort_uniq compare (a.drawing_states@b.drawing_states);
       drawing_badness=(fun w->
                          let fact=w/.(w1-.w0) in
                            a.drawing_badness ((a.drawing_max_width-.a.drawing_min_width)*.fact)

@@ -17,8 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open FTypes
-open Util
 open HtmlFonts
 open Driver
 open RawContent

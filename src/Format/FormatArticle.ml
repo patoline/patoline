@@ -22,7 +22,6 @@ open Fonts
 open FTypes
 (* open Typography.Constants *)
 open Typography.Document
-open Util
 open Box
 (* open Binary *)
 open Extra
@@ -155,10 +154,6 @@ module Env_remark=Default.Make_theorem
 (*    end) *)
 
 
-
-
-
-  open Util
   (* open Binary *)
 
 

@@ -21,7 +21,6 @@
 (* module StrMap=Map.Make(struct type t=string let compare=compare end) *)
 
 open Pdfutil
-open Util
 open Extra
 open Driver
 open Color
@@ -307,7 +306,7 @@ let parse file=
                   cur_path:=[];
                   contents:=
                     Path ({ default_path_param with
-                      lineWidth=mm_of_pt !curw;
+                      lineWidth=Util.mm_of_pt !curw;
                       strokingColor=None;
                       fillColor=Some !cur_fill },
                           List.map (fun x->Array.of_list (List.rev x)) !cur_paths)::(!contents);
@@ -323,23 +322,23 @@ let parse file=
                     | _->failwith "not enough operands for operator m")
                 | "l"->(match stack with
                     y::x::_ -> (
-                      cur_path:=([|mm_of_pt (!curx-.x0);
-                                   mm_of_pt (x-.x0)|],
-                                 [|mm_of_pt (!cury-.y0);
-                                   mm_of_pt (y-.y0)|])::(!cur_path);
+                      cur_path:=([|Util.mm_of_pt (!curx-.x0);
+                                   Util.mm_of_pt (x-.x0)|],
+                                 [|Util.mm_of_pt (!cury-.y0);
+                                   Util.mm_of_pt (y-.y0)|])::(!cur_path);
                       curx:=x;cury:=y
                     )
                     | _->failwith "not enough operands for operator l")
                 | "c"->(match stack with
                     y3::x3::y2::x2::y1::x1::_ -> (
-                      cur_path:=([|mm_of_pt (!curx-.x0);
-                                   mm_of_pt (x1-.x0);
-                                   mm_of_pt (x2-.x0);
-                                   mm_of_pt (x3-.x0)|],
-                                 [|mm_of_pt (!cury-.y0);
-                                   mm_of_pt (y1-.y0);
-                                   mm_of_pt (y2-.y0);
-                                   mm_of_pt (y3-.y0)|])::(!cur_path);
+                      cur_path:=([|Util.mm_of_pt (!curx-.x0);
+                                   Util.mm_of_pt (x1-.x0);
+                                   Util.mm_of_pt (x2-.x0);
+                                   Util.mm_of_pt (x3-.x0)|],
+                                 [|Util.mm_of_pt (!cury-.y0);
+                                   Util.mm_of_pt (y1-.y0);
+                                   Util.mm_of_pt (y2-.y0);
+                                   Util.mm_of_pt (y3-.y0)|])::(!cur_path);
                       curx:=x3;cury:=y3
                     )
                     | _->failwith "not enough operands for operator l")
@@ -382,7 +381,7 @@ let parse file=
                       in
                       let w=h2-.h0 in
                       let h=h3-.h1 in
-                      pages_arr.(i)<-{size=(mm_of_pt w,mm_of_pt h);
+                      pages_arr.(i)<-{size=(Util.mm_of_pt w,Util.mm_of_pt h);
                                       contents=parse_page cont h0 h1};
                       (i+1)
                     )

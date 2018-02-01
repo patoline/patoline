@@ -22,7 +22,6 @@ open Document
 open Box
 open FTypes
 open Break
-open Util
 open Extra
 open RawContent
 
@@ -184,7 +183,7 @@ let output ?state paragraphs figures env (opt_pages:frame)=
             )
             | Glue g
             | Drawing g ->(
-              states:=unique (g.drawing_states@ !states);
+              states:=List.sort_uniq compare (g.drawing_states@ !states);
               let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
 	      let cont = g.drawing_contents w in
               let cont = List.filter (fun x->match x,state with

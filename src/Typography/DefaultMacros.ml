@@ -21,7 +21,6 @@ open Document
 open Complete
 open Break
 open FTypes
-open Util
 open Extra
 open Fonts
 open Box

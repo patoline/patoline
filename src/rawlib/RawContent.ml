@@ -147,8 +147,6 @@ let rotation_matrix th =
   ;  [| sinth ; costh   ; 0.0 |]
   ;  [| 0.0   ; 0.0     ; 1.0 |] |]
 
-let pi = 4.0 *. atan 1.0
-
 let rotate a = affine (rotation_matrix a)
 
 (* Set the drawing order of a raw element. *)

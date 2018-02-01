@@ -66,13 +66,13 @@ type 'a coding = {
 }
 
 let default_coding = {
-  encode = (fun v -> base64_encode (Marshal.to_string v []));
-  decode = (fun s -> Marshal.from_string (base64_decode s) 0);
+  encode = (fun v -> Base64.encode (Marshal.to_string v []));
+  decode = (fun s -> Marshal.from_string (Base64.decode s) 0);
 }
 
 let string_coding = {
-  encode = (fun v -> base64_encode v);
-  decode = (fun s -> base64_decode s);
+  encode = (fun v -> Base64.encode v);
+  decode = (fun s -> Base64.decode s);
 }
 
 let bool_coding = {

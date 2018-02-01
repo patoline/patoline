@@ -20,7 +20,6 @@
 open Typography
 open FTypes
 open Box
-open Util
 open Extra
 open HtmlFonts
 open Driver
@@ -1009,7 +1008,7 @@ let output' ?(structure:structure=empty_structure) pages filename=
   let svg_files,cache,imgs=buffered_output' ~structure:structure pages prefix in
 
   StrMap.fold (fun k a _->
-    copy_file k (Filename.concat prefix a)
+    Util.copy_file k (Filename.concat prefix a)
   ) imgs ();
 
   let html,style=basic_html cache structure pages prefix in
@@ -1104,7 +1103,7 @@ let images_of_boxes ?cache ?(css="style.css") ?(output_font_defs=true) prefix en
 
       let dr,imgs=draw ~fontCache:cache prefix w (y1 -. y0) raws.(i) in
       StrMap.fold (fun k a _->
-        copy_file k (Filename.concat prefix a)
+        Util.copy_file k (Filename.concat prefix a)
       ) imgs ();
       HtmlFonts.output_fonts cache;
 

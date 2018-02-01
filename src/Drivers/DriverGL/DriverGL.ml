@@ -17,12 +17,12 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open FTypes
 open Raw
 open RawContent
 open Color
 open Driver
-open Util
 
 type event =
   | EvClick
@@ -1283,7 +1283,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	    List.fold_left (fun (bl, bc, res as acc) link ->
 	      match link.link_kind with
 		Extern uri when is_edit uri ->
-		  let ls = List.rev (split '@' uri) in
+		  let ls = List.rev (Util.split '@' uri) in
 		  (match ls with
 		    c::l::_ ->
 		      let l = int_of_string l and c = int_of_string c in
@@ -1408,12 +1408,12 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 	    match cmd.[0] with
 	      'r' -> to_revert := true; to_redraw := true;
             | 'g' -> (
-              match split ' ' cmd with
+              match Util.split ' ' cmd with
 		[_;l;s] ->
 		  goto (int_of_string l) (int_of_string s)
 	      | _ -> raise Exit)
 	    | 'e' -> (
-	      match split ' ' cmd with
+	      match Util.split ' ' cmd with
 		[_;l;c] ->
 		  goto_link (int_of_string l) (int_of_string c)
 	      | _ -> raise Exit)

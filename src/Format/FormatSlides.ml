@@ -21,7 +21,6 @@ open Typography
 open Typography.Document
 open RawContent
 open Color
-open Util
 open Extra
 open Driver
 

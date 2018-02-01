@@ -22,7 +22,6 @@ open Raw
 open RawContent
 open Color
 open Driver
-open Util
 
 let cur_page = ref 0
 

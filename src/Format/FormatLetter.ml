@@ -21,7 +21,6 @@ open Typography
 open Fonts
 open FTypes
 open Typography.Document
-open Util
 open Extra
 open Typography.Box
 open Printf
@@ -38,7 +37,7 @@ module Format=functor (D:DocumentStructure)->struct
 
   let rec lines s=try
     let idx=String.index s '\n' in
-    unspace (String.sub s 0 idx)::lines (String.sub s (idx+1) (String.length s-idx-1))
+    Util.unspace (String.sub s 0 idx)::lines (String.sub s (idx+1) (String.length s-idx-1))
   with
       Not_found->if s="" then [] else [s]
   let rec repeat x n=if n<=0 then [] else x::(repeat x (n-1))

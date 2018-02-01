@@ -200,7 +200,6 @@ let author_ bib auth=
 (* let _=List.iter (fun (a,x)->printf "%s : %s\n" a (Document.string_of_contents x)) *)
 (*   (cite "biblio" "title LIKE '%arameterized%'") *)
 
-open Util
 open Box
 exception No_bib of string
 let bib:((int*string option array) IntMap.t) ref=ref IntMap.empty
@@ -574,7 +573,7 @@ module DefaultBiblio (C:CitationStyle)=struct
 
   open Box
 
-  let w=phi
+  let w = Util.phi
   let params env a1 a2 a3 a4 a5 a6 line=
     let p=Document.parameters env a1 a2 a3 a4 a5 a6 line in
     if line.lineStart=0 then (

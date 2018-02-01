@@ -19,12 +19,13 @@
 *)
 open Fonts
 open Printf
-open Util
 open Extra
 open FTypes
 open RawContent
 open Color
 open Driver
+
+let pt_of_mm = Util.pt_of_mm
 
 let driver_options = []
 let filter_options argv = argv
@@ -112,7 +113,7 @@ let output ?(structure:structure=empty_structure) pages fname =
     let rec fill i=
       try
         let code= (UTF8.look utf i) in
-        (if is_space code then
+        (if Util.is_space code then
             Buffer.add_string pdf_string_buf "20"
          else if UChar.code code<=0xff then
            Buffer.add_string pdf_string_buf (sprintf "%02x" (UChar.code code)));

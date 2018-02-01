@@ -109,3 +109,19 @@ module IntSet = Set.Make(
     type t = int
     let compare = (-)
   end)
+
+(** Golden ratio. *)
+let phi : float =
+  (1.0 +. sqrt 5.0) /. 2.0
+
+(** Pi (ratio of a circle's circumference to its diameter). *)
+let pi  : float =
+  4.0 *. atan 1.0
+
+(** [round f] rounds the floating point number [f]. *)
+let round : float -> int =
+  fun x -> int_of_float (floor (x +. 0.5))
+
+(** [round f] rounds the floating point number [f] to a [float]. *)
+let round_float : float -> float =
+  fun x -> floor (x +. 0.5)
