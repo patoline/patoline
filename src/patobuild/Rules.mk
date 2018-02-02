@@ -8,7 +8,7 @@ $(d)/%.cmi $(d)/%.cmx $(d)/%.cmo: INCLUDES := $(PATOBUILD_INCLUDES)
 $(d)/%.depends $(d)/%.cmi $(d)/%.cmx: OCPP=pa_ocaml
 
 #no cmo here
-$(d)/%.cmo: ; touch $@
+$(d)/%.cmo: ; $(Q)touch $@
 $(d)/%.cmx: OCAMLOPT=$(OCAMLOPT_NOINTF)
 
 # Compute ML dependencies

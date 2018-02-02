@@ -9,7 +9,7 @@ PA_PATOLINE_INCLUDES := -I $(d) -I $(PATOBUILD_DIR) -I $(CONFIG_DIR) -I $(CONFIG
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PA_PATOLINE_INCLUDES)
 
 # no .cmo here
-$(d)/%.cmo: ; touch $@
+$(d)/%.cmo: ; $(Q)touch $@
 $(d)/%.cmx: private OCAMLOPT=$(OCAMLOPT_NOINTF)
 
 SRC_$(d) := $(wildcard $(d)/*.ml)

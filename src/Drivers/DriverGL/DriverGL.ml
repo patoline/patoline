@@ -298,9 +298,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       r
   in
 
-  let dynReset d =
-    Hashtbl.remove dynCache d
-  in
+  (* let dynReset d = Hashtbl.remove dynCache d in *)
 
   let read_links () =
     links := Array.mapi
@@ -980,7 +978,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     Array.iter (function None -> () | Some win -> redraw win) all_win;
   in
 
-  let events = ref [] in
+  (* let events = ref [] in *)
 
   let send_events ev = () in
                          (*
@@ -1213,10 +1211,12 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         else (
           motion_ref := Some (x0,y0,x, y,buttons,links);
           let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
-          List.iter (function (bt,name) ->
-                              match bt with Drag(act) ->
-                                let res = act (x,y) false in
-                                send_events res) buttons
+          let fn (bt, name) =
+            match bt with
+            | Drag(act) -> send_events (act (x,y) false)
+            | _         -> assert false
+          in
+          List.iter fn buttons
         ));
   in
 
@@ -1441,7 +1441,6 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let mouse_cb ~button ~state ~x ~y =
     let win = get_win () in
     match button, state with
-
     | Glut.OTHER_BUTTON(3), Glut.UP -> win.zoom <- win.zoom /. 1.1; redraw win;
     | Glut.OTHER_BUTTON(4), Glut.UP -> win.zoom <- win.zoom *. 1.1; redraw win;
 
@@ -1459,51 +1458,54 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
           let dx = x - x' and dy = y - y' in
           if (dx * dx + dy * dy <= 9) then links else []
       in
-      List.iter
-          (fun l ->
-            match l.link_kind with
-              Intern(label,dest_page,dest_x,dest_y) ->
-                begin
-                  Printf.eprintf "dest_page %d\n%!" dest_page;
-                  cur_page := dest_page;
-                  cur_state := 0;
-                  redraw win;
-                end
-            | Extern(uri) ->
-              begin
-                try
-                  let browser = Sys.getenv "BROWSER" in
-(*                  Printf.printf "%s \"%s\"\n%!" browser uri;*)
-                  ignore (Sys.command (Printf.sprintf "%s \"%s\"" browser uri));
-                with
-                  Not_found ->
-                    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
-              end
-            | Button(Click(act), name) ->
-                send_events (act ())
-            | Button(Edit(current,init,act),name) ->
-               let editor = try Sys.getenv "EDITOR" with Not_found -> "emacs" in
-               let filename, ch = Filename.open_temp_file "" name in
-               output_string ch current;
-               close_out ch;
-               ignore (Sys.command (editor ^ " " ^ filename));
-               let ch = open_in filename in
-               let len = in_channel_length ch in
-               let buf = Bytes.make len ' ' in
-               let _ = really_input ch buf 0 len in
-               close_in ch;
-         let buf = Bytes.to_string buf in
-               send_events (act buf)
-            | Button(Drag(act),name) ->
-               match !motion_ref with
-                 None -> ()
-               | Some (x0,y0,x', y',buttons,links) ->
+      let fn l =
+        match l.link_kind with
+        | Intern(label,dest_page,dest_x,dest_y) ->
+            begin
+              Printf.eprintf "dest_page %d\n%!" dest_page;
+              cur_page := dest_page;
+              cur_state := 0;
+              redraw win;
+            end
+        | Extern(uri) ->
+          begin
+            try
+              let browser = Sys.getenv "BROWSER" in
+(*              Printf.printf "%s \"%s\"\n%!" browser uri;*)
+              ignore (Sys.command (Printf.sprintf "%s \"%s\"" browser uri));
+            with
+              Not_found ->
+                Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
+          end
+        | Button(Click(act), name) ->
+            send_events (act ())
+        | Button(Edit(current,init,act),name) ->
+           let editor = try Sys.getenv "EDITOR" with Not_found -> "emacs" in
+           let filename, ch = Filename.open_temp_file "" name in
+           output_string ch current;
+           close_out ch;
+           ignore (Sys.command (editor ^ " " ^ filename));
+           let ch = open_in filename in
+           let len = in_channel_length ch in
+           let buf = Bytes.make len ' ' in
+           let _ = really_input ch buf 0 len in
+           close_in ch;
+           let buf = Bytes.to_string buf in
+           send_events (act buf)
+        | Button(Drag(act),name) ->
+            begin
+              match !motion_ref with
+              | None -> ()
+              | Some (x0,y0,x', y',buttons,links) ->
                   let dx = x - x' and dy = y - y' in
                   let mx = float dx and my = float dy in
                   let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
                   send_events (act (x,y) true)
-          ) links;
-            motion_ref := None;
+            end;
+        | _ -> assert false
+      in
+      List.iter fn links;
+      motion_ref := None;
 
 
     | b, Glut.UP ->
