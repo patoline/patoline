@@ -156,10 +156,10 @@ let make_name n=
     | h::s->
         let initiales=List.map
                         (fun x->
-            let xx=try Util.unspace x with _->"" in
+            let xx = try UTF8.trim x with _ -> "" in
             (String.sub xx 0 (UTF8.next xx 0)) ^ ".") s
         in
-        (String.concat "" (List.rev initiales),try Util.unspace h with _->"")
+        (String.concat "" (List.rev initiales),try UTF8.trim h with _->"")
 
 exception Bib_error of string
 

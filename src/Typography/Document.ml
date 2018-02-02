@@ -996,7 +996,7 @@ let make_name name=
     if UTF8.out_of_range name i then
       UTF8.Buf.contents realName
     else (
-      if Util.is_space (UTF8.look name i) then
+      if UChar.is_space (UTF8.look name i) then
         if sp then fill (i+1) true
         else (
           UTF8.Buf.add_char realName (UChar.of_char ' ');
@@ -1298,7 +1298,7 @@ let boxify buf nbuf env0 l=
              if i >= String.length t then
                let sub = String.sub t i0 (i-i0) in
                l := mappend !l (gl_of_str env sub)
-             else if Util.is_space (UTF8.look t i) then
+             else if UChar.is_space (UTF8.look t i) then
                let sub = String.sub t i0 (i-i0) in
                l := mappend !l (gl_of_str env (nfkc sub));
                if i <> i0 || i = 0 then

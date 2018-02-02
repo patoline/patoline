@@ -198,6 +198,17 @@ module Make = functor ( ED : EncDec ) ->
         prev s len
 
     (*
+     * Returns a copy of the given string, without leading and trailing
+     * whitespace characters (see UChar.is_space).
+     *)
+    let trim : string -> string = fun s ->
+      let l = ref 0 in
+      let r = ref (last s) in
+      while UChar.is_space (look s !l) do l := next s !l done;
+      while UChar.is_space (look s !r) do r := prev s !r done;
+      String.sub s !l ((next s !r) - !l)
+
+    (*
      * Buffer for unicode strings.
      *)
     module Buf = 

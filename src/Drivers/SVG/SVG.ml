@@ -34,6 +34,18 @@ let filter_options argv = argv
 let driver_options =
   [("--font-filter",Arg.Set_string font_filter,"Set a command to filter otf fonts");]
 
+let copy_file a b=
+  let fa = open_in a in
+  let fb = open_out b in
+  let s = Bytes.create 1000 in
+  let rec copy () =
+    let x = input fa s 0 1000 in
+    if x > 0 then (output fb s 0 x; copy ())
+  in
+  copy ();
+  close_in fa;
+  close_out fb
+
 let assemble style title svg=
   let svg_buf=Buffer.create 256 in
   Buffer.add_string svg_buf "<defs>";
@@ -1007,9 +1019,7 @@ let output' ?(structure:structure=empty_structure) pages filename=
 
   let svg_files,cache,imgs=buffered_output' ~structure:structure pages prefix in
 
-  StrMap.fold (fun k a _->
-    Util.copy_file k (Filename.concat prefix a)
-  ) imgs ();
+  StrMap.fold (fun k a _-> copy_file k (Filename.concat prefix a)) imgs ();
 
   let html,style=basic_html cache structure pages prefix in
   let o=open_out (Filename.concat (Filename.basename prefix) "index.html") in
@@ -1102,9 +1112,7 @@ let images_of_boxes ?cache ?(css="style.css") ?(output_font_defs=true) prefix en
                               (y0));
 
       let dr,imgs=draw ~fontCache:cache prefix w (y1 -. y0) raws.(i) in
-      StrMap.fold (fun k a _->
-        Util.copy_file k (Filename.concat prefix a)
-      ) imgs ();
+      StrMap.fold (fun k a _-> copy_file k (Filename.concat prefix a)) imgs ();
       HtmlFonts.output_fonts cache;
 
     (* Buffer.add_string r (Printf.sprintf "<defs><style type=\"text/css\" src=\"%s\"/></defs>" css_file); *)

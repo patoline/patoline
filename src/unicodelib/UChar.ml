@@ -65,3 +65,12 @@ module UMap = Map.Make (
     type t = uchar
     let compare = compare
   end)
+
+(*
+ * Tells whether the given unicode character corresponds to a spacing
+ * character, including regular space, tabulation, newline, ...
+ *)
+let is_space : uchar -> bool = fun c ->
+  (0x0009 <= c && c <= 0x000d) || c = 0x0020 || c = 0x00a0
+  || c = 0x1680 || c = 0x180e || (0x2000 <= c && c <= 0x200a)
+  || c = 0x202f || c = 0x205f || c = 0x3000
