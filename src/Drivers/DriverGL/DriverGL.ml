@@ -183,49 +183,49 @@ let add_normals closed ratio beziers =
       let beziers = List.filter (fun bs -> bs <> []) beziers in
       let beziers = Bezier.oriente beziers in
       List.split (List.map (fun (bs, orientation) ->
-	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
-	let prev, bs =
-	  let xe, ye = last bs in
-	  let xs, ys = List.hd bs in
-	  let prev = ref ( normalize (Bezier.derivee_approx ye, -. Bezier.derivee_approx xe)) in
-	  let ex = xe.(Array.length xe - 1) and ey = ye.(Array.length ye - 1) in
-	  let sx = xs.(0) and sy = ys.(0) in
-	  if abs_float (ex -. sx) > 1e-6 || abs_float (ey -. sy) > 1e-6 then (
- 	    prev, ([| ex; sx |], [| ey; sy |]) :: bs)
-	  else
-	    prev, bs
-	in
-	List.split (List.map (fun (xs, ys) ->
-	  let cur = normalize (Bezier.derivee_approx ys, -. Bezier.derivee_approx xs) in
-	  let n = combine orientation ratio !prev cur in
-	  prev :=  cur;
-	  (xs.(0),ys.(0),0.0),n) bs)
+        let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
+        let prev, bs =
+          let xe, ye = last bs in
+          let xs, ys = List.hd bs in
+          let prev = ref ( normalize (Bezier.derivee_approx ye, -. Bezier.derivee_approx xe)) in
+          let ex = xe.(Array.length xe - 1) and ey = ye.(Array.length ye - 1) in
+          let sx = xs.(0) and sy = ys.(0) in
+          if abs_float (ex -. sx) > 1e-6 || abs_float (ey -. sy) > 1e-6 then (
+             prev, ([| ex; sx |], [| ey; sy |]) :: bs)
+          else
+            prev, bs
+        in
+        List.split (List.map (fun (xs, ys) ->
+          let cur = normalize (Bezier.derivee_approx ys, -. Bezier.derivee_approx xs) in
+          let n = combine orientation ratio !prev cur in
+          prev :=  cur;
+          (xs.(0),ys.(0),0.0),n) bs)
       ) beziers)
     else
       List.split (List.map (fun bs ->
-	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
-	let prev = ref None in
-	let ln =
-	  List.map (fun (xs, ys) ->
-	    let n =
-	      match !prev with
-		None ->
-		  single ratio (normalize (Bezier.derivee_start ys, -. Bezier.derivee_start xs))
-	      | Some(_,_,v) ->
-		  combine true ratio v (normalize (Bezier.derivee_start ys, -. Bezier.derivee_start xs))
-	    in
-	    prev :=  Some (xs, ys, normalize (Bezier.derivee_end ys, -. Bezier.derivee_end xs));
-	    (xs.(0),ys.(0),0.0),n) bs
-	in
-	let last =
-	  match !prev with
-	    None -> assert false
-	  | Some(xs,ys,v) ->
-	    let s = Array.length xs in
-	    let n = single ratio v in
-	    (xs.(s - 1),ys.(s - 1),0.0),n
-	in
-	List.split (ln @ [last])
+        let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
+        let prev = ref None in
+        let ln =
+          List.map (fun (xs, ys) ->
+            let n =
+              match !prev with
+                None ->
+                  single ratio (normalize (Bezier.derivee_start ys, -. Bezier.derivee_start xs))
+              | Some(_,_,v) ->
+                  combine true ratio v (normalize (Bezier.derivee_start ys, -. Bezier.derivee_start xs))
+            in
+            prev :=  Some (xs, ys, normalize (Bezier.derivee_end ys, -. Bezier.derivee_end xs));
+            (xs.(0),ys.(0),0.0),n) bs
+        in
+        let last =
+          match !prev with
+            None -> assert false
+          | Some(xs,ys,v) ->
+            let s = Array.length xs in
+            let n = single ratio v in
+            (xs.(s - 1),ys.(s - 1),0.0),n
+        in
+        List.split (ln @ [last])
     ) beziers)
 
 
@@ -279,7 +279,7 @@ let init_win w =
   }
 
 let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;children=[||]})
+                                  page= -1;struct_x=0.;struct_y=0.;children=[||]})
     pages fileName=
 
   let pages = ref pages in
@@ -305,22 +305,22 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let read_links () =
     links := Array.mapi
       (fun i page ->
-	Array.mapi (fun j state ->
-	  let l = ref [] in
-	  let rec fn ls = List.iter
-	    (function
+        Array.mapi (fun j state ->
+          let l = ref [] in
+          let rec fn ls = List.iter
+            (function
             | Link(l') ->
-	      fn l'.link_contents;
-	      l := l'::!l
-	    | Dynamic d ->
-	      fn (dynContents d)
-	    | Affine a -> fn a.affine_contents
-	    | States s -> fn s.states_contents
-	    | Animation _ -> ()
-	    | Glyph _ | Image _ | Path _ | Video _ -> ()) ls
-	  in
-	  fn (drawing_sort state.contents);
-	  !l) page)
+              fn l'.link_contents;
+              l := l'::!l
+            | Dynamic d ->
+              fn (dynContents d)
+            | Affine a -> fn a.affine_contents
+            | States s -> fn s.states_contents
+            | Animation _ -> ()
+            | Glyph _ | Image _ | Path _ | Video _ -> ()) ls
+          in
+          fn (drawing_sort state.contents);
+          !l) page)
       !pages;
   in
 
@@ -348,10 +348,10 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     match all_win.(0) with
       None -> assert false
     | Some w -> if w.winId = winId then w else
-	match all_win.(1) with
-	  None -> assert false
-	| Some w -> if w.winId = winId then w else
-	    assert false
+        match all_win.(1) with
+          None -> assert false
+        | Some w -> if w.winId = winId then w else
+            assert false
   in
 
   let find_link win x y =
@@ -386,9 +386,9 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     if !init_zoom then begin
       init_zoom := false; win.dx <- 0.0; win.dy <- 0.0;
       if (pw /. ph < ratio && !prefs.init_zoom != FitWidth) || !prefs.init_zoom = FitHeight  then
-	win.zoom <- 1.0
+        win.zoom <- 1.0
       else
-	win.zoom <- (pw /. ph) /. ratio
+        win.zoom <- (pw /. ph) /. ratio
     end;
 
     win.cx <- pw /. 2.0 +. win.dx;
@@ -426,18 +426,18 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       old_menu := [menu];
       Glut.setMenu menu;
       let rec fn menu a i s =
-	Glut.addMenuEntry s.name !c;
-	Hashtbl.replace menu_item !c (a, i);
-	incr c;
-	if s.children <> [||] then
-	  begin
-	    let menu' = Glut.createMenu menu_cb in
-	    old_menu := menu' :: !old_menu;
-	    Glut.setMenu menu';
-	    Array.iteri (fn menu' s.children) s.children;
-	    Glut.setMenu menu;
-	    Glut.addSubMenu "  ==>" menu';
-	  end
+        Glut.addMenuEntry s.name !c;
+        Hashtbl.replace menu_item !c (a, i);
+        incr c;
+        if s.children <> [||] then
+          begin
+            let menu' = Glut.createMenu menu_cb in
+            old_menu := menu' :: !old_menu;
+            Glut.setMenu menu';
+            Array.iteri (fn menu' s.children) s.children;
+            Glut.setMenu menu;
+            Glut.addSubMenu "  ==>" menu';
+          end
       in
       Array.iteri (fn menu structure.children)  structure.children;
       Glut.attachMenu Glut.RIGHT_BUTTON
@@ -506,52 +506,52 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       draw_blank page state;
 
       let fill_bezier color lines normals =
-	let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) ((xn,yn),_) ->
-	  (x -. xn *. graisse_x', y -. yn *. graisse_y' , 0.0)) l n) lines normals in
-	GlDraw.color color;
-	GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
+        let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) ((xn,yn),_) ->
+          (x -. xn *. graisse_x', y -. yn *. graisse_y' , 0.0)) l n) lines normals in
+        GlDraw.color color;
+        GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
 
-	let fn alpha ends (x,y,_) ((xn,yn),quality) =
-	  match quality with
-	  | None ->
-	    GlDraw.color color;
-	    GlDraw.vertex2 (x,y);
-	    GlDraw.color ~alpha color;
-	    GlDraw.vertex2 (x+. graisse_x *. xn,y+. graisse_y *. yn)
-	  | Some((a,b),(a',b')) ->
-	    GlDraw.color color;
-	    GlDraw.vertex2 (x,y);
-	    GlDraw.color ~alpha color;
-	    GlDraw.vertex2 (x+. graisse_x *. a,y+. graisse_y *. b);
-	    if not ends then begin
-	      GlDraw.color color;
-	      GlDraw.vertex2 (x,y);
-	      GlDraw.color ~alpha color;
-	      GlDraw.vertex2 (x+. graisse_x *. xn,y+. graisse_y *. yn);
-	      GlDraw.color color;
-	      GlDraw.vertex2 (x,y);
-	      GlDraw.color ~alpha color;
-	      GlDraw.vertex2 (x+. graisse_x *. a',y+. graisse_y *. b')
-	    end
-	in
-	      (*
-		GlDraw.polygon_mode `both `line;
-		List.iter2 (fun l n ->
-		GlDraw.begins `quad_strip;
-		List.iter2 (fn 1.0 false) l n;
-		fn 1.0 true (List.hd l) (List.hd n);
-		GlDraw.ends ();
-		)	lines normals;
-		GlDraw.polygon_mode `both `fill;
-	      *)
-	GlFBO.use_shader ();
-	List.iter2 (fun l n ->
-	  GlDraw.begins `quad_strip;
-	  List.iter2 (fn 0.0 false) l n;
-	  fn 0.0 true (List.hd l) (List.hd n);
-	  GlDraw.ends ();
-	) lines normals;
-	GlFBO.no_shader ();
+        let fn alpha ends (x,y,_) ((xn,yn),quality) =
+          match quality with
+          | None ->
+            GlDraw.color color;
+            GlDraw.vertex2 (x,y);
+            GlDraw.color ~alpha color;
+            GlDraw.vertex2 (x+. graisse_x *. xn,y+. graisse_y *. yn)
+          | Some((a,b),(a',b')) ->
+            GlDraw.color color;
+            GlDraw.vertex2 (x,y);
+            GlDraw.color ~alpha color;
+            GlDraw.vertex2 (x+. graisse_x *. a,y+. graisse_y *. b);
+            if not ends then begin
+              GlDraw.color color;
+              GlDraw.vertex2 (x,y);
+              GlDraw.color ~alpha color;
+              GlDraw.vertex2 (x+. graisse_x *. xn,y+. graisse_y *. yn);
+              GlDraw.color color;
+              GlDraw.vertex2 (x,y);
+              GlDraw.color ~alpha color;
+              GlDraw.vertex2 (x+. graisse_x *. a',y+. graisse_y *. b')
+            end
+        in
+              (*
+                GlDraw.polygon_mode `both `line;
+                List.iter2 (fun l n ->
+                GlDraw.begins `quad_strip;
+                List.iter2 (fn 1.0 false) l n;
+                fn 1.0 true (List.hd l) (List.hd n);
+                GlDraw.ends ();
+                )        lines normals;
+                GlDraw.polygon_mode `both `fill;
+              *)
+        GlFBO.use_shader ();
+        List.iter2 (fun l n ->
+          GlDraw.begins `quad_strip;
+          List.iter2 (fn 0.0 false) l n;
+          fn 0.0 true (List.hd l) (List.hd n);
+          GlDraw.ends ();
+        ) lines normals;
+        GlFBO.no_shader ();
 
       in
 
@@ -559,80 +559,80 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
       let rec fn = function
         | Video _ -> failwith "GL Driver does not support video"
-	| Animation a ->
-	  win.do_animation <- true;
-	  let t = !cur_time -. !start_page_time in
-	  let len = Array.length a.anim_contents in
-	  let n_step = truncate (t /. a.anim_step) mod (if a.anim_mirror then 2 * len - 1 else len) in
-	  let n_step = if a.anim_mirror && n_step >= len then 2 * len - 1 - n_step else n_step in
-	  List.iter fn (drawing_sort a.anim_contents.(n_step));
+        | Animation a ->
+          win.do_animation <- true;
+          let t = !cur_time -. !start_page_time in
+          let len = Array.length a.anim_contents in
+          let n_step = truncate (t /. a.anim_step) mod (if a.anim_mirror then 2 * len - 1 else len) in
+          let n_step = if a.anim_mirror && n_step >= len then 2 * len - 1 - n_step else n_step in
+          List.iter fn (drawing_sort a.anim_contents.(n_step));
 
-	| Dynamic d ->
-	  List.iter fn (dynContents d)
+        | Dynamic d ->
+          List.iter fn (dynContents d)
 
-	| Glyph g ->
+        | Glyph g ->
         let x = g.glyph_x in
         let y = g.glyph_y  in
-	let size = g.glyph_size in
-	let s = size   /. 1000. in
-	let ratio = pixel_width /. s (* *. 10.0 *) in
+        let size = g.glyph_size in
+        let s = size   /. 1000. in
+        let ratio = pixel_width /. s (* *. 10.0 *) in
 (*
-	Printf.fprintf stderr "x = %f, y = %f, s = %f, pw = %f, ph = %f, ratio = %f\n"
-	  x y s !pixel_width !pixel_height ratio ;
+        Printf.fprintf stderr "x = %f, y = %f, s = %f, pw = %f, ph = %f, ratio = %f\n"
+          x y s !pixel_width !pixel_height ratio ;
 *)
 
-	let draw_glyph color =
-	  try
-	    GlList.call (Hashtbl.find win.glyphCache (g.glyph, ratio, color))
-	  with
-	    Not_found ->
-	      let beziers =  Fonts.outlines g.glyph in
-	      let lines, normals = add_normals true ratio beziers in
-	      let l = GlList.create `compile_and_execute in
-	      fill_bezier color lines normals;
-	      GlList.ends ();
-	      Hashtbl.add win.glyphCache (g.glyph, ratio, color) l
+        let draw_glyph color =
+          try
+            GlList.call (Hashtbl.find win.glyphCache (g.glyph, ratio, color))
+          with
+            Not_found ->
+              let beziers =  Fonts.outlines g.glyph in
+              let lines, normals = add_normals true ratio beziers in
+              let l = GlList.create `compile_and_execute in
+              fill_bezier color lines normals;
+              GlList.ends ();
+              Hashtbl.add win.glyphCache (g.glyph, ratio, color) l
 
-	in
+        in
 (*
-	List.iter (fun bs ->
-	  List.iter (fun (x,y,z) ->
-	    Printf.fprintf stderr "(%f,%f,%f) " x y z) bs;
+        List.iter (fun bs ->
+          List.iter (fun (x,y,z) ->
+            Printf.fprintf stderr "(%f,%f,%f) " x y z) bs;
 
-	  Printf.fprintf stderr "\n") lines; *)
-	let (r,g,b) = Color.to_rgb g.glyph_color in
-	flush stderr;
+          Printf.fprintf stderr "\n") lines; *)
+        let (r,g,b) = Color.to_rgb g.glyph_color in
+        flush stderr;
 (*
-	let x = (floor (x /. !pixel_width +. 1.0 /. 3.0) -. 0.5 /. 3.0) *. !pixel_width in
-	let y = (floor (y /. !pixel_height +. 1.0) -. 0.5) *. !pixel_height in
+        let x = (floor (x /. !pixel_width +. 1.0 /. 3.0) -. 0.5 /. 3.0) *. !pixel_width in
+        let y = (floor (y /. !pixel_height +. 1.0) -. 0.5) *. !pixel_height in
 *)
-	GlMat.push ();
-	GlMat.translate3 (x,y,0.0);
-	GlMat.scale3 (s, s, s);
-	draw_glyph (r,g,b);
-	GlMat.pop ();
+        GlMat.push ();
+        GlMat.translate3 (x,y,0.0);
+        GlMat.scale3 (s, s, s);
+        draw_glyph (r,g,b);
+        GlMat.pop ();
 
     | Affine a ->
       let mat = GlMat.of_array [|
-	[|
-	  a.affine_matrix.(0).(0);
-	  a.affine_matrix.(1).(0);
-	  0.0;
-	  a.affine_matrix.(2).(0);
-	|];
-	[|
-	  a.affine_matrix.(0).(1);
-	  a.affine_matrix.(1).(1);
-	  0.0;
-	  a.affine_matrix.(2).(1);
-	|];
-	[| 0.0; 0.0; 1.0; 0.0 |];
-	[|
-	  a.affine_matrix.(0).(2);
-	  a.affine_matrix.(1).(2);
-	  0.0;
-	  a.affine_matrix.(2).(2);
-	|]|];
+        [|
+          a.affine_matrix.(0).(0);
+          a.affine_matrix.(1).(0);
+          0.0;
+          a.affine_matrix.(2).(0);
+        |];
+        [|
+          a.affine_matrix.(0).(1);
+          a.affine_matrix.(1).(1);
+          0.0;
+          a.affine_matrix.(2).(1);
+        |];
+        [| 0.0; 0.0; 1.0; 0.0 |];
+        [|
+          a.affine_matrix.(0).(2);
+          a.affine_matrix.(1).(2);
+          0.0;
+          a.affine_matrix.(2).(2);
+        |]|];
       in
       GlMat.push ();
       GlMat.mult mat;
@@ -644,15 +644,15 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       let lines, normals = add_normals param.close pixel_width beziers in
 
       (match param.fillColor with
-	None -> ()
+        None -> ()
       | Some c ->
           let color = Color.to_rgb c in
-	        fill_bezier color lines normals);
+                fill_bezier color lines normals);
           (match param.strokingColor with
-	         | None   -> ()
+                 | None   -> ()
            | Some c ->
                let color = Color.to_rgb c in
-	             let lw = param.lineWidth /. 2.0 in
+                     let lw = param.lineWidth /. 2.0 in
                let graisse_x' = lw -. (pixel_width *. (flou_x -. graisse)) in
                let graisse_y' = lw -. (pixel_width *. (flou_y -. graisse)) in
                let graisse_x =
@@ -662,60 +662,60 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
                  lw +. (pixel_width *. (3.0 *. flou_y +. graisse))
                in
 
-	let lines, normals =
-	  if param.close then
-	    List.map (function (x::_ as l) -> l @ [x] | [] -> []) lines,
-	    List.map (function (x::_ as l) -> l @ [x] | [] -> []) normals
-	  else
-	    lines, normals
-	in
-	List.iter2 (fun l n ->
-	  GlDraw.begins `quad_strip;
-	  GlDraw.color color;
-	  List.iter2
-	    (fun (x,y,_) ((vx, vy),_) ->
-	      let norm = sqrt (vx*.vx +. vy*.vy) in
-	      let nx = vx /. norm *. graisse_x' in
-	      let ny = vy /. norm *. graisse_y' in
-	      GlDraw.vertex2 (x +. nx, y +. ny);
-	      GlDraw.vertex2 (x -. nx, y -. ny)
-	    ) l n;
-	  GlDraw.ends ();
+        let lines, normals =
+          if param.close then
+            List.map (function (x::_ as l) -> l @ [x] | [] -> []) lines,
+            List.map (function (x::_ as l) -> l @ [x] | [] -> []) normals
+          else
+            lines, normals
+        in
+        List.iter2 (fun l n ->
+          GlDraw.begins `quad_strip;
+          GlDraw.color color;
+          List.iter2
+            (fun (x,y,_) ((vx, vy),_) ->
+              let norm = sqrt (vx*.vx +. vy*.vy) in
+              let nx = vx /. norm *. graisse_x' in
+              let ny = vy /. norm *. graisse_y' in
+              GlDraw.vertex2 (x +. nx, y +. ny);
+              GlDraw.vertex2 (x -. nx, y -. ny)
+            ) l n;
+          GlDraw.ends ();
 
-  	  GlFBO.use_shader ();
+            GlFBO.use_shader ();
 
-	  GlDraw.begins `quad_strip;
-	  List.iter2
-	    (fun (x,y,_) ((vx, vy),_) ->
-	      let norm = sqrt (vx*.vx +. vy*.vy) in
-	      let nx' = vx /. norm *. graisse_x' in
-	      let ny' = vy /. norm *. graisse_y' in
-	      let nx = vx /. norm *. graisse_x in
-	      let ny = vy /. norm *. graisse_y in
-	      GlDraw.color color;
-	      GlDraw.vertex2 (x +. nx', y +. ny');
-	      GlDraw.color ~alpha:0.0 color;
-	      GlDraw.vertex2 (x +. nx, y +. ny);
-	    ) l n;
-	  GlDraw.ends ();
+          GlDraw.begins `quad_strip;
+          List.iter2
+            (fun (x,y,_) ((vx, vy),_) ->
+              let norm = sqrt (vx*.vx +. vy*.vy) in
+              let nx' = vx /. norm *. graisse_x' in
+              let ny' = vy /. norm *. graisse_y' in
+              let nx = vx /. norm *. graisse_x in
+              let ny = vy /. norm *. graisse_y in
+              GlDraw.color color;
+              GlDraw.vertex2 (x +. nx', y +. ny');
+              GlDraw.color ~alpha:0.0 color;
+              GlDraw.vertex2 (x +. nx, y +. ny);
+            ) l n;
+          GlDraw.ends ();
 
-	  GlDraw.begins `quad_strip;
-	  List.iter2
-	    (fun (x,y,_) ((vx, vy),_) ->
-	      let norm = sqrt (vx*.vx +. vy*.vy) in
-	      let nx' = vx /. norm *. graisse_x' in
-	      let ny' = vy /. norm *. graisse_y' in
-	      let nx = vx /. norm *. graisse_x in
-	      let ny = vy /. norm *. graisse_y in
-	      GlDraw.color color;
-	      GlDraw.vertex2 (x -. nx', y -. ny');
-	      GlDraw.color ~alpha:0.0 color;
-	      GlDraw.vertex2 (x -. nx, y -. ny);
-	    ) l n;
-	  GlDraw.ends ();
-	  GlFBO.no_shader ();
+          GlDraw.begins `quad_strip;
+          List.iter2
+            (fun (x,y,_) ((vx, vy),_) ->
+              let norm = sqrt (vx*.vx +. vy*.vy) in
+              let nx' = vx /. norm *. graisse_x' in
+              let ny' = vy /. norm *. graisse_y' in
+              let nx = vx /. norm *. graisse_x in
+              let ny = vy /. norm *. graisse_y in
+              GlDraw.color color;
+              GlDraw.vertex2 (x -. nx', y -. ny');
+              GlDraw.color ~alpha:0.0 color;
+              GlDraw.vertex2 (x -. nx, y -. ny);
+            ) l n;
+          GlDraw.ends ();
+          GlFBO.no_shader ();
 
-	) lines normals);
+        ) lines normals);
 
     | Link(link) -> List.iter fn link.link_contents
 
@@ -724,39 +724,39 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     | Image i ->
       Gl.enable `texture_2d;
       begin
-	try
-	  GlTex.bind_texture `texture_2d (Hashtbl.find win.imageCache i)
-	with Not_found ->
-	  let image = ImageLib.openfile i.image_file in
-	  let w =Image.(image.width) in
-	  let h =Image.(image.height) in
-	  let raw = Raw.create `ubyte ~len:(4*w*h) in
-	  for j=0 to h-1 do
+        try
+          GlTex.bind_texture `texture_2d (Hashtbl.find win.imageCache i)
+        with Not_found ->
+          let image = ImageLib.openfile i.image_file in
+          let w =Image.(image.width) in
+          let h =Image.(image.height) in
+          let raw = Raw.create `ubyte ~len:(4*w*h) in
+          for j=0 to h-1 do
             for i=0 to w-1 do
-	      Image.(read_rgba image i j (fun r g b a ->
-		let r,g,b,a =
-		  if image.max_val <> 255 then
-		    (r * 255 * 2 + 1) / (2 * image.max_val),
-		    (g * 255 * 2 + 1) / (2 * image.max_val),
-		    (b * 255 * 2 + 1) / (2 * image.max_val),
-		    (a * 255 * 2 + 1) / (2 * image.max_val)
-		  else r,g,b,a
-		in
-		Raw.set raw ((j * w + i) * 4 + 0) r;
-		Raw.set raw ((j * w + i) * 4 + 1) g;
-		Raw.set raw ((j * w + i) * 4 + 2) b;
-		Raw.set raw ((j * w + i) * 4 + 3) a));
-	    done
-	  done;
-	  let texture = GlPix.of_raw raw `rgba w h in
-	  let tid = GlTex.gen_texture () in
-	  GlTex.bind_texture `texture_2d tid;
-	  GlTex.image2d texture ~border:false;
-	  GlTex.env (`mode `modulate);
-	  GlTex.env (`color (1.0, 1.0, 1.0, 1.0));
-	  GlTex.parameter ~target:`texture_2d (`min_filter `nearest);
-	  GlTex.parameter ~target:`texture_2d (`mag_filter `nearest);
-	  Hashtbl.replace win.imageCache i tid
+              Image.(read_rgba image i j (fun r g b a ->
+                let r,g,b,a =
+                  if image.max_val <> 255 then
+                    (r * 255 * 2 + 1) / (2 * image.max_val),
+                    (g * 255 * 2 + 1) / (2 * image.max_val),
+                    (b * 255 * 2 + 1) / (2 * image.max_val),
+                    (a * 255 * 2 + 1) / (2 * image.max_val)
+                  else r,g,b,a
+                in
+                Raw.set raw ((j * w + i) * 4 + 0) r;
+                Raw.set raw ((j * w + i) * 4 + 1) g;
+                Raw.set raw ((j * w + i) * 4 + 2) b;
+                Raw.set raw ((j * w + i) * 4 + 3) a));
+            done
+          done;
+          let texture = GlPix.of_raw raw `rgba w h in
+          let tid = GlTex.gen_texture () in
+          GlTex.bind_texture `texture_2d tid;
+          GlTex.image2d texture ~border:false;
+          GlTex.env (`mode `modulate);
+          GlTex.env (`color (1.0, 1.0, 1.0, 1.0));
+          GlTex.parameter ~target:`texture_2d (`min_filter `nearest);
+          GlTex.parameter ~target:`texture_2d (`mag_filter `nearest);
+          Hashtbl.replace win.imageCache i tid
       end;
       GlDraw.color (1.0,1.0,1.0);
       GlDraw.begins `quads;
@@ -781,46 +781,46 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       GlFunc.depth_mask true;
       Gl.disable `blend;
       Hashtbl.iter (fun name f ->
-	try
-	  f win ;
-	with e -> Printf.fprintf stderr "other: exception %s\n" name; flush stderr; ) other_items;
+        try
+          f win ;
+        with e -> Printf.fprintf stderr "other: exception %s\n" name; flush stderr; ) other_items;
 
     in
 
 
     let do_draw pixel_width () =
       match !mode with
-	Single ->
-	  draw_page pixel_width !cur_page !cur_state
+        Single ->
+          draw_page pixel_width !cur_page !cur_state
       | Double -> () (*
-	let page = (!cur_page / 2) * 2 in
-	let pw,ph = !pages.(!cur_page).(!cur_state).size in
-	if page - 1 >= 0 && page - 1 < !num_pages then draw_page (page - 1) else draw_blank !cur_page;
-	GlMat.push ();
-	GlMat.translate3 (pw +. 1.0, 0.0, 0.0);
-	if page >= 0 && page < !num_pages then draw_page page else draw_blank !cur_page;
-	GlMat.pop ();*)
+        let page = (!cur_page / 2) * 2 in
+        let pw,ph = !pages.(!cur_page).(!cur_state).size in
+        if page - 1 >= 0 && page - 1 < !num_pages then draw_page (page - 1) else draw_blank !cur_page;
+        GlMat.push ();
+        GlMat.translate3 (pw +. 1.0, 0.0, 0.0);
+        if page >= 0 && page < !num_pages then draw_page page else draw_blank !cur_page;
+        GlMat.pop ();*)
 
     in
 
    let draw_saa do_draw set_proj saa =
      match subpixel saa with
-	None ->
-	  set_proj 0.0 0.0;
-	  do_draw ();
+        None ->
+          set_proj 0.0 0.0;
+          do_draw ();
       | Some (xr,yr, xb,yb) ->
-	set_proj xb yb;
-	GlFunc.color_mask ~red:false ~green:false ~blue:true ~alpha:true ();
-	do_draw ();
-	set_proj xr yr;
-	GlFunc.color_mask ~red:true ~green:false ~blue:false ~alpha:true ();
-	GlClear.clear [`depth];
-	do_draw ();
-	set_proj 0.0 0.0;
-	GlFunc.color_mask ~red:false ~green:true ~blue:false ~alpha:true ();
-	GlClear.clear [`depth];
-	do_draw ();
-	GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
+        set_proj xb yb;
+        GlFunc.color_mask ~red:false ~green:false ~blue:true ~alpha:true ();
+        do_draw ();
+        set_proj xr yr;
+        GlFunc.color_mask ~red:true ~green:false ~blue:false ~alpha:true ();
+        GlClear.clear [`depth];
+        do_draw ();
+        set_proj 0.0 0.0;
+        GlFunc.color_mask ~red:false ~green:true ~blue:false ~alpha:true ();
+        GlClear.clear [`depth];
+        do_draw ();
+        GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
    in
 
     let draw_fbo fbo w h pw ph page state saa =
@@ -828,11 +828,11 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       GlClear.clear [`color;`depth];
       GlMat.load_identity ();
       let set_proj xb yb =
-	GlMat.mode `projection;
-	GlMat.load_identity ();
-	GlMat.translate3 (xb /. float w , yb /. float h , 0.0);
-	GlMat.ortho (0., pw) (0., ph) (-1., 1.);
-	GlMat.mode `modelview;
+        GlMat.mode `projection;
+        GlMat.load_identity ();
+        GlMat.translate3 (xb /. float w , yb /. float h , 0.0);
+        GlMat.ortho (0., pw) (0., ph) (-1., 1.);
+        GlMat.mode `modelview;
       in
       draw_saa (fun () -> draw_page (pw /. float w) page state) set_proj saa;
     in
@@ -850,7 +850,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let get_pix samples w h saa page state =
     let pw,ph = !pages.(page).(state).size in
     let w, h = match w, h with
-	None, None -> 400, int_of_float (ph /. pw *. float 400)
+        None, None -> 400, int_of_float (ph /. pw *. float 400)
       | Some w, None -> w, int_of_float (ph /. pw *. float w)
       | None, Some h -> int_of_float (pw /. ph *. float h), h
       | Some w, Some h -> w, h
@@ -869,7 +869,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     GlFBO.read_fbo fbo raw;
 *)
     let raw = GlPix.to_raw (GlPix.read ~x:0 ~y:0 ~width:(samples*w) ~height:(samples*h)
-	~format:`rgba ~kind:`ubyte)
+        ~format:`rgba ~kind:`ubyte)
     in
     Gl.raise_error "read fbo";
     GlFBO.unbind_fbo fbo;
@@ -880,7 +880,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let get_pixes samples w h saa =
     Array.mapi (fun i states ->
       Array.mapi (fun j _ ->
-	get_pix samples w h saa i j) states) !pages
+        get_pix samples w h saa i j) states) !pages
   in
 (*
    let draw_texture fbo page state =
@@ -942,21 +942,21 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       let angle = ref (if dir then 0.0 else 90.0) in
       let axe = (0.0,-1.0,0.0) in
       while !angle <= 90.0 && !angle >= 0.0 do
-	GlClear.clear [`color;`depth];
-	draw_saa (fun () ->
-	GlMat.load_identity ();
-	GlMat.rotate3 !angle axe;
-	draw_texture fbo1 i j;
-	if !angle > 15.0 then
-	  begin
-	    GlMat.load_identity ();
-	    draw_texture fbo2 i' j';
-	  end
-	) set_proj !prefs.subpixel_anti_aliasing;
-	Glut.swapBuffers ();
-	incr nb;
-	let delta = Unix.gettimeofday () -. time in
-	angle := if dir then delta /. duration *. 90.0 else (1.0 -. delta /. duration) *. 90.0;
+        GlClear.clear [`color;`depth];
+        draw_saa (fun () ->
+        GlMat.load_identity ();
+        GlMat.rotate3 !angle axe;
+        draw_texture fbo1 i j;
+        if !angle > 15.0 then
+          begin
+            GlMat.load_identity ();
+            draw_texture fbo2 i' j';
+          end
+        ) set_proj !prefs.subpixel_anti_aliasing;
+        Glut.swapBuffers ();
+        incr nb;
+        let delta = Unix.gettimeofday () -. time in
+        angle := if dir then delta /. duration *. 90.0 else (1.0 -. delta /. duration) *. 90.0;
 
       done;
 
@@ -987,13 +987,13 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     let rec fn acc evs = match ev, evs with
       | _, [] -> ev::(List.rev acc)
       | (n1,EvDrag(x1,y1,false)), ((n2,EvDrag(x2,y2,r2))::evs) when n1 == n2 ->
-	List.rev_append acc ((n1, EvDrag(x1+.x2,y1+.y2, r2))::evs)
+        List.rev_append acc ((n1, EvDrag(x1+.x2,y1+.y2, r2))::evs)
       | (n1,EvClick) as e1, ((n2, EvClick)::evs) when n1 == n2 ->
-	List.rev_append acc (e1::evs)
+        List.rev_append acc (e1::evs)
       | (n1,EvEdit(_)) as e1, ((n2, EvEdit(_))::evs) when n1 == n2 ->
-	List.rev_append acc (e1::evs)
+        List.rev_append acc (e1::evs)
       | _, ev::evs ->
-	fn (ev::acc) evs
+        fn (ev::acc) evs
     in
     events := fn [] !events
   in
@@ -1003,15 +1003,15 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     events := [];
     List.iter (function ev ->
       List.iter (fun d ->
-	try
-	  let rs = Hashtbl.find dynReaction d in
-	  List.iter (fun r ->
-	    let action = r ev in
-	    if action <> Unchanged then
-	      (update_link := true; dynReset d; redraw_all ())) rs;
-	with
-	  Not_found -> ())
-	ds) l
+        try
+          let rs = Hashtbl.find dynReaction d in
+          List.iter (fun r ->
+            let action = r ev in
+            if action <> Unchanged then
+              (update_link := true; dynReset d; redraw_all ())) rs;
+        with
+          Not_found -> ())
+        ds) l
   in
                           *)
 
@@ -1059,9 +1059,9 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     GlMat.push ();
     let proj = GlMat.of_array
                [| [| 1.0; 0.0; 0.0; 0.0 |];
-		  [| 0.0; 1.0; 0.0; 0.0 |];
-		  [|-. xl /. zl; -. yl /. zl; 0.0; -1.0 /. zl|];
-		  [| 0.0; 0.0; 0.0; 1.0 |] |] in
+                  [| 0.0; 1.0; 0.0; 0.0 |];
+                  [|-. xl /. zl; -. yl /. zl; 0.0; -1.0 /. zl|];
+                  [| 0.0; 0.0; 0.0; 1.0 |] |] in
     GlMat.load_identity ();
     GlMat.translate3 (0.0,0.0,0.01);
     GlMat.mult proj;
@@ -1147,35 +1147,35 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       | 8 -> decr_state ()
       | 103 -> cur_page := min (max 0 !dest) (!num_pages - 1); cur_state := 0; redraw win;
       | 43 ->
-	if Glut.getModifiers () = Glut.active_shift then (
-	  Hashtbl.clear win.glyphCache;
-	  prefs := { !prefs with graisse = !prefs.graisse +. 0.05 };
-	  Printf.printf "Graisse : %f\n" !prefs.graisse; flush stdout;
-	  redraw win)
-	else if Glut.getModifiers () = Glut.active_ctrl then (
-	  Hashtbl.clear win.glyphCache;
-	  prefs := { !prefs with tesselation_factor = !prefs.tesselation_factor *. 2.0 };
-	  Printf.printf "Tesselation factor : %f\n" !prefs.tesselation_factor; flush stdout;
-	  redraw win)
-	else
-	  win.zoom <- win.zoom /. 1.1; redraw win;
+        if Glut.getModifiers () = Glut.active_shift then (
+          Hashtbl.clear win.glyphCache;
+          prefs := { !prefs with graisse = !prefs.graisse +. 0.05 };
+          Printf.printf "Graisse : %f\n" !prefs.graisse; flush stdout;
+          redraw win)
+        else if Glut.getModifiers () = Glut.active_ctrl then (
+          Hashtbl.clear win.glyphCache;
+          prefs := { !prefs with tesselation_factor = !prefs.tesselation_factor *. 2.0 };
+          Printf.printf "Tesselation factor : %f\n" !prefs.tesselation_factor; flush stdout;
+          redraw win)
+        else
+          win.zoom <- win.zoom /. 1.1; redraw win;
       | 45 ->
-	if Glut.getModifiers () = Glut.active_shift then (
-	  Hashtbl.clear win.glyphCache;
-	  prefs := { !prefs with graisse = !prefs.graisse -. 0.05 };
-	  Printf.printf "Graisse : %f\n" !prefs.graisse; flush stdout;
-	  redraw win)
-	else if Glut.getModifiers () = Glut.active_ctrl then (
-	  Hashtbl.clear win.glyphCache;
-	  prefs := { !prefs with tesselation_factor = !prefs.tesselation_factor /. 2.0 };
-	  Printf.printf "Tesselation factor : %f\n" !prefs.tesselation_factor; flush stdout;
-	  redraw win)
-	else
-	  win.zoom <- win.zoom *. 1.1; redraw win;
+        if Glut.getModifiers () = Glut.active_shift then (
+          Hashtbl.clear win.glyphCache;
+          prefs := { !prefs with graisse = !prefs.graisse -. 0.05 };
+          Printf.printf "Graisse : %f\n" !prefs.graisse; flush stdout;
+          redraw win)
+        else if Glut.getModifiers () = Glut.active_ctrl then (
+          Hashtbl.clear win.glyphCache;
+          prefs := { !prefs with tesselation_factor = !prefs.tesselation_factor /. 2.0 };
+          Printf.printf "Tesselation factor : %f\n" !prefs.tesselation_factor; flush stdout;
+          redraw win)
+        else
+          win.zoom <- win.zoom *. 1.1; redraw win;
       | 119 ->
-	init_zoom:=true;prefs:={ !prefs with init_zoom = FitWidth }; redraw win
+        init_zoom:=true;prefs:={ !prefs with init_zoom = FitWidth }; redraw win
       | 104 ->
-	init_zoom:=true;prefs:={ !prefs with init_zoom = FitHeight }; redraw win
+        init_zoom:=true;prefs:={ !prefs with init_zoom = FitHeight }; redraw win
       | n -> Printf.fprintf stderr "Unbound key: %d (%s)\n%!" n (Char.escaped (Char.chr n)));
       dest := 0;
     end
@@ -1203,21 +1203,21 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       let dx = x - x' and dy = y - y' in
       (*      Printf.fprintf stderr "Motion (%d;%d) (%d,%d) %d\n%!" x' y' x y (dx * dx + dy * dy);*)
       if (dx * dx + dy * dy >= 4) then (
-	let win = get_win () in
-	let mx = float dx and my = float dy in
-	if buttons = [] then (
-	  motion_ref := Some (x0,y0,x, y,buttons,links);
-	  win.dx <- win.dx -. mx *. win.pixel_width;
-	  win.dy <- win.dy +. my *. win.pixel_height;
-	  redraw win)
-	else (
-	  motion_ref := Some (x0,y0,x, y,buttons,links);
-	  let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
-	  List.iter (function (bt,name) ->
+        let win = get_win () in
+        let mx = float dx and my = float dy in
+        if buttons = [] then (
+          motion_ref := Some (x0,y0,x, y,buttons,links);
+          win.dx <- win.dx -. mx *. win.pixel_width;
+          win.dy <- win.dy +. my *. win.pixel_height;
+          redraw win)
+        else (
+          motion_ref := Some (x0,y0,x, y,buttons,links);
+          let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
+          List.iter (function (bt,name) ->
                               match bt with Drag(act) ->
                                 let res = act (x,y) false in
                                 send_events res) buttons
-	));
+        ));
   in
 
   let next_links = ref [] in
@@ -1228,43 +1228,43 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     if l != win.previous_links then (
       win.previous_links <- l;
       (match win.saved_rectangle with
-	None -> ()
+        None -> ()
        | Some (r,r') ->
-	  GlClear.clear [`color;`depth]; GlPix.draw r; GlPix.draw r');
+          GlClear.clear [`color;`depth]; GlPix.draw r; GlPix.draw r');
 
       if l <> [] then  draw_gl_scene ();
       (if l = [] then Glut.setCursor Glut.CURSOR_INHERIT
        else if win.saved_rectangle = None then (
-	 win.saved_rectangle <-
-	   Some (GlPix.read ~x:0 ~y:0
-			    ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT)
-			    ~format:`rgba ~kind:`ubyte
-		,GlPix.read ~x:0 ~y:0
-			    ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT)
-			    ~format:`depth_component ~kind:`float)));
+         win.saved_rectangle <-
+           Some (GlPix.read ~x:0 ~y:0
+                            ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT)
+                            ~format:`rgba ~kind:`ubyte
+                ,GlPix.read ~x:0 ~y:0
+                            ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT)
+                            ~format:`depth_component ~kind:`float)));
 
       List.iter (fun l ->
-	    let color = match l.link_kind with
-		Extern uri ->
-		  if is_edit uri then (
-		    Glut.setCursor Glut.CURSOR_TEXT;
-		    (1.0,0.0,0.0)
-		  ) else (
-		    Glut.setCursor Glut.CURSOR_INFO;
-		    (0.0,1.0,0.0))
-	      | Intern _ ->
-		Glut.setCursor Glut.CURSOR_INFO;
-		(0.0,0.0,1.0)
-	      | _ ->
-		Glut.setCursor Glut.CURSOR_INFO;
-		(1.0,0.0,1.0)
-	    in
-(*	    Printf.printf "link: x0 = %f, y0 = %f, x1 = %f, y1 = %f\n" l.link_x0 l.link_y0 l.link_x1 l.link_y1;*)
-	    flush stdout;
-	    overlay_rect color (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
-	) l;
+            let color = match l.link_kind with
+                Extern uri ->
+                  if is_edit uri then (
+                    Glut.setCursor Glut.CURSOR_TEXT;
+                    (1.0,0.0,0.0)
+                  ) else (
+                    Glut.setCursor Glut.CURSOR_INFO;
+                    (0.0,1.0,0.0))
+              | Intern _ ->
+                Glut.setCursor Glut.CURSOR_INFO;
+                (0.0,0.0,1.0)
+              | _ ->
+                Glut.setCursor Glut.CURSOR_INFO;
+                (1.0,0.0,1.0)
+            in
+(*            Printf.printf "link: x0 = %f, y0 = %f, x1 = %f, y1 = %f\n" l.link_x0 l.link_y0 l.link_x1 l.link_y1;*)
+            flush stdout;
+            overlay_rect color (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
+        ) l;
       Glut.swapBuffers ();
-			)
+                        )
   in
 
   let passive_motion_cb ~x ~y =
@@ -1278,37 +1278,37 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 (*    Printf.printf "Searching position: line <= %d, col <= %d.\n%!" l0 c0;*)
     let res =
       Array.fold_left(fun (acc, (i,j)) linkss ->
-	Array.fold_left(fun (acc, (i,j)) links ->
-	  let acc =
-	    List.fold_left (fun (bl, bc, res as acc) link ->
-	      match link.link_kind with
-		Extern uri when is_edit uri ->
-		  let ls = List.rev (Util.split '@' uri) in
-		  (match ls with
-		    c::l::_ ->
-		      let l = int_of_string l and c = int_of_string c in
-		      if (l0 > l || (l = l0 && c0 >= c)) &&
-			(l0 - l < bl || (l0 - l = bl && c0 - c < bc)) then
-			l0 - l, c0 - c, Some(link, i-1, j)
-		      else
-			acc
-		  | _ -> acc)
-	      | _ -> acc) acc links
-	  in
-	  (acc, (i, j + 1))) (acc, (i+1,0)) linkss) ((max_int, 0, None), (0, 0)) !links
+        Array.fold_left(fun (acc, (i,j)) links ->
+          let acc =
+            List.fold_left (fun (bl, bc, res as acc) link ->
+              match link.link_kind with
+                Extern uri when is_edit uri ->
+                  let ls = List.rev (Util.split '@' uri) in
+                  (match ls with
+                    c::l::_ ->
+                      let l = int_of_string l and c = int_of_string c in
+                      if (l0 > l || (l = l0 && c0 >= c)) &&
+                        (l0 - l < bl || (l0 - l = bl && c0 - c < bc)) then
+                        l0 - l, c0 - c, Some(link, i-1, j)
+                      else
+                        acc
+                  | _ -> acc)
+              | _ -> acc) acc links
+          in
+          (acc, (i, j + 1))) (acc, (i+1,0)) linkss) ((max_int, 0, None), (0, 0)) !links
     in
 
     match fst res with
       (_,_,None) ->
-	Printf.fprintf stderr "Edit position not found: line <= %d, col <= %d.\n%!" l0 c0
+        Printf.fprintf stderr "Edit position not found: line <= %d, col <= %d.\n%!" l0 c0
     | (_,_,Some(l,i,j)) ->
       cur_page:= i;
       cur_state := j;
       Array.iter (function None -> () | Some win ->
-	Glut.setWindow win.winId;
-	draw_gl_scene ();
-	overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
-	Glut.swapBuffers ()) all_win
+        Glut.setWindow win.winId;
+        draw_gl_scene ();
+        overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
+        Glut.swapBuffers ()) all_win
   in
 
   let reconnect sock_info =
@@ -1319,43 +1319,43 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       try
        let ls = Util.split ':' server in
        let server,port = match ls with
-	   [s] -> s, 8080
-	 | [s;p] -> s, int_of_string p
-	 | _ -> raise Exit
+           [s] -> s, 8080
+         | [s;p] -> s, int_of_string p
+         | _ -> raise Exit
        in
        let addrs =
-	 Unix.(getaddrinfo server (string_of_int port) [AI_SOCKTYPE SOCK_STREAM])
+         Unix.(getaddrinfo server (string_of_int port) [AI_SOCKTYPE SOCK_STREAM])
        in
        let rec fn = function
          [] ->
-	   Printf.fprintf stderr "Failed to connect to Patonet server\n%!";
-	   raise Exit
-	 | addr::rest -> Unix.(
-	   let str_addr = match addr.ai_addr with
-	       ADDR_UNIX s -> s
-	     | ADDR_INET(a,p) -> string_of_inet_addr a
-	   in
-	   Printf.fprintf Pervasives.stderr "Trying connect to %s:%d\n%!"
-	     str_addr port;
-	   let sock= socket addr.ai_family addr.ai_socktype 0 in
-	   try
-	     connect sock addr.ai_addr;
-	     sock
-	   with _ -> fn rest)
+           Printf.fprintf stderr "Failed to connect to Patonet server\n%!";
+           raise Exit
+         | addr::rest -> Unix.(
+           let str_addr = match addr.ai_addr with
+               ADDR_UNIX s -> s
+             | ADDR_INET(a,p) -> string_of_inet_addr a
+           in
+           Printf.fprintf Pervasives.stderr "Trying connect to %s:%d\n%!"
+             str_addr port;
+           let sock= socket addr.ai_family addr.ai_socktype 0 in
+           try
+             connect sock addr.ai_addr;
+             sock
+           with _ -> fn rest)
        in
        let sock = fn addrs in
        let fo=Unix.out_channel_of_descr sock in
        let fi=Unix.in_channel_of_descr sock in
        let last_changes = ref (-1, -1) in
        send_changes := (fun () ->
-	 if !last_changes <> (!cur_page, !cur_state) then (
-	   last_changes := !cur_page, !cur_state;
-	   Printf.fprintf fo "GET /sync_%d_%d HTTP/1.1\r\n\r\n%!"
-	     !cur_page !cur_state);
-	 match !Db.sessid with
-	   None -> ()
-	 | Some (s ,g, friends)->
-	    Printf.fprintf fo "Set-Cookie: SESSID=%s; GROUPID=%s; FRIENDS=%s\r\n" s g (Db.friends_to_string friends));
+         if !last_changes <> (!cur_page, !cur_state) then (
+           last_changes := !cur_page, !cur_state;
+           Printf.fprintf fo "GET /sync_%d_%d HTTP/1.1\r\n\r\n%!"
+             !cur_page !cur_state);
+         match !Db.sessid with
+           None -> ()
+         | Some (s ,g, friends)->
+            Printf.fprintf fo "Set-Cookie: SESSID=%s; GROUPID=%s; FRIENDS=%s\r\n" s g (Db.friends_to_string friends));
        !send_changes ();
        Printf.fprintf stderr "Connected\n%!";
        sock_info := Some (sock,fo,fi)
@@ -1367,23 +1367,23 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       None -> if Random.int 100 = 0 then reconnect sock_info;
     | Some (sock,fo,fi) ->
       try
-	let i,_,_ = Unix.select [sock] [] [] 0.0 in
-	match i with
-	| [_] -> (
-	  Printf.fprintf stderr "Handling connection\n%!";
-	  let line = input_line fi in
-	  Printf.fprintf stderr "recv: %S\n" line;
-	  let ls = Util.split '_' line in
-	  match ls with
-	    _::pg::st::_ ->
-	      let st = List.hd (Util.split ' ' st) in
-	      goto (int_of_string pg) (int_of_string st)
-	  | _ -> ())
-	| _ -> ()
-	with _ ->
-	  (try Unix.close sock with _ -> ());
-	  sock_info := None;
-	  reconnect sock_info
+        let i,_,_ = Unix.select [sock] [] [] 0.0 in
+        match i with
+        | [_] -> (
+          Printf.fprintf stderr "Handling connection\n%!";
+          let line = input_line fi in
+          Printf.fprintf stderr "recv: %S\n" line;
+          let ls = Util.split '_' line in
+          match ls with
+            _::pg::st::_ ->
+              let st = List.hd (Util.split ' ' st) in
+              goto (int_of_string pg) (int_of_string st)
+          | _ -> ())
+        | _ -> ()
+        with _ ->
+          (try Unix.close sock with _ -> ());
+          sock_info := None;
+          reconnect sock_info
   in
 
 
@@ -1399,34 +1399,34 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
       match i with
-	[] -> ()
+        [] -> ()
       | i ->
-	let cmd = input_line stdin in
-	Printf.fprintf stderr "cmd recived: %S\n%!" cmd;
-	if cmd <> "" then begin
-	  try
-	    match cmd.[0] with
-	      'r' -> to_revert := true; to_redraw := true;
+        let cmd = input_line stdin in
+        Printf.fprintf stderr "cmd recived: %S\n%!" cmd;
+        if cmd <> "" then begin
+          try
+            match cmd.[0] with
+              'r' -> to_revert := true; to_redraw := true;
             | 'g' -> (
               match Util.split ' ' cmd with
-		[_;l;s] ->
-		  goto (int_of_string l) (int_of_string s)
-	      | _ -> raise Exit)
-	    | 'e' -> (
-	      match Util.split ' ' cmd with
-		[_;l;c] ->
-		  goto_link (int_of_string l) (int_of_string c)
-	      | _ -> raise Exit)
-	    | _ -> raise Exit
-	  with
-	    Exit ->
-	      Printf.fprintf stderr "Illegal cmd: %s\n" cmd; flush stderr
-	end
+                [_;l;s] ->
+                  goto (int_of_string l) (int_of_string s)
+              | _ -> raise Exit)
+            | 'e' -> (
+              match Util.split ' ' cmd with
+                [_;l;c] ->
+                  goto_link (int_of_string l) (int_of_string c)
+              | _ -> raise Exit)
+            | _ -> raise Exit
+          with
+            Exit ->
+              Printf.fprintf stderr "Illegal cmd: %s\n" cmd; flush stderr
+        end
     with
       Unix.Unix_error(nb, _, _) as e ->
       Printf.fprintf stderr "Error in select: %s (%s)\n"
-	(Printexc.to_string e)
-	(Unix.error_message nb);
+        (Printexc.to_string e)
+        (Unix.error_message nb);
       flush stderr;
     end;
     if !to_redraw then redraw_all ();
@@ -1454,55 +1454,55 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
     | Glut.LEFT_BUTTON, Glut.UP ->
       let links = match !motion_ref with
-	  None -> []
-	| Some(x',y',_,_,buttons,links) ->
-	  let dx = x - x' and dy = y - y' in
-	  if (dx * dx + dy * dy <= 9) then links else []
+          None -> []
+        | Some(x',y',_,_,buttons,links) ->
+          let dx = x - x' and dy = y - y' in
+          if (dx * dx + dy * dy <= 9) then links else []
       in
       List.iter
-	  (fun l ->
-	    match l.link_kind with
-	      Intern(label,dest_page,dest_x,dest_y) ->
-		begin
-		  Printf.eprintf "dest_page %d\n%!" dest_page;
-		  cur_page := dest_page;
-		  cur_state := 0;
-		  redraw win;
-		end
-	    | Extern(uri) ->
-	      begin
-		try
-		  let browser = Sys.getenv "BROWSER" in
-(*		  Printf.printf "%s \"%s\"\n%!" browser uri;*)
-		  ignore (Sys.command (Printf.sprintf "%s \"%s\"" browser uri));
-		with
-		  Not_found ->
-		    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
-	      end
-	    | Button(Click(act), name) ->
+          (fun l ->
+            match l.link_kind with
+              Intern(label,dest_page,dest_x,dest_y) ->
+                begin
+                  Printf.eprintf "dest_page %d\n%!" dest_page;
+                  cur_page := dest_page;
+                  cur_state := 0;
+                  redraw win;
+                end
+            | Extern(uri) ->
+              begin
+                try
+                  let browser = Sys.getenv "BROWSER" in
+(*                  Printf.printf "%s \"%s\"\n%!" browser uri;*)
+                  ignore (Sys.command (Printf.sprintf "%s \"%s\"" browser uri));
+                with
+                  Not_found ->
+                    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
+              end
+            | Button(Click(act), name) ->
                 send_events (act ())
-	    | Button(Edit(current,init,act),name) ->
-	       let editor = try Sys.getenv "EDITOR" with Not_found -> "emacs" in
-	       let filename, ch = Filename.open_temp_file "" name in
-	       output_string ch current;
-	       close_out ch;
-	       ignore (Sys.command (editor ^ " " ^ filename));
-	       let ch = open_in filename in
-	       let len = in_channel_length ch in
-	       let buf = Bytes.make len ' ' in
-	       let _ = really_input ch buf 0 len in
-	       close_in ch;
+            | Button(Edit(current,init,act),name) ->
+               let editor = try Sys.getenv "EDITOR" with Not_found -> "emacs" in
+               let filename, ch = Filename.open_temp_file "" name in
+               output_string ch current;
+               close_out ch;
+               ignore (Sys.command (editor ^ " " ^ filename));
+               let ch = open_in filename in
+               let len = in_channel_length ch in
+               let buf = Bytes.make len ' ' in
+               let _ = really_input ch buf 0 len in
+               close_in ch;
          let buf = Bytes.to_string buf in
-	       send_events (act buf)
-	    | Button(Drag(act),name) ->
+               send_events (act buf)
+            | Button(Drag(act),name) ->
                match !motion_ref with
                  None -> ()
                | Some (x0,y0,x', y',buttons,links) ->
                   let dx = x - x' and dy = y - y' in
-	          let mx = float dx and my = float dy in
-	          let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
-	          send_events (act (x,y) true)
-	  ) links;
+                  let mx = float dx and my = float dy in
+                  let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
+                  send_events (act (x,y) true)
+          ) links;
             motion_ref := None;
 
 
@@ -1522,12 +1522,12 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       init_gl ();
       all_win.(0) <- Some (init_win w);
       if !prefs.second_window then (
-	let w2 = Glut.createWindow "Patoline OpenGL Driver (second window)" in
-	init_gl ();
-	all_win.(1) <- Some (init_win w2)
+        let w2 = Glut.createWindow "Patoline OpenGL Driver (second window)" in
+        init_gl ();
+        all_win.(1) <- Some (init_win w2)
       );
       Printf.fprintf stderr "Window created, number of samples: %d\n"
-	(Glut.get Glut.WINDOW_NUM_SAMPLES);
+        (Glut.get Glut.WINDOW_NUM_SAMPLES);
       flush stderr;
     end;
 
@@ -1535,41 +1535,41 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     let _ = reconnect socket in
     match !prefs.batch_cmd with
       None ->
-	Array.iter (function None -> () | Some win ->
-	  Glut.setWindow ~win:win.winId;
-	  Glut.displayFunc (display_cb socket);
-	  Glut.keyboardFunc keyboard_cb;
-	  Glut.specialFunc special_cb;
-	  Glut.reshapeFunc reshape_cb;
-	  Glut.mouseFunc mouse_cb;
-	  Glut.timerFunc ~ms:30 ~cb:(idle_cb (handle_request socket)) ~value:();
-	  Glut.motionFunc motion_cb;
-	  Glut.passiveMotionFunc passive_motion_cb)
-	  all_win;
+        Array.iter (function None -> () | Some win ->
+          Glut.setWindow ~win:win.winId;
+          Glut.displayFunc (display_cb socket);
+          Glut.keyboardFunc keyboard_cb;
+          Glut.specialFunc special_cb;
+          Glut.reshapeFunc reshape_cb;
+          Glut.mouseFunc mouse_cb;
+          Glut.timerFunc ~ms:30 ~cb:(idle_cb (handle_request socket)) ~value:();
+          Glut.motionFunc motion_cb;
+          Glut.passiveMotionFunc passive_motion_cb)
+          all_win;
 
-	Sys.set_signal Sys.sighup
-	  (Sys.Signal_handle
-	     (fun s ->
-	       to_revert := true;
- 	       Array.iter (function None -> () | Some win ->
-		 Glut.setWindow ~win:win.winId;
-		 Glut.postRedisplay ()) all_win));
-	Printf.fprintf stderr "GL setup finished, starting loop\n";
-	flush stderr;
-	(try
-	  while true do
-	    (try
-	       Array.iter (function None -> () | Some win -> win.fps <- Unix.gettimeofday ()) all_win;
-	       Glut.mainLoop ()
-	     with
-	     | Glut.BadEnum _ -> () (* because lablGL does no handle GLUT_SPECIAL_CTRL_L and alike *)
-	     | e ->
-		Printf.fprintf stderr "Uncaucht exception: %S.\n%!" (Printexc.to_string e);
+        Sys.set_signal Sys.sighup
+          (Sys.Signal_handle
+             (fun s ->
+               to_revert := true;
+                Array.iter (function None -> () | Some win ->
+                 Glut.setWindow ~win:win.winId;
+                 Glut.postRedisplay ()) all_win));
+        Printf.fprintf stderr "GL setup finished, starting loop\n";
+        flush stderr;
+        (try
+          while true do
+            (try
+               Array.iter (function None -> () | Some win -> win.fps <- Unix.gettimeofday ()) all_win;
+               Glut.mainLoop ()
+             with
+             | Glut.BadEnum _ -> () (* because lablGL does no handle GLUT_SPECIAL_CTRL_L and alike *)
+             | e ->
+                Printf.fprintf stderr "Uncaucht exception: %S.\n%!" (Printexc.to_string e);
                clearCache ();
-	       Gl.flush ();
-	       Array.iter (function None -> () | Some win -> Glut.destroyWindow ~win:win.winId) all_win; raise e);
-	  done; ()
-	with e -> if e <> Exit then Printf.fprintf stderr "Uncaucht exception: %S.\n%!" (Printexc.to_string e))
+               Gl.flush ();
+               Array.iter (function None -> () | Some win -> Glut.destroyWindow ~win:win.winId) all_win; raise e);
+          done; ()
+        with e -> if e <> Exit then Printf.fprintf stderr "Uncaucht exception: %S.\n%!" (Printexc.to_string e))
     | Some f ->
       f get_pixes
   in
