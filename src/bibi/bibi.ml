@@ -569,33 +569,23 @@ module MarginBiblio (C:CitationStyle)=struct
 
 end
 
-module DefaultBiblio (C:CitationStyle)=struct
+module DefaultBiblio(C : CitationStyle) =
+  struct
+    let params env a1 a2 a3 a4 a5 a6 line =
+      let p = Document.parameters env a1 a2 a3 a4 a5 a6 line in
+      if line.lineStart = 0 then p else
+      let left_margin = p.left_margin +. Extra.phi *. env.size in
+      let measure = p.measure -. Extra.phi *. env.size in
+      {p with left_margin ; measure}
 
-  open Box
+    let comp mes a1 a2 a3 a4 line a6 =
+      if line.lineStart = 0 then Complete.normal mes a1 a2 a3 a4 line a6 else
+      let normalMeasure = mes.normalMeasure -. Extra.phi *. mes.size in
+      Complete.normal {mes with normalMeasure} a1 a2 a3 a4 line a6
 
-  let w = Util.phi
-  let params env a1 a2 a3 a4 a5 a6 line=
-    let p=Document.parameters env a1 a2 a3 a4 a5 a6 line in
-    if line.lineStart=0 then (
-      p
-    ) else
-      {p with
-        left_margin=p.left_margin+.w*.env.size;
-        measure=p.measure-.w*.env.size}
-  let comp mes a1 a2 a3 a4 line a6=
-    if line.lineStart=0 then
-      Complete.normal mes a1 a2 a3 a4 line a6
-    else (
-      Complete.normal { mes with
-        normalMeasure=mes.normalMeasure-.w*.mes.size
-      }
-        a1 a2 a3 a4 line a6
-    )
-
-
-  let biblio_format = biblio_format_of C.citation_format C.item_format params comp
-
-end
+    let biblio_format =
+      biblio_format_of C.citation_format C.item_format params comp
+  end
 
 module CitationInt=struct
   let item_format = default_biblio_format

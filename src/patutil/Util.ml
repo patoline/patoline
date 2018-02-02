@@ -29,9 +29,6 @@ let mm_of_pt : float -> float = fun x -> (25.4 *. x) /. 72.0
 (** Width and height of the A4 page format (in millimeters). *)
 let a4 : float * float = (210.0, 297.0)
 
-(** Golden ratio. *)
-let phi : float = (1.0 +. sqrt 5.0) /. 2.0
-
 let readInt f n0 =
   let rec aux n x =
     if n = n0 then x
