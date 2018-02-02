@@ -26,10 +26,9 @@ endif
 LINKS:=$(wildcard $(d)/CFF/*.ml) $(wildcard $(d)/CFF/*.mli) \
        $(wildcard $(d)/Opentype/*.ml) $(wildcard $(d)/Opentype/*.mli)
 
-LIBFONTS_MODS:= UnicodeRanges IsoAdobe \
-                FBezier FTypes CFF/CFFStd CFF/Type2 CFF/CFF \
-		Opentype/Subst Opentype/Cmap Opentype/Opentype_layout \
-                Opentype/Opentype Fonts
+LIBFONTS_MODS:= UnicodeRanges IsoAdobe FUtil FBezier FTypes CFF/CFFStd \
+	CFF/Type2 CFF/CFF Opentype/Subst Opentype/Cmap Opentype/Opentype_layout \
+  Opentype/Opentype Fonts
 
 LIBFONTS_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(LIBFONTS_MODS)))
 LIBFONTS_CMO:=$(LIBFONTS_ML:.ml=.cmo)

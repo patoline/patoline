@@ -19,7 +19,7 @@
 *)
 open FTypes
 open Extra
-open Util
+open FUtil
 open CFF
 
 let extensions = [".otf"; ".ttf"]

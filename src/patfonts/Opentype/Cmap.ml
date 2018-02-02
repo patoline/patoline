@@ -18,7 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Extra
-open Util
+open FUtil
 
 let write_cmap_table cmap format lang file=
   match format with

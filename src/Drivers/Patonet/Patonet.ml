@@ -1172,6 +1172,7 @@ function gotoSlide(n){
                     else d.dyn_label::acc) priv ds
               in
               let ds =
+                let open Util in
                 if snd key = Private then
                   (try Hashtbl.find graph (fst key, Group) (* Group differently from public *)
                   with Not_found -> [])
@@ -1590,7 +1591,7 @@ function gotoSlide(n){
             let pid = Unix.fork () in
             if pid = 0 then (
               try
-                Util.close_in_cache ();
+                FUtil.close_in_cache ();
                 Unix.close fd2;
                 Sys.(set_signal sigterm Signal_default);
                 close_all_other conn_sock;

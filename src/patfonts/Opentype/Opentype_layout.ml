@@ -19,7 +19,7 @@
 *)
 
 open Extra
-open Util
+open FUtil
 
 (* Deux scripts ne peuvent pas avoir un langage en commun (ou alors il
    faut le dupliquer, sinon on ne peut pas calculer les offsets
