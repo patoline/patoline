@@ -1028,7 +1028,7 @@ function gotoSlide(n){
 
   let fonts = StrMap.fold (fun key font acc ->
   (*  Printf.eprintf "Font: %S\n%!" key;*)
-    let key = List.hd (List.rev (Util.split '/' key)) in
+    let key = List.hd (List.rev (String.split_on_char '/' key)) in
     StrMap.add key (Buffer.contents font) acc) cache.fontBuffers StrMap.empty
   in
 
@@ -1273,7 +1273,7 @@ function gotoSlide(n){
 
           let name, contents =
             try
-              match Util.split ' ' rest with
+              match String.split_on_char ' ' rest with
                 [name;contents] ->
                   name, Base64.decode contents
               | _ -> raise Not_found
@@ -1450,7 +1450,7 @@ function gotoSlide(n){
         if a = "Cookie" || a = "Cookies" then (
           let ls = Str.split (Str.regexp ";[ \t]+") b in
           let ls = List.fold_left (fun acc s ->
-            match Util.split '=' s with
+            match String.split_on_char '=' s with
               [key;v] -> (key,v)::acc
             | _ -> acc) [] (List.rev ls)
           in
@@ -1535,7 +1535,7 @@ function gotoSlide(n){
           if not (List.mem sock master_sockets) then (
           let son = try List.assoc sock !sonsBySock with _ -> assert false in
           try
-            let cmd = Util.split ' ' (input_line son.fd) in
+            let cmd = String.split_on_char ' ' (input_line son.fd) in
             match cmd with
               ["move";sessid;groupid;slide;state] -> (
                 let slide = int_of_string slide and state = int_of_string state in
@@ -1563,7 +1563,7 @@ function gotoSlide(n){
                let dest = List.map (fun s ->
                               log_father ">>> dest: %S" s;
                               try
-                                match Util.split ',' s with
+                                match String.split_on_char ',' s with
                                 | [d;i;j] -> (d, int_of_string i, int_of_string j)
                                 | _ -> raise Exit
                               with _ ->

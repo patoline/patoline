@@ -40,6 +40,29 @@ module List =
       | h::s -> h :: init s
   end
 
+(** Extension of the [String] module. *)
+module String =
+  struct
+    include String
+
+    (** [split_on_char c s] compute the list of all the substings of [s] that
+     * are separated by the character [c]. NOTE included in OCaml >= 4.04. *)
+    let split_on_char c s =
+      let len = String.length s in
+      let rec fn beg pos acc =
+        if pos >= len then
+          List.rev (String.sub s beg (pos - beg) :: acc)
+        else if s.[pos] = c then
+          fn (pos+1) (pos+1) (String.sub s beg (pos - beg) :: acc)
+        else fn beg (pos+1) acc
+      in
+      fn 0 0 []
+
+    let _ = assert(split_on_char ',' "bla,ba," = ["bla";"ba";""])
+    let _ = assert(split_on_char ',' "" = [""])
+    let _ = assert(split_on_char ',' "bla" = ["bla"])
+  end
+
 (** Extension of the [Filename] module. *)
 module Filename =
   struct

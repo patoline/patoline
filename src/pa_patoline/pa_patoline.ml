@@ -27,7 +27,7 @@ let set_patoline_driver d =
   patoline_driver := d
 
 let add_patoline_packages ps =
-  let ps = Util.split ',' ps in
+  let ps = String.split_on_char ',' ps in
   patoline_packages := !patoline_packages @ ps
 
 let no_default_grammar = ref false

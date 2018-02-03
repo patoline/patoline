@@ -23,6 +23,7 @@ open Raw
 open RawContent
 open Color
 open Driver
+open Extra
 
 type event =
   | EvClick
@@ -1283,7 +1284,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
             List.fold_left (fun (bl, bc, res as acc) link ->
               match link.link_kind with
                 Extern uri when is_edit uri ->
-                  let ls = List.rev (Util.split '@' uri) in
+                  let ls = List.rev (String.split_on_char '@' uri) in
                   (match ls with
                     c::l::_ ->
                       let l = int_of_string l and c = int_of_string c in
@@ -1317,7 +1318,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       None -> ()
     | Some server ->
       try
-       let ls = Util.split ':' server in
+       let ls = String.split_on_char ':' server in
        let server,port = match ls with
            [s] -> s, 8080
          | [s;p] -> s, int_of_string p
@@ -1373,10 +1374,10 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
           Printf.fprintf stderr "Handling connection\n%!";
           let line = input_line fi in
           Printf.fprintf stderr "recv: %S\n" line;
-          let ls = Util.split '_' line in
+          let ls = String.split_on_char '_' line in
           match ls with
             _::pg::st::_ ->
-              let st = List.hd (Util.split ' ' st) in
+              let st = List.hd (String.split_on_char ' ' st) in
               goto (int_of_string pg) (int_of_string st)
           | _ -> ())
         | _ -> ()
@@ -1408,12 +1409,12 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
             match cmd.[0] with
               'r' -> to_revert := true; to_redraw := true;
             | 'g' -> (
-              match Util.split ' ' cmd with
+              match String.split_on_char ' ' cmd with
                 [_;l;s] ->
                   goto (int_of_string l) (int_of_string s)
               | _ -> raise Exit)
             | 'e' -> (
-              match Util.split ' ' cmd with
+              match String.split_on_char ' ' cmd with
                 [_;l;c] ->
                   goto_link (int_of_string l) (int_of_string c)
               | _ -> raise Exit)

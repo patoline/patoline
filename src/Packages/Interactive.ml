@@ -442,7 +442,7 @@ let editableText ?(log=true) ?(visibility=Private) ?(empty_case="Type in here")
     let update () =
       let s = data.read() in
       let s' = if s = init_text then init_text else s in
-      s, Util.split '\n' s'
+      s, String.split_on_char '\n' s'
     in
 
     let s, lines = update () in
@@ -491,7 +491,7 @@ let editableText ?(log=true) ?(visibility=Private) ?(empty_case="Type in here")
                       let resultLines = match extra with None -> []
                         | Some f ->
                           let str = dataO.read () in
-                          List.nth (mk_length (Util.split '\n' str) err_lines) 0
+                          List.nth (mk_length (String.split_on_char '\n' str) err_lines) 0
                       in
                              (List.fold_left (fun acc line ->
                         let para=Paragraph

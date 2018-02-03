@@ -29,16 +29,6 @@ let mm_of_pt : float -> float = fun x -> (25.4 *. x) /. 72.0
 (** Width and height of the A4 page format (in millimeters). *)
 let a4 : float * float = (210.0, 297.0)
 
-(* a lighter split that calling str *)
-let split char str =
-  let len = String.length str in
-  let rec fn beg pos acc =
-    if pos >= len then List.rev (String.sub str beg (pos - beg)::acc)
-    else if str.[pos] = char then fn (pos+1) (pos+1)  (String.sub str beg (pos - beg)::acc)
-    else fn beg (pos+1) acc
-  in
-  fn 0 0 []
-
 (* A type needed both by Db and RawContent *)
 type visibility = Private | Group | Public
 let vis_to_string = function
