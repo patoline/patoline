@@ -356,7 +356,7 @@ let glyph_bounding_box opt gl =
   in
   let x1 = gl.glyph_x +. w *. gl.glyph_size /. 1000.0 in
   let y0 =
-	  if opt.ignore_under_base_line then gl.glyph_ky
+    if opt.ignore_under_base_line then gl.glyph_ky
     else gl.glyph_y +. Fonts.glyph_y0 gl.glyph *. gl.glyph_size /. 1000.0
   in
   let y1 = gl.glyph_y +. Fonts.glyph_y1 gl.glyph *. gl.glyph_size /. 1000.0

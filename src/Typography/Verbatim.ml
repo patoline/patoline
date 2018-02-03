@@ -7,9 +7,9 @@ let verb_counter filename =
   let get_line env =
     if filename = "" then 1 else
       try
-	match StrMap.find filename env.counters
-	with a,[line] -> line
-	| _ -> raise Not_found
+        match StrMap.find filename env.counters
+        with a,[line] -> line
+        | _ -> raise Not_found
       with Not_found -> 1
   in
   C (fun env ->
@@ -32,9 +32,9 @@ let lines_to_file : string list -> string option -> unit = fun lines fn ->
      let nb_lines = List.length lines in
      let oc, nbl =
        try
-	 Hashtbl.find file_cache fn
+         Hashtbl.find file_cache fn
        with Not_found ->
-	 (open_out fn, 1)
+         (open_out fn, 1)
      in
      List.iter (Printf.fprintf oc "%s\n") lines;
      Hashtbl.replace file_cache fn (oc, nbl + nb_lines);
@@ -43,12 +43,12 @@ let lines_to_file : string list -> string option -> unit = fun lines fn ->
 (* [glue_space n] corresponds to [n] spaces from the font. *)
 let glue_space : int -> content = fun n ->
   let f env =
-	  let font,_,_,_ = selectFont env.fontFamily Regular false in
+          let font,_,_,_ = selectFont env.fontFamily Regular false in
     let glyph_index = Fonts.glyph_of_char font ' ' in
     let sp = Fonts.loadGlyph font {empty_glyph with glyph_index} in
     let spw = Fonts.glyphWidth sp in
-	  let w =  float_of_int n *. env.size *. spw /. 1000.0 in
-	  [glue w w w]
+          let w =  float_of_int n *. env.size *. spw /. 1000.0 in
+          [glue w w w]
   in bB f
 
 let lines_skip = ref 2
@@ -89,16 +89,16 @@ let handle_spaces : param -> (string -> content list) -> string -> content list 
         else glue_space !nbsp :: l_to_a pos
       else
         let nbnsp = ref 1 in
-	let sep_at pos =
-	  List.exists (fun sep ->
-	    let s = try String.sub l pos (String.length sep) with _ -> "" in
-	    s = sep) param.separators
-	in
+        let sep_at pos =
+          List.exists (fun sep ->
+            let s = try String.sub l pos (String.length sep) with _ -> "" in
+            s = sep) param.separators
+        in
         while pos + !nbnsp < len &&
-	  not (List.mem (String.sub l pos !nbnsp) param.separators) &&
-	  not (sep_at (pos + !nbnsp)) &&
-	  l.[pos + !nbnsp] <> ' ' do incr nbnsp done;
-	let str = String.sub l pos !nbnsp in
+          not (List.mem (String.sub l pos !nbnsp) param.separators) &&
+          not (sep_at (pos + !nbnsp)) &&
+          l.[pos + !nbnsp] <> ' ' do incr nbnsp done;
+        let str = String.sub l pos !nbnsp in
         let pos = pos + !nbnsp in
         w_to_c str @ l_to_a pos
     in l_to_a 0
@@ -188,17 +188,17 @@ let param_Default =
 
 let param_SML =
   { keywords = ["fun";"as";"fn";"*";"(";")";",";";";"val";
-		"and";"type";"|";"=";"case";"of";
-		"datatype";"let";"rec";"end"]
+                "and";"type";"|";"=";"case";"of";
+                "datatype";"let";"rec";"end"]
   ; separators = ["*";"(";")";",";";"]
   ; symbols = [("->", symbol "→");  ("=>", symbol "⇒")]
   }
 
 let param_OCaml =
   { keywords = ["fun";"as";"function";"(";")";"*";";";",";"val";
-		"and";"type";"|";"=";"match";"with";
-		"rec";"let";"begin";"end";"while";"for";"do";"done";
-		"struct"; "sig"; "module"; "functor"; "if"; "then";
+                "and";"type";"|";"=";"match";"with";
+                "rec";"let";"begin";"end";"while";"for";"do";"done";
+                "struct"; "sig"; "module"; "functor"; "if"; "then";
           "else"; "try"; "parser"; "in" ]
   ; separators = ["*";"(";")";",";";"]
   ; symbols = [("->", symbol "→");("→", symbol "→");("->>", symbol "↠");("↠", symbol "↠")]
@@ -218,7 +218,7 @@ let param_PML =
 
 let param_Python =
   { keywords = ["def";"(";")";"*";";";",";"|";"=";":";"else";"elif";
-		"while";"for";"if";"else";"return";"try";"except";"break"]
+                "while";"for";"if";"else";"return";"try";"except";"break"]
   ; separators = ["*";"(";")";",";";";":"]
   ; symbols  = [] }
 

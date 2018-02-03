@@ -58,12 +58,12 @@ let rec string_forall i len p s =
   if i >= String.length s then true else
     let len =
       if i+len-1 < String.length s then len else
-	String.length s - i
+        String.length s - i
     in
     let max = i + len in
     let rec string_forall_rec res k =
       if k < max then
-	string_forall_rec ((p s.[k] k) && res) (succ k)
+        string_forall_rec ((p s.[k] k) && res) (succ k)
       else res
     in string_forall_rec true i
 
@@ -76,16 +76,16 @@ let is_subscript c =
 
 
 let _ = try
-	  while true do
-	    let s = input_line file in
-	    let c = parse_line s in
-	    if is_superscript c then
-	      superscripts := c :: !superscripts
-	    else
-	      if is_subscript c then
-	      subscripts := c :: !subscripts
-	      else ()
-	  done
+          while true do
+            let s = input_line file in
+            let c = parse_line s in
+            if is_superscript c then
+              superscripts := c :: !superscripts
+            else
+              if is_subscript c then
+              subscripts := c :: !subscripts
+              else ()
+          done
   with End_of_file -> ()
 
 let _ = close_in file

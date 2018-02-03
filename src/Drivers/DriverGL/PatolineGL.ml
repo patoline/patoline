@@ -60,13 +60,13 @@ let _ =
       let prime = input_value ch in
       let structure = input_value ch in
       if prime then (
-	let pages = input_value ch in
-	close_in ch;
-	output' ~structure pages f)
+        let pages = input_value ch in
+        close_in ch;
+        output' ~structure pages f)
       else (
-	let pages = input_value ch in
-	close_in ch;
-	output ~structure pages f)
+        let pages = input_value ch in
+        close_in ch;
+        output ~structure pages f)
   | _ ->
     Printf.fprintf stderr "%s: more than one file given!" Sys.argv.(0)
 

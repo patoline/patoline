@@ -157,7 +157,7 @@ let postprocess_tree tree=
               let text=
                 let dr=try
                          snd (IntMap.min_binding (
-			   let d,_,_ = (* FIXME: lost Marker(Label ...) ?? *)
+                           let d,_,_ = (* FIXME: lost Marker(Label ...) ?? *)
                            OutputDrawing.minipage' {env with hyphenate=(fun _->[||]);
                              normalLeftMargin=0.;
                              normalMeasure=env.normalMeasure-.(x1-.x0)/.2.-.w;
@@ -208,7 +208,7 @@ let postprocess_tree tree=
 
                      { (envAlternative ~features:(Opentype.oldStyleFigures::env.fontFeatures)
                           (if List.length b>=4 then Regular else Caps) env) with
-		       par_indent = [];
+                       par_indent = [];
                        hyphenate=(fun _->[||]);
                          size=(if List.length b=1 then sqrt phi else
                                  if List.length b <= 2 then sqrt (sqrt phi) else
@@ -561,18 +561,18 @@ end
       D.structure Complete.normal pars
       [ Env (fun env ->Document.incr_counter "equation" env) ;
         C (fun env ->
-	     let _,w = boxes_width env contents in
-	     let _,x = try StrMap.find "equation" env.counters with _-> -1,[] in
-	     let num,w' = boxes_width env
-	       (italic [tT "(";
-		        tT (string_of_int (1 + List.hd x));
-		        tT ")" ]) in
+             let _,w = boxes_width env contents in
+             let _,x = try StrMap.find "equation" env.counters with _-> -1,[] in
+             let num,w' = boxes_width env
+               (italic [tT "(";
+                        tT (string_of_int (1 + List.hd x));
+                        tT ")" ]) in
              let w0=(env.normalMeasure -. w)/.2. in
              let w1=env.normalMeasure -. w'-.w0-.w in
              bB(fun _->[glue w0 w0 w0])::
                contents@
                [bB (fun _->glue w1 w1 w1 :: num)]
-	  )];
+          )];
     []
 
 end

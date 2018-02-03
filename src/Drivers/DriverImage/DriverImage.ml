@@ -59,7 +59,7 @@ let filename' file i j =
 
 
 let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;children=[||]})
+                                  page= -1;struct_x=0.;struct_y=0.;children=[||]})
     pages fileName=
 
   Printf.printf "format: %s\n" !format;
@@ -71,19 +71,19 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     let pages = get_pixes 1 !width !height !saa in
     Array.iteri (fun page states -> Array.iteri (
       fun state (raw,w,h) ->
-	let image = Image.create_rgb ~alpha:true w h in
+        let image = Image.create_rgb ~alpha:true w h in
         for i=0 to w-1 do
-	  for j=0 to h-1 do
-	    let r = Raw.get raw ((j * w + i) * 4 + 0) in
-	    let g = Raw.get raw ((j * w + i) * 4 + 1) in
-	    let b = Raw.get raw ((j * w + i) * 4 + 2) in
-	    let a = Raw.get raw ((j * w + i) * 4 + 3) in
-	    Image.write_rgba image i (h - j - 1) r g b a
-	  done
-	done;
-	let fname = Filename.concat dirname (filename' fileName page state) in
-	Printf.fprintf stderr "Writing %s\n" fname;
-	ImageLib.writefile fname image) states) pages;
+          for j=0 to h-1 do
+            let r = Raw.get raw ((j * w + i) * 4 + 0) in
+            let g = Raw.get raw ((j * w + i) * 4 + 1) in
+            let b = Raw.get raw ((j * w + i) * 4 + 2) in
+            let a = Raw.get raw ((j * w + i) * 4 + 3) in
+            Image.write_rgba image i (h - j - 1) r g b a
+          done
+        done;
+        let fname = Filename.concat dirname (filename' fileName page state) in
+        Printf.fprintf stderr "Writing %s\n" fname;
+        ImageLib.writefile fname image) states) pages;
     ()
   in
 

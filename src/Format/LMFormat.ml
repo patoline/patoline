@@ -123,7 +123,7 @@ module LMMath = struct
     { default_env2 with mathsSize=2./.3. };
     { default_env2 with mathsSize=4./.9. };
     { default_env2 with mathsSize=4./.9. }
-	      |]
+              |]
 
 end
 
@@ -152,8 +152,8 @@ let lmEnv env=
                             drawing_max_width= 4.0 *. phi;
                             drawing_y0=0.;drawing_y1=0.;
                             drawing_nominal_width= 4.0 *. phi;
-			    drawing_width_fixed = true;
-			    drawing_adjust_before = false;
+                            drawing_width_fixed = true;
+                            drawing_adjust_before = false;
                             drawing_contents=(fun _->[]);
                             drawing_break_badness=0.;
                             drawing_states=[];

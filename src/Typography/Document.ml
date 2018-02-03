@@ -57,36 +57,30 @@ type fontFamily =
      (font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)
 
 
-module TS=Break.Make
-  (struct
-     type t=line
-     let compare a b=
-       if a.paragraph<b.paragraph then -1 else
-         if a.paragraph>b.paragraph then 1 else
+module TS = Break.Make(
+  struct
+    type t = line
 
-           if a.lineStart<b.lineStart then -1 else
-             if a.lineStart>b.lineStart then 1 else
+    let compare a b =
+      if a.paragraph   < b.paragraph   then -1 else
+      if a.paragraph   > b.paragraph   then  1 else
+      if a.lineStart   < b.lineStart   then -1 else
+      if a.lineStart   > b.lineStart   then  1 else
+      if a.lineEnd     < b.lineEnd     then -1 else
+      if a.lineEnd     > b.lineEnd     then  1 else
+      if a.hyphenStart < b.hyphenStart then -1 else
+      if a.hyphenStart > b.hyphenStart then  1 else
+      if a.hyphenEnd   < b.hyphenEnd   then -1 else
+      if a.hyphenEnd   > b.hyphenEnd   then  1 else
+      if a.lastFigure  < b.lastFigure  then -1 else
+      if a.lastFigure  > b.lastFigure  then  1 else
+      if a.isFigure    < b.isFigure    then -1 else
+      if a.isFigure    > b.isFigure    then  1 else
+      if a.height      < b.height      then -1 else
+      if a.height      > b.height      then  1 else 0
 
-           if a.lineEnd<b.lineEnd then -1 else
-             if a.lineEnd>b.lineEnd then 1 else
-
-           if a.hyphenStart<b.hyphenStart then -1 else
-             if a.hyphenStart>b.hyphenStart then 1 else
-
-           if a.hyphenEnd<b.hyphenEnd then -1 else
-             if a.hyphenEnd>b.hyphenEnd then 1 else
-
-           if a.lastFigure<b.lastFigure then -1 else
-             if a.lastFigure>b.lastFigure then 1 else
-
-           if a.isFigure<b.isFigure then -1 else
-             if a.isFigure>b.isFigure then 1 else
-
-           if a.height<b.height then -1 else
-             if a.height>b.height then 1 else
-               0
-     let hash a=Hashtbl.hash a
-   end)
+    let hash a=Hashtbl.hash a
+  end)
 
 
 
@@ -1062,9 +1056,9 @@ let lref ?refType name=
        bB (fun _->[Marker EndLink])]
     with
       Not_found ->
-	let refType=match refType with Some x->x | None-> "Default" in
-	if !pass_number <> 0 then Printf.eprintf "Unknown label %S of labelType %S (%d)\n%!" name refType !pass_number;
-	color Color.red [tT "??"]
+        let refType=match refType with Some x->x | None-> "Default" in
+        if !pass_number <> 0 then Printf.eprintf "Unknown label %S of labelType %S (%d)\n%!" name refType !pass_number;
+        color Color.red [tT "??"]
   )]
 
 let generalRef t x = lref ~refType:t x
@@ -1299,7 +1293,7 @@ let boxify buf nbuf env0 l=
     *)
     | T (t,cache) :: s -> (
         match !cache with
-	      | Some l when keep_cache ->
+        | Some l when keep_cache ->
            IntMap.iter (fun _->List.iter (append buf nbuf)) l;
            boxify keep_cache env s
         | _                      ->
@@ -1367,17 +1361,17 @@ let draw_boxes env l=
     | Marker (BeginLink l)::s->(
       (*      Printf.fprintf stderr "****BeginURILink %S****\n" l;*)
       let k = match l with
-	  Box.Extern l -> RawContent.Extern l;
-	| Box.Intern l ->
-	  let dest_page=
+      Box.Extern l -> RawContent.Extern l;
+    | Box.Intern l ->
+        let dest_page=
             try
               let line=MarkerMap.find (Label l) env.user_positions in
               layout_page line
             with
               Not_found->(-1)
-	  in
-	  RawContent.Intern(l,dest_page,0.,0.);
-	| Box.Button(t,n) -> RawContent.Button(t,n)
+      in
+      RawContent.Intern(l,dest_page,0.,0.);
+    | Box.Button(t,n) -> RawContent.Button(t,n)
       in
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                  link_order=0;
@@ -1391,7 +1385,7 @@ let draw_boxes env l=
       let rec link_contents u l=match l with
           []-> assert false
         | (Link h)::s when not h.link_closed->(
-	  let u = List.rev u in
+          let u = List.rev u in
           h.link_contents<-u;
           let (_,y0,_,y1)=bounding_box u in
           h.link_y0<-y0;
@@ -1457,127 +1451,127 @@ let adjust_width env buf nbuf =
       incr i0;
 
     | Drawing _ | GlyphBox _ | Hyphen _ as x0-> (
-	let adjust = ref (match x0 with
-	    Drawing x -> if x.drawing_width_fixed then None else Some(x0,!i0)
-	  | _ -> None)
-	in
-	let min = ref 0.0 in
-	let nominal = ref 0.0 in
-	let max = ref 0.0 in
+        let adjust = ref (match x0 with
+            Drawing x -> if x.drawing_width_fixed then None else Some(x0,!i0)
+          | _ -> None)
+        in
+        let min = ref 0.0 in
+        let nominal = ref 0.0 in
+        let max = ref 0.0 in
 
-	let left = draw_boxes env [x0] in
-	let bezier_left = bezier_of_boxes left in
-	let profile_left' = Distance.bezier_profile dir epsilon bezier_left in
-	let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning left in
+        let left = draw_boxes env [x0] in
+        let bezier_left = bezier_of_boxes left in
+        let profile_left' = Distance.bezier_profile dir epsilon bezier_left in
+        let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning left in
 
-	if !Distance.debug then
-	  Printf.fprintf stderr "Drawing(1): i0 = %d (%d,%d)\n" !i0 (List.length !profile_left) (List.length profile_left');
+        if !Distance.debug then
+          Printf.fprintf stderr "Drawing(1): i0 = %d (%d,%d)\n" !i0 (List.length !profile_left) (List.length profile_left');
 
-	profile_left := Distance.translate_profile (Distance.profile_union dir  !profile_left  profile_left') (x0_l -. x1_l);
+        profile_left := Distance.translate_profile (Distance.profile_union dir  !profile_left  profile_left') (x0_l -. x1_l);
 
-	incr i0;
-	try while !i0 < !nbuf do
-	  match buf.(!i0) with
-	  | Marker AlignmentMark -> incr i0; raise Exit
-	  | Marker _ -> incr i0
-	  | Drawing x as b when x.drawing_nominal_width = 0.0 ->
-	    if !Distance.debug then Printf.fprintf stderr "0 Drawing(2)\n";
-	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
-	    incr i0
-	  | Glue x as b ->
-	    min := !min +.  x.drawing_min_width;
-	    max := !max +.  x.drawing_max_width;
-	    nominal := !nominal +. x.drawing_nominal_width;
+        incr i0;
+        try while !i0 < !nbuf do
+          match buf.(!i0) with
+          | Marker AlignmentMark -> incr i0; raise Exit
+          | Marker _ -> incr i0
+          | Drawing x as b when x.drawing_nominal_width = 0.0 ->
+            if !Distance.debug then Printf.fprintf stderr "0 Drawing(2)\n";
+            if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
+            incr i0
+          | Glue x as b ->
+            min := !min +.  x.drawing_min_width;
+            max := !max +.  x.drawing_max_width;
+            nominal := !nominal +. x.drawing_nominal_width;
             profile_left := Distance.translate_profile !profile_left (-.x.drawing_nominal_width);
-	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
-	    incr i0
-	  | Drawing _ | GlyphBox _ | Hyphen _ as y0 -> (
-	    let before =
-	      match y0 with
-		Drawing y when !adjust = None && y.drawing_adjust_before ->
-		  adjust := Some(y0, !i0);
-		  true
-	      | _ -> false
-	    in
-	    match !adjust with
-	    | None -> raise Exit
-	    | Some (b,i) ->
+            if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
+            incr i0
+          | Drawing _ | GlyphBox _ | Hyphen _ as y0 -> (
+            let before =
+              match y0 with
+                Drawing y when !adjust = None && y.drawing_adjust_before ->
+                  adjust := Some(y0, !i0);
+                  true
+              | _ -> false
+            in
+            match !adjust with
+            | None -> raise Exit
+            | Some (b,i) ->
 
 
-	      let right = draw_boxes env [y0] in
-	      let profile_left = !profile_left in
-	      let bezier_right = bezier_of_boxes right in
-	      let profile_right = Distance.bezier_profile dir' epsilon bezier_right in
-	      if !Distance.debug then
-		Printf.fprintf stderr "Drawing(2): i0 = %d (%d,%d)\n" !i0 (List.length profile_left) (List.length profile_right);
-	      if profile_left = [] || profile_right = [] then raise Exit;
+              let right = draw_boxes env [y0] in
+              let profile_left = !profile_left in
+              let bezier_right = bezier_of_boxes right in
+              let profile_right = Distance.bezier_profile dir' epsilon bezier_right in
+              if !Distance.debug then
+                Printf.fprintf stderr "Drawing(2): i0 = %d (%d,%d)\n" !i0 (List.length profile_left) (List.length profile_right);
+              if profile_left = [] || profile_right = [] then raise Exit;
 
-	      if !Distance.debug then
-		Printf.fprintf stderr "Drawing(2b): i0 = %d\n" !i0;
+              if !Distance.debug then
+                Printf.fprintf stderr "Drawing(2b): i0 = %d\n" !i0;
 
-	      let d space =
-		let pr = List.map (fun (x,y) -> (x+.space,y)) profile_right in
-		let r = Distance.distance beta dir profile_left pr in
-		r
-	      in
+              let d space =
+                let pr = List.map (fun (x,y) -> (x+.space,y)) profile_right in
+                let r = Distance.distance beta dir profile_left pr in
+                r
+              in
 
-	      let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
-	      let (x0_r',y0_r',x1_r',y1_r')=bounding_box_full right in
+              let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
+              let (x0_r',y0_r',x1_r',y1_r')=bounding_box_full right in
 
 
- 	      let nominal' = !nominal +. char_space in
-	      let min' = Pervasives.min  (Pervasives.max (x0_r -. x1_r) (x0_l -. x1_l))  (!min -. nominal') in
-	      let max' = Pervasives.max (2. *. char_space) (!max -. nominal') in
-	      let da = d min' in
-	      let db = d max' in
-	      let target = nominal' in
+               let nominal' = !nominal +. char_space in
+              let min' = Pervasives.min  (Pervasives.max (x0_r -. x1_r) (x0_l -. x1_l))  (!min -. nominal') in
+              let max' = Pervasives.max (2. *. char_space) (!max -. nominal') in
+              let da = d min' in
+              let db = d max' in
+              let target = nominal' in
 
-	      if !Distance.debug then
-		Printf.fprintf stderr "start Adjust: min = %f => %f, max = %f => %f, target = %f\n" min' da max' db nominal';
+              if !Distance.debug then
+                Printf.fprintf stderr "start Adjust: min = %f => %f, max = %f => %f, target = %f\n" min' da max' db nominal';
 
-	      let epsilon = epsilon /. 16. in
-	      let r  =
-		if da > target then min' else
-		  if db < target then max' else (
+              let epsilon = epsilon /. 16. in
+              let r  =
+                if da > target then min' else
+                  if db < target then max' else (
 
-		    let rec fn sa da sb db  =
-		      let sc = (sa +. sb) /. 2.0 in
-		      let dc = d sc in
-		      if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
-		      else if dc < target then fn sc dc sb db
-		      else fn sa da sc dc
-		    in
-		    fn min' da max' db)
+                    let rec fn sa da sb db  =
+                      let sc = (sa +. sb) /. 2.0 in
+                      let dc = d sc in
+                      if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
+                      else if dc < target then fn sc dc sb db
+                      else fn sa da sc dc
+                    in
+                    fn min' da max' db)
 
-	      in
+              in
 
-(*	      let r = r -. x0_r' +. x0_r -. x1_l +. x1_l' in*)
+(*              let r = r -. x0_r' +. x0_r -. x1_l +. x1_l' in*)
 
-	      if !Distance.debug then Printf.fprintf stderr "end Adjust: r = %f nominal = %f" r !nominal;
+              if !Distance.debug then Printf.fprintf stderr "end Adjust: r = %f nominal = %f" r !nominal;
 
-	      buf.(i) <-
-		(match b with
-		| Drawing x when before -> Drawing { x with
-		  drawing_contents =
-		      (fun w -> List.map (RawContent.translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
-		}
-		| Drawing x -> Drawing { x with
-		  drawing_nominal_width = r +. x.drawing_nominal_width;
-		  drawing_min_width = r +. x.drawing_min_width;
-		  drawing_max_width = r +. x.drawing_max_width;
-		}
-		| Glue x -> Glue { x with
-		  drawing_nominal_width = r +. x.drawing_nominal_width;
-		  drawing_min_width = r +. x.drawing_min_width;
-		  drawing_max_width = r +. x.drawing_max_width;
-		}
-		| _ -> assert false);
-	      raise Exit)
-	    | _ ->
-	      incr i0;
-	      raise Exit
+              buf.(i) <-
+                (match b with
+                | Drawing x when before -> Drawing { x with
+                  drawing_contents =
+                      (fun w -> List.map (RawContent.translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
+                }
+                | Drawing x -> Drawing { x with
+                  drawing_nominal_width = r +. x.drawing_nominal_width;
+                  drawing_min_width = r +. x.drawing_min_width;
+                  drawing_max_width = r +. x.drawing_max_width;
+                }
+                | Glue x -> Glue { x with
+                  drawing_nominal_width = r +. x.drawing_nominal_width;
+                  drawing_min_width = r +. x.drawing_min_width;
+                  drawing_max_width = r +. x.drawing_max_width;
+                }
+                | _ -> assert false);
+              raise Exit)
+            | _ ->
+              incr i0;
+              raise Exit
 
-	  done with Exit -> ())
+          done with Exit -> ())
     | _ -> incr i0
   done
 
@@ -1614,13 +1608,13 @@ let altStates l =
     let ds = List.map (fun (st,x) -> (st, draw env x)) l in
     (* FIXME : each state should have its own offset !!!*)
     let off = List.fold_left (fun acc (_,d) ->
-	let (_,off,_,_) = bounding_box_kerning d in
-	min acc off) 0.0 ds
+      let (_,off,_,_) = bounding_box_kerning d in
+      min acc off) 0.0 ds
     in
     [Drawing
         (drawing ~offset:off
             (List.map (fun (st, d) ->
-	      States { states_contents=d;
+              States { states_contents=d;
                       states_states=st;
                       states_order=0 }) ds
             ))]

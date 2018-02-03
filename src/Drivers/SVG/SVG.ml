@@ -186,7 +186,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
           opened_text:=true;
           opened_tspan:=false
         );
-	try
+        try
           let style,cls =
             try
               let cls = className ~create_new_class fontCache x in
@@ -213,8 +213,8 @@ let draw ?fontCache ?dynCache prefix w h contents=
           let utf8=(Fonts.glyphNumber x.glyph).glyph_utf8 in
           Buffer.add_string svg_buf (html_escape (UTF8.init 1 (fun _->UTF8.look utf8 0)));
           cur_x:= !cur_x +. (Fonts.glyphWidth x.glyph)*.x.glyph_size/.1000.;
-	with Not_found ->
-	  Printf.fprintf stderr "Missing glyph: %s\n%!" (Fonts.glyphNumber x.glyph).glyph_utf8
+        with Not_found ->
+          Printf.fprintf stderr "Missing glyph: %s\n%!" (Fonts.glyphNumber x.glyph).glyph_utf8
       )
       | Path (args, l)->(
       if !opened_tspan then (
@@ -306,10 +306,10 @@ let draw ?fontCache ?dynCache prefix w h contents=
         (String.length f_-String.length f)
       in
       let rec nonexistent i=
-	if prefix <> "" then (
+        if prefix <> "" then (
           let name=Printf.sprintf "%s%d%s" f i ext in
           if Sys.file_exists (Filename.concat prefix name) then nonexistent (i+1) else name )
-	else f_
+        else f_
       in
       let name=nonexistent 0 in
       imgs:=StrMap.add i.image_file name !imgs;
@@ -361,7 +361,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
       );
 
       (match l.link_kind with
-	Intern(label,dest_page,dest_x,dest_y) ->
+        Intern(label,dest_page,dest_x,dest_y) ->
           Buffer.add_string svg_buf
             (Printf.sprintf "<a xlink:href=\"#%d_%d\">"
                dest_page 0
@@ -399,28 +399,28 @@ let draw ?fontCache ?dynCache prefix w h contents=
            | None -> ()
            | Some c -> Hashtbl.replace c name btype
          end;
-	 let ty = match btype with
+         let ty = match btype with
           | Menu _ -> assert false
-	  | Click _ -> "button"
-	  | Drag  _ -> "dragable"
-	  | Edit(s, init, _) -> "editable' contents='" ^
-	    Str.(global_replace (regexp "\r?\n") "&#13;&#10;"
-		   (global_replace (regexp_string ">") "&gt;"
-		      (global_replace (regexp_string "<") "&lt;"
-			 (global_replace (regexp_string "\'") "&apos;"
-			    (global_replace (regexp_string "\"") "&quot;"
-			       (global_replace (regexp_string "&") "&amp;" s)))))) ^
-	    "' initial='" ^
-	    Str.(global_replace (regexp "\r?\n") "&#13;&#10;"
-		   (global_replace (regexp_string ">") "&gt;"
-		      (global_replace (regexp_string "<") "&lt;"
-			 (global_replace (regexp_string "\'") "&apos;"
-			    (global_replace (regexp_string "\"") "&quot;"
-			                    (global_replace (regexp_string "&") "&amp;" init))))))
-	in
+          | Click _ -> "button"
+          | Drag  _ -> "dragable"
+          | Edit(s, init, _) -> "editable' contents='" ^
+            Str.(global_replace (regexp "\r?\n") "&#13;&#10;"
+                   (global_replace (regexp_string ">") "&gt;"
+                      (global_replace (regexp_string "<") "&lt;"
+                         (global_replace (regexp_string "\'") "&apos;"
+                            (global_replace (regexp_string "\"") "&quot;"
+                               (global_replace (regexp_string "&") "&amp;" s)))))) ^
+            "' initial='" ^
+            Str.(global_replace (regexp "\r?\n") "&#13;&#10;"
+                   (global_replace (regexp_string ">") "&gt;"
+                      (global_replace (regexp_string "<") "&lt;"
+                         (global_replace (regexp_string "\'") "&apos;"
+                            (global_replace (regexp_string "\"") "&quot;"
+                                            (global_replace (regexp_string "&") "&amp;" init))))))
+        in
         Buffer.add_string svg_buf (
                              Printf.sprintf "<g class='%s' id='%s'>" ty name
-	);
+        );
       );
 
       ignore (outcont ~svg_buf l.link_contents);
@@ -435,11 +435,11 @@ let draw ?fontCache ?dynCache prefix w h contents=
       );
       (match l.link_kind with
       | Button(Menu _, _) ->
-	Buffer.add_string svg_buf "</a>"
+        Buffer.add_string svg_buf "</a>"
       | Button(_,_) ->
-	Buffer.add_string svg_buf "</g>"
+        Buffer.add_string svg_buf "</g>"
       | _ ->
-	Buffer.add_string svg_buf "</a>")
+        Buffer.add_string svg_buf "</a>")
     )
     | Dynamic d ->
       if !opened_tspan then (
@@ -452,29 +452,29 @@ let draw ?fontCache ?dynCache prefix w h contents=
       );
       Buffer.add_string svg_buf (Printf.sprintf "<g id=\"%s\">" d.dyn_label);
       (match dynCache with
-	 None ->
-	 List.iter output_contents_aux (d.dyn_contents ());
+         None ->
+         List.iter output_contents_aux (d.dyn_contents ());
        | Some (ds,gs,slide,state,record) ->
-	  (* <use> and <defs> would be much better ... but click inside
+          (* <use> and <defs> would be much better ... but click inside
              defs does not work with firefox (bug reported for more
              than one year *)
-	  let tmp = Buffer.create 256 in
-	  ignore (outcont ~svg_buf:tmp (d.dyn_contents ()));
-	  ignore (outcont ~svg_buf:tmp (d.dyn_sample));
+          let tmp = Buffer.create 256 in
+          ignore (outcont ~svg_buf:tmp (d.dyn_contents ()));
+          ignore (outcont ~svg_buf:tmp (d.dyn_sample));
           let ptr = ref None in
- 	  let rec contents () =
-	    let buf = Buffer.create 256 in
+           let rec contents () =
+            let buf = Buffer.create 256 in
             let contents, reads = record d.dyn_contents () in
             List.iter (fun key ->
                 let old = try Hashtbl.find gs key with Not_found -> [] in
                 if not (List.memq d0 old) then
-	          Hashtbl.add gs key (d0::old)) reads;
-	    ignore (output_contents ~create_new_class:false ~svg_buf:buf contents);
-	    Buffer.contents buf
-	  and d0 = ({ d with dyn_contents = contents; dyn_sample = "" }, ptr,
+                  Hashtbl.add gs key (d0::old)) reads;
+            ignore (output_contents ~create_new_class:false ~svg_buf:buf contents);
+            Buffer.contents buf
+          and d0 = ({ d with dyn_contents = contents; dyn_sample = "" }, ptr,
                     slide, state)
           in
-	  Hashtbl.add ds d.dyn_label d0
+          Hashtbl.add ds d.dyn_label d0
       );
       Buffer.add_string svg_buf "</g>";
 
@@ -522,26 +522,26 @@ let draw ?fontCache ?dynCache prefix w h contents=
       let prefix = !animate_count in
       incr animate_count;
       Buffer.add_string svg_buf (Printf.sprintf "<g class=\"animation\" nbframes=\"%d\" step=\"%d\" mirror=\"%d\" id=\"%d\">"
-				    (Array.length a.anim_contents) (truncate (a.anim_step *. 1000.))
-				    (if a.anim_mirror then 1 else 0) prefix );
+                                    (Array.length a.anim_contents) (truncate (a.anim_step *. 1000.))
+                                    (if a.anim_mirror then 1 else 0) prefix );
 
       Array.iteri (fun i c ->
-	Buffer.add_string svg_buf (
-	  Printf.sprintf "<g id=\"Animation_%d_%d\" visibility=\"%s\">\n"
-	    prefix i
-	    (if i = a.anim_default then "inherit" else "hidden"));
+        Buffer.add_string svg_buf (
+          Printf.sprintf "<g id=\"Animation_%d_%d\" visibility=\"%s\">\n"
+            prefix i
+            (if i = a.anim_default then "inherit" else "hidden"));
         opened_tspan:=false;
         opened_text:=false;
-	List.iter output_contents_aux (a.anim_contents.(i));
-	if !opened_tspan then (
+        List.iter output_contents_aux (a.anim_contents.(i));
+        if !opened_tspan then (
           Buffer.add_string svg_buf "</tspan>\n";
           opened_tspan:=false
-	);
-	if !opened_text then (
+        );
+        if !opened_text then (
           Buffer.add_string svg_buf "</text>\n";
           opened_text:=false
-	);
-	Buffer.add_string svg_buf "</g>\n") a.anim_contents;
+        );
+        Buffer.add_string svg_buf "</g>\n") a.anim_contents;
       Buffer.add_string svg_buf "</g>\n"
   in
   let ordered_map =
@@ -613,8 +613,8 @@ let buffered_output' ?dynCache ?(structure:structure=empty_structure) pages pref
 
       let sorted_pages = sort_raw page.contents in
       let dynCache = match dynCache with
-	  None -> None
-	| Some (c,g,f) -> Some (c.(slide).(state), g, slide, state, f)
+          None -> None
+        | Some (c,g,f) -> Some (c.(slide).(state), g, slide, state, f)
       in
       let svg,imgs0=draw ~fontCache:cache ?dynCache prefix w h sorted_pages in
       imgs:=StrMap.fold StrMap.add imgs0 !imgs;
@@ -734,10 +734,10 @@ function setReaction(svg) {
       for (var i = 0; i < defs.length; i++) {
         var id = defs[i].id;
         id=id.substring(1,id.length); // remove leading %@
-	var dest = document.getElementById(id);
-	while (defs[i].hasChildNodes()) {
-	  dest.appendChild(defs[i].lastChild);
-	}
+        var dest = document.getElementById(id);
+        while (defs[i].hasChildNodes()) {
+          dest.appendChild(defs[i].lastChild);
+        }
       }
       defs_elt.parentNode.removeChild(defs_elt);
     }
@@ -1036,7 +1036,7 @@ let output' ?(structure:structure=empty_structure) pages filename=
       Buffer.output_buffer o y;
       close_out o
     )
-	      ) svg_files;
+              ) svg_files;
   output_fonts cache
 
 let output ?(structure:structure=empty_structure) pages filename=

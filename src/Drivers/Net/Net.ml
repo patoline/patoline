@@ -139,7 +139,7 @@ function gotoSlide(n){
       Printf.fprintf o "char* %s%d[]={" pref i;
       for j=0 to Array.length arr.(i)-1 do
         if j>0 then Printf.fprintf o ",";
-	let prefix,suffix = arr.(i).(j) in
+        let prefix,suffix = arr.(i).(j) in
         if bin then (
           Printf.fprintf o "\"";
           for k=0 to Buffer.length prefix-1 do

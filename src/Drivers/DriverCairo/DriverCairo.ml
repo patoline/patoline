@@ -22,12 +22,12 @@ open Driver
 open Color 
 
 let driver_options = []
-let filter_options argv = argv			    
+let filter_options argv = argv                            
 
 let pixels_per_mm=ref 10.
 
 let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;children=[||]})
+                                  page= -1;struct_x=0.;struct_y=0.;children=[||]})
     pages fileName=
 
 
@@ -95,9 +95,9 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       )
       | Link l::s->draw_page (l.link_contents@s)
       | Animation a::s ->
-	draw_page (a.anim_contents.(a.anim_default) @s)
+        draw_page (a.anim_contents.(a.anim_default) @s)
       | Dynamic d::s ->
-	draw_page (d.dyn_contents ()@s)
+        draw_page (d.dyn_contents ()@s)
       | (Video _|States _|Image _)::s -> draw_page s
       | Affine a::s->(
         let x0=0.
@@ -113,7 +113,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
            x0=a.affine_matrix.(0).(2)*. !pixels_per_mm -.x1;
            y0= heightf -. a.affine_matrix.(1).(2)*. !pixels_per_mm +.y1;
           };
-	draw_page a.affine_contents;
+        draw_page a.affine_contents;
         Cairo.identity_matrix ctx;
         draw_page s)
       | []->()

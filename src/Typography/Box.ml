@@ -302,8 +302,8 @@ let frame_page l=
   let rec last cxt=match cxt with
       [h,t]->(
         let a,_,_=IntMap.split h t.frame_children in
-	IntMap.fold (fun _ f n ->
-	  if List.mem "not_first_state" f.frame_tags then n else n + 1) a 0
+        IntMap.fold (fun _ f n ->
+          if List.mem "not_first_state" f.frame_tags then n else n + 1) a 0
       )
     | _::s->last s
     | []->(-1)
@@ -472,8 +472,8 @@ let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.
 let glue a b c=
   Glue { drawing_min_width= a;
          drawing_max_width= c;
-	 drawing_width_fixed = true;
-	 drawing_adjust_before = false;
+         drawing_width_fixed = true;
+         drawing_adjust_before = false;
          drawing_y0=infinity; drawing_y1= -.infinity;
          drawing_nominal_width= b;
          drawing_contents=(fun _->[]);
@@ -539,14 +539,14 @@ let vkern_percent_under' gs p envs st =
   let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
     | [] -> (sy/.float nb,mi,sk/.float nb,ma)
     | GlyphBox g::gs ->
-	let acc =
-	  sy +. g.glyph_y,
-	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
-	  sk +. g.glyph_ky,
-	  max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
-	  nb + 1
-	in vbox' acc gs
-	| _ -> failwith "vkern on non glyph"
+        let acc =
+          sy +. g.glyph_y,
+          min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
+          sk +. g.glyph_ky,
+          max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
+          nb + 1
+        in vbox' acc gs
+        | _ -> failwith "vkern on non glyph"
   in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
   let y,yl,y0,yh = vbox gs in
@@ -554,9 +554,9 @@ let vkern_percent_under' gs p envs st =
   let center = (yh +. yl) /. 2.0 -. dy in
   center, List.map (function
       GlyphBox g -> GlyphBox {
-	g with
-	  glyph_y = g.glyph_y -. dy;
-	  glyph_ky = 0.0;
+        g with
+          glyph_y = g.glyph_y -. dy;
+          glyph_ky = 0.0;
       }
     | _ -> failwith "vkern on non glyph") gs
 
@@ -568,23 +568,23 @@ let vkern_center gs c envs st =
   let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
     | [] -> (sy/.float nb,mi,sk/.float nb,ma)
     | GlyphBox g::gs ->
-	let acc =
-	  sy +. g.glyph_y,
-	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
-	  sk +. g.glyph_ky,
-	  max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
-	  nb + 1
-	in vbox' acc gs
-	| _ -> failwith "vkern on non glyph"
+        let acc =
+          sy +. g.glyph_y,
+          min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
+          sk +. g.glyph_ky,
+          max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
+          nb + 1
+        in vbox' acc gs
+        | _ -> failwith "vkern on non glyph"
   in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
   let y,yl,y0,yh = vbox gs in
   let dy = (yh +. yl) /. 2.0 -. c in
   List.map (function
       GlyphBox g -> GlyphBox {
-	g with
-	  glyph_y = g.glyph_y -. dy;
-	  glyph_ky = 0.0;
+        g with
+          glyph_y = g.glyph_y -. dy;
+          glyph_ky = 0.0;
       }
     | _ -> failwith "vkern on non glyph") gs
 
@@ -593,9 +593,9 @@ let vkern_translate gs dy envs st =
   let gs = gs envs st in
   List.map (function
       GlyphBox g -> GlyphBox {
-	g with
-	  glyph_y = g.glyph_y -. dy;
-	  glyph_ky = 0.0;
+        g with
+          glyph_y = g.glyph_y -. dy;
+          glyph_ky = 0.0;
       }
     | _ -> failwith "vkern on non glyph") gs
 
@@ -606,14 +606,14 @@ let vkern_as gs gs' envs st =
   let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
     | [] -> (sy/.float nb,mi,sk/.float nb,ma)
     | GlyphBox g::gs ->
-	let acc =
-	  sy +. g.glyph_y,
-	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
-	  sk +. g.glyph_ky,
-	  max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
-	  nb + 1
-	in vbox' acc gs
-	| _ -> failwith "vkern on non glyph"
+        let acc =
+          sy +. g.glyph_y,
+          min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
+          sk +. g.glyph_ky,
+          max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
+          nb + 1
+        in vbox' acc gs
+        | _ -> failwith "vkern on non glyph"
   in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
   let y,yl,y0,yh = vbox gs in
@@ -621,12 +621,12 @@ let vkern_as gs gs' envs st =
   let s = (yh' -. yl') /. (yh -. yl) in
   List.map (function
       GlyphBox g -> GlyphBox {
-	g with
-	  glyph_size = g.glyph_size *. s;
-	  glyph_y = g.glyph_y *. s;
-	  glyph_ky = y0';
-	  glyph_x = g.glyph_x *. s;
-	  glyph_kx = g.glyph_kx *. s;
+        g with
+          glyph_size = g.glyph_size *. s;
+          glyph_y = g.glyph_y *. s;
+          glyph_ky = y0';
+          glyph_x = g.glyph_x *. s;
+          glyph_kx = g.glyph_kx *. s;
       }
     | _ -> failwith "vkern on non glyph") gs
 

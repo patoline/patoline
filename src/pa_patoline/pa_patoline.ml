@@ -58,9 +58,9 @@ let quail_out mnames unames =
       | [] -> ()
       | u::_ ->
        List.iter (fun name ->
-	 Printf.fprintf (Lazy.force quail_ch) "(\"%s\" ?%s)\n" (String.escaped name) u) mnames;
+         Printf.fprintf (Lazy.force quail_ch) "(\"%s\" ?%s)\n" (String.escaped name) u) mnames;
        List.iter (fun name ->
-	 Printf.fprintf (Lazy.force quail_ch) "(\"%s\" ?%s)\n" (String.escaped name) u) others
+         Printf.fprintf (Lazy.force quail_ch) "(\"%s\" ?%s)\n" (String.escaped name) u) others
 
     end
 
@@ -381,7 +381,7 @@ type math_prio =
   | Sum | Operator | Rel | Neg | Conj | Impl | Punc
 
 let math_prios = [ AtomM ; Accent ; LInd ; Ind ; IProd ; Prod ; Sum
-		 ; Operator ; Rel ; Neg ; Conj ; Impl ; Punc ]
+                 ; Operator ; Rel ; Neg ; Conj ; Impl ; Punc ]
 
 let next_prio = function
   | Punc -> Impl
@@ -549,7 +549,7 @@ let _ =
       | 'a' -> "AlphaLower"
       | 'A' -> "AlphaUpper"
       | _ ->   (Printf.eprintf "Invalid argument to genumerate: %c. Falling back to arabic.\n" c ;
-		flush stderr ; "Arabic")
+                flush stderr ; "Arabic")
     end in
     let caml = "("^nb_kind^",(fun num_sec -> <<" ^ prefix ^ "\\caml( [tT num_sec] )" ^ suffix ^ ">>))" in
     Earley.parse_string Pa_ocaml_prelude.expression blank2 caml)
@@ -580,12 +580,12 @@ let parser configs = "{" cs:{config ';'} * "}"   -> cs
  ****************************************************************************)
 
 type 'a indices = { up_right : 'a option; up_right_same_script: bool;
-		      down_right : 'a option; up_left_same_script: bool;
-		      up_left : 'a option;
-		      down_left : 'a option }
+                      down_right : 'a option; up_left_same_script: bool;
+                      up_left : 'a option;
+                      down_left : 'a option }
 
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None;
-		 up_right_same_script = false; up_left_same_script = false }
+                 up_right_same_script = false; up_left_same_script = false }
 
 type infix =
   { infix_prio : math_prio;
@@ -708,17 +708,17 @@ let parser mathlid = id:''[a-z][a-zA-Z0-9']*'' ->
   id
 
 let reserved_uid = [ "Include" ; "Caml"; "Configure_math_macro"
-		   ; "Configure_word_macro"; "Configure_environment"
-		   ; "Verbose_Changes"; "Save_Grammar"
-		   ; "Add_relation" ; "Add_addition_like"
-		   ; "Add_product_like" ; "Add_connector"
-		   ; "Add_arrow" ; "Add_punctuation"
-		   ; "Add_quantifier" ; "Add_prefix"
-		   ; "Add_postfix" ; "Add_accent"
-		   ; "Add_symbol" ; "Add_operator"
-		   ; "Add_limits_operator" ; "Add_left"
-		   ; "Add_right" ; "Add_combining"
-		   ]
+                   ; "Configure_word_macro"; "Configure_environment"
+                   ; "Verbose_Changes"; "Save_Grammar"
+                   ; "Add_relation" ; "Add_addition_like"
+                   ; "Add_product_like" ; "Add_connector"
+                   ; "Add_arrow" ; "Add_punctuation"
+                   ; "Add_quantifier" ; "Add_prefix"
+                   ; "Add_postfix" ; "Add_accent"
+                   ; "Add_symbol" ; "Add_operator"
+                   ; "Add_limits_operator" ; "Add_left"
+                   ; "Add_right" ; "Add_combining"
+                   ]
 let parser macrouid = id:{uid | "item" -> "Item" } ->
   if List.mem id reserved_uid then give_up ();
   id
@@ -1054,24 +1054,24 @@ let print_math_deco_sym _loc elt ind =
     begin
       let r = ref [] in
       (match ind.up_right with
-	Some i ->
-     	  if ind.up_right_same_script then
-	    r:= <:record<Maths.super_right_same_script = true>> @ !r;
-	  r:= <:record<Maths.superscript_right = $i$ >> @ !r
+        Some i ->
+               if ind.up_right_same_script then
+            r:= <:record<Maths.super_right_same_script = true>> @ !r;
+          r:= <:record<Maths.superscript_right = $i$ >> @ !r
       | _ -> ());
       (match ind.down_right with
-	Some i ->
-	  r:= <:record<Maths.subscript_right = $i$ >> @ !r
+        Some i ->
+          r:= <:record<Maths.subscript_right = $i$ >> @ !r
       | _ -> ());
       (match ind.up_left with
-	Some i ->
-     	  if ind.up_left_same_script then
-	    r:= <:record<Maths.super_left_same_script = true>> @ !r;
-	  r:= <:record<Maths.superscript_left = $i$ >> @ !r
+        Some i ->
+               if ind.up_left_same_script then
+            r:= <:record<Maths.super_left_same_script = true>> @ !r;
+          r:= <:record<Maths.superscript_left = $i$ >> @ !r
       | _ -> ());
       (match ind.down_left with
-	Some i ->
-	  r:= <:record<Maths.subscript_left = $i$ >> @ !r
+        Some i ->
+          r:= <:record<Maths.subscript_left = $i$ >> @ !r
       | _ -> ());
       Pa_ast.loc_expr _loc (Parsetree.Pexp_record (!r, Some <:expr<Maths.node $print_math_symbol _loc elt$>>))
     end
@@ -1084,9 +1084,9 @@ let print_math_deco _loc elt ind =
       let r = ref [] in
       (match ind.up_right with
        | Some i ->
-     	     if ind.up_right_same_script then
-	           r:= <:record<Maths.super_right_same_script = true>> @ !r;
-	         r := <:record<Maths.superscript_right = $i$ >> @ !r
+                  if ind.up_right_same_script then
+                   r:= <:record<Maths.super_right_same_script = true>> @ !r;
+                 r := <:record<Maths.superscript_right = $i$ >> @ !r
        | _ -> ());
       (match ind.down_right with
        | Some i ->
@@ -1095,7 +1095,7 @@ let print_math_deco _loc elt ind =
       (match ind.up_left with
        | Some i ->
            if ind.up_left_same_script then
-	           r:= <:record<Maths.super_left_same_script = true>> @ !r;
+                   r:= <:record<Maths.super_left_same_script = true>> @ !r;
            r:= <:record<Maths.superscript_left = $i$ >> @ !r
        | _ -> ());
       (match ind.down_left with
@@ -1417,12 +1417,12 @@ let parser symbol_def =
 type indice_height = Up | Down
 
 let parser left_indices =
-		   | "__"-> Down
-		   | "^^"-> Up
+                   | "__"-> Down
+                   | "^^"-> Up
 
 let parser right_indices =
-		   | "_" -> Down
-		   | "^" -> Up
+                   | "_" -> Down
+                   | "^" -> Up
 
 let parser any_symbol = sym:math_any_symbol -> sym.symbol_value
 
@@ -1458,14 +1458,14 @@ let parser math_aux prio =
      (fun indices ->
        let ind = merge_indices indices ind in
       match op.operator_kind with
-	Limits ->
-	  <:expr<[Maths.op_limits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>
+        Limits ->
+          <:expr<[Maths.op_limits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>
       | NoLimits ->
-	 <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>)
+         <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>)
 
   | l:(math_aux prio) st:{ s:(math_infix_symbol prio) i:with_indices -> (s,i)
-			 | BLANK when prio = IProd  -> (invisible_product, no_ind)
-			 | - when prio = IApply ->  (invisible_apply  , no_ind) }
+                         | BLANK when prio = IProd  -> (invisible_product, no_ind)
+                         | - when prio = IApply ->  (invisible_apply  , no_ind) }
     r:(math_aux (next_prio prio)) when prio <> AtomM ->
      let s,ind = st in
      (fun indices ->
@@ -1475,17 +1475,17 @@ let parser math_aux prio =
        let indices = merge_indices indices ind in
        let l = l no_ind and r = r (if s.infix_value = Invisible then indices else no_ind) in
        if s.infix_value = SimpleSym "over" then begin
-	 if indices <> no_ind then give_up ();
-	 <:expr< [Maths.fraction $l$ $r$] >>
+         if indices <> no_ind then give_up ();
+         <:expr< [Maths.fraction $l$ $r$] >>
        end else begin
-	 let inter =
-	   if s.infix_value = Invisible then
-	     <:expr<Maths.Invisible>>
-	   else
+         let inter =
+           if s.infix_value = Invisible then
+             <:expr<Maths.Invisible>>
+           else
              let v = print_math_deco_sym _loc_st s.infix_value indices in
-	     <:expr<Maths.Normal ($bool:nsl$, $v$, $bool:nsr$)>>
-	 in
-	 <:expr<[Maths.Binary { bin_priority= $int:sp$ ; bin_drawing = $inter$
+             <:expr<Maths.Normal ($bool:nsl$, $v$, $bool:nsr$)>>
+         in
+         <:expr<[Maths.Binary { bin_priority= $int:sp$ ; bin_drawing = $inter$
                           ; bin_left = $l$ ; bin_right= $r$ }]>>
        end)
 
@@ -1509,14 +1509,14 @@ let parser math_aux prio =
   | name:''[a-zA-Z][a-zA-Z0-9]*'' when prio = AtomM ->
      (fun indices ->
        if String.length name > 1 then
-	 let elt = <:expr<fun env -> Maths.glyphs $string:name$ (Maths.change_fonts env env.font)>> in
-	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (CamlSym elt) indices$] >>
+         let elt = <:expr<fun env -> Maths.glyphs $string:name$ (Maths.change_fonts env env.font)>> in
+         <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (CamlSym elt) indices$] >>
        else
-	 <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (SimpleSym name) indices$] >>)
+         <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (SimpleSym name) indices$] >>)
 
   | sym:math_atom_symbol  when prio = AtomM ->
       (fun indices ->
-	<:expr<[Maths.Ordinary $print_math_deco_sym _loc_sym sym.symbol_value indices$] >>)
+        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_sym sym.symbol_value indices$] >>)
 
   | num:''[0-9]+\([.][0-9]+\)?''  when prio = AtomM ->
      (fun indices ->
@@ -1562,31 +1562,31 @@ let parser math_aux prio =
   | m:(math_aux Ind) - h:right_indices - r:(math_aux Accent) when prio = Ind ->
      (fun indices -> match h with
      | Down ->
- 	if indices.down_right <> None then give_up ();
+         if indices.down_right <> None then give_up ();
         m { indices with down_right = Some (r no_ind) }
      | Up ->
-	if indices.up_right <> None then give_up ();
-	m { indices with up_right = Some (r no_ind) }
+        if indices.up_right <> None then give_up ();
+        m { indices with up_right = Some (r no_ind) }
      )
 
   | m:(math_aux Ind) - h:right_indices - s:any_symbol when prio = Ind ->
      let s = print_ordinary_math_symbol _loc s in
      (fun indices -> match h with
      | Down ->
- 	if indices.down_right <> None then give_up ();
+         if indices.down_right <> None then give_up ();
         m { indices with down_right = Some s }
      | Up ->
-	if indices.up_right <> None then give_up ();
-	m { indices with up_right = Some s }
+        if indices.up_right <> None then give_up ();
+        m { indices with up_right = Some s }
      )
 
   | m:(math_aux Accent) - h:left_indices - r:(math_aux LInd) when prio = LInd ->
      (fun indices -> match h with
      | Down ->
-	if indices.down_left <> None then give_up ();
+        if indices.down_left <> None then give_up ();
         r { indices with down_left = Some (m no_ind) }
      | Up ->
-	if indices.up_left <> None then give_up ();
+        if indices.up_left <> None then give_up ();
         r { indices with up_left = Some (m no_ind) }
      )
 
@@ -1594,10 +1594,10 @@ let parser math_aux prio =
      let s = print_ordinary_math_symbol _loc s in
      (fun indices -> match h with
      | Down ->
-	if indices.down_left <> None then give_up ();
+        if indices.down_left <> None then give_up ();
         r { indices with down_left = Some s }
      | Up ->
-	if indices.up_left <> None then give_up ();
+        if indices.up_left <> None then give_up ();
         r { indices with up_left = Some s }
      )
 
@@ -1631,9 +1631,9 @@ and parser with_indices =
      begin
        match h with
        | Down -> if i.down_right <> None then give_up ();
-	               { i with down_right = Some (r no_ind) }
+                       { i with down_right = Some (r no_ind) }
        | Up   -> if i.up_right <> None then give_up ();
-	               { i with up_right = Some (r no_ind) }
+                       { i with up_right = Some (r no_ind) }
      end
 
   | i:with_indices s:Subsup.superscript ->
@@ -1653,11 +1653,11 @@ and parser with_indices =
      if (s = Right) then give_up ();
      let i = match h with
        | Down ->
-	  if i.down_left <> None then give_up ();
-	 { i with down_left = Some (m no_ind) }
+          if i.down_left <> None then give_up ();
+         { i with down_left = Some (m no_ind) }
        | Up ->
-	  if i.up_left <> None then give_up ();
-	 { i with up_left = Some (m no_ind) }
+          if i.up_left <> None then give_up ();
+         { i with up_left = Some (m no_ind) }
      in
     (o, i)*)
 
@@ -1694,7 +1694,7 @@ and parser math_declaration =
        let nsl = s.infix_no_left_space in
        let nsr = s.infix_no_right_space in
        let inter =
-	 <:expr<Maths.Normal( $bool:nsl$,
+         <:expr<Maths.Normal( $bool:nsl$,
                               $print_math_deco_sym _loc_s s.infix_value ind$,
                               $bool:nsr$) >>
        in
@@ -1825,9 +1825,9 @@ let _ = set_grammar math_toplevel (parser
                    open $uid:temp_id$>>)
     | "\\" id:macrouid ts:simple_text_macro_argument*$ -> (fun _ ->
          let m1 = freshUid () in
-	 if ts <> [] then
-	   let m2 = freshUid () in
-	   let str = List.flatten (List.map (fun t -> <:struct< let arg1 = $t$ >>) ts) in
+         if ts <> [] then
+           let m2 = freshUid () in
+           let str = List.flatten (List.map (fun t -> <:struct< let arg1 = $t$ >>) ts) in
            <:struct<
              module $uid:m2$ =
                struct
@@ -1837,7 +1837,7 @@ let _ = set_grammar math_toplevel (parser
              let _ = $uid:m1$.do_begin_env ()
              let _ = $uid:m1$.do_end_env ()
            >>
-	 else
+         else
            <:struct<
              module $uid:m1$ = $uid:id$
              let _ = $uid:m1$.do_begin_env ()
@@ -1953,7 +1953,7 @@ let parser text_item lvl =
       (true, lvl, code))
 
   | (num,title):{_:(sect lvl)  title:simple_text _:(sect lvl) -> true, title
-		|_:(usect lvl) title:simple_text _:(usect lvl)-> false, title }
+                |_:(usect lvl) title:simple_text _:(usect lvl)-> false, title }
       txt:(topleveltext (lvl+1))$ when lvl < 8 ->
      (fun _ lvl' ->
        assert (lvl' >= lvl);
@@ -2005,11 +2005,11 @@ let parser title =
   | RE("==========\\(=*\\)")
       title:simple_text
       (auth,inst,date):{
-	auth:{_:RE("----------\\(-*\\)") simple_text}
-	(inst,date):{
-	  inst:{_:RE("----------\\(-*\\)") simple_text}
-	  date:{_:RE("----------\\(-*\\)") simple_text}? -> (Some inst, date)
-	}?[None,None] -> (Some auth, inst, date)
+        auth:{_:RE("----------\\(-*\\)") simple_text}
+        (inst,date):{
+          inst:{_:RE("----------\\(-*\\)") simple_text}
+          date:{_:RE("----------\\(-*\\)") simple_text}? -> (Some inst, date)
+        }?[None,None] -> (Some auth, inst, date)
       }?[None,None,None]
     RE("==========\\(=*\\)") ->
 

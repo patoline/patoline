@@ -51,8 +51,8 @@ let centered parameters str tree _=
                   | (_,(Paragraph _))::s->flat_children env1 s
                   | (k,(Node h as tr))::s->(
                       let env'=h.node_env env1 in
-		      let chi1 = toc env' (k::path) tr in
-		      chi1@flat_children (h.node_post_env env1 env') s
+                      let chi1 = toc env' (k::path) tr in
+                      chi1@flat_children (h.node_post_env env1 env') s
                     )
                 in
                 let chi=if List.mem_assoc "numbered" s.node_tags then flat_children env0 (IntMap.bindings s.children) else [] in
@@ -93,8 +93,8 @@ let centered parameters str tree _=
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;
                       drawing_max_width=env.normalMeasure;
-		      drawing_width_fixed = true;
-		      drawing_adjust_before = false;
+                      drawing_width_fixed = true;
+                      drawing_adjust_before = false;
                       drawing_y0=b;
                       drawing_y1=d;
                       drawing_break_badness=0.;
@@ -180,8 +180,8 @@ let these parameters str tree max_level=
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;
                       drawing_max_width=env.normalMeasure;
-		      drawing_width_fixed = true;
-		      drawing_adjust_before = false;
+                      drawing_width_fixed = true;
+                      drawing_adjust_before = false;
                       drawing_y0=b;
                       drawing_y1=d;
                       drawing_break_badness=0.;
@@ -273,8 +273,8 @@ let slides ?(hidden_color=Color.rgb 0.8 0.8 0.8) parameters str tree max_level=
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;
                       drawing_max_width=env.normalMeasure;
-		      drawing_width_fixed = true;
-		      drawing_adjust_before = false;
+                      drawing_width_fixed = true;
+                      drawing_adjust_before = false;
                       drawing_y0=b;
                       drawing_y1=d;
                       drawing_break_badness=0.;

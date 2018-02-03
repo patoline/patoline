@@ -100,7 +100,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         (* Fabriquer un paragraphe qui va bien *)
         let stru',_=paragraph ~parameters:center [C (fun env->
           try
-	    env_accessed := true;
+            env_accessed := true;
             let margin=env.size*.0.2 in
             let mes=env.normalMeasure in
             let env0={env with
@@ -413,10 +413,10 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     (* in slides, werbatim with a smaller lead *)
     let verbEnv x =
-	{ (envFamily x.fontMonoFamily x)
-	with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [];
-	     lead = x.lead *. x.fontMonoRatio *. 0.75;
-	     normalLead = x.normalLead *. x.fontMonoRatio *. 0.75}
+        { (envFamily x.fontMonoFamily x)
+        with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [];
+             lead = x.lead *. x.fontMonoRatio *. 0.75;
+             normalLead = x.normalLead *. x.fontMonoRatio *. 0.75}
 
     let parameters env b c d e f g line=
       { (Default.parameters env b c d e f g line) with
@@ -548,7 +548,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             let env0=
               let labl=String.concat "_" ("_"::List.map string_of_int path) in
               let li={uselessLine with layout=env0.new_page layout} in
-(*	      Printf.fprintf stderr "Adding pos %s\n" labl;*)
+(*              Printf.fprintf stderr "Adding pos %s\n" labl;*)
               { env0 with
                 names=StrMap.add labl (env0.counters,"_structure",li) env0.names;
                 user_positions=MarkerMap.add (Label labl) li env0.user_positions }
@@ -565,32 +565,32 @@ module Format=functor (D:Document.DocumentStructure)->(
                   (*let out=open_out (Printf.sprintf "slide%d" (List.length !slides)) in
                   doc_graph out tree;
                   close_out out;*)
-	      let hasTitle = n.displayname <> [] in
-	      let env0 =
-		if hasTitle then
-		  { env0 with
-		    new_page=
-		      (fun t->
-		       let zip=Box.make_page (slidew,slideh) (frame_top t) in
-		       let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
-		       let y0= -. slideh in          (* Un peu abusif, mais tout le contenu est censé tenir *)
-		       let x1=((fst zip).frame_x1-.1.*.slidew/.6.) in
-		       let y1=((fst zip).frame_y1-.1.*.slideh/.7.) in
-		       frame x0 y0 x1 y1 zip
-		      )
-		  } else
-		  { env0 with
-		    new_page=
-		      (fun t->
-		       let zip=Box.make_page (slidew,slideh) (frame_top t) in
-		       let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
-		       let y0= -. slideh in          (* Un peu abusif, mais tout le contenu est censé tenir *)
-		       let x1=((fst zip).frame_x1-.1.*.slidew/.6.) in
-		       let y1=((fst zip).frame_y1-.1.*.slideh/.14.) in
-		       frame x0 y0 x1 y1 zip
-		      )
-		  }
-	      in
+              let hasTitle = n.displayname <> [] in
+              let env0 =
+                if hasTitle then
+                  { env0 with
+                    new_page=
+                      (fun t->
+                       let zip=Box.make_page (slidew,slideh) (frame_top t) in
+                       let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
+                       let y0= -. slideh in          (* Un peu abusif, mais tout le contenu est censé tenir *)
+                       let x1=((fst zip).frame_x1-.1.*.slidew/.6.) in
+                       let y1=((fst zip).frame_y1-.1.*.slideh/.7.) in
+                       frame x0 y0 x1 y1 zip
+                      )
+                  } else
+                  { env0 with
+                    new_page=
+                      (fun t->
+                       let zip=Box.make_page (slidew,slideh) (frame_top t) in
+                       let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
+                       let y0= -. slideh in          (* Un peu abusif, mais tout le contenu est censé tenir *)
+                       let x1=((fst zip).frame_x1-.1.*.slidew/.6.) in
+                       let y1=((fst zip).frame_y1-.1.*.slideh/.14.) in
+                       frame x0 y0 x1 y1 zip
+                      )
+                  }
+              in
                   let rec get_max_state t=match t with
                       Paragraph p->(List.fold_left max 0 p.par_states)
                     | Node n->
@@ -676,9 +676,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                          with
                              Not_found->[]);
                       let next_layout=if state = 0 then opt_pages,[] else
-			  let f,l = frame_down_last (opt_pages, []) in
-			  frame_top ({f with frame_tags = "not_first_state"::f.frame_tags}, l)
-		      in
+                          let f,l = frame_down_last (opt_pages, []) in
+                          frame_top ({f with frame_tags = "not_first_state"::f.frame_tags}, l)
+                      in
                       let env2,reboot'=update_names env1 figs' user' in
                       let labl_exists=
                         let labl=String.concat "_" ("_"::List.map string_of_int path) in
@@ -834,14 +834,14 @@ module Format=functor (D:Document.DocumentStructure)->(
               ) boxes 0.
               in
               let alpha=(min 1.0 (slidew*.0.8/.total))/.(sqrt phi) in
-	      let denom, start_space = if IntMap.cardinal toc > 1 && total > slidew *. 0.5 then
-		  (* espace fixe au bord à 0.125 slidew *)
-		  (float_of_int (IntMap.cardinal toc - 1)),
-  		  (fun inter -> 0.125 *. slidew)
-		else
-		  (float_of_int (IntMap.cardinal toc + 1)),
-  		  (fun inter -> inter +. 0.125 *. slidew)
-	      in
+              let denom, start_space = if IntMap.cardinal toc > 1 && total > slidew *. 0.5 then
+                  (* espace fixe au bord à 0.125 slidew *)
+                  (float_of_int (IntMap.cardinal toc - 1)),
+                    (fun inter -> 0.125 *. slidew)
+                else
+                  (float_of_int (IntMap.cardinal toc + 1)),
+                    (fun inter -> inter +. 0.125 *. slidew)
+              in
               let inter=(0.75 *. slidew -. (alpha*.total))/.denom in
               let x0=slidew/.10.
               and y0=slideh
@@ -930,7 +930,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
 
                   if line.isFigure then (
                     let fig=figures.(line.lastFigure) in
-	            if env.show_boxes then
+                    if env.show_boxes then
                       page.contents<- Path ({default_path_param with close=true;lineWidth=0.1 },
                                                 [rectangle (param.left_margin,y+.fig.drawing_y0)
                                                     (param.left_margin+.fig.drawing_nominal_width,
@@ -973,30 +973,30 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                           in
                           page.contents<-
                             (List.map (RawContent.translate x y) cont_states) @ page.contents;
-		          if env.show_boxes then
+                          if env.show_boxes then
                             page.contents<- Path ({default_path_param with close=true;lineWidth=0.1 },
-						      [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)])
-			    :: page.contents;
+                                                      [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)])
+                            :: page.contents;
                           w
                         )
                         | Marker (BeginLink l)->(
-			  let k = match l with
-			      Box.Extern l -> RawContent.Extern l;
-			    | Box.Intern l ->(
-			      try
-				let line=MarkerMap.find (Label l) env_final.user_positions in
+                          let k = match l with
+                              Box.Extern l -> RawContent.Extern l;
+                            | Box.Intern l ->(
+                              try
+                                let line=MarkerMap.find (Label l) env_final.user_positions in
                                 let y1=match classify_float line.line_y1 with
                                     FP_infinite | FP_nan->
                                       0.
                                   | _->line.line_y1
                                 in
-				RawContent.Intern(l,Box.layout_page line,0.,y1)
-			      with Not_found->
-				Printf.eprintf "Label not_found %s\n%!" l;
-				RawContent.Intern(l,-1,0.,0.)
+                                RawContent.Intern(l,Box.layout_page line,0.,y1)
+                              with Not_found->
+                                Printf.eprintf "Label not_found %s\n%!" l;
+                                RawContent.Intern(l,-1,0.,0.)
                             )
-			    | Box.Button(drag,n) -> RawContent.Button(drag,n)
-			  in
+                            | Box.Button(drag,n) -> RawContent.Button(drag,n)
+                          in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                      link_order=0;link_closed=false;
                                      link_contents=[] }
@@ -1056,12 +1056,12 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                 states:=page:: !states
               done;
               let env=
-		StrMap.fold (fun labl dest env ->
-		  let comp_i,lm,y0,y1,line = dest in
-(*		  Printf.fprintf stderr "Adding pos %s\n" labl;*)
-		  { env with
+                StrMap.fold (fun labl dest env ->
+                  let comp_i,lm,y0,y1,line = dest in
+(*                  Printf.fprintf stderr "Adding pos %s\n" labl;*)
+                  { env with
                     user_positions=MarkerMap.add (Label labl) line (user_positions env)})
-		  !destinations env
+                  !destinations env
               in
               env,Array.of_list (List.rev !states)
             in
@@ -1078,7 +1078,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                   let open Driver in
                       [{name=n_name;
                         raw_name=[];metadata=[];tags=n.node_tags;
-		        page=num;struct_x=fst !structPosition;struct_y=snd !structPosition;
+                        page=num;struct_x=fst !structPosition;struct_y=snd !structPosition;
                         children=Array.of_list (List.rev sub)
                        }]
                 )
@@ -1093,25 +1093,25 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                 | _->[]
             in
 
-	    let pages, structure =
-	      match !Driver.input_bin with
-		None ->
-		  let pages=Array.mapi draw_slide (Array.of_list (List.rev !slides)) in
-		  let str=match make_structure pages structure with
+            let pages, structure =
+              match !Driver.input_bin with
+                None ->
+                  let pages=Array.mapi draw_slide (Array.of_list (List.rev !slides)) in
+                  let str=match make_structure pages structure with
                       h::_->h
                     | []->empty_structure
                   in
-		  pages, str
-	      | Some fileName ->
-		let ch = open_in fileName in
-		let b = input_value ch in
-		if not b then failwith "Wrong bin for this format";
-		let structure = Marshal.from_channel ch in
-		let pages = Marshal.from_channel ch in
-		close_in ch;
-		Printf.fprintf stderr "File %s read.\n" fileName;
-		pages, structure
-	    in
+                  pages, str
+              | Some fileName ->
+                let ch = open_in fileName in
+                let b = input_value ch in
+                if not b then failwith "Wrong bin for this format";
+                let structure = Marshal.from_channel ch in
+                let pages = Marshal.from_channel ch in
+                close_in ch;
+                Printf.fprintf stderr "File %s read.\n" fileName;
+                pages, structure
+            in
             M.output' ~structure (Array.map snd pages) file
           )
         in

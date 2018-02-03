@@ -373,7 +373,7 @@ let output ?(structure:structure=empty_structure) pages fname =
     let rec output_contents c =
       match c with
       | Animation a ->
-	List.iter output_contents (a.anim_contents.(a.anim_default))
+        List.iter output_contents (a.anim_contents.(a.anim_default))
       | Glyph gl->(
         change_non_stroking_color gl.glyph_color;
         if not !isText then Buffer.add_string pageBuf " BT ";
@@ -518,7 +518,7 @@ let output ?(structure:structure=empty_structure) pages fname =
           resumeObject pageObjects.(page);
           let w,h=pages.(page).size in
           fprintf oc "<< /Type /Page /Parent 1 0 R /MediaBox [ 0 0 %f %f ] " (pt_of_mm w) (pt_of_mm h);
-	  fprintf oc "/Group << /Type /Group /S /Transparency /I false /K true /CS /DeviceRGB >>";
+          fprintf oc "/Group << /Type /Group /S /Transparency /I false /K true /CS /DeviceRGB >>";
           fprintf oc "/Resources << /ProcSet [/PDF /Text%s] "
             (if !pageImages=[] then "" else " /ImageB");
           if FloatMap.cardinal !sopacities > 1 || FloatMap.cardinal !nsopacities>1 then (
@@ -563,27 +563,27 @@ let output ?(structure:structure=empty_structure) pages fname =
                 let inf3=match classify_float l.link_y1 with FP_nan | FP_infinite->false
                   | _->true in
                 if inf0 && inf1 && inf2 && inf3 then
-		  match l.link_kind with
-		    Intern(label,dest_page,dest_x,dest_y)->
+                  match l.link_kind with
+                    Intern(label,dest_page,dest_x,dest_y)->
                       if dest_page>=0 && dest_page<Array.length pageObjects then (
                         fprintf oc
-			  "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
-			  (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
-			  (pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(dest_page)
-			  (pt_of_mm dest_x) (pt_of_mm dest_y)
+                          "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
+                          (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
+                          (pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(dest_page)
+                          (pt_of_mm dest_x) (pt_of_mm dest_y)
                       ) else (
                         Printf.fprintf stderr "Please report: Pdf.ml Intern link problem %S %d/%d\n"
                           label
                           dest_page (Array.length pageObjects);
                         flush stderr;
                       )
-		  | Extern(uri) ->
+                  | Extern(uri) ->
                     fprintf oc
                       "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /A <</Type /Action /S /URI /URI (%s)>> /Border [0 0 0]  >> "
                       (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
                       (pt_of_mm l.link_x1) (pt_of_mm l.link_y1)
                       uri
-		  | _ -> ()
+                  | _ -> ()
               ) !pageLinks;
               fprintf oc "]";
             );
@@ -594,99 +594,99 @@ let output ?(structure:structure=empty_structure) pages fname =
               List.iter Image.(fun (obj,_,i)->
                 let image=ImageLib.openfile i.image_file in
                 let w=image.width and h=image.height in
-		let bits_per_component =
-		  if image.max_val <= 255 then 8 else 16 in
-		let device, nbc = match image.pixels with
-		    RGB _ | RGBA _ -> "RGB", 3
+                let bits_per_component =
+                  if image.max_val <= 255 then 8 else 16 in
+                let device, nbc = match image.pixels with
+                    RGB _ | RGBA _ -> "RGB", 3
                   | Grey _ | GreyA _ -> "Gray", 1
-		in
+                in
                 let img_buf=Buffer.create (w*h*nbc*(bits_per_component/8)) in
-		let alpha_buf =
+                let alpha_buf =
       match image.pixels with
       | RGB _  | Grey _  -> None
       | RGBA _ | GreyA _ -> Some (Buffer.create (w*h*(bits_per_component/8)))
-		in
-		if device = "RGB" then
+                in
+                if device = "RGB" then
                   for j=0 to h-1 do
                     for i=0 to w-1 do
                       Image.read_rgba image i j (fun r g b a ->
-			if image.max_val <= 255 then (
-			  let r = (r * 255 * 2 + 1) / (2 * image.max_val) in
-			  let g = (g * 255 * 2 + 1) / (2 * image.max_val) in
-			  let b = (b * 255 * 2 + 1) / (2 * image.max_val) in
+                        if image.max_val <= 255 then (
+                          let r = (r * 255 * 2 + 1) / (2 * image.max_val) in
+                          let g = (g * 255 * 2 + 1) / (2 * image.max_val) in
+                          let b = (b * 255 * 2 + 1) / (2 * image.max_val) in
 
-			  Buffer.add_char img_buf (char_of_int r);
-			  Buffer.add_char img_buf (char_of_int g);
-			  Buffer.add_char img_buf (char_of_int b))
-			else (
-			  let r = (r * 65535 * 2 + 1) / (2 * image.max_val) in
-			  let g = (g * 65535 * 2 + 1) / (2 * image.max_val) in
-			  let b = (b * 65535 * 2 + 1) / (2 * image.max_val) in
-			  let r0 = char_of_int (r land 255) in
-			  let r1 = char_of_int (r lsr 8) in
-			  let g0 = char_of_int (g land 255) in
-			  let g1 = char_of_int (g lsr 8) in
-			  let b0 = char_of_int (b land 255) in
-			  let b1 = char_of_int (b lsr 8) in
-			  Buffer.add_char img_buf r1;
-			  Buffer.add_char img_buf r0;
-			  Buffer.add_char img_buf g1;
-			  Buffer.add_char img_buf g0;
-			  Buffer.add_char img_buf b1;
-			  Buffer.add_char img_buf b0);
-			match alpha_buf with
-			| None -> ()
-			| Some buf ->
-			  if image.max_val <= 255 then (
-			    let a = (a * 255 * 2 + 1) / (2 * image.max_val) in
-			    Buffer.add_char buf (char_of_int a))
-			  else (
-			    let a = (a * 65535) / image.max_val in
-			    let a0 = char_of_int (a land 255) in
-			    let a1 = char_of_int (a lsr 8) in
-			    Buffer.add_char buf a1;
-			    Buffer.add_char buf a0))
-		    done
+                          Buffer.add_char img_buf (char_of_int r);
+                          Buffer.add_char img_buf (char_of_int g);
+                          Buffer.add_char img_buf (char_of_int b))
+                        else (
+                          let r = (r * 65535 * 2 + 1) / (2 * image.max_val) in
+                          let g = (g * 65535 * 2 + 1) / (2 * image.max_val) in
+                          let b = (b * 65535 * 2 + 1) / (2 * image.max_val) in
+                          let r0 = char_of_int (r land 255) in
+                          let r1 = char_of_int (r lsr 8) in
+                          let g0 = char_of_int (g land 255) in
+                          let g1 = char_of_int (g lsr 8) in
+                          let b0 = char_of_int (b land 255) in
+                          let b1 = char_of_int (b lsr 8) in
+                          Buffer.add_char img_buf r1;
+                          Buffer.add_char img_buf r0;
+                          Buffer.add_char img_buf g1;
+                          Buffer.add_char img_buf g0;
+                          Buffer.add_char img_buf b1;
+                          Buffer.add_char img_buf b0);
+                        match alpha_buf with
+                        | None -> ()
+                        | Some buf ->
+                          if image.max_val <= 255 then (
+                            let a = (a * 255 * 2 + 1) / (2 * image.max_val) in
+                            Buffer.add_char buf (char_of_int a))
+                          else (
+                            let a = (a * 65535) / image.max_val in
+                            let a0 = char_of_int (a land 255) in
+                            let a1 = char_of_int (a lsr 8) in
+                            Buffer.add_char buf a1;
+                            Buffer.add_char buf a0))
+                    done
                   done
-		else
+                else
                   for j=0 to h-1 do
                     for i=0 to w-1 do
                       Image.read_greya image i j (fun g a ->
-			if image.max_val <= 255 then (
-			  let g = (g * 255) / image.max_val in
-			  Buffer.add_char img_buf (char_of_int g))
-			else (
-			  let g = (g * 65535) / image.max_val in
-			  let g0 = char_of_int (g land 255) in
-			  let g1 = char_of_int (g lsr 8) in
-			  Buffer.add_char img_buf g1;
-			  Buffer.add_char img_buf g0);
-			match alpha_buf with
-			| None -> ()
-			| Some buf ->
-			  if image.max_val <= 255 then (
-			    let a = (a * 255 * 2 + 1) / (2 * image.max_val) in
-			    Buffer.add_char buf (char_of_int a))
-			  else (
-			    let a = (a * 65535) / image.max_val in
-			    let a0 = char_of_int (a land 255) in
-			    let a1 = char_of_int (a lsr 8) in
-			    Buffer.add_char buf a1;
-			    Buffer.add_char buf a0))
+                        if image.max_val <= 255 then (
+                          let g = (g * 255) / image.max_val in
+                          Buffer.add_char img_buf (char_of_int g))
+                        else (
+                          let g = (g * 65535) / image.max_val in
+                          let g0 = char_of_int (g land 255) in
+                          let g1 = char_of_int (g lsr 8) in
+                          Buffer.add_char img_buf g1;
+                          Buffer.add_char img_buf g0);
+                        match alpha_buf with
+                        | None -> ()
+                        | Some buf ->
+                          if image.max_val <= 255 then (
+                            let a = (a * 255 * 2 + 1) / (2 * image.max_val) in
+                            Buffer.add_char buf (char_of_int a))
+                          else (
+                            let a = (a * 65535) / image.max_val in
+                            let a0 = char_of_int (a land 255) in
+                            let a1 = char_of_int (a lsr 8) in
+                            Buffer.add_char buf a1;
+                            Buffer.add_char buf a0))
                     done
                   done;
-		let mask = match alpha_buf with
-		| None -> ""
-		| Some buf ->
+                let mask = match alpha_buf with
+                | None -> ""
+                | Some buf ->
                   let a,b=stream buf in
-		  let m = beginObject () in
+                  let m = beginObject () in
                   fprintf oc "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray /BitsPerComponent %d /Length %d %s>>\nstream\n" w h bits_per_component (Buffer.length b) a;
-		  Buffer.output_buffer oc b;
-		  let res = sprintf "/SMask %d 0 R" m in
+                  Buffer.output_buffer oc b;
+                  let res = sprintf "/SMask %d 0 R" m in
                   fprintf oc "\nendstream";
                   endObject ();
-		  res
-		in
+                  res
+                in
                 resumeObject obj;
                 let a,b=stream img_buf in
                 fprintf oc "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /Device%s /BitsPerComponent %d /Length %d %s %s>>\nstream\n" w h device bits_per_component (Buffer.length b) mask a;

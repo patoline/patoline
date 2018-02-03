@@ -73,15 +73,15 @@ let mathSpace x =
        let mathsEnv=Maths.env_style env.mathsEnvironment style in
        let x = x *. mathsEnv.Mathematical.mathsSize *. env.size in
        [Maths.Glue { drawing_min_width= x;
-		     drawing_max_width= x;
-		     drawing_y0=infinity; drawing_y1= -.infinity;
-		     drawing_nominal_width= x;
-		     drawing_width_fixed = true;
-		     drawing_adjust_before = false;
-		     drawing_contents=(fun _->[]);
+                     drawing_max_width= x;
+                     drawing_y0=infinity; drawing_y1= -.infinity;
+                     drawing_nominal_width= x;
+                     drawing_width_fixed = true;
+                     drawing_adjust_before = false;
+                     drawing_contents=(fun _->[]);
                      drawing_states=[];
                      drawing_break_badness=0.;
-		     drawing_badness=knuth_h_badness x }])]
+                     drawing_badness=knuth_h_badness x }])]
 
 let oline a=
   [Maths.Ordinary
@@ -318,8 +318,8 @@ let oRightArrow a=
                         glyph_utf8="\033\146"} in
           let gl_arr=Fonts.loadGlyph font utf8_arr in
           let arr=Fonts.outlines gl_arr in
-	  (* arr: (float array * float array) list list is a list of lists of pairs of arrays of floats *)
-	  (* w1 is the max of all x-coordinates in there, assuming the involved arrays are non-decreasing *)
+          (* arr: (float array * float array) list list is a list of lists of pairs of arrays of floats *)
+          (* w1 is the max of all x-coordinates in there, assuming the involved arrays are non-decreasing *)
           let w1=List.fold_left (List.fold_left (fun y (v,_)->max y (max v.(0) v.(Array.length v-1)))) 0. arr in
           (* Extrema de la fleche en ordonnee *)
           let y0,y1=List.fold_left (List.fold_left (fun (yy0,yy1) (_,v)->
@@ -341,8 +341,8 @@ let oRightArrow a=
                drawing_nominal_width=max (w1*.size) boxes_w;
                drawing_min_width=max (w1*.size+.y_space) boxes_w;
                drawing_max_width=max (w1*.size+.y_space) boxes_w;
-	       drawing_width_fixed = true;
-	       drawing_adjust_before = false;
+               drawing_width_fixed = true;
+               drawing_adjust_before = false;
                drawing_y0=y0_;
                drawing_y1=y1_+.x_space1-.x_space0-.(y0+.y1)*.size;
                drawing_badness=(fun _->0.);
@@ -394,8 +394,8 @@ let oLeftArrow a=
                drawing_nominal_width=max (w1*.size) boxes_w;
                drawing_min_width=max (w1*.size) boxes_w;
                drawing_max_width=max (w1*.size) boxes_w;
-	       drawing_width_fixed = true;
-	       drawing_adjust_before = false;
+               drawing_width_fixed = true;
+               drawing_adjust_before = false;
                drawing_y0=y0_;
                drawing_y1=y1_+.space-.(y0+.y1)*.size;
                drawing_badness=(fun _->0.);

@@ -93,12 +93,12 @@ let scoreBar ?(vertical=false) (module Diagram:Diagrams.Diagram) height width da
       let text_box = Document.draw_boxes env (boxify_scoped env text) in
       let (x0',_,x1',_) = bounding_box_full text_box in
       if x1' -. x0' < 1.75 *. (x1 -. x0) then
-	ignore (node Node.([at (w2, (x0 +. x1) /. 2.); outerSep 0.0; innerSep 0.0; setZ (1.0)]) text)
+        ignore (node Node.([at (w2, (x0 +. x1) /. 2.); outerSep 0.0; innerSep 0.0; setZ (1.0)]) text)
       else
-	ignore (node Node.([at (w2, (x0 +. x1) /. 2.); outerSep 0.0; innerSep 0.0; setZ (1.0)])
-		  (scale (1.75 *. (x1 -. x0) /. (x1' -. x0')) text));
+        ignore (node Node.([at (w2, (x0 +. x1) /. 2.); outerSep 0.0; innerSep 0.0; setZ (1.0)])
+                  (scale (1.75 *. (x1 -. x0) /. (x1' -. x0')) text));
       ignore (path Edge.([draw;fill (col:color);noStroke]) (0.0, x0)
-	[[0.0, x1] ; [width, x1] ; [width, x0]]);
+        [[0.0, x1] ; [width, x1] ; [width, x0]]);
     ) data
   else
     let h2 = height /. 2. in
@@ -133,10 +133,10 @@ let scoreBarProg diagram height width data =
   let data = List.map (fun
     (x,n) ->
       let color = match x with
-	  Ok -> green
-	| FailTest -> yellow
+          Ok -> green
+        | FailTest -> yellow
         | DoNotCompile -> red
-	| _ -> grey
+        | _ -> grey
       in (color, n)) data
   in
   scoreBar diagram height width data
@@ -154,9 +154,9 @@ let drawCheckBox ?(scale=0.5) env checked =
       [[height, 0.0] ; [height, height] ; [0.0, height]; [0.0, 0.0]] in
   if checked then (
     ignore (path Edge.([draw]) (0.0, 0.0)
-	      [[height, height]]);
+              [[height, height]]);
     ignore (path Edge.([draw]) (0.0, height)
-	      [[height, 0.0]])
+              [[height, 0.0]])
   );
   [ Drawing (Fig.make ()) ]
 
@@ -207,8 +207,8 @@ let drawRadio ?(scale=0.5) env checked =
 let radioButton ?(scale=0.5) data value =
   button (click(fun () -> data.write value))
          (dynamic []
-	          (fun () ->
-	            [bB (fun env -> drawRadio ~scale env (value = data.read ()))]))
+                  (fun () ->
+                    [bB (fun env -> drawRadio ~scale env (value = data.read ()))]))
 
 let radioButtons ?(scale=0.5) data values =
   Array.map (fun value ->  radioButton ~scale data value) values
@@ -391,8 +391,8 @@ let mk_length lines nb =
 let interEnv x =
     { (envFamily x.fontMonoFamily x)
       with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [];
-	lead = x.lead *. x.fontMonoRatio *. 0.75;
-	normalLead = x.normalLead *. x.fontMonoRatio *. 0.75;
+        lead = x.lead *. x.fontMonoRatio *. 0.75;
+        normalLead = x.normalLead *. x.fontMonoRatio *. 0.75;
         normalLeftMargin = 0.2;}
 
 type eval_fun = string option -> (result -> unit) -> string -> string
@@ -403,23 +403,23 @@ let editableText ?(log=true) ?(visibility=Private) ?(empty_case="Type in here")
 
     let data =
       match data with
-	None -> db.create_data ~log ~visibility string_coding name init_text
+        None -> db.create_data ~log ~visibility string_coding name init_text
       | Some d -> d
     in
     (match filename with
       Some name ->
-	Printf.eprintf "recording filename: %S\n%!" name;
-	Hashtbl.add file_table name data
+        Printf.eprintf "recording filename: %S\n%!" name;
+        Hashtbl.add file_table name data
     | None -> ());
 
     let dataR =
       match resultData with
-	None -> db.create_data ~visibility result_coding (name^"_results") NotTried
+        None -> db.create_data ~visibility result_coding (name^"_results") NotTried
       | Some d -> d
     in
 
     let init_res = match extra with
-	None -> ""
+        None -> ""
       | Some f ->  f filename (fun _ -> ()) init_text
     in
 
@@ -427,16 +427,16 @@ let editableText ?(log=true) ?(visibility=Private) ?(empty_case="Type in here")
 
     let eval t =
       match extra with
-	None -> Private
+        None -> Private
       | Some f ->
-	let writeR = if t <> init_text then
-	    dataR.write
-	  else
-	    fun _ -> dataR.write NotTried
-	in
-	let res = f filename writeR t in
-	dataO.write res;
-	Private
+        let writeR = if t <> init_text then
+            dataR.write
+          else
+            fun _ -> dataR.write NotTried
+        in
+        let res = f filename writeR t in
+        dataO.write res;
+        Private
     in
 
     let update () =
@@ -459,53 +459,53 @@ let editableText ?(log=true) ?(visibility=Private) ?(empty_case="Type in here")
         let s, lines = update () in
         (button (Edit(s, init_text, fun t ->
                                     record_write (fun () ->
-	                                     data.write t;
-	                                     eval t) ()))
+                                             data.write t;
+                                             eval t) ()))
            [bB(fun env ->
-	     let env = interEnv env in
-	     List.map (fun x-> Drawing (snd x))
-	       (IntMap.bindings
-		  (let d,_,_ = OutputDrawing.minipage' env
-		     (let i = ref (match nb_lines with None -> 0 | Some n -> n * index)  in
-		      let next () =
-			incr i;
- 			let line = string_of_int !i in
-			let miss = 3 - String.length line in
-			[glue_space miss;tT line;glue_space 1]
-		      in
-		      let codeLines = try List.nth (mk_length lines nb_lines) index with _ ->
+             let env = interEnv env in
+             List.map (fun x-> Drawing (snd x))
+               (IntMap.bindings
+                  (let d,_,_ = OutputDrawing.minipage' env
+                     (let i = ref (match nb_lines with None -> 0 | Some n -> n * index)  in
+                      let next () =
+                        incr i;
+                         let line = string_of_int !i in
+                        let miss = 3 - String.length line in
+                        [glue_space miss;tT line;glue_space 1]
+                      in
+                      let codeLines = try List.nth (mk_length lines nb_lines) index with _ ->
                         let rec fn acc = function 0 -> acc | n -> fn (""::acc) (n-1) in
                         fn [] (match nb_lines with None -> 1 | Some n -> n)
                       in
-		      let acc = List.fold_left (fun acc line ->
-			let para=Paragraph
-			  {par_contents=next () @ line;
-			   par_env=(fun e -> e);
-			   par_post_env=(fun env1 env2 ->
-			     { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
- 			   par_parameters=ragged_left;
-			   par_badness=badness;
-			   par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
-			in up (newChildAfter acc para)) (Node empty, []) (lang codeLines)
-		      in
-		      let resultLines = match extra with None -> []
-			| Some f ->
-			  let str = dataO.read () in
-			  List.nth (mk_length (Util.split '\n' str) err_lines) 0
-		      in
-       		      (List.fold_left (fun acc line ->
-			let para=Paragraph
-			  {par_contents= arrow @ line ;
-			   par_env=(fun env -> {env with
-			     normalLead = env.normalLead *. 0.8;
-			     lead = env.lead *. 0.9;
-			     size = env.size *. 0.9});
-			   par_post_env=(fun env1 env2 ->
-			     { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
-			   par_parameters=ragged_left;
-			   par_badness=badness;
-			   par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
-			in up (newChildAfter acc para)) (top acc) (lang_result resultLines))) in d)))])))
+                      let acc = List.fold_left (fun acc line ->
+                        let para=Paragraph
+                          {par_contents=next () @ line;
+                           par_env=(fun e -> e);
+                           par_post_env=(fun env1 env2 ->
+                             { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
+                            par_parameters=ragged_left;
+                           par_badness=badness;
+                           par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
+                        in up (newChildAfter acc para)) (Node empty, []) (lang codeLines)
+                      in
+                      let resultLines = match extra with None -> []
+                        | Some f ->
+                          let str = dataO.read () in
+                          List.nth (mk_length (Util.split '\n' str) err_lines) 0
+                      in
+                             (List.fold_left (fun acc line ->
+                        let para=Paragraph
+                          {par_contents= arrow @ line ;
+                           par_env=(fun env -> {env with
+                             normalLead = env.normalLead *. 0.8;
+                             lead = env.lead *. 0.9;
+                             size = env.size *. 0.9});
+                           par_post_env=(fun env1 env2 ->
+                             { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
+                           par_parameters=ragged_left;
+                           par_badness=badness;
+                           par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
+                        in up (newChildAfter acc para)) (top acc) (lang_result resultLines))) in d)))])))
 
 let ocaml_dir () =
   let sessid = match !Db.sessid with
@@ -538,19 +538,19 @@ let test_ocaml ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") fi
     match filename with
       None ->
         let prefix = Filename.temp_file "demo" "" in
-	Sys.remove prefix;
-	Unix.mkdir prefix 0o700;
+        Sys.remove prefix;
+        Unix.mkdir prefix 0o700;
         prefix, "tmp.ml", "tmp.cmo", "tmp.byte", run, true
     | Some name ->
         let prefix = Filename.chop_extension name in
-	if Filename.check_suffix name ".ml" then
-	  ocaml_dir (), name,
-	  prefix^".cmo",
+        if Filename.check_suffix name ".ml" then
+          ocaml_dir (), name,
+          prefix^".cmo",
           prefix ^ ".byte", run, false
         else
           ocaml_dir (), name,
-	  prefix^".cmi",
-	  "", false, false
+          prefix^".cmi",
+          "", false, false
   in
   let ch = open_out (Filename.concat dir filename) in
   output_string ch prefix;
@@ -695,7 +695,7 @@ let editable_math ?(visibility=Private) ?test ?(sample=[]) name init =
                  let s, m = update () in
                  (button (Edit(s, init, fun t ->
                                         record_write (fun () ->
-	                                    data.write t; eval t) ()))
+                                            data.write t; eval t) ()))
                          (if correct () then << $\m$ >>
                           else << $\mcolor(Color.red){\m} $ >> ))))))]
 
