@@ -727,79 +727,92 @@ let id x=x
    pour toucher à ça, ou apprendre en touchant ça *)
 
 
-let parameters env paragraphs figures last_parameters last_figures last_users (last_line:line) (line:line)=
-  let frame_measure=env.normalMeasure in
-  let measure=IntMap.fold (fun i aa m->match aa with
-      Break.Placed a->
-        (if layout_page line=layout_page a &&
-           line.height>=
-           a.height+.figures.(i).drawing_y0
-         && line.height<=
-           a.height+. figures.(i).drawing_y1
-         then
-            frame_measure -. figures.(i).drawing_nominal_width
-         else m)
-    | _->m
-  ) last_figures frame_measure
+let parameters env pars figures _ last_figures _ _ line =
+  let fn i figPos m =
+    let open Break in
+    match figPos with
+    | Placed(l) when layout_page line = layout_page l
+                  && line.height >= l.height +. figures.(i).drawing_y0
+                  && line.height <= l.height +. figures.(i).drawing_y1
+        -> env.normalMeasure -. figures.(i).drawing_nominal_width
+    | _ -> m
   in
-  let p={ measure=measure;
-    left_margin=env.normalLeftMargin;
-    local_optimization=0;
-    min_page_before=0;
-    min_page_after=0;
-    min_height_before=0.;
-    min_height_after=0.;
-    not_last_line=false;
-    not_first_line=false;
-    min_lines_before=1;
-    min_lines_after=0;
-    absolute=false
-  }
+  let params =
+    { measure            = IntMap.fold fn last_figures env.normalMeasure
+    ; left_margin        = env.normalLeftMargin
+    ; local_optimization = 0
+    ; min_page_before    = 0
+    ; min_page_after     = 0
+    ; min_height_before  = 0.0
+    ; min_height_after   = 0.0
+    ; not_last_line      = false
+    ; not_first_line     = false
+    ; min_lines_before   = 1
+    ; min_lines_after    = 0
+    ; absolute           = false }
   in
-  fold_left_line paragraphs (fun p0 x->match x with
-      Parameters fp->(
-        let p1=fp p0 in
-        p1
-      )
-    | _->p0
-  ) p line
+  let fn params b = match b with Parameters(f) -> f params | _ -> params in
+  fold_left_line pars fn params line
 
+let set_parameters : (parameters -> parameters) -> content list =
+  fun f -> [bB (fun _ -> [Parameters(f)])]
 
-let vspaceBefore x=[bB (fun _->[Parameters (fun p->{ p with min_height_before=max p.min_height_before x })])]
-let vspaceAfter x=[bB (fun _->[Parameters (fun p->{ p with min_height_after=max p.min_height_after x })])]
-let pagesBefore x=[bB (fun _->[Parameters (fun p->{ p with min_page_before=max p.min_page_before x })])]
-let pagesAfter x=[bB (fun _->[Parameters (fun p->{ p with min_page_after=max p.min_page_after x })])]
-let linesBefore x=[bB (fun _->[Parameters (fun p->{ p with min_lines_before=max p.min_lines_before x })])]
-let linesAfter x=[bB (fun _->[Parameters (fun p->{ p with min_lines_after=max p.min_lines_after x })])]
-let notFirstLine =[bB (fun _->[Parameters (fun p->{p with not_first_line=true})])]
-let notLastLine =[bB (fun _->[Parameters (fun p->{p with not_last_line=true})])]
+let vspaceBefore : float -> content list = fun sp ->
+  let fn p = {p with min_height_before = max p.min_height_before sp} in
+  set_parameters fn
 
-let hspace x =[bB (fun env-> let x = x *. env.size in [glue x x x])]
-let hfill = [bB (fun env-> let x = env.normalMeasure in [glue 0. (0.5 *. x) x])]
+let vspaceAfter : float -> content list = fun sp ->
+  let fn p = {p with min_height_after = max p.min_height_after sp} in
+  set_parameters fn
 
-let do_center parameters env paragraphs figures last_parameters lastFigures lastUsers lastLine l=
-  let param=parameters env paragraphs figures last_parameters lastFigures lastUsers lastLine l in
-  let a=l.min_width
-  and b=l.nom_width in
-  if param.measure >= b then
-    { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
-  else
-    if param.measure >= a then
-      param
-    else
-      { param with measure=a; left_margin=param.left_margin +. (param.measure-.a)/.2. }
+let pagesBefore : int -> content list = fun nb ->
+  let fn p = {p with min_page_before = max p.min_page_before nb} in
+  set_parameters fn
 
+let pagesAfter : int -> content list = fun nb ->
+  let fn p = {p with min_page_after = max p.min_page_after nb} in
+  set_parameters fn
 
-let do_ragged_left parameters a b c d e f g line=
-  let par=parameters a b c d e f g line in
-  { par with measure=line.nom_width }
+let linesBefore : int -> content list = fun nb ->
+  let fn p = {p with min_lines_before = max p.min_lines_before nb} in
+  set_parameters fn
 
-let do_ragged_right parameters a b c d e f g line=
-  let par=parameters a b c d e f g line in
-  { par with
-    measure=line.nom_width;
-    left_margin=par.left_margin+.par.measure-.line.nom_width }
+let linesAfter : int -> content list = fun nb ->
+  let fn p = {p with min_lines_after = max p.min_lines_after nb} in
+  set_parameters fn
 
+let notFirstLine : content list =
+  set_parameters (fun p -> {p with not_first_line = true})
+
+let notLastLine : content list =
+  set_parameters (fun p -> {p with not_last_line = true})
+
+let hspace : float -> content list = fun sp ->
+  [bB (fun env -> let sp = sp *. env.size in [glue sp sp sp])]
+
+let hfill : content list =
+  [bB (fun env -> let mes = env.normalMeasure in [glue 0.0 (0.5 *. mes) mes])]
+
+let do_center parameters a b c d e f g line =
+  let param = parameters a b c d e f g line in
+  let min_w = line.min_width in
+  let nom_w = line.nom_width in
+  if param.measure >= nom_w then
+    let left_margin = param.left_margin +. (param.measure -. nom_w) /. 2.0 in
+    {param with measure = nom_w; left_margin}
+  else if param.measure < min_w then
+    let left_margin = param.left_margin +. (param.measure -. min_w) /. 2.0 in
+    {param with measure = min_w; left_margin}
+  else param
+
+let do_ragged_left parameters a b c d e f g line =
+  let param = parameters a b c d e f g line in
+  {param with measure = line.nom_width}
+
+let do_ragged_right parameters a b c d e f g line =
+  let param = parameters a b c d e f g line in
+  let left_margin = param.left_margin +. param.measure -. line.nom_width in
+  {param with measure = line.nom_width; left_margin}
 
 
 
