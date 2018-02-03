@@ -13,8 +13,7 @@ type pageMaster =
 type master = pageMaster array
 
 let default =
-  let w = fst Util.a4
-  and h = snd Util.a4 in
+  let (w,h) = Util.a4 in
   {
     paperWidth = w;
     paperHeight = h;

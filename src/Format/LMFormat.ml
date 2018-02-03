@@ -146,7 +146,7 @@ let lmEnv env=
     lead=13./.10.*.fsize;
     normalMeasure=150.;
     normalLead=13./.10.*.fsize;
-    normalLeftMargin=(fst Util.a4-.150.)/.2.;
+    normalLeftMargin=(fst env.normalPageFormat-.150.)/.2.;
     normalPageFormat=env.normalPageFormat;
     par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
                             drawing_max_width= 4.0 *. phi;

@@ -25,37 +25,27 @@ open Extra
 open Typography.Box
 open Printf
 
+module Format(D:DocumentStructure) = struct
 
-module Format=functor (D:DocumentStructure)->struct
+  let defaultPageMaster =
+    let open PageLayout in
+    let vert_margin = default.paperHeight /. 0.6 in
+    let hori_margin = default.paperWidth  /. 0.6 in
+    { default with marginTop = vert_margin; marginBottom = vert_margin
+    ; marginLeft = hori_margin ; marginRight = hori_margin }
 
-let defaultPageMaster = PageLayout.(
-    let w = default.paperWidth in
-    let h = default.paperHeight in
-{ default with
-    marginTop = h /. 6.;
-    marginBottom = h /. 6.;
-    marginLeft = w /. 6.;
-    marginRight = w /. 6.;
-  })
+  include FormatThese.Format(D)
 
-include FormatThese.Format(D)
-let defaultEnv =
-    (* let fsize=3.7 *. 11. /. 12. in *)
-    { defaultEnv
-    with hyphenate=hyphenate_dict "hyph-fr.hdict" ;
-         (* new_page=PageLayout.new_page defaultPageMaster ; *)
-         (* normalMeasure=(fst a4) -. defaultPageMaster.marginLeft -. defaultPageMaster.marginLeft ; *)
-         (* size=fsize; *)
-         (* lead=13./.10.*.fsize; *)
-         (* normalLead=13./.10.*.fsize; *)
-                 }
-
-    module Env_preuve = Env_gproof (struct
+  let defaultEnv =
+    let hyphenate = hyphenate_dict "hyph-fr.hdict" in
+    {defaultEnv with hyphenate}
+ 
+  module Env_preuve = Env_gproof (struct
       let arg1 = italic [tT "Démonstration.";bB (fun env->let w=env.size in [glue w w w])]
-    end)
-    module Env_preuveDe(X : sig val arg1 : content list end) = Env_gproof (struct
-      let arg1 = italic (X.arg1 @ [tT ".";bB (fun env->let w=env.size in [glue w w w])])
-    end)
+  end)
+  module Env_preuveDe(X : sig val arg1 : content list end) = Env_gproof (struct
+    let arg1 = italic (X.arg1 @ [tT ".";bB (fun env->let w=env.size in [glue w w w])])
+  end)
 
   module Env_defi=Default.Make_theorem
                           (struct
