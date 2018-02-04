@@ -156,7 +156,7 @@ let single =
     comments:''[^;\n]*'' ';'
     uppercase:code? ';'
     lowercase:code? ';' 
-    titlecase:code? '\n' ->
+    titlecase:code? '\r'? '\n' ->
       let desc =
         { code                  = code
         ; name                  = name
@@ -192,7 +192,7 @@ let range =
     comments:''[^;\n]*'' ';'
     uppercase:code? ';'
     lowercase:code? ';' 
-    titlecase:code? '\n'
+    titlecase:code? '\r'? '\n'
     lastcode:code ';'
     '<' _:name+ ", Last>" ';'
     _:category ';'    
@@ -207,7 +207,7 @@ let range =
     _:''[^;\n]*'' ';'
     _:code? ';'
     _:code? ';' 
-    _:code? '\n' ->
+    _:code? '\r'? '\n' ->
       let build_desc c =
         if c < firstcode || c > lastcode then assert false;
         { code                  = c
