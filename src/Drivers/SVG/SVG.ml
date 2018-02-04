@@ -726,8 +726,7 @@ function Animate(name,nbframes,mirror,step) {
 
 function setReaction(svg) {
 
-    /* move definitions (can not use <use> and <defs>
-                         because of a firefox bug) */
+    // move definitions (cannot use <use> and <defs> because of a firefox bug)
     var defs_elt = document.getElementById('svg_defs')
     if (defs_elt) {
       var defs = defs_elt.childNodes;
