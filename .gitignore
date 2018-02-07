@@ -31,4 +31,5 @@ src/Drivers/Pdf/Pdf.META
 src/Drivers/SVG/SVG.META
 src/Typography/META
 src/Typography/ConfigFindFont.ml
-
+# Also ignore boring files.
+*~
