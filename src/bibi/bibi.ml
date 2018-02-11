@@ -212,12 +212,8 @@ let bibfile_ =
 
 let bibfile x=bibfile_:=Some x
 
-let no_results x=match Typography.TypoLanguage.lang with
-    `FR->Printf.sprintf "La requête n'a pas donné de résultats :\n%s" x
-  | _->Printf.sprintf "The request gave no results:\n%s" x
-let more_than_one x=match Typography.TypoLanguage.lang with
-    `FR->Printf.sprintf "Attention : La requête a donné plus d'un résultat :\n%s" x
-  | _->Printf.sprintf "Warning : The request gave more than one result :\n%s" x
+let no_results x=Printf.sprintf "The request gave no results:\n%s" x
+let more_than_one x=Printf.sprintf "Warning : The request gave more than one result :\n%s" x
 
 module type CitationStyle=sig
     val item_format: ?separator:string ->
