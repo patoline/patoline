@@ -65,7 +65,6 @@ let initial_state =
 
 type state = state_data ref
 
-#ifdef CAMLZIP
 let stream buf=
   let out_buf = Buffer.create 100000 in
   let buf_pos = ref 0 in
@@ -78,9 +77,6 @@ let stream buf=
   )
     (fun buf len -> Buffer.add_subbytes out_buf buf 0 len);
   "/Filter [/FlateDecode]", out_buf
-#else
-let stream buf="",buf
-#endif
 
 
 let output ?(structure:structure=empty_structure) pages fname =

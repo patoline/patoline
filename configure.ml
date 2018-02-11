@@ -440,8 +440,8 @@ let all_patoline_drivers =
     ; internals = [ Package "rawlib" ] }
 
   ; { name      = "Pdf"
-    ; needs     = [ Package "bytes" ]
-    ; suggests  = [ Package "zip" ]
+    ; needs     = [ Package "bytes"; Package "zip" ]
+    ; suggests  = []
     ; internals = [ Package "rawlib" ] }
 
   ; { name      = "Bin"
