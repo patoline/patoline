@@ -33,20 +33,6 @@ let get_config name default =
     | _         -> default
   with _ -> default
 
-(* List of supported languages. *)
-let languages : string list =
-  let languages = ref [] in
-  let find line =
-    for i = 0 to String.length line - 7 do
-      if String.sub line i 5 = "LANG_" then
-        languages := String.sub line (i+5) 2 :: !languages
-    done
-  in
-  let ic = open_in "src/Typography/TypoLanguage.ml" in
-  try while true do find (input_line ic) done; [] with End_of_file ->
-  close_in ic;
-  List.sort_uniq String.compare !languages
-
 (* Default configurations. *)
 let default_prefix   = get_config "prefix"   "/usr/local"
 let default_bindir   = get_config "bin"      "/usr/local/bin"
@@ -54,7 +40,6 @@ let default_libdir   = get_config "lib"      "/usr/local/lib/ocaml"
 let default_stublibs = get_config "stublibs" "/usr/local/lib/ocaml/stublibs"
 let default_share    = get_config "share"    "/usr/local/share"
 
-let default_lang           = "EN"
 let default_ban_comic_sans = false
 let default_type3_only = false
 
@@ -64,12 +49,7 @@ let bindir     = ref ""
 let libdir     = ref ""
 let stublibs   = ref ""
 let share      = ref ""
-let lang       = ref "EN"
 let type3_only = ref false
-
-let set_language l =
-  if List.mem l languages then lang := l else
-  warn "Unknown language %S... using default.\n%!" l
 
 let spec =
   let open Printf in
@@ -97,11 +77,6 @@ let spec =
   ; ( "--type3-only"
     , Arg.Set type3_only
     , " Convert all fonts to vector graphics in PDFs.")
-
-  ; ( "--lang"
-    , Arg.String set_language
-    , Printf.sprintf "s Set the language for error messages (available: %s)."
-        (String.concat ", " (List.rev languages)))
   ]
 
 let _ =
@@ -120,7 +95,6 @@ let bindir     = set_default !bindir   default_bindir   "bin"
 let libdir     = set_default !libdir   default_libdir   "lib/ocaml"
 let stublibs   = set_default !stublibs default_stublibs "lib/ocaml/stublibs"
 let share      = set_default !share    default_share    "share"
-let lang       = !lang
 let type3_only = !type3_only
 
 let _ =
@@ -581,13 +555,12 @@ let _=
   (* Generation of src/Makefile.config *)
   let make = open_out "src/Makefile.config" in
 
-  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s%s\n"
+  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s\n"
     (if Sys.word_size = 32  then "-DINT32 " else "")
     (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
     (if has_mysql then "-DMYSQL " else "")
     (if has_sqlite3 then "-DSQLITE3 " else "")
-    (if type3_only then "-DPDF_TYPE3_ONLY " else "")
-    (if lang <> "EN" then ("-DLANG_" ^ (lang)) else "");
+    (if type3_only then "-DPDF_TYPE3_ONLY " else "");
 
   Printf.fprintf make "CAMLZIP :=%s\n"
     (if ocamlfind_has "zip" then " " ^ (snd (ocamlfind_query "zip")) else "");
