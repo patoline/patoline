@@ -40,7 +40,6 @@ let default_libdir   = get_config "lib"      "/usr/local/lib/ocaml"
 let default_stublibs = get_config "stublibs" "/usr/local/lib/ocaml/stublibs"
 let default_share    = get_config "share"    "/usr/local/share"
 
-let default_ban_comic_sans = false
 let default_type3_only = false
 
 (* Command-line arguments parsing. *)
