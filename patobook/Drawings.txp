@@ -1,0 +1,495 @@
+(* #FORMAT FormatThese *)
+(* #PACKAGES bibi *)
+
+\Caml(
+  open Bibi
+  let _=
+    let _=Sys.command "bibi biblio.bib" in
+    bibfile "biblio.bibi"
+module Bib=BiblioNames
+open Bib
+)
+
+=> Drawings
+
+Patoline's drawing system is based on vector graphic primitives, quite
+usual for anyone that has already used such systems. There are
+essentially paths made of Bezier curves (for instance, lines are
+Bezier curves of degree $1$), glyphs, and inclusions of raster images.
+
+All the primitives and constructors for this basic layer are in module
+\verb{Typography.OutputCommon}. There are many ways to interact with
+these constructs. One of them is to use them directly, the other one
+is to use Tom Hirschowitz's \emph{Diagrams} library. We explain both
+in this chapter. Diagrams should be used directly when one need to actually
+draw something. The more stable api of \verb{Typography.OutputCommon}
+should be used essentially when writing other libraries.
+
+In the first subsection, you will learn how to draw diagrams. In the second one,
+we will show an example of writing a library for using graphviz output
+with Patoline.
+
+=> Using Diagrams
+
+The diagrams library comes in two layers; let's start with the high-level layer.
+
+A first construct to learn is \verb{node}: typing
+
+###
+
+\Caml(open Diagrams)
+
+\diagram(
+ let a = node [] <<coin>>
+)
+
+###
+
+yields
+
+\Caml(open Diagrams)
+
+\begin{center}
+\diagram(
+ 
+ let a = node [] <<coin>>
+
+)
+\end{center}
+
+The first argument to \verb{node} is a list of so-called \emph{node transformations}, which 
+are defined in module \verb{Node}. 
+For example, typing
+
+###
+
+\diagram(
+ 
+ let a = node Node.([circle;draw]) <<coin>>
+
+ let b = node Node.([circle;fill black;at (50.,0.)]) []
+
+)
+
+###
+
+yields
+
+\begin{center}
+\diagram(
+ 
+ let a = node Node.([circle;draw]) <<coin>>
+
+ let b = node Node.([circle;fill black;at (50.,0.)]) []
+
+)
+\end{center}
+
+The complete list of default node transformations is yet to be
+documented; but they are all defined in the \verb{Node} module in
+\verb{src/Typography/Diagrams.ml}.  Node transformations form a
+directed graph (some should be performed before others), and the
+library comes with an api to extend it. All existing transformations
+are actually defined using this api, starting from the empty graph.
+
+A second thing to learn is how to construct edges between nodes.
+Adding \verb{let e = edge Edge.([draw]) a b} to the previous diagram yields:
+\begin{center}
+\diagram(
+ let a = node Node.([circle;draw]) <<coin>>
+
+ let b = node Node.([circle;fill black;at (50.,0.)]) []
+
+ let e = edge Edge.([draw]) a b
+)
+\end{center}
+
+There is also a graph of \emph{edge transformations}, which is
+extensible using the same api as for node transformations (both are
+actually obtained by applying the same functor). For example,
+\verb{let e = edge Edge.([draw;bendRight 30.;arrow env;dashed [2.]]) a b} yields:
+\begin{center}
+\diagram(
+ let a = node Node.([circle;draw]) <<coin>>
+
+ let b = node Node.([circle;fill black;at (50.,0.)]) []
+
+ let e = edge Edge.([draw;bendRight 30.;arrow env;dashed [2.]]) a b
+)
+\end{center}
+
+Edges and nodes have a common type called \verb{gentity} for graphical entity. 
+Graphical entities have \emph{anchors}, in the Pgf/Tikz sense. E.g., adding 
+###
+ let c = node Node.([at (a.anchor `West);anchor `East]) <<here>>
+
+ let d = node Node.([at (e.anchor (`Temporal 0.3));anchor `North]) <<there>>
+###
+to our previous diagram gives:
+
+\begin{center}
+\diagram(
+ let a = node Node.([circle;draw]) <<coin>>
+
+ let b = node Node.([circle;fill black;at (50.,0.)]) []
+
+ let e = edge Edge.([draw;bendRight 30.;arrow env;dashed [2.]]) a b
+
+ let c = node Node.([at (a.anchor `West);anchor `East]) <<here>>
+
+ let d = node Node.([at (e.Edge.anchor (`Temporal 0.3));anchor `North])
+<<there>> ) \end{center} 
+
+
+Here, \verb{anchor `East} says that the
+anchor to use for placing the node \verb{c} is \verb{`East}, while
+\verb{at (a.anchor `West)} says that this anchor should be at
+\verb{a}'s \verb{`West} anchor. Anchors are defined using
+\verb{OCaml}'s polymorphic variants:
+
+###
+  type anchor =
+    [ `Angle of float (* In degrees *)
+    | `North
+    | `South
+    | `NorthEast
+    | `SouthEast
+    | `NorthWest
+    | `SouthWest
+    | `West
+    | `East
+    | `Center
+    | `Main (* The anchor used to draw edges between gentities by default;
+               Will be `Center by default. *)
+    | `Base
+    | `BaseWest
+    | `BaseEast
+    | `Line
+    | `LineWest
+    | `LineEast
+    | `Vec of Vector.t
+    | `Pdf (* The origin when typesetting the contents *)
+    | `Curvilinear of float (* Between 0. and 1. (for paths) *)
+    | `CurvilinearFromStart of float (* Between 0. and 1. (for paths) *)
+    | `Temporal of float (* Between 0. and 1. (for paths) *)
+    | `Start
+    | `End
+    ]
+###
+
+Initially, that was meant to allow extending them with new anchors,
+but I'm not sure if that's actually possible. So maybe we'll switch to
+proper variants someday.
+
+For a given graphical entity, not all anchors have to be defined. The
+only defined node shapes for now are \verb{rectangle} and
+\verb{circle}. Their \verb{anchor} function signals an error and
+return the \verb{`Center} anchor when they are undefined on their
+argument.
+
+\verb{Diagrams} comes with a small facility for creating matrices.
+E.g., typing 
+###
+  let m,ms = matrix [] [[
+  (Node.([draw]),<<$A$>>) ; ([], <<B>>)
+];[
+  ([],<<C>>) ; ([], <<D>>)
+]]
+
+  let edges l = List.map (fun (x,y) -> edge Edge.([draw;arrow env]) x y) l
+
+  let _ = edges (List.map (fun (i,j,k,l) ->
+  (ms.(i).(j), ms.(k).(l))) [
+  (0,0,0,1) ;
+  (0,0,1,0) ;
+  (0,1,1,1)
+  ])
+###
+inside a diagram yields
+\begin{center}
+\diagram(
+  let m,ms = matrix [] [[
+  (Node.([draw]),<<$A$>>) ; ([], <<B>>)
+];[
+  ([],<<C>>) ; ([], <<D>>)
+]]
+
+  let edges l = List.map (fun (x,y) -> edge Edge.([draw;arrow env]) x y) l
+
+  let _ = edges (List.map (fun (i,j,k,l) ->
+  (ms.(i).(j), ms.(k).(l))) [
+  (0,0,0,1) ;
+  (0,0,1,0) ;
+  (0,1,1,1)
+  ])
+
+) \end{center} For 2-category inclined people, we have the useful,
+though still sketchy, refinement of this:
+
+\begin{center}
+\diagram(
+  let m,ms = matrix [] [[
+  (Node.([draw]),<<$A$>>) ; ([], <<B>>)
+];[
+  ([],<<C>>) ; ([], <<D>>)
+]]
+
+  let edges l = List.map (fun (x,y) -> edge Edge.([draw;arrow env]) x y) l
+
+  let ab :: ac :: _ = edges (List.map (fun (i,j,k,l) ->
+  (ms.(i).(j), ms.(k).(l))) [
+  (0,0,0,1) ;
+  (0,0,1,0) ;
+  (0,1,1,1)
+  ])
+
+  let ealpha = edge Edge.([double 0.5 ; bendRight 30.;shorten 0.1 0.3;arrow env;draw])
+    Node.(coordinate (ac.Edge.anchor (`Temporal 0.3))) 
+    Node.(coordinate (ab.Edge.anchor (`Temporal 0.3)))
+)
+\end{center}
+
+obtained by
+
+###
+  let ab :: ac :: _ = edges (List.map (fun (i,j,k,l) ->
+  (ms.(i).(j), ms.(k).(l))) [
+  (0,0,0,1) ;
+  (0,0,1,0) ;
+  (0,1,1,1)
+  ])
+
+  let ealpha = edge Edge.([double 0.5 ; bendRight 30.;shorten 0.1 0.3;arrow env;draw])
+    Node.(coordinate (ac.anchor (`Temporal 0.3)))
+    Node.(coordinate (ab.anchor (`Temporal 0.3)))
+###
+
+And that's all for now.
+
+=<
+
+=> Using the basic interface
+
+The following code defines a function named \verb{makeGraph}, taking
+as input options, contents of nodes (in the form of
+\verb{Typography.Box.drawingBox}), and edges between the nodes, calling
+graphviz on this graph, and parsing the output to produce a
+\verb{Typography.Box.drawingBox}.
+
+###
+
+open Typography.Box
+open Typography.OutputCommon
+
+let ellipse param x y ah av=
+  translate x y
+    (Path (param, [Array.map (fun (x,y)->x,Array.map (fun yy->yy*.av/.ah) y)
+                      (circle (ah/.2.))]))
+
+let makeGraph opts nodes_ edges=
+  let is_space x=x=' ' || x='\n' || x='\t' in
+
+  let inf x=if x= -.infinity || x=infinity then 0. else x in
+  let to_inch x=if x=infinity || x= -.infinity then 0. else (x/.25.4) in
+  let nodes=Array.map
+    (fun (x,y)->
+      let cont=(x.drawing_contents x.drawing_nominal_width) in
+      let pad=match y with
+          `Rectangle->2.
+        | `Ellipse->1.
+        | _->1.
+      in
+      let (a,b,c,d)=bounding_box cont in
+      { x with
+        drawing_min_width=inf (c-.a)+.2.*.pad;
+        drawing_nominal_width=inf (c-.a)+.2.*.pad;
+        drawing_max_width=inf (c-.a)+.2.*.pad;
+        drawing_y0=inf b-.pad;
+        drawing_y1=inf d+.pad;
+        drawing_contents=(fun _->
+          List.map (translate (pad-.inf a) 0.) cont
+        )
+      },y
+    ) nodes_
+  in
+  let i,o=Unix.open_process "dot -Tplain" in
+  if opts<>"" then
+    Printf.fprintf o "digraph {\ngraph %s;\n" opts
+  else
+    Printf.fprintf o "digraph {\n";
+  Array.iteri (fun i (x,y)->
+    match y with
+        `Rectangle->
+          Printf.fprintf o "n%d [fixedsize=true, width=%f, height=%f,
+                                 shape=box, label=\"\"];\n"
+            i
+            (to_inch x.drawing_nominal_width)
+            (to_inch (x.drawing_y1-.x.drawing_y0))
+      | `Ellipse->
+        Printf.fprintf o "n%d [fixedsize=true, width=%f, height=%f,
+                               shape=ellipse, label=\"\"];\n"
+          i
+          (sqrt 2. *. to_inch x.drawing_nominal_width)
+          (sqrt 2. *. to_inch (x.drawing_y1-.x.drawing_y0))
+      | _->(
+        Printf.fprintf o "n%d [fixedsize=true, width=%f, height=%f,
+                               shape=box, label=\"\"];\n"
+          i
+          (to_inch x.drawing_nominal_width)
+          (to_inch (x.drawing_y1-.x.drawing_y0))
+      )
+  ) nodes;
+  List.iter (fun (a,b)->
+    Printf.fprintf o "n%d -> n%d[arrowhead=none];\n" a b
+  ) edges;
+  Printf.fprintf o "}\n";
+  close_out o;
+
+
+
+
+  let rec next_token (buf,pos,f)=
+    (if !pos >= String.length !buf then (buf:=input_line f;pos:=0));
+    let pos0= !pos in
+    while !pos<String.length !buf && not (is_space !buf.[!pos]) do
+      incr pos
+    done;
+    let s=String.sub !buf pos0 (!pos-pos0) in
+    incr pos;
+    if s<>"" then s else next_token (buf,pos,f)
+  in
+  let skip_line (a,b,c)=a:=""; b:=0 in
+  let number s=float_of_string (if String.contains s '.' then s else s^".") in
+  let of_inch x=(number x)*.25.4 in
+  let buf=(ref ""), (ref 0), i in
+  let w=ref 0. in
+  let h=ref 0. in
+  let rec parse l=
+    let t=try next_token buf with _->"" in
+    match t with
+        "graph"->(
+          let scale=number (next_token buf) in
+          w:=scale*.(of_inch (next_token buf));
+          h:=scale*.(of_inch (next_token buf));
+          parse l
+        )
+      | "node"->(
+        let name=next_token buf in
+        let i=int_of_string (String.sub name 1 (String.length name-1)) in
+        let x0=of_inch (next_token buf) in
+        let y0=of_inch (next_token buf) in
+        let x=x0-.((fst nodes.(i)).drawing_nominal_width/.2.) in
+        let y=y0-.((fst nodes.(i)).drawing_y1+.
+                    (fst nodes.(i)).drawing_y0)/.2. in
+        let w=of_inch (next_token buf) in
+        let h=of_inch (next_token buf) in
+        skip_line buf;
+        parse (
+          (match snd nodes.(i) with
+              `Rectangle->
+                [Path ({default with lineWidth=0.1; close=true},
+                       [rectangle
+                           (x,y+.(fst nodes.(i)).drawing_y0)
+                           (x+.(fst nodes.(i)).drawing_nominal_width,
+                            y+.(fst nodes.(i)).drawing_y1)])]
+            | `Ellipse->
+              [ellipse
+                  {default with lineWidth=0.1; close=true} x0 y0 w h]
+            | _->[]
+          )
+          @(let node,_=nodes.(i) in
+            List.map (translate x y)
+                (node.drawing_contents node.drawing_nominal_width))
+          @l
+        )
+      )
+      | "edge"->(
+        let _=next_token buf in
+        let _=next_token buf in
+        let n=int_of_string (next_token buf) in
+        let x0=of_inch (next_token buf) in
+        let y0=of_inch (next_token buf) in
+        (* Dot output is a sequence of splines. We need to parse this
+           to get a path with plain Bezier curves. *)
+        let rec spline n x1 y1 l=
+          if n<=0 then (List.rev l) else (
+            let x=Array.make 4 x1 in
+            let y=Array.make 4 y1 in
+            for i=1 to 3 do
+              x.(i)<-of_inch (next_token buf);
+              y.(i)<-of_inch (next_token buf)
+            done;
+            spline (n-3) x.(3) y.(3) ((x,y)::l)
+          )
+        in
+        let path=spline (n-1) x0 y0 [] in
+        skip_line buf;
+        parse (Path ({default with lineWidth=0.1}, [Array.of_list path])::l)
+      )
+      | ""
+      | "stop"->
+        {
+          drawing_min_width= !w;
+          drawing_nominal_width= !w;
+          drawing_max_width= !w;
+          drawing_y0=0.;
+          drawing_y1= !h;
+          drawing_badness=(fun _->0.);
+          drawing_contents=(fun _->l)
+        }
+      | x->(Printf.fprintf stderr "Parse error on input %S" x;exit 1)
+  in
+  parse []
+###
+
+The first part of this function starts dot, then outputs the graph in dot syntax to
+its standard input. The standard output is then read by function \verb{next_token},
+and converted to constructors of \verb{OutputCommon.raw}.
+
+
+Since the result of \verb{makeGraph} is a \verb{drawingBox}, and we
+need contents lists in the document tree, the way to use this function
+is the following:
+
+###
+\Caml(
+  let graph=[bB (fun _ ->
+    let a=…
+    and b=…
+    and c=… in
+    [Drawing (makeGraph a b c)]
+  )
+)
+###
+
+For instance, to create a graph with two nodes and an edge between them, you
+would do:
+
+###
+\Caml(
+  let graph=[bB (fun env ->
+    let opts="[ranksep=0.15,nodesep=0.15]"
+    and nodes=[| drawing (Document.draw env <<A>>);
+                 drawing (Document.draw env <<B>>) |]
+    and edges=[|(0,1)|] in
+    [Drawing (makeGraph nodes edges)]
+  )]
+)
+###
+
+If you look at the types, you'll see that \verb{Document.draw} outputs raw
+drawing elements (of type \verb{Typography.OutputCommon.raw}), whereas
+\verb{makeGraph} needs ``drawing boxes''. A drawing box is nothing more
+than raw graphic elements with a bounding box around them. \verb{draw}
+is a function computing boundaries, and making boxes out of raw
+graphic primitives.
+
+One thing you get for free when drawing in Patoline is compatibility
+with all the drivers in Patoline. For instance, this code produces an
+output usable by the SVG driver on a web page, or by the OpenGL driver
+in a presentation.
+
+=<
+
+
+=<

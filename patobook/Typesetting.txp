@@ -1,0 +1,75 @@
+(* #FORMAT FormatThese *)
+(* #PACKAGE bibi *)
+
+\Caml(
+  open Bibi
+  let _=
+    let _=Sys.command "bibi biblio.bib" in
+    bibfile "biblio.bibi"
+module Bib=BiblioNames
+open Bib
+)
+
+=> Understanding the typesetting model
+
+This chapter describes the typesetting model used by Patoline. Few users
+will actually need this part, unless they are trying to write complicated
+environments such as \verb{itemize}.
+
+=> How it works
+
+Patoline's optimizer is yet another example of dynamic programming, on a
+somewhat more complex space than TeX was. You may want to have a look at
+Knuth's article describing the algorithm in TeX in
+\cite("title LIKE '%breaking%into%lines'"). The idea is always the same: cut
+a document into two parts, prove that you can typeset them independently,
+then typeset them and concatenate compatible results.
+
+The idea in Patoline is that a \emph{position} in a document is given
+by a variety of parameters: the semantic position in the text (the index
+of a box in a paragraph), the number of figures already placed, the
+current page number, and the vertical height on this page.
+Instead of being boxes, the badnesses are \emph{functions}, with the ability
+to evaluate some aspects in the global document. For instance, at each
+point, a badness function can know the current page, the position on that
+page, and the number of figures already placed, along with their position.
+
+
+So, the idea is to build a graph, where each vertex is either a line
+of text or a figure, placed on a page of the document. The edges all
+have a distance, which is the badness of moving from a line to the
+next one. Once the graph is built, Patoline's optimizer uses
+Dijkstra's algorithm to find the shortest path between the first and
+the last line.
+
+The algorithm has a notion of ``current nodes''. For each of them:
+
+\begin{enumerate}
+\item A list of all the possible continuations is computed.
+
+
+\end{enumerate}
+
+=<
+
+=> Controlling the optimizer
+
+One thing to keep in mind, when writing such functions, is that they
+may be called by the optimizer several times, on different attempts
+to typeset the document. But only one of these attempts will be selected.
+So write all the functional parts of your functions as if the document
+was the final version, but be careful if you use imperative features
+of ocaml, such as references, or other kind of side effects.
+
+
+=> Parameters functions
+
+=<
+
+=> Completion and badness
+
+=<
+
+=<
+
+=<

@@ -1,0 +1,514 @@
+(* #FORMAT FormatThese *)
+(* #PACKAGES bibi *)
+
+\Caml(
+  open Bibi
+  let _=
+    let _=Sys.command "bibi biblio.bib" in
+    bibfile "biblio.bibi"
+module Bib=BiblioNames
+open Bib
+)
+
+=> First documents
+
+=> Paragraphs and sections
+
+While it is always possible to compile empty documents with Patoline,
+these may not be the most interesting ones. Patoline does not have any
+real graphical interface for now, although it includes a quite good
+emacs mode, partly generated automatically to match the grammar you
+select. The instructions are given in chapter \sectref("text
+editors").  So, let us assume that you managed to install patoline on
+your system, to open a text editor on a blank file. Then, you would write
+your first Patoline document \verb{hello.txp}:
+
+###
+Hello, world !
+###
+
+To see the result, just write in a terminal the following command, in the same
+directory as your file:
+
+###
+patoline hello.txp
+###
+
+The result should be a pdf file, named \verb{hello.pdf}, with one page
+containing your text. The choice of pdf files as the default output format
+is only to avoid breaking the habits of TeX users. Patoline can
+output its result to other formats, and new output drivers can be written
+quite easily, as we will see in section \sectref("extending drivers").
+There is also a way to typeset several paragraphs: by writing them with
+at least one line of blank space between them, like on the following example:
+
+###
+This is my first paragraph.
+
+This is my second one.
+###
+
+You may have noticed that the paragraphs all start with an indentation
+(a space at the beginning of the first line), except if they are
+immediately after the beginning of a section. This follows the
+typographic rules described for instance in \cite("title LIKE
+'%elements%typographic%style%'"). If you are unsatisfied with this behavior,
+you can change it readily by using the following code:
+
+###
+\begin{noindent}
+This paragraph is not indented.
+
+Neither this one.
+\end{noident}
+
+\indent But this one is.
+###
+
+
+As we already stated above, the preferred encoding system to typeset
+text in Patoline is UTF-8 (see for instance
+\extLink("http://en.wikipedia.org/wiki/UTF-8"){the wikipedia article}
+for more details). This choice is not completely arbitrary, and we
+will see later how to change it to your favorite encoding. If you want
+to test this feature right now, you could write for instance the
+following sentence in portuguese in a blank file in your favorite text
+editor, and get a pdf file with the expected result:
+
+###
+Patolino é um pato de televisão.
+###
+
+Now, you may want to add structure to a document. For instance,
+to get a document with two sections named ``Sex of the angels'' and
+``Reproduction of the angels'', respectively, one would write:
+
+###
+=> Sex of the angels
+
+=<
+
+=> Reproduction of the angels
+
+=<
+###
+
+This simple code handles section numbering and typesetting for
+you, and registers these sections for later use in a table of contents,
+for example:
+
+###
+=> Table of contents
+\tableOfContents
+=<
+
+=> Sex of the angels
+
+=<
+
+=> Reproduction of the angels
+
+=<
+###
+
+The problem, when trying to compile this document, is that the section
+titled ``table of contents'' itself gets numbered, and included in the
+table of contents. There are finer options to control this
+behavior. Specifically, we could have replaced the couple \verb{=>},
+\verb{=<} by \verb{->} and \verb{-<}, or \verb{.>} and \verb{.<},
+respectively.
+
+\begin{exercise}
+Try these commands: in the above example, replace:
+###
+=> Table of contents
+\tableOfContents
+=<
+###
+By a version using \verb{->} and \verb{-<}, then \verb{.>} and \verb{.<},
+instead of \verb{=>} and \verb{=<}.
+\end{exercise}
+
+As you may have noticed, a new kind of ``command'' appeared in our last
+example: ``\verb{\\tableOfContents}''. Any item in Patoline beginning with
+\verb{\\} is not typeset as such, but instead calls a command modifying
+the output. Of course, there is also a way to get a '\verb{\\}' in the
+output, by writing ``\verb{\\\\}''. At the end of this book, you will
+know how to create all kinds of new commands.
+
+=<
+
+=> More structure\label("more structure")
+
+Sometimes, the global structure of documents is not restricted to
+sections and paragraphs. Patoline allows you to use in-text
+structures, such as numbered lists, and cross-references. The first
+case we will consider here is a structure called \emph{enumerate}, for
+creating numbered lists, like for instance the following one, with two
+items:
+
+\begin{enumerate}
+\item First item
+\item Second item
+\end{enumerate}
+
+To get such a list, write the following Patoline code in your document:
+
+###
+\begin{enumerate}
+\item First item
+\item Second item
+\end{enumerate}
+###
+
+
+This way of applying a command on a whole part of the document with
+##\begin{…}## and ##\end{…}## is called an
+``\emph{environment}''. Another example is non-numbered lists; this
+one is called ``\emph{itemize}'':
+
+\begin{itemize}
+\item First item
+\item Second item
+\end{itemize}
+
+\begin{exercise}
+
+Open a new file, and create two lists: one numbered, the other one
+unnumbered. Then compile your file.
+
+\end{exercise}
+
+It is not hard to see why \emph{itemize} and \emph{enumerate} are two
+examples of the same idea of numbering structures; the difference is
+that the numbering system used by \emph{itemize} is somewhat simpler
+than the one used by \emph{enumerate}. We will see in section
+\sectref("ext : environments") how to create new numbering systems
+generalizing these, and even how to create new environments.
+
+\begin{exercise}
+
+Environments \verb{itemize} and \verb{enumerate} both define a new
+command, called \verb{\\item}. There are many other environments in
+Patoline, not necessarily linked with text structure. Can you test and
+tell what the following environments are for ?
+
+\begin{itemize}
+\item \verb{center}
+\item \verb{raggedLeft}
+\item \verb{raggedRight}
+\end{itemize}
+
+\end{exercise}
+
+There is also a more general enumeration environment:
+
+###
+\begin{genumerate}(AlphaLower, fun s -> [tT (s^". ")])
+\item First item
+\item Second item
+\end{genumerate}
+###
+
+Which produces:
+
+(* FIXME
+\begin{genumerate}(AlphaLower, fun s -> [tT (s^". ")])
+\item First item
+\item Second item
+\end{genumerate}
+*)
+
+
+
+The environment \verb{genumerate} takes an argument which is an OCaml value: a pair with two arguments:
+\begin{itemize}
+\item \verb{AlphaLower} which could also be \verb{Arabic}, \verb{AlphaUpper}, \verb{RomanLower} or \verb{RomanUpper}. This tells what 
+king of numerals you want to use. Try it!
+\item \verb{fun s -> [tT (s^". ")]} is a function taking a string \verb{s} and return Patoline content. This is descibed later in this book.
+Here, we add a period and a space after the string which contains the numeral.
+\end{itemize}
+
+There is also a syntactic sugar for genumerate and the following produces the same result:
+###
+\begin{genumerate}{&a.~}
+\item First item
+\item Second item
+\end{genumerate}
+###
+
+With this abbreviation, \verb{&1} will be replaced by the item number in numerals and you may guess (or try) the effect of
+\verb{&a}, \verb{&A}, \verb{&i}, \verb{&I}.
+Remark: we have to force the final space to be kept using \verb{~} (we could also use \verb{\hspace}). 
+
+
+=<
+
+=> Theorems and definitions
+
+Finally, there is one more structure that we need when writing math
+articles: definitions and theorems. These are not defined by default
+in Patoline. In order to load them, we need to tell
+Patoline that we are going to use a particular format for our
+document. Document formats may contain lots of additional commands,
+and Patoline comes with several different formats. For the moment,
+since we just want to typeset definitions and theorems, it is enough
+to use the format for writing articles. This format is called
+\verb{FormatArticle}, and we can use it in our document by beginning
+the file with a special command:
+###
+(* #FORMAT FormatArticle *)
+###
+
+Then, you can get a theorem by writing:
+
+###
+(* #FORMAT FormatArticle *)
+\begin{theorem}
+This theorem is a theorem
+\begin{proof}
+The proof is trivial, since the theorem is a tautology.
+\end{proof}
+\end{theorem}
+###
+
+This formats also defines environments
+``\verb{lemma}'', ``\verb{proposition}'', ``\verb{example}'',
+``\verb{definition}'', ``\verb{corollary}'',``\verb{hypothesis}''.
+We will explain later how to define new theorem-like environments.
+
+=<
+
+=> Counters\label("counters")
+
+We need to introduce another tool linked with structures, that we can
+use to write documents, called \emph{counters}. We will see in section
+\sectref("macros") how to manipulate counters in a more precise
+way. For now, the only thing we need to know is that there are named
+counters, that get incremented automatically. One of the major
+interests of counters is to reference automatically parts of the
+document. For instance, if we give a \emph{label} to a section, we can
+reference it:
+
+###
+=> Section \label("section with label")
+
+=<
+
+We put a label in section \sectref("section with label").
+###
+
+This way, if you add a new section to a huge document of yours, or
+even worse, if you are collaborating with someone, you will have the
+guarantee that references follow your initial thought, and not simply
+a particular stage or version of your work. Notice the syntax:
+intuitively, the labels are not to be typeset in the final documents:
+they are just hints, or nicknames, we may give to our sections. Hence
+the syntax: with parentheses and quotes instead of curly brackets, as
+these last ones, in Patoline syntax, mean ``typeset text''.
+
+A more general way to reference counters is to call them by their name.
+Actually, \verb{\\sectref} is only a shortcut to the more powerful
+syntax \verb{\\generalRef("_structure")("name")}.
+We could rewrite the last example like this:
+
+###
+=> Section \label("section with label")
+
+=<
+
+We put a label in section \generalRef("_structure")("section with label").
+###
+
+The '\verb{_}' at the beginning of a counter's name means that it is
+an internal counter, and that Patoline may manipulate it in a
+particular way. But actually, the underscore is the only difference:
+you should avoid creating counters with underscores as the first
+letter, in order to not get unexpected behaviors when Patoline changes
+their value. But if you want to touch these counters, fine! Patoline
+is designed in a way that doing so will merely result in mistakes
+in your table of contents, but nothing worse.
+
+In the following exercise, you'll understand the full
+generality of the counter system:
+
+\begin{exercise}
+Given that the item counter in environments \emph{itemize} and
+\emph{enumerate} is called ``\verb{enumerate}'', make a reference to
+an item of our numbered list example using \verb{\\generalRef}.
+\end{exercise}
+
+=<
+
+=> Style
+
+Many persons are dissatisfied with the abilities of typesetting systems to
+change the styles of their texts: it often requires lots of mouse interaction,
+frequently obfuscated in ``menus'' and ``dialog boxes'', or they have too restricted
+capabilities. The idea in Patoline is to allow the user to change styles
+easily. Although we are not able to fully explain the execution model
+beneath this for now, let us give only a few examples:
+
+\begin{itemize}
+
+\item Changing the font size, for instance to 2 millimeters, is done
+by ##\size(2.){Blabla}##. What we call the ``\emph{font size}'', or
+the ``\emph{em size}'', in typography, was originally the size of the small
+metal blocks on which the letters were cast. Since the whole alphabet
+was cast on blocks of the same size, a ``font size'' could be defined.
+Nowadays, with computer typography, this definition has more of an
+indicative value: no letter can normally get out of the ``em grid'',
+but this may exceptionally happen.
+
+We must signal from now that, although the authors of Patoline all
+have great consideration for the historical or folkloric measurement
+units (such as those defined in terms of ``feet'', ``yards'' or
+``inches'' of someone), the units used in Patoline are those defined
+by the \emph{Conférence international des poids et mesures}, usually
+known as the ``International System''.
+
+\item At the time of writing this book, the color system in Patoline
+is not completely finished. Indeed, this is a quite complicated topic,
+as color perception depends on the precise screen, printer, ink
+quality, that one is seeing a document on. Moreover, each eye sees
+colors differently. Many proprietary systems have been marketed to
+graphic designers, even though economic interests of the very companies
+managing these so-called ``standards'' may compromise the portability
+and durability of their work.
+
+Anyway, a few colors have been defined for now, such as
+\verb{black},
+\verb{white},
+\color(blue){\verb{blue}},
+\color(green){\verb{green}},
+\color(red){\verb{red}},
+\color(orange){\verb{orange}},
+\color(purple){\verb{purple}},
+\color(pink){\verb{pink}},
+\color(yellow){\verb{yellow}},
+and \color(gray){\verb{gray}}. Using them on your text is
+simply a matter of writing ##\color(red){This is red}##.
+You can also get more by mixing: for instance,
+##\color(mix 0.3 purple pink){Bla}## gives you the color
+resulting from mixing 30% of purple and 70% of pink. Composing 40% of
+the resulting color with 60% of yellow can be done by using parentheses:
+##\color(mix 0.4 (mix 0.3 purple pink) yellow){Bla}##. The command
+only asks you the proportion $x$ (between $0$ and $1$) you want of the
+first color; the other $1-x$ are automatically filled with the
+other color.
+
+\item Fonts are way simpler (or at least they should be), and Patoline
+was initiated with the idea that anyone willing to control fine points
+of his typography should be able to do so, while providing a great
+default result even without finer adjustments.
+
+The most complicated point with fonts is that the thing typographs call
+``\emph{glyphs}'' do not correspond perfectly to the intuitive idea of
+``character''. The belief in the opposite has been propagated for quite a
+long time among software developers by Adobe in all versions of its
+postscript and pdf proprietary formats, and corresponding software and
+hardware.
+
+For instance, as you may have noticed by now, when we wrote ``fi'' in this
+book, the result was different from the naive version of simply an
+f followed by an i. This one would look more like
+\id([Scoped ((fun env->{env with substitutions=(fun x->x)}), <<fi>>)]).
+
+To change fonts, here are the commands:
+
+\begin{itemize}
+\item ##\italic{example}## makes your text \italic{italic}. ``Italic'',
+in typography, means that glyphs look as if they were written by hand, and
+it is not the same as ``oblique'' or ``slanted'' fonts (which also exist).
+For instance, the default font for writing maths in Patoline is italic, but
+not slanted. Some fonts may have their italic versions also slanted, such as Patoline's
+default font, called \emph{Alegreya}.
+
+\item ##\bold{example}## makes your text \bold{bold}. Classically,
+heavy use of bold fonts is considered bad style, as it tends to
+distract the reader's eye. According to Bringhurst
+\cite(authorCite "name LIKE '%bringhurst%'" ""), bold fonts are a quite
+recent addition to the tools of typography, and it is very rarely justified.
+
+\item ##\sc{example}## typesets your text in \sc{Petites Capitales}.
+These are generally used to mark sections without perturbing the
+``color'' of the page (color, in typography, means the ink density
+on the page). They can also serve to typeset acronyms, when full capitals
+are not required, or distracting.
+
+\end{itemize}
+
+The complexity of using other font families is that you need to tell
+Patoline something about the structure of the new family. But don't worry:
+Patoline has a pretty good library for handling fonts, and you can use
+virtually any font you like with Patoline, and even define maths grammars
+using your favorite fonts. We'll see that later.
+
+\end{itemize}
+
+\begin{exercise}
+Can you write \bold{\italic{bold italic text}} ?
+\end{exercise}
+
+=<
+
+=> Including from external files
+
+Sometimes, a file gets too long to be easily handled and understood by
+other systems, such as revision control software, or coauthors. In
+these cases, Patoline offers a mechanism called ``\emph{file
+inclusion}'', that allows you to split your files, and include them
+transparently. A consequence of this feature is that you can include
+the same file from different documents, and even include the same file
+several times in one document, for instance if it contains a picture.
+It is also possible to compile the external file alone, for instance
+to test it, or because you are writing proceedings of a conference,
+for instance. A special macro is provided to do this, called \verb{\\Include}.
+Say you have two files, \verb{file1.txp} and \verb{file2.txp}. To include
+the contents of \verb{file2.txp} from \verb{file1.txp}, you would simply
+write the following line in \verb{file1.txp}:
+
+###
+\Include{File2}
+###
+
+Remark the upper-case first letter: this comes from the way Patoline
+detects dependencies between files. Even if the first letter of
+\verb{file2.txp} is lower-case on the filesystem, it should be included
+as \verb{File2}.
+
+
+=<
+
+=> First drawings
+
+A last thing we need to talk about, in this introductory chapter,
+is a first way to add graphics to your text. For now, let us assume
+that you have produced a png image called ``\verb{pato.png}''.
+To include it, use the command \verb{\\includeGraphics("pato.png")}:
+\begin{center}
+\includeGraphics("pato.png")
+\end{center}
+
+Since most raster graphics do not specify an ``optimal'' size of the
+pixels they define, our command \verb{includeGraphics} alone is often
+not enough, and we need to rescale our pictures. For this purpose, you
+can use the following command:
+
+###
+\id(includeGraphics ~scale=0.2 "pato.png")
+###
+
+Even if this may look somewhat cryptic for now, you can simply set
+\verb{~scale=x} with any value of \verb{x} that you like. Note that
+even if the scale you chose is an integer, a point is required to make
+Patoline understand that it is really a decimal number. For instance,
+you must write ``\verb{2.}'' instead of simply ``\verb{2}''.
+We will
+explain in further detail in the sequel what it means exactly. Anyway,
+this syntax is by no means Patoline's definitive syntax (any
+suggestion is welcome!).
+
+=<
+
+=<

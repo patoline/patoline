@@ -1,0 +1,56 @@
+-> Why Patoline ?
+
+Patoline is a new system of typography, aiming at being an alternative
+to TeX and other word-processing systems. Its name is to be pronounced
+like ``Pa-toe-leen'', and it is the frenchification of the translation
+in portuguese of a joke in english, as a reflect of the goal of
+patoline's authors of typesetting any possible language, with any set
+of symbols, and writing system, possibly in more than one dimension
+(so as to typeset the language of category theory, for
+instance). Originally, Patoline was developed without any real name,
+and tested on a document named ``\emph{doc.txp}''. Tom Hirschowitz
+came with this pun, that we shall call it \emph{Daffy}, so that the
+name would at least make sense on the test case.  Then, Elisa Meunier
+remarked that our pun made no sense in portuguese, since Daffy Duck's
+name was different in Brazil. We then decided to change the name,
+before Pierre Hyvernat and Pierre-Etienne Meunier finally gave it this
+french touch it has now during one of our project meetings.
+
+This project was started in a french maths laboratory called
+\extLink("http://lama.univ-savoie.fr"){\sc{lama}},
+\extLink("https://maps.google.com/maps?q=LAMA+-+Univ.+Savoie+-+Batiment+Chablais,+Rue+du+Lac+de+la+Thuile,+Le+Bourget-du-Lac,+France&hl=en&ie=UTF8&ll=45.642252,5.865798&spn=0.002877,0.006598&sll=45.069641,5.888672&sspn=2.9755,6.756592&oq=lama+le+bou&t=h&hq=LAMA+-+Univ.+Savoie+-+Batiment+Chablais,&hnear=Rue+du+Lac+de+la+Thuile,+73370+Le+Bourget-du-Lac,+Savoie,+Rh%C3%B4ne-Alpes,+France&z=18"){in the
+french alps}. The original idea
+for a new typesetting algorithm was mine, but would probably have stayed
+at the state of a mere idea without the support and large contributions
+of Florian Hatat, Tom Hirschowitz, Pierre Hyvernat, Christophe Raffalli
+and Guillaume Theyssier.
+
+By the way, as of version 1.0 of Patoline, the goal of ``typesetting
+any language with any symbol set'' has not been completely achieved,
+although significant advances have been done in this direction, and
+this is still one of our main goal. Moreover, we will certainly
+recognize the arrival of Patoline 2 by its ability to handle
+multi-dimensional typesetting.
+
+Patoline is based on the idea that an author should focus on the
+structure of his documents, and let the machine care about their
+appearance. However, the fact that it is written and extensible in a
+modern language makes it easy to change the appearance of documents,
+in the most generic way known — that is, by using Turing machines —
+when one wants to do so. This does not necessarily means that anyone
+who is going to use Patoline needs to forge Turing machines. Instead,
+it means that the possibility offered to anyone to do so in a simple
+and fast way, will hopefully yield a lot of high quality extensions
+within a reasonable amount of time, usable by any
+Turing-machines-reluctant user to achieve outstanding quality in any
+document very quickly.
+
+In this book, we tried to follow a logical progression when
+introducing the concepts and ideas of our system, and to provide
+progressive exercises to help you to get a good understanding of our
+system in little time. If there is anything you do not understand
+perfectly well, do not hesitate to tell us: our common address, at
+the time of this writing, is
+\extLink("mailto:mltypography@googlegroups.com"){\verb{mltypography@googlegroups.com}}
+
+-<

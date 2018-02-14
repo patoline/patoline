@@ -1,0 +1,30 @@
+(* #FORMAT FormatThese *)
+(* #PACKAGES bibi *)
+
+\Caml(
+  open Bibi
+  let _=
+    let _=Sys.command "bibi biblio.bib" in
+    bibfile "biblio.bibi"
+module Bib=BiblioNames
+open Bib
+)
+
+=> Extending Patoline
+
+=> The default parser
+
+=<
+
+=> Writing parsers
+
+=<
+
+=> Writing formats
+
+=<
+
+=> Writing output drivers\label("extending drivers")
+
+=<
+=<
