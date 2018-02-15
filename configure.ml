@@ -451,7 +451,7 @@ let all_patoline_drivers =
   ; { name      = "Html"
     ; needs     = []
     ; suggests  = []
-    ; internals = [ Package "rawlib"; Package "unicodelib" ] }
+    ; internals = [ Driver svg_driver; Package "rawlib"; Package "unicodelib" ] }
 
   ; { name      = "Patonet"
     ; needs     = [ Package "cryptokit"; Package "bytes" ]

@@ -4,7 +4,7 @@ d := $(if $(d),$(d)/,)$(mod)
 
 HTML_DRIVER_INCLUDES:=-I $(d) -I $(DRIVERS_DIR)/SVG $(PACK_DRIVER_Html)
 
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(HTML_DRIVER_INCLUDES)
+$(d)/%.ml.depends $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(HTML_DRIVER_INCLUDES)
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)

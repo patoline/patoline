@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-TYPOGRAPHY_INCLUDES := -I $(d) $(PACK_TYPOGRAPHY) -I $(CONFIG_DIR)
+TYPOGRAPHY_INCLUDES := -I $(d) $(PACK_TYPOGRAPHY) -I $(CONFIG_DIR) -I $(CESURE_DIR)
 
 $(d)/%.cmx $(d)/%.cmo $(d)/%.cmi $(wildcard $(d)/*/%.cmx) $(wildcard $(d)/*/%.cmo) $(wildcard $(d)/*/%.cmi): INCLUDES:=$(TYPOGRAPHY_INCLUDES)
 
