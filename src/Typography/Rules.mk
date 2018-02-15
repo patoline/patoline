@@ -60,14 +60,6 @@ $(d)/Typography.cmxs: $(TYPOGRAPHY_CMX)
 	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $(TYPOGRAPHY_CMX)
 
-$(d)/Break.cmo: $(d)/Break.ml
-	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLC) $(OFLAGS) -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
-
-$(d)/Break.cmx: $(d)/Break.ml
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
-
 # Build DefaultFormat; The variable must be ordered
 DEFAULTFORMAT_ML := $(d)/DefaultFormat/Numerals.ml $(d)/DefaultFormat/TableOfContents.ml\
   $(d)/DefaultFormat/PageLayout.ml $(d)/DefaultFormat/DefaultFormat.ml

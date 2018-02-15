@@ -35,28 +35,28 @@ let is_last paragraph j=
 type figurePosition=Placed of line | Flushed | Begun
 
 
-module type Line =
+module type OrderedHashableType =
   sig
     type t
     val compare : t -> t -> int
     val hash    : t -> int
   end
 
-module Make(L : Line with type t = Box.line) =
+module Make(Line : OrderedHashableType with type t = Box.line) =
   struct
-    module LineMap=Map.Make (L)
+    module LineMap=Map.Make(Line)
     module ColMap=Map.Make (
       struct
         type t=float*float*line*float*float*line
         let compare=compare
       end)
 
-    module H=Weak.Make(
-      struct
-        type t=L.t*float*TypoLanguage.message*parameters*(frame_zipper list)*float*(t option)*(figurePosition IntMap.t)*L.t MarkerMap.t
-        let equal (a,_,_,_,_,_,_,_,_) (b,_,_,_,_,_,_,_,_)=(L.compare a b)==0
-        let hash (a,_,_,_,_,_,_,_,_)=L.hash a
-      end)
+    module Hstruct = struct
+        type t=Val of Line.t*float*TypoLanguage.message*parameters*(frame_zipper list)*float*(t option)*(figurePosition IntMap.t)*Line.t MarkerMap.t
+        let equal (Val(a,_,_,_,_,_,_,_,_)) (Val(b,_,_,_,_,_,_,_,_))=(Line.compare a b)==0
+        let hash (Val(a,_,_,_,_,_,_,_,_))=Line.hash a
+      end
+    module H=Weak.Make(Hstruct)
 
     let haut=ref (Array.make 100 Empty)
     let max_haut=ref 0
@@ -165,7 +165,7 @@ module Make(L : Line with type t = Box.line) =
       let first_parameters=parameters.(0)
         paragraphs figures default_params IntMap.empty MarkerMap.empty initial_line initial_line
       in
-      let first_line=(initial_line,0.,TypoLanguage.Normal,first_parameters,[],0.,None,IntMap.empty,MarkerMap.empty) in
+      let first_line=Hstruct.Val(initial_line,0.,TypoLanguage.Normal,first_parameters,[],0.,None,IntMap.empty,MarkerMap.empty) in
       let last_todo_line=ref first_line in
       let demerits=H.create (Array.length paragraphs) in
 
@@ -173,7 +173,7 @@ module Make(L : Line with type t = Box.line) =
       let rec break allow_impossible todo=
         (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
         if not (LineMap.is_empty todo) then (
-          let _,((node,lastBadness,_,lastParameters,lastPages,comp0,lastNode_opt,lastFigures,lastUser) as cur_node)=LineMap.min_binding todo in
+          let _,(Hstruct.Val(node,lastBadness,_,lastParameters,lastPages,comp0,lastNode_opt,lastFigures,lastUser) as cur_node)=LineMap.min_binding todo in
           (* print_text_line paragraphs node;flush stderr; *)
           (* Printf.fprintf stderr "allow_impossible : %b\n" allow_impossible;flush stderr; *)
           let todo'=ref (LineMap.remove node todo) in
@@ -203,9 +203,9 @@ module Make(L : Line with type t = Box.line) =
               else figures1
             in
             let badness=match classify_float badness with FP_infinite | FP_nan -> 0. | _->badness in
-            let a=(nextNode,badness,log,next_params,next_pages,comp,node,figures2,nextUser) in
+            let a=Hstruct.Val(nextNode,badness,log,next_params,next_pages,comp,node,figures2,nextUser) in
             try
-              let _,bad,_,_,_,_,_,_,_=H.find demerits a in
+              let Hstruct.Val(_,bad,_,_,_,_,_,_,_)=H.find demerits a in
               if allow_impossible || bad >= badness then (
                 last_todo_line:=a;
                 todo':=LineMap.add nextNode a !todo';
@@ -219,7 +219,7 @@ module Make(L : Line with type t = Box.line) =
           in
           let register_endNode ()=
             match !endNode with
-                Some (_,b,_,_,_,_,_,_,_) when b<lastBadness->()
+                Some(Hstruct.Val(_,b,_,_,_,_,_,_,_)) when b<lastBadness->()
               | None
               | Some _->endNode:=Some cur_node
           in
@@ -438,7 +438,7 @@ module Make(L : Line with type t = Box.line) =
 
                           (* Demander à toutes les lignes au-dessus de pousser nextNode le plus bas possible *)
                               let rec v_distance cur_node0 parameters comp0 min_h=
-                                let node0,_,_,_,_,_,_,_,_=cur_node0 in
+                                let Hstruct.Val(node0,_,_,_,_,_,_,_,_)=cur_node0 in
                                 if node0.isFigure then (
                                   let fig=figures.(node0.lastFigure) in
                                   min min_h
@@ -465,8 +465,8 @@ module Make(L : Line with type t = Box.line) =
                                   in
                                   let node0_width=node0.min_width +. comp0*.(node0.max_width-.node0.min_width) in
                                   (try
-                                     let _,_,_,_,_,_,prec,_,_=cur_node0 in
-                                     let (prec_line,_,_,params,_,comp,_,_,_) as prec_=match prec with None->raise Not_found | Some a->a in
+                                     let Hstruct.Val(_,_,_,_,_,_,prec,_,_)=cur_node0 in
+                                     let Hstruct.Val(prec_line,_,_,params,_,comp,_,_,_) as prec_=match prec with None->raise Not_found | Some a->a in
                                      let arret=
                                        (nextParams).left_margin>=parameters.left_margin
                                        && (nextParams).left_margin+.nextNode_width<=parameters.left_margin+.node0_width
@@ -515,8 +515,8 @@ module Make(L : Line with type t = Box.line) =
                             (* Printf.fprintf stderr "node is orphan\n"; *)
                             if allow_impossible then (
                               try
-                                let _,_,_,_,_,_,prec,_,_=cur_node in
-                                let pr,a,b,c,d,e,f,g,h=match prec with None->raise Not_found | Some a->a  in
+                                let Hstruct.Val(_,_,_,_,_,_,prec,_,_)=cur_node in
+                                let Hstruct.Val(pr,a,b,c,d,e,f,g,h)=match prec with None->raise Not_found | Some a->a  in
                                 if node.paragraph=nextNode.paragraph || (lastParameters.not_last_line && not c.not_last_line) then (
                                   extreme_solutions:=(pr,a,(TypoLanguage.Opt_error (TypoLanguage.Orphan (text_line paragraphs node))),
                                                       { c with min_page_after=1 },
@@ -532,8 +532,8 @@ module Make(L : Line with type t = Box.line) =
                             (* Printf.fprintf stderr "nextNode is widow\n"; *)
                             if allow_impossible then (
                               try
-                                let _,_,_,_,_,_,prec,_,_=cur_node in
-                                let pr,a,b,c,d,e,f,g,h=match prec with None->raise Not_found | Some a->a  in
+                                let Hstruct.Val(_,_,_,_,_,_,prec,_,_)=cur_node in
+                                let Hstruct.Val(pr,a,b,c,d,e,f,g,h)=match prec with None->raise Not_found | Some a->a  in
                                 if node.paragraph=nextNode.paragraph || (nextParams.not_first_line) && not lastParameters.not_first_line then (
                                   extreme_solutions:=(pr,a,(TypoLanguage.Opt_error (TypoLanguage.Widow (text_line paragraphs nextNode))),
                                                       { c with min_page_after=1 },
@@ -674,7 +674,7 @@ module Make(L : Line with type t = Box.line) =
       while not !finished do
         break !allow_impossible !r_todo;
         if !endNode=None then (
-          let (b,bad,_,param,pages,comp,node,fig,user)= !last_todo_line in
+          let Hstruct.Val(b,bad,_,param,pages,comp,node,fig,user)= !last_todo_line in
           try
             let param0=LineMap.find b !last_failure in
             if param0.min_page_after<>param.min_page_after then raise Not_found;
@@ -690,7 +690,7 @@ module Make(L : Line with type t = Box.line) =
         ) else finished:=true
       done;
 
-      let (n0,_,_,_,layouts,_,_,figs0,user0) as node0=
+      let Hstruct.Val(n0,_,_,_,layouts,_,_,figs0,user0) as node0=
         match !endNode with
             None-> !last_todo_line
           | Some x->x
@@ -711,7 +711,7 @@ module Make(L : Line with type t = Box.line) =
         in
         (* Remonter jusqu'en haut *)
         let rec makeParagraphs log node frame=
-          let n0,_,log_,params',_,_,next,_,_=node in
+          let Hstruct.Val(n0,_,log_,params',_,_,next,_,_)=node in
           match next with
               None->log,frame
             | Some n->(
@@ -723,7 +723,7 @@ module Make(L : Line with type t = Box.line) =
             )
         in
         let layout=
-          let n0,_,_,_,_,_,_,_,_=node0 in
+          let Hstruct.Val(n0,_,_,_,_,_,_,_,_)=node0 in
           (fst (frame_top n0.layout))
         in
         let log,pages=makeParagraphs [] node0 layout in
