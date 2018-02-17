@@ -58,20 +58,9 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
       end
     module H=Weak.Make(Hstruct)
 
-    let haut=ref (Array.make 100 Empty)
-    let max_haut=ref 0
-    let bas=ref (Array.make 100 Empty)
-    let max_bas=ref 0
-    let writeBox arr i b=
-      if i>=Array.length !arr then (
-        let tmp= !arr in
-        arr:=Array.make ((Array.length !arr)*2) Empty;
-        for j=0 to Array.length tmp-1 do
-          !arr.(j)<-tmp.(j)
-        done);
-      !arr.(i)<-b
-
-    let readBox arr i= !arr.(i)
+    (** [haut] and [bas] are arrays of boxes *)
+    let haut = DynArray.make 100 Empty
+    let bas  = DynArray.make 100 Empty
 
     let rec print_graph file paragraphs graph path=
       let f=open_out file in
@@ -104,61 +93,46 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
       Printf.fprintf f "};\n";
       close_out f
 
+  let collide ~figures ~paragraphs line_above params_i comp_i line_below params_j comp_j=
+    let init_line_boxes arr line =
+      DynArray.empty arr;
+      if line.isFigure then
+        let fig = figures.(line.lastFigure) in
+        DynArray.set arr 0 (Drawing { fig with drawing_y1=0.; drawing_y0=fig.drawing_y0-.fig.drawing_y1 })
+      else
+        fold_left_line paragraphs (fun _ b -> DynArray.append arr b) () line
+    in
+    init_line_boxes haut line_above;
+    init_line_boxes bas  line_below;
+
+    let xi=ref params_i.left_margin in
+    let xj=ref params_j.left_margin in
+
+    let rec collide i j max_col=
+      let box_i=if i < DynArray.length haut then DynArray.get haut i else Empty in
+      let box_j=if j < DynArray.length bas then DynArray.get bas j else Empty in
+      let wi=box_width comp_i box_i in
+      let wj=box_width comp_j box_j in
+      if !xi +.wi < !xj+. wj && i < DynArray.length haut then (
+        let yi=lower_y box_i in
+        let yj=if !xi+.wi < !xj then -.infinity else
+          upper_y box_j
+        in
+        xi:= !xi+.wi;
+        collide (i+1) j (min max_col (yi-.yj))
+      ) else if j < DynArray.length bas then (
+        let yi=if !xj +. wj < !xi then infinity else
+          lower_y box_i
+        in
+        let yj=upper_y box_j in
+        xj:= !xj+.wj;
+        collide i (j+1) (min max_col (yi-.yj))
+      ) else max_col
+    in
+    collide 0 0 infinity
+
     let typeset ?(initial_line=uselessLine) ~completeLine ~figures ~figure_parameters ~parameters ~new_page ~new_line ~badness ~states paragraphs=
       if Array.length paragraphs=0 && Array.length figures=0 then ([],fst (frame_top initial_line.layout),IntMap.empty,MarkerMap.empty) else begin
-      let collide line_haut params_i comp_i line_bas params_j comp_j=
-
-        max_haut:=
-          if line_haut.isFigure then
-            (let fig=figures.(line_haut.lastFigure) in
-             writeBox haut 0 (Drawing { fig with drawing_y1=0.; drawing_y0=fig.drawing_y0-.fig.drawing_y1 }); 1)
-          else
-            fold_left_line paragraphs
-              (fun i b->writeBox haut i b; i+1) 0 line_haut;
-
-        max_bas:=
-          if line_bas.isFigure then
-            (let fig=figures.(line_bas.lastFigure) in
-             writeBox bas 0 (Drawing { fig with drawing_y1=0.; drawing_y0=fig.drawing_y0-.fig.drawing_y1 }); 1)
-          else
-            fold_left_line paragraphs (fun i b->writeBox bas i b; i+1) 0 line_bas;
-
-        let xi=ref params_i.left_margin in
-        let xj=ref params_j.left_margin in
-        let rec collide i j max_col=
-          let box_i=if i< !max_haut then readBox haut i else Empty in
-          let box_j=if j< !max_bas then readBox bas j else Empty in
-          (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
-          let wi=box_width comp_i box_i in
-          let wj=box_width comp_j box_j in
-          if !xi +.wi < !xj+. wj && i < !max_haut then (
-            let yi=lower_y box_i in
-            let yj=if !xi+.wi < !xj then -.infinity else
-              upper_y box_j
-            in
-            (* let x0=if !xi+.wi < !xj then !xi else max !xi !xj in *)
-            (* let w0= !xi +. wi -. x0 in *)
-            (* Graphics.draw_rect (round (mm*. x0)) (yj0 + round (mm*. yj)) *)
-            (*   (round (mm*. (w0))) (yi0 -yj0 + round (mm*. (yi-.yj))); *)
-            xi:= !xi+.wi;
-            collide (i+1) j (min max_col (yi-.yj))
-          ) else if j < !max_bas then (
-            let yi=if !xj +. wj < !xi then infinity else
-              lower_y box_i
-            in
-            let yj=upper_y box_j in
-            (* let x0=if !xj+.wj < !xi then !xj else max !xi !xj in *)
-            (* let w0= !xj +. wj -. x0 in *)
-            (* Graphics.draw_rect (round (mm*. x0)) (yj0 + round (mm*. yj)) *)
-            (*   (round (mm*. w0)) (yi0 -yj0 + round (mm*. (yi-.yj))); *)
-            xj:= !xj+.wj;
-            collide i (j+1) (min max_col (yi-.yj))
-          ) else max_col
-        in
-        collide 0 0 infinity
-      in
-
-
       let colision_cache=ref ColMap.empty in
       let endNode=ref None in
 
@@ -289,8 +263,8 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                 (lastBadness+.
                    if node.paragraph<Array.length paragraphs then badness.(node.paragraph) paragraphs figures
                      lastFigures
-                     node !haut 0 lastParameters 0.
-                     nextNode !bas 0 params 0.
+                     node haut.DynArray.data 0 lastParameters 0.
+                     nextNode bas.DynArray.data 0 params 0.
                    else 0.)
                 TypoLanguage.Normal
                 params
@@ -317,8 +291,8 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                 (lastBadness+.
                    if node.paragraph<Array.length paragraphs then badness.(node.paragraph) paragraphs figures
                      lastFigures
-                     node !haut 0 lastParameters 0.
-                     nextNode !bas 0 params 0.
+                     node haut.DynArray.data 0 lastParameters 0.
+                     nextNode bas.DynArray.data 0 params 0.
                    else 0.)
                 TypoLanguage.Normal
                 params
@@ -453,7 +427,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                                                        nextParams.left_margin, nextParams.measure, { nextNode with height=0. }) !colision_cache
                                         with
                                             Not_found -> (
-                                              let dist=collide node0 parameters comp0 nextNode nextParams comp1 in
+                                              let dist=collide figures paragraphs node0 parameters comp0 nextNode nextParams comp1 in
                                               colision_cache := ColMap.add (parameters.left_margin, parameters.measure,
                                                                             {node0 with height=0.;layout=doc_frame,[]},
                                                                             nextParams.left_margin, nextParams.measure,
@@ -551,8 +525,8 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                               if allow_impossible then (
                                 if (height<=height')  then (
                                   let bad=(lastBadness+.
-                                             badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
-                                             nextNode !bas !max_bas nextParams comp1) in
+                                             badness.(nextNode.paragraph) paragraphs figures lastFigures node haut.DynArray.data (DynArray.length haut) lastParameters comp0
+                                             nextNode bas.DynArray.data (DynArray.length bas) nextParams comp1) in
                                   local_opt:=(nextNode,
                                               max 0. bad,
                                               (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (text_line paragraphs nextNode))),
@@ -566,8 +540,8 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                               if allow_impossible then (
                                 if (height<=height') then (
                                   let bad=(lastBadness+.
-                                             badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
-                                             nextNode !bas !max_bas nextParams comp1) in
+                                             badness.(nextNode.paragraph) paragraphs figures lastFigures node haut.DynArray.data (DynArray.length haut) lastParameters comp0
+                                             nextNode bas.DynArray.data (DynArray.length bas) nextParams comp1) in
                                   local_opt:=(nextNode,
                                               max 0. bad,
                                               (TypoLanguage.Opt_error (TypoLanguage.Underfull_line (text_line paragraphs nextNode))),
@@ -578,8 +552,8 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                               if (height<=height') then (
                                 let bad=(lastBadness+.
                                            badness.(nextNode.paragraph) paragraphs figures
-                                           lastFigures node !haut !max_haut lastParameters comp0
-                                           nextNode !bas !max_bas nextParams comp1) in
+                                           lastFigures node haut.DynArray.data (DynArray.length haut) lastParameters comp0
+                                           nextNode bas.DynArray.data (DynArray.length bas) nextParams comp1) in
                                 if bad<infinity || allow_impossible then
                                   local_opt:=(nextNode,
                                               max 0. bad,TypoLanguage.Normal,
