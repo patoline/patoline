@@ -1,3 +1,4 @@
+(** Patoline boxes *)
 (*
   Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
   Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
@@ -22,6 +23,7 @@ open Extra
 open FTypes
 open Bezier
 
+(** Elementary box in a paragraph *)
 type box =
   | GlyphBox    of RawContent.glyph
   | Kerning     of box FTypes.kerningBox
@@ -34,6 +36,11 @@ type box =
   | Parameters  of (parameters->parameters)
   | Layout      of (frame_zipper->frame_zipper)
   | Empty
+
+(** A paragraph is an array of elementary boxes. The line breaking
+ algorithm produces lines (given by the type {!type:line}) by selecting
+ chunks in a paragraph array. *)
+and paragraph = box array
 
 and drawingBox =
   { drawing_min_width     : float
@@ -66,16 +73,22 @@ and marker =
   | EndLink
   | AlignmentMark
 
+(**
+ Description of a line, which should be produced by the line breaking
+ algorithm. A line is merely described as the index of its first box and
+ the index of its last box inside the paragraph (which itself is an
+ array of boxes).
+ *)
 and line =
-  (** The index of the paragraph in the array. *)
   { paragraph        : int
-  (** The last placed figure (initially -1) *)
+  (** Index of the paragraph containing this line in the array *)
   ; lastFigure       : int
-  (** The index of the first box of the line in the paragraph. *)
+  (** Last placed figure (initially -1) *)
   ; lineStart        : int
-  (** The index of the box next to the last box of the line, or the box with
-      the hyphenation if the line is hyphenated. *)
+  (** Index of the first box of the line in the paragraph. *)
   ; lineEnd          : int
+  (** Index of the box next to the last box of the line, or the box with
+      the hyphenation if the line is hyphenated. *)
   ; hyphenStart      : int
   ; hyphenEnd        : int
   ; isFigure         : bool
@@ -222,7 +235,7 @@ let hyphenate hyph subs kern font size color str =
 
 
 
-(* Helper functions for layouts *)
+(** {1 Helper functions for layouts } *)
 
 let frame_up (t,cxt)=
   match cxt with
@@ -319,12 +332,27 @@ let all_contents frame=
   in
   collect frame []
 
-(* Helper functions for lines *)
+(** {1 Helper functions for lines} *)
 
 let uselessLine=
-  { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
-    lastFigure=(-1); height= infinity;paragraph_height= -1; page_line= -1;layout=doc_frame,[];
-    min_width=0.;nom_width=0.;max_width=0.;line_y0=infinity;line_y1= -.infinity }
+  {
+    paragraph = 0;
+    lineStart = -1;
+    lineEnd = -1;
+    hyphenStart = -1;
+    hyphenEnd = -1;
+    isFigure = false;
+    lastFigure = (-1);
+    height = infinity;
+    paragraph_height = -1;
+    page_line = -1;
+    layout = doc_frame,[];
+    min_width = 0.;
+    nom_width = 0.;
+    max_width = 0.;
+    line_y0 = infinity;
+    line_y1 = -.infinity
+  }
 
 let default_params={ measure=0.;
                      left_margin=0.;
@@ -630,6 +658,12 @@ let vkern_as gs gs' envs st =
       }
     | _ -> failwith "vkern on non glyph") gs
 
+(**
+ Calling [fold_left_line paragraphs f x0 line] computes
+ [f (... (f (f (f x0 box0) box1) box2) ...) boxn]
+ where [box0], [box1], [box2], … [boxn] are the boxes which belong to
+ [line] in its corresponding paragraph [paragraphs.(line.paragraph)].
+ *)
 let fold_left_line paragraphs f x0 line=
   if line.paragraph>=Array.length paragraphs || line.paragraph<0 then x0 else (
     let rec fold boxes i maxi result=
