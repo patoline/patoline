@@ -82,6 +82,10 @@ $(d)/DefaultFormat.cma: $(DEFAULTFORMAT_CMO)
 # Building everything
 all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.cmxs
 
+# Building documentation
+doc:
+	$(OCAMLDOC) -charset utf-8 -package imagelib -d doc/html/Typography -html -I src/config -I src/Typography -I src/unicodelib -I src/patfonts -I src/patutil -I src/rawlib src/Typography/*.ml src/Typography/*/*.ml src/Typography/*.mli
+
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.a $(d)/*.cmxs $(d)/*.cmo $(d)/*.cmx \
 	$(d)/*.cmi $(d)/*.o $(d)/DefaultFormat/*.cmo $(d)/DefaultFormat/*.cmx \
