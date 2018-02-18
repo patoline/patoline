@@ -298,8 +298,8 @@ let parser verbatim_environment =
   ''^###''
   mode:{_:''[ \t]+'' mode_ident}?
   file:{_:''[ \t]+'' "\"" filename "\""}?
-  _:''[ \t]*'' "\n"
-  lines:{l:verbatim_line "\n"}+
+  _:''[ \t]*'' "\r"? "\n"
+  lines:{l:verbatim_line "\r"? "\n" -> l^"\n"}+
   ''^###'' ->
     if lines = [] then give_up ();
 
@@ -337,24 +337,24 @@ let parser verbatim_environment =
 
 let verbatim_environment = change_layout verbatim_environment no_blank
 
-  let verbatim_generic st forbid nd =
-    let line_re = "[^\n" ^ forbid ^ "]+" in
-    change_layout (
-        parser
-          STR(st)
-          ls:{l:RE(line_re) '\n'}*
-          l:RE(line_re)
-              STR(nd) ->
-            let lines = ls @ [l] in
-            let lines = rem_hyphen lines in
-            let txt = String.concat " " lines in
-            <:expr< ($lid:"verbatim"$)
-                     $string:txt$ >>
-      ) no_blank
+let verbatim_generic st forbid nd =
+  let line_re = "[^\n" ^ forbid ^ "]+" in
+  change_layout (
+      parser
+        STR(st)
+        ls:{l:RE(line_re) '\r'? '\n' -> l}*
+        l:RE(line_re)
+            STR(nd) ->
+          let lines = ls @ [l] in
+          let lines = rem_hyphen lines in
+          let txt = String.concat " " lines in
+          <:expr< ($lid:"verbatim"$)
+                   $string:txt$ >>
+    ) no_blank
 
-  let verbatim_macro = verbatim_generic "\\verb{" "{}" "}"
-  let verbatim_sharp = verbatim_generic "##" "#" "##"
-  let verbatim_bquote = verbatim_generic "``" "`" "``"
+let verbatim_macro = verbatim_generic "\\verb{" "{}" "}"
+let verbatim_sharp = verbatim_generic "##" "#" "##"
+let verbatim_bquote = verbatim_generic "``" "`" "``"
 
 (*************************************************************
  *   Type to control which t2t like tags are forbidden       *
