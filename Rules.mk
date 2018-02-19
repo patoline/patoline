@@ -141,6 +141,11 @@ export OCAMLFIND_IGNORE_DUPS_IN
 .PHONY: check
 check:
 
+# Building documentation
+doc:
+	$(OCAMLDOC) -charset utf-8 -package imagelib -d doc/html/Typography -html -I src/config -I src/Typography -I src/unicodelib -I src/patfonts -I src/patutil -I src/rawlib -I src/db src/Typography/*.ml src/Typography/*/*.ml src/Typography/*.mli src/db/*.ml
+
+
 # The following declarations are necessary to make $(CLEAN) and
 # $(DISTCLEAN) immediate variables (i.e., right hand side of the
 # declaration is expanded immediately). Otherwise, Rules.mk cannot use
