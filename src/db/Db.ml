@@ -142,22 +142,17 @@ let init_db (type a) (module Dbms : DbInterface with type dbinfo = a) table_name
     disconnect = fun () -> Dbms.disconnect dbd;
   }
 
-(** {1 Utility functions} *)
+(** {1 Hooks} *)
 
+(** List of functions called when the interactive session starts *)
 let interaction_start_hook = ref ([]: (unit -> unit) list)
 
-let do_interaction_start_hook () =
-  List.iter (fun f -> f ()) (!interaction_start_hook)
-
-let sessid = ref (None: (string * string * (string * string) list) option)
-(* the first string is the login *)
-(* the second string is the group, "guest" is reserved for guest *)
-(* the list of pairs of strings are the "friends login and group" *)
-
-let secret = ref ""
-
+(** Hooks called when some data is being read from a database *)
 let read_hook : (string -> visibility -> unit) list ref = ref []
+
+(** Hooks called when some data is being written to a database *)
 let write_hook : (string -> visibility -> unit) list ref = ref []
+
 let record hook f a =
   let l = ref [] in
   let r = fun s v ->
@@ -188,8 +183,24 @@ let record_write f a = snd (record write_hook f a)
 let stop_record_read f a = stop_record read_hook f a
 let stop_record_write f a = stop_record write_hook f a
 
+(** Run all hooks in {!val:interaction_start_hook}. *)
+let do_interaction_start_hook () =
+  List.iter (fun f -> f ()) (!interaction_start_hook)
+
+(** Run all hooks in {!val:read_hook}. *)
 let do_record_read  = fun d v -> List.iter (fun f -> f d.name v) !read_hook
+
+(** Run all hooks in {!val:write_hook}. *)
 let do_record_write = fun d v -> List.iter (fun f -> f d.name v) !write_hook
+
+(** {1 Utility functions} *)
+
+let sessid = ref (None: (string * string * (string * string) list) option)
+(* the first string is the login *)
+(* the second string is the group, "guest" is reserved for guest *)
+(* the list of pairs of strings are the "friends login and group" *)
+
+let secret = ref ""
 
 let make_sessid () =
   let size = 32 in
