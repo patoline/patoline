@@ -554,15 +554,16 @@ let _=
   (* Generation of src/Makefile.config *)
   let make = open_out "src/Makefile.config" in
 
-  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s\n"
+  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s\n"
     (if Sys.word_size = 32  then "-DINT32 " else "")
     (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
-    (if has_mysql then "-DMYSQL " else "")
-    (if has_sqlite3 then "-DSQLITE3 " else "")
     (if type3_only then "-DPDF_TYPE3_ONLY " else "");
 
   Printf.fprintf make "CAMLZIP :=%s\n"
     (if ocamlfind_has "zip" then " " ^ (snd (ocamlfind_query "zip")) else "");
+
+  Printf.fprintf make "MYSQL_ENABLED := %s\n" (if has_mysql then "yes" else "");
+  Printf.fprintf make "SQLITE3_ENABLED := %s\n" (if has_sqlite3 then "yes" else "");
 
   List.iter (function { package_name = name; macro_suffix = macro; local_deps = local; extern_deps = extern } ->
     let f = List.map (fun x->Package x) in

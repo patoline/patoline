@@ -18,25 +18,21 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+(**
+Managing authentication and associated data for interactive sessions.
+
+Patoline documents can be interactive, allowing for example an audience
+to connect remotely to a presentation and interact with it, possibly
+changing some parts of it (such as answering a poll, results being
+updated on-screen immediately).
+
+This module provides tools for managing user sessions and a storage
+space for key/value pairs associated to each session.
+*)
+
 open Util
 
-type dbinfo =
-| Memory
-#ifdef MYSQL
-| Mysql of Mysql.db
-#endif
-#ifdef SQLITE3
-| Sqlite3 of string
-#endif
-
-type database =
-| MemoryDb
-#ifdef MYSQL
-| MysqlDb of Mysql.dbd
-#endif
-#ifdef SQLITE3
-| Sqlite3Db of Sqlite3.db
-#endif
+(** {1 Encoding and decoding data in the database} *)
 
 type 'a data = {
   name : string;
@@ -49,8 +45,13 @@ type 'a data = {
      value for this specific data. total is 1 even if it should be 0 !!! *)
 }
 
+(** Exception raised when actually trying to use the {!val:dummyData}
+below. *)
 exception DummyData
 
+(** Dummy inhabitant of type {!type:data}, which can be used to
+initialize data structure, but whose content should never be used
+(calling any member function raises {!exception:DummyData}). *)
 let dummyData = {
   name = "Dummy data ! Do not use";
   init = "Dummy data ! Do not use";
@@ -62,29 +63,86 @@ let dummyData = {
 
 type 'a coding = {
   encode : 'a -> string;
+  (** Serializing some value of type ['a] to a string which can be
+  stored in database. *)
+
   decode : string -> 'a;
+  (** Parsing a string from the database and creating a value of type
+  ['a]. This should be the inverse of [encode]. *)
 }
 
+(** Default polymorphic coding, using OCaml {!module:Marshal} module,
+escaped using base64. *)
 let default_coding = {
   encode = (fun v -> Base64.encode (Marshal.to_string v []));
   decode = (fun s -> Marshal.from_string (Base64.decode s) 0);
 }
 
+(** Strings coding, which ony uses base64 escaping. *)
 let string_coding = {
   encode = (fun v -> Base64.encode v);
   decode = (fun s -> Base64.decode s);
 }
 
+(** Coding boolean as strings ["true"] and ["false"]. Any value other
+than ["true"] in the database is decoded as [false]. *)
 let bool_coding = {
-  encode = (fun v -> if v then "true" else "false");
+  encode = string_of_bool;
   decode = (fun s -> s = "true");
 }
 
+(** {1 Connection to databases } *)
+
+(** Interface to be implemented by database managers *)
+module type DbInterface = sig
+  type dbinfo
+  (** Connection information needed to connect to a database *)
+
+  type database
+  (** Handler to a database connection *)
+
+  val connect : dbinfo -> database
+  (** Connecting to a database with the given database information *)
+
+  val init_db : database -> string -> unit
+  (** Create the table structure in the database. Data are stored in a
+  table whose name is given by the second argument. *)
+
+  val create_data : database -> string -> ?log:bool -> ?visibility:visibility -> 'a coding -> string -> 'a -> 'a data
+  (** Blah *)
+
+  val disconnect : database -> unit
+  (** Disconnecting from the database *)
+end
+
+(** Generic type for database instances *)
+module type DbInstance = sig
+  module Interface : DbInterface
+  val db : Interface.database
+end
+
+type database = (module DbInstance)
 type db = {
   db : unit -> database;
   create_data : 'a.( ?log:bool -> ?visibility:visibility -> 'a coding -> string -> 'a -> 'a data);
   disconnect : unit -> unit;
 }
+
+let init_db (type a) (module Dbms : DbInterface with type dbinfo = a) table_name db_info =
+  let dbd = Dbms.connect db_info in
+  Dbms.init_db dbd table_name;
+  let db = (module struct
+    module Interface = Dbms
+    let db = dbd
+  end : DbInstance) in
+  {
+    db = (fun () -> db);
+    create_data = (fun ?(log=false) ?(visibility=Private) coding name
+    vinit -> Dbms.create_data dbd table_name ~log ~visibility coding name vinit);
+    disconnect = fun () -> Dbms.disconnect dbd;
+  }
+
+(** {1 Utility functions} *)
 
 let interaction_start_hook = ref ([]: (unit -> unit) list)
 
@@ -132,436 +190,6 @@ let stop_record_write f a = stop_record write_hook f a
 
 let do_record_read  = fun d v -> List.iter (fun f -> f d.name v) !read_hook
 let do_record_write = fun d v -> List.iter (fun f -> f d.name v) !write_hook
-
-let init_db table_name db_info =
-  let log_name = table_name ^"_log" in
-  match db_info with
-  | Memory -> (* The model does not nor use the provided coding, not needed *)
-    let total_table = Hashtbl.create 1001 in
-    { db = (fun () -> MemoryDb);
-      disconnect = (fun () -> ());
-      create_data = fun ?(log=false) ?(visibility=Private) coding name init ->
-        let rec data =
-        let table = Hashtbl.create 1001 in
-        let sessid () = match !sessid with
-          | None -> ("", "", [])
-          | Some (s,g,fs) ->
-             match visibility with
-             | Private -> (s, g, fs)
-             | Group   -> ("ANY", g, [])
-             | Public  -> ("ANY", "ANY", [])
-        in
-        let read = fun () ->
-          let s,g,_ = sessid () in
-          do_record_read data visibility;
-          try Hashtbl.find table (s,g) with Exit | Not_found -> init in
-        let add_to_table ((s,g) as key) v =
-          let old = try Hashtbl.find total_table g with Not_found -> [] in
-          if not (List.mem s old) then Hashtbl.replace total_table g (s::old);
-          Hashtbl.replace table key v
-        in
-        let write = fun v ->
-          try
-            let s, g, fs = sessid () in
-            do_record_write data visibility;
-            add_to_table (s,g) v;
-            List.iter (fun key -> add_to_table key v) fs;
-          with Exit -> ()
-        in
-        let reset () =
-          let s,g,fs = sessid () in
-          do_record_write data visibility;
-          Hashtbl.remove table (s, g);
-        in
-        let distribution ?group () =
-          do_record_read data (if group = None then Public else max Group visibility);
-          let total = match group with
-            | None ->
-              Hashtbl.fold (fun k l acc -> acc + List.length l) total_table 0
-            | Some g ->
-              try List.length (Hashtbl.find total_table g) with Not_found -> 1
-          in
-          let res = Hashtbl.create 101 in
-          Hashtbl.iter (fun k v ->
-            let old = try Hashtbl.find res v with Not_found -> 0 in
-            Hashtbl.replace res v (old + 1)) table;
-          total, Hashtbl.fold (fun v n acc -> (v,n)::acc) res [];
-        in
-        { name; init; read; write; reset; distribution}
-        in
-        data
-    }
-
-#ifdef MYSQL
-  | Mysql db_info ->
-    let dbptr = ref None in
-(* FIXME : how to test that data are created only once ?
-   at the moment create_data is called more that once in create_data occur under dynamic contents therefore
-   the 3 commented lines below report wrongly allready created data.
-   But not testing duplicate could lead to segfault, if type differs (due to marshalling) ...
-*)
-    let created = Hashtbl.create 1001 in
-
-    let db () =
-      match !dbptr with
-        None -> let db = Mysql.connect db_info in Printf.eprintf "Reconnected to db\n%!"; dbptr := Some db; db
-      | Some db -> db
-    in
-
-    interaction_start_hook := (fun () ->
-      match !dbptr with None -> () | Some db -> Mysql.disconnect db; dbptr := None; Printf.eprintf "Disconnected from db\n%!")::!interaction_start_hook;
-      (
-     (* FIXME: new sql ? *)
-    let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
-      `sessid` CHAR(33), `groupid` CHAR(33), `key` CHAR(64), `VALUE` text,
-      `createtime` DATETIME NOT NULL,
-      `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (`sessid`,`groupid`,`key`));" table_name in
-     let _r = Mysql.exec (db ()) sql in
-     let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
-      `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `time` DATETIME NOT NULL);" log_name in
-     let _r = Mysql.exec (db ()) sql in
-     match Mysql.errmsg (db ()) with
-     | None -> ()
-     | Some err -> Printf.eprintf "DB Error: %s\n%!" err);
-
-    { db = (fun () -> MysqlDb (db ()));
-      disconnect = (fun () ->
-        match !dbptr with None -> ()
-        | Some db -> Mysql.disconnect db);
-      create_data = fun ?(log=false) ?(visibility=Private) coding name vinit ->
-        if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
-        let rec data =
-        Hashtbl.add created name ();
-        let v = coding.encode vinit in
-        let sessid () = match !sessid with
-            None -> "", "guest", []
-          | Some (s,g,fs) ->
-             match visibility with
-             | Private -> (s, g, fs)
-             | Group   -> ("ANY", g, [])
-             | Public  -> ("ANY", "ANY", [])
-        in
-        let init () =
-          let sessid, groupid, friends = sessid () in
-          let fn (sessid, grouid) =
-            let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
-                                     table_name sessid name in
-            let r = Mysql.exec (db ()) sql in
-            match Mysql.errmsg (db ()), Mysql.fetch r with
-            | None, Some row ->
-               let count = match row.(0) with None -> 0 | Some n -> int_of_string n in
-               (match count with
-                  0 ->
-                  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `value`, `createtime`) VALUES ('%s','%s','%s','%s', NOW());"
-                                           table_name sessid groupid name v in
-                  (*Printf.eprintf "inserting: %s\n%!" sql;*)
-                  let _r = Mysql.exec (db ()) sql in
-                  (match Mysql.errmsg (db ()) with
-                  | None -> (*Printf.eprintf "inserting OK\n%!";*)()
-                   | Some err -> raise (Failure err));
-                  if (log) then begin
-                    let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', NOW());"
-                                           log_name sessid groupid name in
-                      (*Printf.eprintf "inserting: %s\n%!" sql;*)
-                     let _r = Mysql.exec (db ()) sql in
-                    (match Mysql.errmsg (db ()) with
-                    | None -> (*Printf.eprintf "inserting OK\n%!";*)()
-                    | Some err -> raise (Failure err))
-                  end
-                | 1 -> ()
-                      | _ -> raise (Failure "SQL duplicate data in base"))
-            | Some err, _ -> raise (Failure err)
-            | _ -> raise (Failure "SQL unexpected problem")
-          in
-          fn (sessid, groupid);
-          List.iter fn friends;
-          sessid, groupid, friends
-        in
-        let read () =
-          try
-            let sessid, groupid, _  = init () in
-            do_record_read data visibility;
-            let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
-              table_name sessid name in
-            (*Printf.eprintf "Sending request %s\n%!" sql;*)
-            let r = Mysql.exec (db ()) sql in
-            (*Printf.eprintf "Sent request\n%!";*)
-            match Mysql.errmsg (db ()), Mysql.fetch r with
-                | None, Some row ->
-               (match row.(0) with
-               | None -> vinit
-               | Some n -> coding.decode n)
-            | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; vinit
-            | _ -> assert false
-            with
-              Mysql.Error err ->
-                Printf.eprintf "Mysql Error: %s\n%!" err; vinit
-            | Exit -> vinit
-        in
-        let write v =
-            let sessid, groupid, friends = init () in
-            do_record_write data visibility;
-            let fn (sessid, groupid) =
-              try
-                let v = coding.encode v in
-                let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s',`groupid`='%s' WHERE `key` = '%s' AND `sessid` = '%s';"
-                                         table_name v groupid name sessid in
-                let _r = Mysql.exec (db ()) sql in
-                (match Mysql.errmsg (db ()) with
-                | None -> ()
-                | Some err -> Printf.eprintf "DB Error: %s\n%!" err);
-                if log then begin
-                  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', NOW());"
-                    log_name sessid groupid name in
-                  (*Printf.eprintf "inserting: %s\n%!" sql;*)
-                  let _r = Mysql.exec (db ()) sql in
-                  (match Mysql.errmsg (db ()) with
-                  | None -> (*Printf.eprintf "inserting OK\n%!";*)()
-                  | Some err -> Printf.eprintf "DB Error: %s\n%!" err)
-                end
-              with Exit -> ()
-            in
-            fn (sessid, groupid);
-            List.iter fn friends
-        in
-        let reset () =
-          try
-            let sessid, groupid, _ = init () in
-            do_record_write data visibility;
-            let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s';"
-              table_name name sessid in
-            let _r = Mysql.exec (db ()) sql in
-            ()
-          with Exit -> ()
-        in
-        let distribution ?group () =
-          do_record_read data (if group = None then Public else max Group visibility);
-          try
-            let _ = init () in
-            let group = match group with
-                None -> ""
-              | Some g -> Printf.sprintf "AND `groupid` = '%s' " g
-            in
-            let sql = Printf.sprintf
-              "SELECT `value`,COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`"
-              table_name name group in
-            let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s"
-              table_name name group in
-            (*Printf.eprintf "total: %s\n%!" sql';*)
-
-            let f = function None -> "" | Some s -> s in
-            let f' = function None -> 0 | Some s -> int_of_string s in
-            let r = Mysql.exec (db ()) sql' in
-            let total =
-              match Mysql.fetch r with
-                None -> 0
-              | Some row -> f' row.(0)
-            in
-            let r = Mysql.exec (db ()) sql in
-            let scores =
-              let l = ref [] in
-              try while true do
-                  match Mysql.fetch r with
-                    None -> raise Exit
-                  | Some row -> l := (coding.decode (f row.(0)), f' row.(1))::!l
-                done; []
-              with Exit -> !l
-            in
-            total, scores
-          with Exit -> 0, []
-        in
-        {name; init=vinit; read; write; reset; distribution}
-        in data
-    }
-#endif
-#ifdef SQLITE3
-  | Sqlite3 filename ->
-    let dbptr = ref None in
-    let created = Hashtbl.create 1001 in
-    let db () =
-      match !dbptr with
-        None -> let db = Sqlite3.db_open ~mutex:`FULL ~cache:`PRIVATE filename in
-                Printf.eprintf "Reconnected to db\n%!"; dbptr := Some db; db
-      | Some db -> db
-    in
-    let exec ?(cb=fun _ -> ()) sql =
-      try
-        let r = Sqlite3.exec_no_headers ~cb (db ()) sql in
-        if r <> Sqlite3.Rc.OK then begin
-            Printf.eprintf "sql fails: '%s' (%s)\n%!" sql (Sqlite3.Rc.to_string r);
-            Printf.eprintf "  %s\n%!" (Sqlite3.errmsg (db ()));
-            exit 1
-          end
-      with
-        e ->
-        Printf.eprintf "sql fails: '%s'\n%!" sql;
-        exit 1
-    in
-
-    interaction_start_hook := (fun () ->
-      match !dbptr with
-      | None -> ()
-      | Some db -> ignore (Sqlite3.db_close db); dbptr := None;
-                   Printf.eprintf "Disconnected from db\n%!")::!interaction_start_hook;
-      (
-     (* FIXME: new sql ? *)
-    let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
-      `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `VALUE` text,
-      `createtime` DATETIME NOT NULL,
-                              `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (`sessid`,`groupid`,`key`));" table_name in
-    (* TODO TIMESTAMP *)
-     exec sql;
-     let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
-      `sessid` CHAR(33), `groupid` CHAR(33), `key` text, `time` DATETIME NOT NULL);" log_name in
-     exec sql;
-
-
-     let sql = Printf.sprintf "CREATE TRIGGER IF NOT EXISTS [%s_Update] AFTER UPDATE ON %s
-                               FOR EACH ROW
-                               WHEN NEW.`modiftime` < OLD.`modiftime`
-                               BEGIN
-                                 UPDATE %s SET `modiftime`=CURRENT_TIMESTAMP WHERE
-                                   `sessid`=OLD.`sessid` AND
-                                   `groupid`=OLD.`groupid` AND
-                                   `key`=OLD.`key`
-                                 ;
-                               END" table_name table_name table_name
-     in
-     exec sql;
-
-    { db = (fun () -> Sqlite3Db (db ()));
-      disconnect = (fun () ->
-        match !dbptr with None -> ()
-        | Some db -> ignore (Sqlite3.db_close db));
-      create_data = fun ?(log=false) ?(visibility=Private) coding name vinit ->
-        if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
-        let rec data =
-        Hashtbl.add created name ();
-        let v = coding.encode vinit in
-        let sessid () = match !sessid with
-            None -> "", "guest", []
-          | Some (s,g,fs) ->
-             match visibility with
-             | Private -> (s, g, fs)
-             | Group   -> ("ANY", g, [])
-             | Public  -> ("ANY", "ANY", [])
-        in
-        let init () =
-          let sessid, groupid, friends = sessid () in
-          let fn (sessid, grouid) =
-            let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
-                                     table_name sessid name in
-            let cb row =
-               let count = match row.(0) with None -> 0 | Some n -> int_of_string n in
-               (match count with
-                  0 ->
-                  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `value`, `createtime`) VALUES ('%s','%s','%s','%s', datetime('now'));"
-                                           table_name sessid groupid name v in
-                  (*Printf.eprintf "inserting: %s\n%!" sql;*)
-                  exec sql;
-                  if (log) then begin
-                    let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', datetime('now'));"
-                                           log_name sessid groupid name in
-                      (*Printf.eprintf "inserting: %s\n%!" sql;*)
-                     exec sql;
-                  end
-                | 1 -> ()
-                      | _ -> raise (Failure "SQL duplicate data in base"))
-            in
-            exec ~cb sql
-          in
-          fn (sessid, groupid);
-          List.iter fn friends;
-          sessid, groupid, friends
-        in
-        let read () =
-          try
-            let sessid, groupid, _  = init () in
-            do_record_read data visibility;
-            let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
-                                     table_name sessid name in
-            let res = ref vinit in
-            let cb row =
-              match row.(0) with
-              | None -> ()
-              | Some n -> res := coding.decode n
-            in
-            exec ~cb sql;
-            !res
-          with
-            Exit -> vinit
-        in
-        let write v =
-            let sessid, groupid, friends = init () in
-            do_record_write data visibility;
-            let fn (sessid, groupid) =
-              try
-                let v = coding.encode v in
-                let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s',`groupid`='%s' WHERE `key` = '%s' AND `sessid` = '%s';"
-                                         table_name v groupid name sessid in
-                exec sql;
-                if log then begin
-                    let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `time`) VALUES ('%s','%s','%s', datetime('now'));"
-                    log_name sessid groupid name in
-                    (*Printf.eprintf "inserting: %s\n%!" sql;*)
-                    exec sql
-                  end
-              with Exit -> ()
-            in
-            fn (sessid, groupid);
-            List.iter fn friends
-        in
-        let reset () =
-          try
-            let sessid, groupid, _ = init () in
-            do_record_write data visibility;
-            let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s';"
-              table_name name sessid in
-            exec sql;
-          with Exit -> ()
-        in
-        let distribution ?group () =
-          do_record_read data (if group = None then Public else max Group visibility);
-          try
-            let _ = init () in
-            let group = match group with
-                None -> ""
-              | Some g -> Printf.sprintf "AND `groupid` = '%s' " g
-            in
-            let sql = Printf.sprintf
-              "SELECT `value`,COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`"
-              table_name name group in
-            let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s"
-              table_name name group in
-            (*Printf.eprintf "total: %s\n%!" sql';*)
-
-            let f = function None -> "" | Some s -> s in
-            let f' = function None -> 0 | Some s -> int_of_string s in
-            let total =
-              let total = ref 0 in
-              let cb row =
-                match row.(0) with
-                | None -> ()
-                | Some s -> total := int_of_string s
-              in
-              exec ~cb sql';
-              !total
-            in
-            let scores =
-              let l = ref [] in
-              let cb row = l := (coding.decode (f row.(0)), f' row.(1))::!l in
-              exec ~cb sql;
-              !l
-            in
-            total, scores
-          with Exit -> 0, []
-        in
-        {name; init=vinit; read; write; reset; distribution}
-        in data
-    })
-#endif
 
 let make_sessid () =
   let size = 32 in

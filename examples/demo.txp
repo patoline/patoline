@@ -17,7 +17,7 @@ let db_info = Mysql.(
       dbpwd = Some "demo";
       dbuser = Some "demo";})
 
-let db = init_db "demo" (Mysql db_info)
+let db = "demo" (module DbMysql) "demo" db_info
 
 (*let db = init_db "demo" Memory*)
 module MyDb = struct
