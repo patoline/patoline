@@ -554,9 +554,8 @@ let _=
   (* Generation of src/Makefile.config *)
   let make = open_out "src/Makefile.config" in
 
-  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s\n"
+  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s\n"
     (if Sys.word_size = 32  then "-DINT32 " else "")
-    (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
     (if type3_only then "-DPDF_TYPE3_ONLY " else "");
 
   Printf.fprintf make "CAMLZIP :=%s\n"
