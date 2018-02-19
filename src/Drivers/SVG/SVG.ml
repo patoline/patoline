@@ -441,8 +441,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
       );
       Rbuffer.add_string svg_buf (Printf.sprintf "<g id=\"%s\">" d.dyn_label);
       (match dynCache with
-	 None ->
-	 List.iter output_contents_aux (d.dyn_contents ());
+	 None -> output_contents_ordered (d.dyn_contents ());
        | Some (ds,gs,slide,state,record) ->
 	  (* <use> and <defs> would be much better ... but click inside
              defs does not work with firefox (bug reported for more
@@ -532,43 +531,45 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	);
 	Rbuffer.add_string svg_buf "</g>\n") a.anim_contents;
       Rbuffer.add_string svg_buf "</g>\n"
-  in
-  let ordered_map =
-    List.fold_left (fun m x->
-      let m'=try IntMap.find (- drawing_order x) m with Not_found->[] in
-      IntMap.add (- drawing_order x) (x::m') m
-    ) IntMap.empty (drawing_sort contents)
-  in
-  let comp a b=match a,b with
-      Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
-                         else compare gb.glyph_y ga.glyph_y
-    | Glyph ga,_-> -1
-    | _,Glyph gb->1
-    | _->0
-  in
-  let subsort a=match a with
-    | Link l->
-       let l = match l.link_kind with
-         | Button(Menu(items), name) ->
-            let items = List.map (fun (f,c) -> (f, List.sort comp c)) items in
-            let link_kind = Button(Menu(items), name) in
-            { l with link_kind }
-         | _ -> l
-       in
-       Link { l with link_contents=List.sort comp l.link_contents }
-    | b->b
-  in
-  IntMap.iter (fun _ l ->
-      List.iter output_contents_aux
-                (List.sort comp (List.map subsort l)))
-              ordered_map;
-  if !opened_tspan then (
-    Rbuffer.add_string svg_buf "</tspan>\n";
-  );
-  if !opened_text then (
-    Rbuffer.add_string svg_buf "</text>\n";
-  );
-  !imgs
+  and output_contents_ordered contents =
+    let ordered_map =
+      List.fold_left (fun m x->
+          let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
+          IntMap.add (drawing_order x) (x::m') m
+        ) IntMap.empty (drawing_sort contents)
+    in
+    let comp a b=match a,b with
+        Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
+                           else compare gb.glyph_y ga.glyph_y
+      | Glyph ga,_-> -1
+      | _,Glyph gb->1
+      | _->0
+    in
+    let subsort a=match a with
+      | Link l->
+         let l = match l.link_kind with
+           | Button(Menu(items), name) ->
+              let items = List.map (fun (f,c) -> (f, List.sort comp c)) items in
+              let link_kind = Button(Menu(items), name) in
+              { l with link_kind }
+           | _ -> l
+         in
+         Link { l with link_contents=List.sort comp l.link_contents }
+      | b->b
+    in
+    IntMap.iter (fun _ l ->
+        List.iter output_contents_aux
+                  (List.sort comp (List.map subsort l)))
+                ordered_map;
+    if !opened_tspan then (
+      Rbuffer.add_string svg_buf "</tspan>\n";
+    );
+    if !opened_text then (
+      Rbuffer.add_string svg_buf "</text>\n";
+    );
+    in
+    output_contents_ordered contents;
+    !imgs
   in
   let imgs = output_contents ~svg_buf contents in
   svg_buf,imgs

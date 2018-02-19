@@ -291,8 +291,8 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let dynCache = Hashtbl.create 101 in
 
   let dynContents d =
-    try Hashtbl.find dynCache d.dyn_label
-    with Not_found ->
+(*    try Hashtbl.find dynCache d.dyn_label
+    with Not_found ->*)
       let r = d.dyn_contents () in
       Hashtbl.add dynCache d.dyn_label r;
       r
