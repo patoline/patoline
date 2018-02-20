@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-PDF_DRIVERS_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(DRIVERS_INCLUDES) $(PACK_DRIVER_Pdf)
+PDF_DRIVERS_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG -I $(CONFIG_DIR) $(DRIVERS_INCLUDES) $(PACK_DRIVER_Pdf)
 
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PDF_DRIVERS_INCLUDES)
 

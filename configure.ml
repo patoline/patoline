@@ -40,15 +40,13 @@ let default_libdir   = get_config "lib"      "/usr/local/lib/ocaml"
 let default_stublibs = get_config "stublibs" "/usr/local/lib/ocaml/stublibs"
 let default_share    = get_config "share"    "/usr/local/share"
 
-let default_type3_only = false
-
 (* Command-line arguments parsing. *)
 let prefix     = ref ""
 let bindir     = ref ""
 let libdir     = ref ""
 let stublibs   = ref ""
 let share      = ref ""
-let type3_only = ref false
+let pdf_type3_only = ref false
 
 let spec =
   let open Printf in
@@ -73,8 +71,8 @@ let spec =
     , sprintf "dir Set the share directory (default is %s)." default_share)
 
   (* This option improves compatibility, but may worsen rasterization. *)
-  ; ( "--type3-only"
-    , Arg.Set type3_only
+  ; ( "--pdf-type3-only"
+    , Arg.Set pdf_type3_only
     , " Convert all fonts to vector graphics in PDFs.")
   ]
 
@@ -94,7 +92,7 @@ let bindir     = set_default !bindir   default_bindir   "bin"
 let libdir     = set_default !libdir   default_libdir   "lib/ocaml"
 let stublibs   = set_default !stublibs default_stublibs "lib/ocaml/stublibs"
 let share      = set_default !share    default_share    "share"
-let type3_only = !type3_only
+let pdf_type3_only = !pdf_type3_only
 
 let _ =
   Printf.printf "Using prefix   %s\n" prefix;
@@ -554,9 +552,8 @@ let _=
   (* Generation of src/Makefile.config *)
   let make = open_out "src/Makefile.config" in
 
-  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s\n"
-    (if Sys.word_size = 32  then "-DINT32 " else "")
-    (if type3_only then "-DPDF_TYPE3_ONLY " else "");
+  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s\n"
+    (if Sys.word_size = 32  then "-DINT32 " else "");
 
   Printf.fprintf make "CAMLZIP :=%s\n"
     (if ocamlfind_has "zip" then " " ^ (snd (ocamlfind_query "zip")) else "");
@@ -730,6 +727,7 @@ let _=
   fprintf oc "let extra_fonts_dir    = []\n";
   fprintf oc "let extra_grammars_dir = []\n";
   fprintf oc "let extra_hyphen_dir   = []\n";
+  fprintf oc "let pdf_type3_only     = %b\n" pdf_type3_only;
   let drivers = List.map (fun d -> d.name) ok_drivers in
   fprintf oc "let drivers            =\n  [%a]\n" plist drivers;
   fprintf oc "let formats            =\n  [%a]\n" plist formats;

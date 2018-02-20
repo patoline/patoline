@@ -19,9 +19,9 @@ all: $(d)/proof
 
 $(d)/%.depends: INCLUDES:=$(PROOF_INCLUDES)
 
-$(d)/proof: $(d)/proof.cmx $(UNICODE_DIR)/unicodelib.cmxa $(UTIL_DIR)/patutil.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(RAWLIB_DIR)/rawlib.cmxa
+$(d)/proof: $(d)/proof.cmx $(UNICODE_DIR)/unicodelib.cmxa $(UTIL_DIR)/patutil.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(RAWLIB_DIR)/rawlib.cmxa $(CONFIG_DIR)/patoconfig.cmxa
 	$(ECHO) "[NAT] $@"
-	$(Q)$(OCAMLOPT) $(PROOF_INCLUDES) -o $@ $(DRIVERS_DIR)/Pdf/Pdf.cmxa -linkpkg $<
+	$(Q)$(OCAMLOPT) $(PROOF_INCLUDES) -o $@ $(CONFIG_DIR)/patoconfig.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa -linkpkg $<
 
 # Installing
 install: install-proof
