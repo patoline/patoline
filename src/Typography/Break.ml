@@ -131,7 +131,9 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
     in
     collide 0 0 infinity
 
-    let typeset ?(initial_line=uselessLine) ~completeLine ~figures ~figure_parameters ~parameters ~new_page ~new_line ~badness ~states paragraphs=
+    let typeset ?(initial_line=uselessLine) ~completeLine ~figures
+      ~figure_parameters ~parameters ~new_page ~new_line ~badness ~states
+      (paragraphs : paragraph array) =
       if Array.length paragraphs=0 && Array.length figures=0 then ([],fst (frame_top initial_line.layout),IntMap.empty,MarkerMap.empty) else begin
       let colision_cache=ref ColMap.empty in
       let endNode=ref None in

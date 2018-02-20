@@ -18,6 +18,7 @@ module Spec = struct
     ; ("extra_fonts_dirs"   , of_list String extra_fonts_dir   )
     ; ("extra_grammars_dirs", of_list String extra_grammars_dir)
     ; ("extra_hyphen_dirs"  , of_list String extra_hyphen_dir  )
+    ; ("pdf_type3_only"     , of_bool pdf_type3_only           )
 
     ; ("drivers"    , of_list String drivers)
     ; ("formats"    , of_list String formats)
@@ -32,14 +33,15 @@ end
 module Conf = Make(Spec)
 
 type patoconfig =
-  { mutable fonts_dir    : string * string list
-  ; mutable grammars_dir : string * string list
-  ; mutable hyphen_dir   : string * string list
-  ; mutable drivers      : string list
-  ; mutable formats      : string list
-  ; mutable has_patonet  : bool
-  ; mutable max_iter     : int
-  ; mutable user_dir     : string }
+  { mutable fonts_dir      : string * string list
+  ; mutable grammars_dir   : string * string list
+  ; mutable hyphen_dir     : string * string list
+  ; mutable drivers        : string list
+  ; mutable formats        : string list
+  ; mutable has_patonet    : bool
+  ; mutable max_iter       : int
+  ; mutable user_dir       : string
+  ; mutable pdf_type3_only : bool }
 
 let debug = false
 
@@ -51,14 +53,15 @@ let patoconfig : patoconfig =
   let get_b k = to_bool (Config.get k cfg) in
   let get_i k = to_int (Config.get k cfg) in
   let get_l k = to_list String (Config.get k cfg) in
-  { fonts_dir    = (get_s "fonts_dir"   , get_l "extra_fonts_dirs"   )
-  ; grammars_dir = (get_s "grammars_dir", get_l "extra_grammars_dirs")
-  ; hyphen_dir   = (get_s "hyphen_dir"  , get_l "extra_hyphen_dirs"  )
-  ; drivers      = get_l "drivers"
-  ; formats      = get_l "formats"
-  ; has_patonet  = get_b "has_patonet"
-  ; max_iter     = get_i "max_iter"
-  ; user_dir     = get_s "user_dir" }
+  { fonts_dir      = (get_s "fonts_dir"   , get_l "extra_fonts_dirs"   )
+  ; grammars_dir   = (get_s "grammars_dir", get_l "extra_grammars_dirs")
+  ; hyphen_dir     = (get_s "hyphen_dir"  , get_l "extra_hyphen_dirs"  )
+  ; drivers        = get_l "drivers"
+  ; formats        = get_l "formats"
+  ; has_patonet    = get_b "has_patonet"
+  ; max_iter       = get_i "max_iter"
+  ; user_dir       = get_s "user_dir"
+  ; pdf_type3_only = get_b "pdf_type3_only" }
 
 let findPath ?(subdir=false) (path, paths) fname =
   if debug then Printf.eprintf "########## Looking for %S in:\n%!" fname;

@@ -793,7 +793,6 @@ let output ?(structure:structure=empty_structure) pages fname =
   in
   (* /Type 3 *)
 
-#ifndef PDF_TYPE3_ONLY
   (* Type 1C (CFF) *)
   let pdftype1c font var=
     try
@@ -869,16 +868,13 @@ let output ?(structure:structure=empty_structure) pages fname =
   (* /Type 1C (CFF) *)
 
   let fn k pdffont =
-    let pdftype = if is_cff pdffont.font then pdftype1c else pdftype3 in
+    let pdftype =
+      if not PatConfig.(patoconfig.pdf_type3_only) && is_cff pdffont.font
+      then pdftype1c
+      else pdftype3 in
     IntMap.iter (fun k _-> pdftype pdffont k) pdffont.pdfObjects
   in
   StrMap.iter fn !fonts;
-
-#else
-  StrMap.iter (fun k pdffont->
-    IntMap.iter (fun k _->pdftype3 pdffont k) pdffont.pdfObjects
-  ) !fonts;
-#endif
 
 
   (*

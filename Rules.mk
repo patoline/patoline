@@ -121,7 +121,7 @@ OCAMLOPT_NOINTF = $(OCAMLOPT_SIMPLE) $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLOPT = $(OCAMLOPT_NOINTF) $(if $(OCPP),-pp '$(OCPP)',) -intf-suffix .cmi
 OCAMLDEP = ocamlfind ocamldep $(if $(OCPP),-pp '$(OCPP)',) $(OCAMLDEPEXTRAS)
 OCAMLMKLIB = ocamlfind ocamlmklib
-OCAMLDOC = ocamlfind ocamldoc $(if $(OCPP),-pp '$(OCPP)',)
+OCAMLDOC = ocamlfind ocamldoc
 OCAMLYACC = ocamlyacc
 OCAMLLEX = ocamllex
 PA_OCAML = pa_ocaml
@@ -140,6 +140,11 @@ export OCAMLFIND_IGNORE_DUPS_IN
 # Sanity tests, empty for now
 .PHONY: check
 check:
+
+# Building documentation
+doc:
+	$(OCAMLDOC) -charset utf-8 -package imagelib -d doc/html/Typography -html -I src/config -I src/Typography -I src/unicodelib -I src/patfonts -I src/patutil -I src/rawlib -I src/db src/Typography/*.ml src/Typography/*/*.ml src/Typography/*.mli src/db/*.ml
+
 
 # The following declarations are necessary to make $(CLEAN) and
 # $(DISTCLEAN) immediate variables (i.e., right hand side of the

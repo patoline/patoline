@@ -2,6 +2,19 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
+# Compute ML files dependencies
+SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
+DEPS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
+
+$(DEPS_$(d)): private INCLUDES += $(CONFIG_DIR)
+
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
+-include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
+
+
 # Building everything
 all: $(d)/patoconfig.cma $(d)/patoconfig.cmxa
 
@@ -47,7 +60,7 @@ $(d)/patoconfig.cmxa: $(d)/configRC.cmx $(d)/patDefault.cmx $(d)/patConfig.cmx
 
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs
-DISTCLEAN += $(d)/patDefault.ml
+DISTCLEAN += $(d)/patDefault.ml $(wildcard $(d)/*.depends)
 
 # Installing
 install: install-config

@@ -7,8 +7,18 @@ DB_INCLUDES := -I $(d) $(PACK_DB)
 $(d)/%.depends: INCLUDES:=$(DEPS_DIR)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(DB_INCLUDES)
 
+DB_MODS:= Db DbMemory DbSqlite3
+ifdef MYSQL_ENABLED
+  DB_MODS += DbMysql
+endif
+
+DB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(DB_MODS)))
+DB_CMO:=$(DB_ML:.ml=.cmo)
+DB_CMX:=$(DB_ML:.ml=.cmx)
+DB_CMI:=$(DB_ML:.ml=.cmi)
+
 # Compute ML files dependencies
-SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
+SRC_$(d) := $(DB_ML)
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
@@ -17,13 +27,6 @@ endif
 endif
 
 # Building
-DB_MODS:= Db
-
-DB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(DB_MODS)))
-
-DB_CMO:=$(DB_ML:.ml=.cmo)
-DB_CMX:=$(DB_ML:.ml=.cmx)
-DB_CMI:=$(DB_ML:.ml=.cmi)
 
 $(d)/db.cma: $(DB_CMO)
 	$(ECHO) "[LNK] $@"
