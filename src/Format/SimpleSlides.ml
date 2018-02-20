@@ -1,6 +1,5 @@
 open RawContent
-open Util
-open UsualMake
+open Extra
 
 open Typography
 open Typography.Box
@@ -45,9 +44,9 @@ module Format(D:DocumentStructure) =
         let g = match c with
           | Arabic -> string_of_int
           | AlphaLower -> Numerals.alphabetic ~capital:false
-	        | AlphaUpper -> Numerals.alphabetic ~capital:true
-	        | RomanLower -> Numerals.roman ~capital:false
-	        | RomanUpper -> Numerals.roman ~capital:true
+          | AlphaUpper -> Numerals.alphabetic ~capital:true
+          | RomanLower -> Numerals.roman ~capital:false
+          | RomanUpper -> Numerals.roman ~capital:true
         let from_counter x =
           let x = List.hd x + 1 in f (g x)
       end)

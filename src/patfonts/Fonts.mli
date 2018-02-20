@@ -10,7 +10,7 @@
     informations such as their outlines. *)
 
 (** Type font *)
-open UsualMake
+open Extra
 open FTypes
 
 type font
@@ -80,7 +80,7 @@ type fontInfo
 
 val fontInfo : font -> fontInfo
 
-val subset : font -> fontInfo -> int IntMap.t -> glyph_id array -> Rbuffer.t
+val subset : font -> fontInfo -> int IntMap.t -> glyph_id array -> Buffer.t
 
 val setName : fontInfo -> name -> unit
 

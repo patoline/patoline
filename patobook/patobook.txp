@@ -1,0 +1,151 @@
+(* #FORMAT FormatThese *)
+(* #PACKAGE bibi *)
+
+(*
+
+Il reste à faire :
+
+- Diagrams.
+
+- Césures
+
+- Écrire des formats
+
+- Faire des exercices de dessins récursifs où on explose TeX (par
+  exemple avec dot).
+
+- Une fois qu'on aura le nouveau parser, sa doc.
+
+- Montrer comment changer le langage : écrire un parser jouet.
+
+*)
+
+==============================
+The Patobook
+-----------------------------
+Pierre-Etienne Meunier
+==============================
+
+\Caml(
+  open Bibi
+  let _=
+    let _=Sys.command "bibi biblio.bib" in
+    bibfile "biblio.bibi"
+  module Bib=BiblioNames
+  open Bib
+
+  open Patoline_Output
+  open Typography.Box
+  open Extra
+
+  let couverture=
+    bB (fun env0->
+      let w4,h4=Util.a4 in
+      let img="titlepato.png" in
+      let wesci,hesci = ImageLib.size img in
+      let wesc = float_of_int wesci and hesc = float_of_int hesci in
+      let alpha=0.2 in
+
+      let i={image_file=img;
+             image_width=(wesc*.alpha);
+             image_height=(hesc*.alpha);
+	     image_pixel_width=wesci;
+	     image_pixel_height=hesci;
+             image_x=0.;
+             image_y=0.;
+             image_order=0
+            }
+      in
+
+      let pageContents =
+        [RawContent.translate (w4/.2.-.wesc*.alpha/.2.) (h4/.4.) (Image i)] in
+
+      let title =
+        Document.draw {defaultEnv with size=30.} <<Patobook>>
+      in
+      let by=
+        upper_y (List.hd (boxify_scoped {defaultEnv with size=30.} <<P>>))
+      in
+      let the=
+        let features = Some [] in
+        Document.draw (envAlternative ?features Caps {defaultEnv with size=10.}) <<The>>
+      in
+      let ey=
+        let features = Some [] in
+        upper_y (List.hd (boxify_scoped (envAlternative ?features Caps {defaultEnv with size=10.}) <<e>>))
+      in
+      let x0,y0,x1,y1=bounding_box title in
+      let x0',y0',x1',y1'=bounding_box the in
+      let patox=(w4-.x1+.x0)/.2. in
+      let patoy=(3.*.h4/.4.) in
+      let pageContents : RawContent.raw list =
+        List.map (RawContent.translate (patox-.x1'-.3.) (patoy+.by-.ey)) the@
+        List.map (RawContent.translate patox patoy) title@pageContents
+      in
+      let authors=
+        node [
+          paragraph ~parameters:ragged_right [tT "Tom Hirschowitz"];
+          paragraph ~parameters:ragged_right [tT "Pierre-Etienne Meunier"];
+          paragraph ~parameters:ragged_right [tT "Christophe Raffalli"];
+        ]
+      in
+      let fsize=5. in
+      let aut_cont =
+        let mod_env env = {envSize fsize env with par_indent = []} in
+        let env_mod = Some mod_env in
+        OutputDrawing.minipage ?env_mod authors
+      in
+      let aut_cont = Document.draw defaultEnv aut_cont in
+      let autx0,_,autx1,auty1 = bounding_box aut_cont in
+      let pageContents : RawContent.raw list =
+        List.map (RawContent.translate (w4-.(patox+.x1'-.3.)-.autx1) (patoy+.y0-.auty1-.fsize*.phi))
+        aut_cont@pageContents
+      in
+      let pageContents=List.map (RawContent.translate (-.env0.normalLeftMargin) (27.-.h4)) (List.rev pageContents) in
+      [Drawing {
+        drawing_min_width=0.;
+        drawing_nominal_width=0.;
+        drawing_max_width=0.;
+        drawing_width_fixed=true;drawing_adjust_before=false;
+        drawing_y0=0.;drawing_y1=0.;
+        drawing_badness=(fun _->0.);
+        drawing_contents=(fun _->pageContents);
+	drawing_break_badness = 0.0;
+	drawing_states = [];
+       }]
+    )
+  let param a b c d e f g line = {(Patoline_Format.parameters a b c d e f g line) with min_page_before=0;min_page_after=1; left_margin = 0.0}
+
+  let new_page_first env={env with par_indent = [];
+    (* new_page=(fun t->Box.make_page env.normalPageFormat (frame_top t))*) }
+
+  let _ = newPar D.structure ~environment:new_page_first Complete.normal param [couverture]
+
+)
+
+\Include{Introduction}
+\Include{FirstDocuments}
+\Include{PatoMaths}
+\Include{Programming}
+\Include{Drawings}
+\Include{Typesetting}
+\Include{Extending}
+\Include{Editors}
+
+=> License
+
+Patoline itself is distributed under the terms of the Gnu General Public License.
+
+(* FIXME (syntax)
+This work is licensed under the Creative Commons Attribution - Pas d’Utilisation Commerciale - Partage dans les Mêmes Conditions 3.0 France License. To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/3.0/fr/.
+*)
+
+=<
+
+=> Bibliography
+
+\Caml(
+module X=TheBibliography(D)
+)
+
+=<

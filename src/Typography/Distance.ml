@@ -228,7 +228,7 @@ let profile_union (dsup, dinf) c1 c2 =
     det22 dsup (p1 -- p2) >= 1e-8 &&
     match c2 with 
       p2'::_ ->
-	det22 (p1 -- p2) (p2' -- p2) >= 1e-8 && det22 (p1 -- p2') dinf >= 1e-8
+        det22 (p1 -- p2) (p2' -- p2) >= 1e-8 && det22 (p1 -- p2') dinf >= 1e-8
     | _ ->  det22 (p1 -- p2) dinf >= 1e-8
   in
 
@@ -251,10 +251,10 @@ let profile_union (dsup, dinf) c1 c2 =
 
     let acc1, acc2 = 
       try 
-	let o1 = hn acc1 c1 in
-	let o2 = hn acc2 c2 in
-	let i = inter o1 o2 in
-	(push i acc1), (push i acc2)
+        let o1 = hn acc1 c1 in
+        let o2 = hn acc2 c2 in
+        let i = inter o1 o2 in
+        (push i acc1), (push i acc2)
       with Not_found -> acc1, acc2
     in
 
@@ -262,13 +262,13 @@ let profile_union (dsup, dinf) c1 c2 =
     | (p1::c1'), (p2::c2') ->
       let x1 = dot_prod p1 vert and x2 = dot_prod p2 vert in
       if x1 <= x2 then
-	gn (push p1 acc1) c1' acc2 c2
+        gn (push p1 acc1) c1' acc2 c2
       else
-	gn acc1 c1 (push p2 acc2) c2'
+        gn acc1 c1 (push p2 acc2) c2'
     | (p1::c1'), [] ->
-	gn (push p1 acc1) c1' acc2 c2
+        gn (push p1 acc1) c1' acc2 c2
     | [], (p2::c2') ->
-	gn acc1 c1 (push p2 acc2) c2'
+        gn acc1 c1 (push p2 acc2) c2'
     | [], [] ->
         acc1, acc2
 
@@ -287,19 +287,19 @@ let profile_union (dsup, dinf) c1 c2 =
     match c1, c2 with
     | p1::c1', p2::c2' ->
       if eliminate p2 c2' p1 then
-	fn acc c1' c2
+        fn acc c1' c2
       else if eliminate p1 c1' p2 then
-	fn acc c1 c2'
+        fn acc c1 c2'
       else
-	let x1 = dot_prod p1 vert and x2 = dot_prod p2 vert in
-	if x1 >= x2 then
-	  fn (push p1 acc) c1' c2
-	else
-	  fn (push p2 acc) c1 c2'
+        let x1 = dot_prod p1 vert and x2 = dot_prod p2 vert in
+        if x1 >= x2 then
+          fn (push p1 acc) c1' c2
+        else
+          fn (push p2 acc) c1 c2'
       | [], p2::c2' -> 
-	fn (push p2 acc) c1 c2'
+        fn (push p2 acc) c1 c2'
       | p1::c1', [] ->
-	fn (push p1 acc) c1' c2
+        fn (push p1 acc) c1' c2
       | [], [] -> acc
 
   in fn [] c1 c2)
@@ -349,12 +349,12 @@ let bezier_profile (dsup,dinf as dirs) epsilon curves0 =
     let curve = Array.of_list curve in
     let rec gn i j =
       if i = j then (
-	let xa, ya = curve.(i) in
-	let len = Array.length xa in
-	segment_profile dirs (xa.(0), ya.(0)) (xa.(len - 1), ya.(len - 1))
+        let xa, ya = curve.(i) in
+        let len = Array.length xa in
+        segment_profile dirs (xa.(0), ya.(0)) (xa.(len - 1), ya.(len - 1))
       ) else (
-	let k = (i + j) / 2 in
-	profile_union (dsup,dinf) (gn i k) (gn (k+1) j))
+        let k = (i + j) / 2 in
+        profile_union (dsup,dinf) (gn i k) (gn (k+1) j))
     in
     profile_union dirs acc (gn 0 (Array.length curve - 1))) [] curves
   in
@@ -515,8 +515,8 @@ let eqdist d p o i1 i2 extras =
       let n = comblin 1.0 q r1 v in
       let s = dot_prod (n -- r) w0  /. norm2 w0 in 
       if !debug_mediatrice then
-	Printf.fprintf stderr "eqdist:  r = %f n = %a s = %f one root a = 0\n"
-	  r1 print_pt n s;
+        Printf.fprintf stderr "eqdist:  r = %f n = %a s = %f one root a = 0\n"
+          r1 print_pt n s;
       if in_range o s then s, n
       else raise Not_found
     else
@@ -525,8 +525,8 @@ let eqdist d p o i1 i2 extras =
       let r1 = (-. b' -. sq) /. a in
       let r2 = (-. b' +. sq) /. a in
       if !debug_mediatrice then
-	Printf.fprintf stderr "eqdist: d = %a p = %a o = %a\n  delta = %e r1 = %f r2 = %f\n"
-	  print_obj d print_pt p print_obj o delta' r1 r2;
+        Printf.fprintf stderr "eqdist: d = %a p = %a o = %a\n  delta = %e r1 = %f r2 = %f\n"
+          print_obj d print_pt p print_obj o delta' r1 r2;
       if delta' < 0.0 then raise Not_found;
       let n1 = comblin 1.0 q r1 v in
       let n2 = comblin 1.0 q r2 v in
@@ -535,16 +535,16 @@ let eqdist d p o i1 i2 extras =
       let x1 = dot_prod (n1 -- i1) (i2 -- i1) /. norm2 (i1 -- i2) in
       let x2 = dot_prod (n2 -- i1) (i2 -- i1) /. norm2 (i1 -- i2) in
       if !debug_mediatrice then
-	Printf.fprintf stderr "  n1 = %a n2 = %a \n  s1 = %f s2 = %f\n"
-	  print_pt n1 print_pt n2 s1 s2;
+        Printf.fprintf stderr "  n1 = %a n2 = %a \n  s1 = %f s2 = %f\n"
+          print_pt n1 print_pt n2 s1 s2;
       if !debug_mediatrice then
-	Printf.fprintf stderr "  x1 = %f x2 = %f\n" x1 x2;
+        Printf.fprintf stderr "  x1 = %f x2 = %f\n" x1 x2;
 
       match 
-	in_range o s1 && x1 > -1e-8 && x1 <= 1. +. 1e-8 && extras n1,
-	in_range o s2 && x2 > -1e-8 && x2 <= 1. +. 1e-8 && extras n2
+        in_range o s1 && x1 > -1e-8 && x1 <= 1. +. 1e-8 && extras n1,
+        in_range o s2 && x2 > -1e-8 && x2 <= 1. +. 1e-8 && extras n2
       with
-	true, false -> s1, n1
+        true, false -> s1, n1
       | false, true -> s2, n2
       | true, true when s1 < s2 -> s2, n2
       | true, true -> s1, n1
@@ -581,7 +581,7 @@ let mediatrice_profile (dsup,dinf) profile1 profile2 =
     let _, v = carrier o2 in
     if near r2 q2 || abs_float (det22 v (r2 -- q2) /. (norm v *. norm (r2 -- q2))) < 1e-6 then (
       if !debug_mediatrice then
-	Printf.fprintf stderr "Removed created point det = %f\n" (abs_float (det22 v (r2 -- q2)) /. (norm v *. norm (r2 -- q2)));
+        Printf.fprintf stderr "Removed created point det = %f\n" (abs_float (det22 v (r2 -- q2)) /. (norm v *. norm (r2 -- q2)));
       cut' q2 o2, c2)
     else
       Segment(r2,q2), r2::c2
@@ -601,12 +601,12 @@ let mediatrice_profile (dsup,dinf) profile1 profile2 =
   let rec fn acc state c1 c2 =
     if !debug_mediatrice then 
       Printf.fprintf stderr "state = %a\n c1 = %a\n c2 = %a\n acc = %a\n\n"
-	print_st state print_pt' c1 print_pt' c2 (fun ch -> List.iter (fun (x,i,y) ->
-	  Printf.fprintf ch "(%a,%a,%a) " print_pt x print_pt i print_pt y)) acc;
+        print_st state print_pt' c1 print_pt' c2 (fun ch -> List.iter (fun (x,i,y) ->
+          Printf.fprintf ch "(%a,%a,%a) " print_pt x print_pt i print_pt y)) acc;
 
       (try ignore (inter (oleft state) (oright state)); 
-	   if !debug_mediatrice then Printf.fprintf stderr "Finished(Exit)\n";
-	   raise Exit 
+           if !debug_mediatrice then Printf.fprintf stderr "Finished(Exit)\n";
+           raise Exit 
        with Not_found -> ());
 
     match state with
@@ -617,64 +617,64 @@ let mediatrice_profile (dsup,dinf) profile1 profile2 =
       let _, w' = carrier o2 in
       let w = rotate_90 w' in
       if !debug_mediatrice then 
-	Printf.fprintf stderr "  b = %a\n" print_obj b;
+        Printf.fprintf stderr "  b = %a\n" print_obj b;
       match c1, c2 with 
       | [], [] -> 
-	  List.rev acc
+          List.rev acc
 
       | (p1::c1'), [] -> 
 
-	let i = try inter b (Line(p1,v)) with Not_found -> assert false in
-	let p2 = try inter o2 (Line(i,w)) with Not_found -> assert false in
-	fn ((p1,i,p2)::acc) (LeftParabola(p1,next dsup p1 c1',cut' p2 o2)) c1' c2
+        let i = try inter b (Line(p1,v)) with Not_found -> assert false in
+        let p2 = try inter o2 (Line(i,w)) with Not_found -> assert false in
+        fn ((p1,i,p2)::acc) (LeftParabola(p1,next dsup p1 c1',cut' p2 o2)) c1' c2
 
       |  [], (p2::c2') -> 
 
-	let i = try inter b (Line(p2,w)) with Not_found -> assert false in
-	let p1 = try inter o1 (Line(i,v)) with Not_found -> assert false in
-	fn ((p1,i,p2)::acc) (RightParabola(cut' p1 o1, next dsup' p2 c2', p2)) c1 c2'
+        let i = try inter b (Line(p2,w)) with Not_found -> assert false in
+        let p1 = try inter o1 (Line(i,v)) with Not_found -> assert false in
+        fn ((p1,i,p2)::acc) (RightParabola(cut' p1 o1, next dsup' p2 c2', p2)) c1 c2'
 
       | (p1::c1'), (p2::c2') -> 
 
-	let _, vb = carrier b in
-	let x = dot_prod (p1 -- p2) vb in
-	if abs_float x < 1e-8 then
-	  let i = try inter b (Line(p2,w)) with Not_found -> assert false in
-	  fn ((p1,i,p2)::acc) (Mediatrice(p1, next dsup p1 c1', next dsup' p2 c2', p2)) c1' c2'
-	else if x > 0.0 then
-	  let i = try inter b (Line(p1,v)) with Not_found -> assert false in
-	  let n2 = try inter o2 (Line(i,w)) with Not_found -> assert false in
-	  fn ((p1,i,n2)::acc) (LeftParabola(p1,next dsup p1 c1',cut' n2 o2)) c1' c2
-	else
-	  let i = try inter b (Line(p2,w)) with Not_found -> assert false in
-	  let n1 = try inter o1 (Line(i,v)) with Not_found -> assert false in
-	  fn ((n1,i,p2)::acc) (RightParabola(cut' n1 o1, next dsup' p2 c2', p2)) c1 c2')
+        let _, vb = carrier b in
+        let x = dot_prod (p1 -- p2) vb in
+        if abs_float x < 1e-8 then
+          let i = try inter b (Line(p2,w)) with Not_found -> assert false in
+          fn ((p1,i,p2)::acc) (Mediatrice(p1, next dsup p1 c1', next dsup' p2 c2', p2)) c1' c2'
+        else if x > 0.0 then
+          let i = try inter b (Line(p1,v)) with Not_found -> assert false in
+          let n2 = try inter o2 (Line(i,w)) with Not_found -> assert false in
+          fn ((p1,i,n2)::acc) (LeftParabola(p1,next dsup p1 c1',cut' n2 o2)) c1' c2
+        else
+          let i = try inter b (Line(p2,w)) with Not_found -> assert false in
+          let n1 = try inter o1 (Line(i,v)) with Not_found -> assert false in
+          fn ((n1,i,p2)::acc) (RightParabola(cut' n1 o1, next dsup' p2 c2', p2)) c1 c2')
 
      | LeftParabola(p1,o1,o2) -> (
        let _, w' = carrier o1 in
        let w = rotate_90 w' in
        try 
-	 let i, n2 = advance_parabola p1 o2 w in
-	 fn ((p1,i,n2)::acc) (Bissectrice(o1,cut' n2 o2)) c1 c2
+         let i, n2 = advance_parabola p1 o2 w in
+         fn ((p1,i,n2)::acc) (Bissectrice(o1,cut' n2 o2)) c1 c2
        with
        | Not_found -> fn acc (LeftBack(p1,o1,o2)) c1 c2
        | Extrem -> 
-	   match c2 with [] -> assert false | p2::c2' ->
-	     let i = find_parabola p1 o2 p2 in
-	     fn ((p1,i,p2)::acc) (Mediatrice(p1,o1,next dsup' p2 c2',p2)) c1 c2')
+           match c2 with [] -> assert false | p2::c2' ->
+             let i = find_parabola p1 o2 p2 in
+             fn ((p1,i,p2)::acc) (Mediatrice(p1,o1,next dsup' p2 c2',p2)) c1 c2')
 
      | RightParabola(o1,o2,p2) -> (
        let _, w' = carrier o2 in
        let w = rotate_270 w' in
        try
-	 let i, n1 = advance_parabola p2 o1 w in
-	 fn ((n1,i,p2)::acc) (Bissectrice(cut' n1 o1,o2)) c1 c2
+         let i, n1 = advance_parabola p2 o1 w in
+         fn ((n1,i,p2)::acc) (Bissectrice(cut' n1 o1,o2)) c1 c2
        with
        | Not_found -> fn acc (RightBack(o1,o2,p2)) c1 c2
        | Extrem -> 
-	   match c1 with [] -> assert false | p1::c1' ->
-	     let i = find_parabola p2 o1 p1 in
-	     fn ((p1,i,p2)::acc) (Mediatrice(p1,next dsup p1 c1', o2, p2)) c1' c2)
+           match c1 with [] -> assert false | p1::c1' ->
+             let i = find_parabola p2 o1 p1 in
+             fn ((p1,i,p2)::acc) (Mediatrice(p1,next dsup p1 c1', o2, p2)) c1' c2)
 
      | Mediatrice(p1,o1,o2,p2) ->
        let m = mediatrice p1 p2 in
@@ -690,11 +690,11 @@ let mediatrice_profile (dsup,dinf) profile1 profile2 =
        let x2 = dot_prod v2' v in
        let x = x2 -. x1 in
        let u1,i,u2 = match acc with
-	   (r1,i,r2)::(q1,_,q2)::_ -> 
-	     let s = 1. /. norm (r1 -- r2) in
-	       sprod s (q1 -- r1), i, sprod s (q2 -- r2)
-	 | [_,i,_] -> dinf,i,dinf'
-	 | _ -> assert false
+           (r1,i,r2)::(q1,_,q2)::_ -> 
+             let s = 1. /. norm (r1 -- r2) in
+               sprod s (q1 -- r1), i, sprod s (q2 -- r2)
+         | [_,i,_] -> dinf,i,dinf'
+         | _ -> assert false
        in
        let b1 = abs_float (det22 u1 v1) < 1e-8 in
        let b2 = abs_float (det22 u2 v2) < 1e-8 in
@@ -704,209 +704,209 @@ let mediatrice_profile (dsup,dinf) profile1 profile2 =
        if !debug_mediatrice then Printf.fprintf stderr "x1 = %f, x2 = %f, b1 = %b, b2 = %b\n" x1 x2 b1 b2;
 
        (if abs_float x < 1e-7 then
-	 try let i1 = try inter m (Line(p1,v1')) with Not_found -> assert false in
-	   if b1' && b2' &&  dot_prod (i1 -- i) v /. norm (p1 -- p2) > -1e-6 then
-	     fn ((p1,i1,p2)::acc) (Bissectrice(o1,o2)) c1 c2
-	   else raise Not_found
-	 with Not_found ->
-	   if x > 0.0 then 
-	     fn acc (LeftBack(p1,o1,o2)) c1 c2
-	   else
-	     fn acc (RightBack(o1,o2,p2)) c1 c2
+         try let i1 = try inter m (Line(p1,v1')) with Not_found -> assert false in
+           if b1' && b2' &&  dot_prod (i1 -- i) v /. norm (p1 -- p2) > -1e-6 then
+             fn ((p1,i1,p2)::acc) (Bissectrice(o1,o2)) c1 c2
+           else raise Not_found
+         with Not_found ->
+           if x > 0.0 then 
+             fn acc (LeftBack(p1,o1,o2)) c1 c2
+           else
+             fn acc (RightBack(o1,o2,p2)) c1 c2
        else if x > 0.0 then
-	 try let i1 = inter m (Line(p1,v1')) in
-	     if !debug_mediatrice then Printf.fprintf stderr "i1 = %a v = %a\n" print_pt i1 print_pt v;
-	     if b1' && (b1 ||  dot_prod (i1 -- i) v /. norm (p1 -- p2) > -1e-6) then
-	       fn ((p1,i1,p2)::acc) (RightParabola(o1,o2,p2)) c1 c2
-	     else raise Not_found
-	 with Not_found -> 
-	   fn acc (LeftBack(p1,o1,o2)) c1 c2
+         try let i1 = inter m (Line(p1,v1')) in
+             if !debug_mediatrice then Printf.fprintf stderr "i1 = %a v = %a\n" print_pt i1 print_pt v;
+             if b1' && (b1 ||  dot_prod (i1 -- i) v /. norm (p1 -- p2) > -1e-6) then
+               fn ((p1,i1,p2)::acc) (RightParabola(o1,o2,p2)) c1 c2
+             else raise Not_found
+         with Not_found -> 
+           fn acc (LeftBack(p1,o1,o2)) c1 c2
        else
-	 try let i2 = inter m (Line(p2,v2')) in
-	     if !debug_mediatrice then Printf.fprintf stderr "i' = %a v = %a\n" print_pt i2 print_pt v;
-	     if b2' && (b2 || dot_prod (i2 -- i) v /. norm (p1 -- p2) > -1e-6) then 
-	       fn ((p1,i2,p2)::acc) (LeftParabola(p1,o1,o2)) c1 c2
-	     else raise Not_found
-	 with Not_found -> 
-	     fn acc (RightBack(o1,o2,p2)) c1 c2)
+         try let i2 = inter m (Line(p2,v2')) in
+             if !debug_mediatrice then Printf.fprintf stderr "i' = %a v = %a\n" print_pt i2 print_pt v;
+             if b2' && (b2 || dot_prod (i2 -- i) v /. norm (p1 -- p2) > -1e-6) then 
+               fn ((p1,i2,p2)::acc) (LeftParabola(p1,o1,o2)) c1 c2
+             else raise Not_found
+         with Not_found -> 
+             fn acc (RightBack(o1,o2,p2)) c1 c2)
      
      | LeftBack(p1,o1,o2) -> (
        match c1, acc with
-	 [], _ | _, [] | _, [_] -> assert false
+         [], _ | _, [] | _, [_] -> assert false
        | (oq1::c1'), ((r1,i1,r2)::((q1,i2,q2)::_ as acc')) ->
 
-	 (try let i = project i1 o1 in
-	      if norm2 (i1 -- r1) +. 1e-5 < norm2 (i1 -- i) then (
-		Printf.fprintf stderr "Back too far (i = %a) %e\n" print_pt i (norm (i1 -- r1) -. norm (i1 -- i)); assert false)
-	  with Not_found -> ());
+         (try let i = project i1 o1 in
+              if norm2 (i1 -- r1) +. 1e-5 < norm2 (i1 -- i) then (
+                Printf.fprintf stderr "Back too far (i = %a) %e\n" print_pt i (norm (i1 -- r1) -. norm (i1 -- i)); assert false)
+          with Not_found -> ());
 
-	 try 
-	   if i1 == i2 then raise Not_found;
-	   if near r1 q1 then
-	     if near r2 q2 then
-	       let m = mediatrice r1 r2 in
-	       try
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Mediatrice inter\n";
-		 let i, on1 = eqdist m r2 o1 i1 i2 ftrue in
-		 if !debug_mediatrice then Printf.fprintf stderr "Mediatrice inter\n";
-  		 let o1', c1', p1' = forward on1 oq1 c1 c1' in
-		 fn (cons2 on1 r1 i r2 r2 acc') (Mediatrice(p1',o1',o2,r2)) c1' c2
-	       with Not_found ->
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Mediatrice extremity\n";
-		 let i = inter (Segment(i1,i2)) (mediatrice oq1 r2) in
-		 if not (fortho o1 i) then raise Not_found;
-		 if !debug_mediatrice then Printf.fprintf stderr "Mediatrice extremity\n";
-		 fn (cons2 oq1 r1 i r2 r2 acc') (Mediatrice(oq1,next dsup oq1 c1',o2,r2)) c1' c2
-	     else
-	       try
-		 let b = bissectrice o1 (Segment(r2,q2)) in
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola opp inter\n";
-		 let i, on1 = eqdist b r1 o1 i1 i2 (frange (Segment(r2,q2))) in
-		 let n2 = project i (Segment(r2,q2)) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Parabola opp inter\n";
-		 let o2', c2' = back o2 r2 n2 c2 in
-  		 let o1', c1', p1' = forward on1 oq1 c1 c1' in
-		 fn (cons2 on1 r1 i n2 n2 acc') (Mediatrice(p1',o1',o2',n2)) c1' c2'
-	       with Not_found ->
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola opp extremity\n";
-		 let m = mediatrice oq1 r1 in
-		 let i, n2 = eqdist m oq1 (Segment(r2,q2)) i1 i2 (fortho o1) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Parabola opp extremity\n";
-		 let o2', c2' = back o2 r2 n2 c2 in
-		 fn (cons2 oq1 r1 i n2 n2 acc') (Mediatrice(oq1,next dsup oq1 c1',o2',n2)) c1' c2'
-	   else
-	     let b = bissectrice o1 (Segment(q1,r1)) in
-	     if near r2 q2 then
-	       try
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola inter\n";
-		 let i, on1 = eqdist b r2 o1 i1 i2 (frange (Segment(r1,q1))) in
-		 let n1 = project i (Segment(r1,q1)) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Parabola inter\n";
-  		 let o1', c1', p1' = forward on1 oq1 c1 c1' in
-		 fn (cons2 on1 n1 i r2 r2 acc') (Mediatrice(p1',o1',o2,r2)) c1' c2
-	       with Not_found ->
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola extremity\n";
-		 let m = mediatrice oq1 r2 in
-		 let i, n1 = eqdist m oq1 (Segment(r1,q1)) i1 i2 (fortho o1) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Parabola extremity\n";
-		 fn (cons2 oq1 n1 i r2 r2 acc') (Mediatrice(oq1,next dsup oq1 c1',o2,r2)) c1' c2
-	     else
-	       let m = bissectrice (Segment(r1,q1)) (Segment(r2,q2)) in
-	       try
-		 if !debug_mediatrice then Printf.fprintf stderr "Try Bissectrice inter b = %a\n" print_obj b;
-		 let i = inter b m in
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY(2) Bissectrice inter i = %a\n"  print_pt i;
-		 let on1 = project i o1 in
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY(3) Bissectrice inter on1 = %a oq1 = %a\n" print_pt on1 print_pt oq1;
-		 let n1 = project i (Segment(r1,q1)) in
-		 let n2 = project i (Segment(r2,q2)) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Bissectrice inter\n";
-		 let o2', c2' = back o2 r2 n2 c2 in
-  		 let o1', c1', p1' = forward on1 oq1 c1 c1' in
-		 fn (cons2 on1 n1 i n2 n2 acc') (Mediatrice(p1',o1',o2',n2)) c1' c2'
-	       with Not_found ->
-		 if !debug_mediatrice then Printf.fprintf stderr "Try Bissectrice extremity\n";
-		 let i, n2 = eqdist m oq1 (Segment(r2,q2)) i1 i2 (fand (fortho o1) (frange (Segment(r1,q1)))) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Try(2) Bissectrice extremity i = %a\n"  print_pt i;
-		 let n1 = project i (Segment(r1,q1)) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Bissectrice extremity\n";
-		 let o2', c2' = back o2 r2 n2 c2 in
-		 fn (cons2 oq1 n1 i n2 n2 acc') (Mediatrice(oq1,next dsup oq1 c1',o2',n2)) c1' c2'
-		 
-	 with Not_found ->
-	   let o2', c2' = back o2 r2 q2 c2 in
-	   fn acc' (LeftBack(p1,o1,o2')) c1 c2')
+         try 
+           if i1 == i2 then raise Not_found;
+           if near r1 q1 then
+             if near r2 q2 then
+               let m = mediatrice r1 r2 in
+               try
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Mediatrice inter\n";
+                 let i, on1 = eqdist m r2 o1 i1 i2 ftrue in
+                 if !debug_mediatrice then Printf.fprintf stderr "Mediatrice inter\n";
+                   let o1', c1', p1' = forward on1 oq1 c1 c1' in
+                 fn (cons2 on1 r1 i r2 r2 acc') (Mediatrice(p1',o1',o2,r2)) c1' c2
+               with Not_found ->
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Mediatrice extremity\n";
+                 let i = inter (Segment(i1,i2)) (mediatrice oq1 r2) in
+                 if not (fortho o1 i) then raise Not_found;
+                 if !debug_mediatrice then Printf.fprintf stderr "Mediatrice extremity\n";
+                 fn (cons2 oq1 r1 i r2 r2 acc') (Mediatrice(oq1,next dsup oq1 c1',o2,r2)) c1' c2
+             else
+               try
+                 let b = bissectrice o1 (Segment(r2,q2)) in
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola opp inter\n";
+                 let i, on1 = eqdist b r1 o1 i1 i2 (frange (Segment(r2,q2))) in
+                 let n2 = project i (Segment(r2,q2)) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Parabola opp inter\n";
+                 let o2', c2' = back o2 r2 n2 c2 in
+                   let o1', c1', p1' = forward on1 oq1 c1 c1' in
+                 fn (cons2 on1 r1 i n2 n2 acc') (Mediatrice(p1',o1',o2',n2)) c1' c2'
+               with Not_found ->
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola opp extremity\n";
+                 let m = mediatrice oq1 r1 in
+                 let i, n2 = eqdist m oq1 (Segment(r2,q2)) i1 i2 (fortho o1) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Parabola opp extremity\n";
+                 let o2', c2' = back o2 r2 n2 c2 in
+                 fn (cons2 oq1 r1 i n2 n2 acc') (Mediatrice(oq1,next dsup oq1 c1',o2',n2)) c1' c2'
+           else
+             let b = bissectrice o1 (Segment(q1,r1)) in
+             if near r2 q2 then
+               try
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola inter\n";
+                 let i, on1 = eqdist b r2 o1 i1 i2 (frange (Segment(r1,q1))) in
+                 let n1 = project i (Segment(r1,q1)) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Parabola inter\n";
+                   let o1', c1', p1' = forward on1 oq1 c1 c1' in
+                 fn (cons2 on1 n1 i r2 r2 acc') (Mediatrice(p1',o1',o2,r2)) c1' c2
+               with Not_found ->
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola extremity\n";
+                 let m = mediatrice oq1 r2 in
+                 let i, n1 = eqdist m oq1 (Segment(r1,q1)) i1 i2 (fortho o1) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Parabola extremity\n";
+                 fn (cons2 oq1 n1 i r2 r2 acc') (Mediatrice(oq1,next dsup oq1 c1',o2,r2)) c1' c2
+             else
+               let m = bissectrice (Segment(r1,q1)) (Segment(r2,q2)) in
+               try
+                 if !debug_mediatrice then Printf.fprintf stderr "Try Bissectrice inter b = %a\n" print_obj b;
+                 let i = inter b m in
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY(2) Bissectrice inter i = %a\n"  print_pt i;
+                 let on1 = project i o1 in
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY(3) Bissectrice inter on1 = %a oq1 = %a\n" print_pt on1 print_pt oq1;
+                 let n1 = project i (Segment(r1,q1)) in
+                 let n2 = project i (Segment(r2,q2)) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Bissectrice inter\n";
+                 let o2', c2' = back o2 r2 n2 c2 in
+                   let o1', c1', p1' = forward on1 oq1 c1 c1' in
+                 fn (cons2 on1 n1 i n2 n2 acc') (Mediatrice(p1',o1',o2',n2)) c1' c2'
+               with Not_found ->
+                 if !debug_mediatrice then Printf.fprintf stderr "Try Bissectrice extremity\n";
+                 let i, n2 = eqdist m oq1 (Segment(r2,q2)) i1 i2 (fand (fortho o1) (frange (Segment(r1,q1)))) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Try(2) Bissectrice extremity i = %a\n"  print_pt i;
+                 let n1 = project i (Segment(r1,q1)) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Bissectrice extremity\n";
+                 let o2', c2' = back o2 r2 n2 c2 in
+                 fn (cons2 oq1 n1 i n2 n2 acc') (Mediatrice(oq1,next dsup oq1 c1',o2',n2)) c1' c2'
+                 
+         with Not_found ->
+           let o2', c2' = back o2 r2 q2 c2 in
+           fn acc' (LeftBack(p1,o1,o2')) c1 c2')
 
      | RightBack(o1,o2,p2) -> (
        match c2, acc with
-	 [], _ | _, [] | _, [_] -> assert false
+         [], _ | _, [] | _, [_] -> assert false
        | (oq2::c2'), ((r1,i1,r2)::((q1,i2,q2)::_ as acc')) ->
 
-	 (try let i = project i1 o2 in
-	      if norm (i1 -- r2) +. 1e-7 < norm (i1 -- i) then (
-		Printf.fprintf stderr "Back too far (i = %a) %e\n" print_pt i (norm (i1 -- r2) -. norm (i1 -- i)); assert false)
-	  with Not_found -> ());
+         (try let i = project i1 o2 in
+              if norm (i1 -- r2) +. 1e-7 < norm (i1 -- i) then (
+                Printf.fprintf stderr "Back too far (i = %a) %e\n" print_pt i (norm (i1 -- r2) -. norm (i1 -- i)); assert false)
+          with Not_found -> ());
 
-	 try 
-	   if i1 == i2 then raise Not_found;
-	   if near r2 q2 then
-	     if near r1 q1 then
-	       let m = mediatrice r1 r2 in
-	       try
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Mediatrice inter\n";
-		 let i, on2 = eqdist m r1 o2 i1 i2 ftrue in 
-		 if !debug_mediatrice then Printf.fprintf stderr "Mediatrice inter\n";
-  		 let o2', c2', p2' = forward on2 oq2 c2 c2' in
-		 fn (cons2 r1 r1 i on2 r2 acc') (Mediatrice(r1,o1,o2',p2')) c1 c2'
-	       with Not_found ->
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Mediatrice extremity\n";
-		 let i = inter (Segment(i1,i2)) (mediatrice oq2 r1) in
-		 if not (fortho o2 i) then raise Not_found;
-		 if !debug_mediatrice then Printf.fprintf stderr "Mediatrice extremity\n";
-		 fn (cons2 r1 r1 i oq2 r2 acc') (Mediatrice(r1,o1,next dsup' oq2 c2',oq2)) c1 c2'
-	     else
-	       try
-		 let b = bissectrice o2 (Segment(r1,q1)) in
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola opp inter\n";
-		 let i, on2 = eqdist b r2 o2 i1 i2 (frange (Segment(r1,q1))) in
-		 let n1 = project i (Segment(r1,q1)) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Parabola opp inter\n";
-  		 let o2', c2', p2' = forward on2 oq2 c2 c2' in
-		 let o1', c1' = back o1 r1 n1 c1 in
-		 fn (cons2 n1 n1 i on2 r2 acc') (Mediatrice(n1,o1',o2',p2')) c1' c2'
-	       with Not_found ->
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola opp extremity\n";
-		 let m = mediatrice oq2 r2 in
-		 let i, n1 = eqdist m oq2 (Segment(r1,q1)) i1 i2 (fortho o2) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Parabola opp extremity\n";
-		 let o1', c1' = back o1 r1 n1 c1 in
-		 fn (cons2 n1 n1 i oq2 r2 acc') (Mediatrice(n1,o1',next dsup' oq2 c2',oq2)) c1' c2'
-	   else
-	     let b = bissectrice o2 (Segment(q2,r2)) in
-	     if near r1 q1 then
-	       try
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola inter\n";
-		 let i, on2 = eqdist b r1 o2 i1 i2 (frange (Segment(r2,q2))) in
-		 let n2 = project i (Segment(r2,q2)) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Parabola inter\n";
-  		 let o2', c2', p2' = forward on2 oq2 c2 c2' in
-		 fn (cons2 r1 r1 i on2 n2 acc') (Mediatrice(r1,o1,o2',p2')) c1 c2'
-	       with Not_found ->
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola extremity\n";
-		 let m = mediatrice oq2 r1 in
-		 let i, n2 = eqdist m oq2 (Segment(r2,q2)) i1 i2 (fortho o2) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Parabola extremity\n";
-		 fn (cons2 r1 r1 i oq2 n2 acc') (Mediatrice(r1,o1,next dsup' oq2 c2',oq2)) c1 c2'
-	     else
-	       let m = bissectrice (Segment(r1,q1)) (Segment(r2,q2)) in
-	       try
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY Bissectrice inter b = %a\n" print_obj b;
-		 let i = inter b m in
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY(2) Bissectrice inter i = %a\n" print_pt i;
-		 let on2 = try project i o2 with Not_found -> raise Not_found in
-		 if !debug_mediatrice then Printf.fprintf stderr "TRY(3) Bissectrice inter on2 = %a oq2 = %a\n" print_pt on2 print_pt oq2;
-		 let n1 = project i (Segment(r1,q1)) in
-		 let n2 = project i (Segment(r2,q2)) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Bissectrice inter\n";
- 		 let o2', c2', p2' = forward on2 oq2 c2 c2' in
-		 let o1', c1' = back o1 r1 n1 c1 in
-		 fn (cons2 n1 n1 i on2 n2 acc') (Mediatrice(n1,o1',o2',p2')) c1' c2'
-	       with Not_found ->
-		 if !debug_mediatrice then Printf.fprintf stderr "Try Bissectrice extremity\n";
-		 let i, n1 = eqdist m oq2 (Segment(r1,q1)) i1 i2 (fand (fortho o2) (frange (Segment(r2,q2)))) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Try(2) Bissectrice extremity i = %a\n"  print_pt i;
-		 let n2 = project i (Segment(r2,q2)) in
-		 if !debug_mediatrice then Printf.fprintf stderr "Bissectrice extremity\n";
-		 let o1', c1' = back o1 r1 n1 c1 in
-		 fn (cons2 n1 n1 i oq2 n2 acc') (Mediatrice(n1,o1',next dsup' oq2 c2',oq2)) c1' c2'
-		 
-		 
-	 with Not_found ->
-	   let o1', c1' = back o1 r1 q1 c1 in
-	   fn acc' (RightBack(o1',o2,p2)) c1' c2)
+         try 
+           if i1 == i2 then raise Not_found;
+           if near r2 q2 then
+             if near r1 q1 then
+               let m = mediatrice r1 r2 in
+               try
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Mediatrice inter\n";
+                 let i, on2 = eqdist m r1 o2 i1 i2 ftrue in 
+                 if !debug_mediatrice then Printf.fprintf stderr "Mediatrice inter\n";
+                   let o2', c2', p2' = forward on2 oq2 c2 c2' in
+                 fn (cons2 r1 r1 i on2 r2 acc') (Mediatrice(r1,o1,o2',p2')) c1 c2'
+               with Not_found ->
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Mediatrice extremity\n";
+                 let i = inter (Segment(i1,i2)) (mediatrice oq2 r1) in
+                 if not (fortho o2 i) then raise Not_found;
+                 if !debug_mediatrice then Printf.fprintf stderr "Mediatrice extremity\n";
+                 fn (cons2 r1 r1 i oq2 r2 acc') (Mediatrice(r1,o1,next dsup' oq2 c2',oq2)) c1 c2'
+             else
+               try
+                 let b = bissectrice o2 (Segment(r1,q1)) in
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola opp inter\n";
+                 let i, on2 = eqdist b r2 o2 i1 i2 (frange (Segment(r1,q1))) in
+                 let n1 = project i (Segment(r1,q1)) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Parabola opp inter\n";
+                   let o2', c2', p2' = forward on2 oq2 c2 c2' in
+                 let o1', c1' = back o1 r1 n1 c1 in
+                 fn (cons2 n1 n1 i on2 r2 acc') (Mediatrice(n1,o1',o2',p2')) c1' c2'
+               with Not_found ->
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola opp extremity\n";
+                 let m = mediatrice oq2 r2 in
+                 let i, n1 = eqdist m oq2 (Segment(r1,q1)) i1 i2 (fortho o2) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Parabola opp extremity\n";
+                 let o1', c1' = back o1 r1 n1 c1 in
+                 fn (cons2 n1 n1 i oq2 r2 acc') (Mediatrice(n1,o1',next dsup' oq2 c2',oq2)) c1' c2'
+           else
+             let b = bissectrice o2 (Segment(q2,r2)) in
+             if near r1 q1 then
+               try
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola inter\n";
+                 let i, on2 = eqdist b r1 o2 i1 i2 (frange (Segment(r2,q2))) in
+                 let n2 = project i (Segment(r2,q2)) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Parabola inter\n";
+                   let o2', c2', p2' = forward on2 oq2 c2 c2' in
+                 fn (cons2 r1 r1 i on2 n2 acc') (Mediatrice(r1,o1,o2',p2')) c1 c2'
+               with Not_found ->
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Parabola extremity\n";
+                 let m = mediatrice oq2 r1 in
+                 let i, n2 = eqdist m oq2 (Segment(r2,q2)) i1 i2 (fortho o2) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Parabola extremity\n";
+                 fn (cons2 r1 r1 i oq2 n2 acc') (Mediatrice(r1,o1,next dsup' oq2 c2',oq2)) c1 c2'
+             else
+               let m = bissectrice (Segment(r1,q1)) (Segment(r2,q2)) in
+               try
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY Bissectrice inter b = %a\n" print_obj b;
+                 let i = inter b m in
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY(2) Bissectrice inter i = %a\n" print_pt i;
+                 let on2 = try project i o2 with Not_found -> raise Not_found in
+                 if !debug_mediatrice then Printf.fprintf stderr "TRY(3) Bissectrice inter on2 = %a oq2 = %a\n" print_pt on2 print_pt oq2;
+                 let n1 = project i (Segment(r1,q1)) in
+                 let n2 = project i (Segment(r2,q2)) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Bissectrice inter\n";
+                  let o2', c2', p2' = forward on2 oq2 c2 c2' in
+                 let o1', c1' = back o1 r1 n1 c1 in
+                 fn (cons2 n1 n1 i on2 n2 acc') (Mediatrice(n1,o1',o2',p2')) c1' c2'
+               with Not_found ->
+                 if !debug_mediatrice then Printf.fprintf stderr "Try Bissectrice extremity\n";
+                 let i, n1 = eqdist m oq2 (Segment(r1,q1)) i1 i2 (fand (fortho o2) (frange (Segment(r2,q2)))) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Try(2) Bissectrice extremity i = %a\n"  print_pt i;
+                 let n2 = project i (Segment(r2,q2)) in
+                 if !debug_mediatrice then Printf.fprintf stderr "Bissectrice extremity\n";
+                 let o1', c1' = back o1 r1 n1 c1 in
+                 fn (cons2 n1 n1 i oq2 n2 acc') (Mediatrice(n1,o1',next dsup' oq2 c2',oq2)) c1' c2'
+                 
+                 
+         with Not_found ->
+           let o1', c1' = back o1 r1 q1 c1 in
+           fn acc' (RightBack(o1',o2,p2)) c1' c2)
 
  
-	   
+           
   in
   try
     let r = fn [] init profile1 profile2 in
@@ -920,7 +920,7 @@ let mediatrice_profile (dsup,dinf) profile1 profile2 =
     Printf.fprintf stderr "\n";
     raise e
 
- 	   
+            
 (*
 let testb0 = mediatrice_profile ((-1.0,1.0), (-1.0,-1.0)) [(0.0,0.0);] [(1.0,0.0)]
 let testb1 = mediatrice_profile ((-1.0,1.0), (-1.0,-1.0)) [(0.0,0.0);(0.0,2.0)] [(1.0,1.0)]
@@ -1013,14 +1013,14 @@ let add_qprofile (m,l) o1 p1 o2 p2 =
       let i1 = project o2 (Segment(o1,p1)) in
       min m (norm (o2 -- i1)),
       add_pqprofile o1 i1 o2 o2 
-	(add_pqprofile i1 p1 o2 p2 l)
+        (add_pqprofile i1 p1 o2 p2 l)
     else raise Not_found
   with Not_found -> try
     if norm2 (o1 -- p1) < 1e-8 then
       let i2 = project o1 (Segment(o2,p2)) in
       min m (norm (o1 -- i2)),
       add_pqprofile o1 o1 o2 i2 
-	(add_pqprofile o1 p1 i2 p2 l)
+        (add_pqprofile o1 p1 i2 p2 l)
     else raise Not_found
   with Not_found ->
     min  m (norm (p1 -- p2)),
@@ -1032,7 +1032,7 @@ let add_allprofile l =
        let d = norm (o2 -- o1) in
        m, add_dprofile d 0. 0.5 l
     | (o1,_,o2)::((p1,_,p2)::_ as l') ->
-	fn (add_qprofile acc o1 p1 o2 p2) l'
+        fn (add_qprofile acc o1 p1 o2 p2) l'
     | [] -> assert false
   in
   let o1,_,o2 = List.hd l in
@@ -1049,9 +1049,9 @@ let find_distance beta m l =
     let delta = b*.b -. 4. *. a *. c in
     let r1, r2 = 
       if b > 0.0 then
-	-. 2.0 *. c /. (b +. sqrt(delta)), b +. sqrt(delta) /. (-. 2. *. a)
+        -. 2.0 *. c /. (b +. sqrt(delta)), b +. sqrt(delta) /. (-. 2. *. a)
       else
-	-. 2.0 *. c /. (b -. sqrt(delta)), b -. sqrt(delta) /. (-. 2. *. a)
+        -. 2.0 *. c /. (b -. sqrt(delta)), b -. sqrt(delta) /. (-. 2. *. a)
     in
     let dd = 
       if r1 < curd then r2 else if r2 < curd then r1 else min r1 r2
@@ -1060,9 +1060,9 @@ let find_distance beta m l =
       a b c delta r1 r2 dd;
     match l with
       (a,dh,p)::l ->
-	if dd > 0.0 && delta >= 0.0 && dd >= curd && dd <= a then dd else
-	  let curarea = curarea +. (a  -. curd) *. curh  +. (a*.a  -. curd*.curd) *. curp /. 2. in 
-	  fn a (curh +. dh) curarea (p +. curp) l
+        if dd > 0.0 && delta >= 0.0 && dd >= curd && dd <= a then dd else
+          let curarea = curarea +. (a  -. curd) *. curh  +. (a*.a  -. curd*.curd) *. curp /. 2. in 
+          fn a (curh +. dh) curarea (p +. curp) l
     | [] -> dd
   in
   fn 0.0 0.0 0.0 0.0 l
@@ -1082,15 +1082,15 @@ let distance beta (dsup,dinf) profile1 profile2 =
   let r = 
     if profile1 = [] || profile2 = [] then infinity else begin
       try
-	let b = mediatrice_profile (dsup,dinf) profile1 profile2 in
-	let m,l = add_allprofile b in
+        let b = mediatrice_profile (dsup,dinf) profile1 profile2 in
+        let m,l = add_allprofile b in
       if !debug then (Printf.fprintf stderr "m = %f\n" m;
-	List.iter (fun (a,h,p) -> Printf.fprintf stderr "a = %f h = %f, p = %f -- " a h p) l;
-	Printf.fprintf stderr "\n"); 
+        List.iter (fun (a,h,p) -> Printf.fprintf stderr "a = %f h = %f, p = %f -- " a h p) l;
+        Printf.fprintf stderr "\n"); 
 
-	if m <= 0.0 then 0.0 else find_distance beta m l
+        if m <= 0.0 then 0.0 else find_distance beta m l
       with
-	Exit | Assert_failure _ -> 0.0
+        Exit | Assert_failure _ -> 0.0
     end
   in
   if !debug then Printf.fprintf stderr "  ==> %f\n" r;
@@ -1153,14 +1153,14 @@ let write_cache filename =
     generation = g;
     profile_cache =
       Profile_cache.fold (fun k t acc -> 
-	if purge t then Profile_cache.remove k acc else acc)
-	distance_cache.profile_cache
-	distance_cache.profile_cache;
+        if purge t then Profile_cache.remove k acc else acc)
+        distance_cache.profile_cache
+        distance_cache.profile_cache;
     distance_cache = 
       Distance_cache.fold (fun k t acc -> 
-	if purge t then Distance_cache.remove k acc else acc)
-	distance_cache.distance_cache
-	distance_cache.distance_cache;
+        if purge t then Distance_cache.remove k acc else acc)
+        distance_cache.distance_cache
+        distance_cache.distance_cache;
   }
   in
   try

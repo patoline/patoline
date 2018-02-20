@@ -147,8 +147,6 @@ let rotation_matrix th =
   ;  [| sinth ; costh   ; 0.0 |]
   ;  [| 0.0   ; 0.0     ; 1.0 |] |]
 
-let pi = 4.0 *. atan 1.0
-
 let rotate a = affine (rotation_matrix a)
 
 (* Set the drawing order of a raw element. *)
@@ -358,7 +356,7 @@ let glyph_bounding_box opt gl =
   in
   let x1 = gl.glyph_x +. w *. gl.glyph_size /. 1000.0 in
   let y0 =
-	  if opt.ignore_under_base_line then gl.glyph_ky
+    if opt.ignore_under_base_line then gl.glyph_ky
     else gl.glyph_y +. Fonts.glyph_y0 gl.glyph *. gl.glyph_size /. 1000.0
   in
   let y1 = gl.glyph_y +. Fonts.glyph_y1 gl.glyph *. gl.glyph_size /. 1000.0
@@ -425,7 +423,7 @@ let bounding_box_full = bounding_box_opt
 
 (* Sorting a list of raw contents according to its drawing order. *)
 let drawing_sort l =
-  let open UsualMake in
+  let open Extra in
   let rec make_list acc = function
     | []            -> acc
     | States s :: l ->
@@ -445,7 +443,7 @@ let drawing_sort l =
 
 (* ??? *)
 let sort_raw l =
-  let open UsualMake in
+  let open Extra in
   let f m x =
     let m' = try IntMap.find (drawing_order x) m with Not_found -> [] in
     IntMap.add (drawing_order x) (x :: m') m

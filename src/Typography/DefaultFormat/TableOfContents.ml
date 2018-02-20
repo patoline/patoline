@@ -17,13 +17,12 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Typography
 open Typography.Document
 open FTypes
 open Typography.Box
-open Util
-open UsualMake
-
+open Extra
 
 let centered parameters str tree _=
   newPar str ~environment:(fun x->{x with par_indent=[]}) Complete.normal parameters [
@@ -52,13 +51,13 @@ let centered parameters str tree _=
                   | (_,(Paragraph _))::s->flat_children env1 s
                   | (k,(Node h as tr))::s->(
                       let env'=h.node_env env1 in
-		      let chi1 = toc env' (k::path) tr in
-		      chi1@flat_children (h.node_post_env env1 env') s
+                      let chi1 = toc env' (k::path) tr in
+                      chi1@flat_children (h.node_post_env env1 env') s
                     )
                 in
                 let chi=if List.mem_assoc "numbered" s.node_tags then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
-                let count=drop 1 b in
+                let count = List.drop 1 b in
                 let in_toc=List.mem_assoc "intoc" s.node_tags in
                   if in_toc && count<>[] then (
                     let labl=String.concat "_" ("_"::List.map string_of_int path) in
@@ -94,8 +93,8 @@ let centered parameters str tree _=
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;
                       drawing_max_width=env.normalMeasure;
-		      drawing_width_fixed = true;
-		      drawing_adjust_before = false;
+                      drawing_width_fixed = true;
+                      drawing_adjust_before = false;
                       drawing_y0=b;
                       drawing_y1=d;
                       drawing_break_badness=0.;
@@ -151,7 +150,7 @@ let these parameters str tree max_level=
                 in
                 let chi=if List.mem_assoc "numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
-                let count=(List.rev (drop 1 b)) in
+                let count = List.rev (List.drop 1 b) in
                 let spacing=env.size/.phi in
                 let in_toc=List.mem_assoc "intoc" s.node_tags in
                 let numbered=List.mem_assoc "numbered" s.node_tags in
@@ -181,8 +180,8 @@ let these parameters str tree max_level=
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;
                       drawing_max_width=env.normalMeasure;
-		      drawing_width_fixed = true;
-		      drawing_adjust_before = false;
+                      drawing_width_fixed = true;
+                      drawing_adjust_before = false;
                       drawing_y0=b;
                       drawing_y1=d;
                       drawing_break_badness=0.;
@@ -234,7 +233,7 @@ let slides ?(hidden_color=Color.rgb 0.8 0.8 0.8) parameters str tree max_level=
                 in
                 let chi=if List.mem_assoc "numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
-                let count=(List.rev (drop 1 b)) in
+                let count = List.rev (List.drop 1 b) in
                 let spacing=env.size in
                 let in_toc=List.mem_assoc "intoc" s.node_tags in
                 let numbered=List.mem_assoc "numbered" s.node_tags in
@@ -274,8 +273,8 @@ let slides ?(hidden_color=Color.rgb 0.8 0.8 0.8) parameters str tree max_level=
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;
                       drawing_max_width=env.normalMeasure;
-		      drawing_width_fixed = true;
-		      drawing_adjust_before = false;
+                      drawing_width_fixed = true;
+                      drawing_adjust_before = false;
                       drawing_y0=b;
                       drawing_y1=d;
                       drawing_break_badness=0.;

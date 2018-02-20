@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-TYPOGRAPHY_INCLUDES := -I $(d) $(PACK_TYPOGRAPHY) -I $(CONFIG_DIR)
+TYPOGRAPHY_INCLUDES := -I $(d) $(PACK_TYPOGRAPHY) -I $(CONFIG_DIR) -I $(CESURE_DIR)
 
 $(d)/%.cmx $(d)/%.cmo $(d)/%.cmi $(wildcard $(d)/*/%.cmx) $(wildcard $(d)/*/%.cmo) $(wildcard $(d)/*/%.cmi): INCLUDES:=$(TYPOGRAPHY_INCLUDES)
 
@@ -60,14 +60,6 @@ $(d)/Typography.cmxs: $(TYPOGRAPHY_CMX)
 	$(ECHO) "[LNK] $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $(TYPOGRAPHY_CMX)
 
-$(d)/Break.cmo: $(d)/Break.ml
-	$(ECHO) "[BYT] $@"
-	$(Q)$(OCAMLC) $(OFLAGS) -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
-
-$(d)/Break.cmx: $(d)/Break.ml
-	$(ECHO) "[OPT] $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
-
 # Build DefaultFormat; The variable must be ordered
 DEFAULTFORMAT_ML := $(d)/DefaultFormat/Numerals.ml $(d)/DefaultFormat/TableOfContents.ml\
   $(d)/DefaultFormat/PageLayout.ml $(d)/DefaultFormat/DefaultFormat.ml
@@ -89,6 +81,10 @@ $(d)/DefaultFormat.cma: $(DEFAULTFORMAT_CMO)
 
 # Building everything
 all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.cmxs
+
+# Building documentation
+doc:
+	$(OCAMLDOC) -charset utf-8 -package imagelib -d doc/html/Typography -html -I src/config -I src/Typography -I src/unicodelib -I src/patfonts -I src/patutil -I src/rawlib src/Typography/*.ml src/Typography/*/*.ml src/Typography/*.mli
 
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.a $(d)/*.cmxs $(d)/*.cmo $(d)/*.cmx \

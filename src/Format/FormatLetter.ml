@@ -21,8 +21,7 @@ open Typography
 open Fonts
 open FTypes
 open Typography.Document
-open Util
-open UsualMake
+open Extra
 open Typography.Box
 open Printf
 
@@ -38,7 +37,7 @@ module Format=functor (D:DocumentStructure)->struct
 
   let rec lines s=try
     let idx=String.index s '\n' in
-    unspace (String.sub s 0 idx)::lines (String.sub s (idx+1) (String.length s-idx-1))
+    UTF8.trim (String.sub s 0 idx)::lines (String.sub s (idx+1) (String.length s-idx-1))
   with
       Not_found->if s="" then [] else [s]
   let rec repeat x n=if n<=0 then [] else x::(repeat x (n-1))
@@ -97,8 +96,8 @@ module Format=functor (D:DocumentStructure)->struct
                             drawing_min_width= env.normalMeasure;
                             drawing_max_width= env.normalMeasure;
                             drawing_nominal_width= env.normalMeasure;
-			    drawing_width_fixed = true;
-			    drawing_adjust_before = false;
+                            drawing_width_fixed = true;
+                            drawing_adjust_before = false;
                             drawing_y0= min (minip_sender.drawing_y0+.y0) (minip_recip.drawing_y0+.y1);
                             drawing_y1= max (minip_sender.drawing_y1+.y0) (minip_recip.drawing_y1+.y1);
                             drawing_badness=(fun _->0.);

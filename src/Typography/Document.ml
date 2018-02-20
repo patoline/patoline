@@ -18,8 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Util
-open UsualMake
+open Extra
 open Fonts
 open FTypes
 open RawContent
@@ -58,36 +57,30 @@ type fontFamily =
      (font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)
 
 
-module TS=Break.Make
-  (struct
-     type t=line
-     let compare a b=
-       if a.paragraph<b.paragraph then -1 else
-         if a.paragraph>b.paragraph then 1 else
+module TS = Break.Make(
+  struct
+    type t = line
 
-           if a.lineStart<b.lineStart then -1 else
-             if a.lineStart>b.lineStart then 1 else
+    let compare a b =
+      if a.paragraph   < b.paragraph   then -1 else
+      if a.paragraph   > b.paragraph   then  1 else
+      if a.lineStart   < b.lineStart   then -1 else
+      if a.lineStart   > b.lineStart   then  1 else
+      if a.lineEnd     < b.lineEnd     then -1 else
+      if a.lineEnd     > b.lineEnd     then  1 else
+      if a.hyphenStart < b.hyphenStart then -1 else
+      if a.hyphenStart > b.hyphenStart then  1 else
+      if a.hyphenEnd   < b.hyphenEnd   then -1 else
+      if a.hyphenEnd   > b.hyphenEnd   then  1 else
+      if a.lastFigure  < b.lastFigure  then -1 else
+      if a.lastFigure  > b.lastFigure  then  1 else
+      if a.isFigure    < b.isFigure    then -1 else
+      if a.isFigure    > b.isFigure    then  1 else
+      if a.height      < b.height      then -1 else
+      if a.height      > b.height      then  1 else 0
 
-           if a.lineEnd<b.lineEnd then -1 else
-             if a.lineEnd>b.lineEnd then 1 else
-
-           if a.hyphenStart<b.hyphenStart then -1 else
-             if a.hyphenStart>b.hyphenStart then 1 else
-
-           if a.hyphenEnd<b.hyphenEnd then -1 else
-             if a.hyphenEnd>b.hyphenEnd then 1 else
-
-           if a.lastFigure<b.lastFigure then -1 else
-             if a.lastFigure>b.lastFigure then 1 else
-
-           if a.isFigure<b.isFigure then -1 else
-             if a.isFigure>b.isFigure then 1 else
-
-           if a.height<b.height then -1 else
-             if a.height>b.height then 1 else
-               0
-     let hash a=Hashtbl.hash a
-   end)
+    let hash a=Hashtbl.hash a
+  end)
 
 
 
@@ -272,7 +265,7 @@ and node =
   ; node_tags     : (string * string) list
   (* Environment modification function applied when entering the node : *)
   ; node_env      : environment -> environment
-  (* Environment modification function applied when leavind the node : *)
+  (* Environment modification function applied when leaving the node : *)
   ; node_post_env : environment -> environment -> environment
   (* Page states in which the contents is visible. *)
   ; node_states   : int list
@@ -420,13 +413,13 @@ let uB f = C(fun _->env_accessed:=true;[bB f])
 let tT f = T(f,ref None)
 let uT f = C(fun _->env_accessed:=true;[tT f])
 let string_of_contents l =
-  let buf=Rbuffer.create 1000 in
+  let buf=Buffer.create 1000 in
   let rec fill_buf t=match t with
       T (str,_)::s->(
-        if Rbuffer.length buf>0 then (
-          Rbuffer.add_string buf " ";
+        if Buffer.length buf>0 then (
+          Buffer.add_string buf " ";
         );
-        Rbuffer.add_string buf str;
+        Buffer.add_string buf str;
         fill_buf s
       )
     (* | C f::s->( *)
@@ -437,7 +430,7 @@ let string_of_contents l =
     | []->()
   in
   fill_buf l;
-  Rbuffer.contents buf
+  Buffer.contents buf
 
 let _names env=
   env.names
@@ -460,7 +453,7 @@ let pop_counter name env=
   { env with
     last_changed_counter=name;
     counters=
-      StrMap.add name (let a,b=StrMap.find name env.counters in (a,drop 1 b)) env.counters }
+      StrMap.add name (let a,b=StrMap.find name env.counters in (a, List.drop 1 b)) env.counters }
 
 let push_counter name env=
   { env with
@@ -728,79 +721,92 @@ let id x=x
    pour toucher à ça, ou apprendre en touchant ça *)
 
 
-let parameters env paragraphs figures last_parameters last_figures last_users (last_line:line) (line:line)=
-  let frame_measure=env.normalMeasure in
-  let measure=IntMap.fold (fun i aa m->match aa with
-      Break.Placed a->
-        (if layout_page line=layout_page a &&
-           line.height>=
-           a.height+.figures.(i).drawing_y0
-         && line.height<=
-           a.height+. figures.(i).drawing_y1
-         then
-            frame_measure -. figures.(i).drawing_nominal_width
-         else m)
-    | _->m
-  ) last_figures frame_measure
+let parameters env pars figures _ last_figures _ _ line =
+  let fn i figPos m =
+    let open Break in
+    match figPos with
+    | Placed(l) when layout_page line = layout_page l
+                  && line.height >= l.height +. figures.(i).drawing_y0
+                  && line.height <= l.height +. figures.(i).drawing_y1
+        -> env.normalMeasure -. figures.(i).drawing_nominal_width
+    | _ -> m
   in
-  let p={ measure=measure;
-    left_margin=env.normalLeftMargin;
-    local_optimization=0;
-    min_page_before=0;
-    min_page_after=0;
-    min_height_before=0.;
-    min_height_after=0.;
-    not_last_line=false;
-    not_first_line=false;
-    min_lines_before=1;
-    min_lines_after=0;
-    absolute=false
-  }
+  let params =
+    { measure            = IntMap.fold fn last_figures env.normalMeasure
+    ; left_margin        = env.normalLeftMargin
+    ; local_optimization = 0
+    ; min_page_before    = 0
+    ; min_page_after     = 0
+    ; min_height_before  = 0.0
+    ; min_height_after   = 0.0
+    ; not_last_line      = false
+    ; not_first_line     = false
+    ; min_lines_before   = 1
+    ; min_lines_after    = 0
+    ; absolute           = false }
   in
-  fold_left_line paragraphs (fun p0 x->match x with
-      Parameters fp->(
-        let p1=fp p0 in
-        p1
-      )
-    | _->p0
-  ) p line
+  let fn params b = match b with Parameters(f) -> f params | _ -> params in
+  fold_left_line pars fn params line
 
+let set_parameters : (parameters -> parameters) -> content list =
+  fun f -> [bB (fun _ -> [Parameters(f)])]
 
-let vspaceBefore x=[bB (fun _->[Parameters (fun p->{ p with min_height_before=max p.min_height_before x })])]
-let vspaceAfter x=[bB (fun _->[Parameters (fun p->{ p with min_height_after=max p.min_height_after x })])]
-let pagesBefore x=[bB (fun _->[Parameters (fun p->{ p with min_page_before=max p.min_page_before x })])]
-let pagesAfter x=[bB (fun _->[Parameters (fun p->{ p with min_page_after=max p.min_page_after x })])]
-let linesBefore x=[bB (fun _->[Parameters (fun p->{ p with min_lines_before=max p.min_lines_before x })])]
-let linesAfter x=[bB (fun _->[Parameters (fun p->{ p with min_lines_after=max p.min_lines_after x })])]
-let notFirstLine =[bB (fun _->[Parameters (fun p->{p with not_first_line=true})])]
-let notLastLine =[bB (fun _->[Parameters (fun p->{p with not_last_line=true})])]
+let vspaceBefore : float -> content list = fun sp ->
+  let fn p = {p with min_height_before = max p.min_height_before sp} in
+  set_parameters fn
 
-let hspace x =[bB (fun env-> let x = x *. env.size in [glue x x x])]
-let hfill = [bB (fun env-> let x = env.normalMeasure in [glue 0. (0.5 *. x) x])]
+let vspaceAfter : float -> content list = fun sp ->
+  let fn p = {p with min_height_after = max p.min_height_after sp} in
+  set_parameters fn
 
-let do_center parameters env paragraphs figures last_parameters lastFigures lastUsers lastLine l=
-  let param=parameters env paragraphs figures last_parameters lastFigures lastUsers lastLine l in
-  let a=l.min_width
-  and b=l.nom_width in
-  if param.measure >= b then
-    { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
-  else
-    if param.measure >= a then
-      param
-    else
-      { param with measure=a; left_margin=param.left_margin +. (param.measure-.a)/.2. }
+let pagesBefore : int -> content list = fun nb ->
+  let fn p = {p with min_page_before = max p.min_page_before nb} in
+  set_parameters fn
 
+let pagesAfter : int -> content list = fun nb ->
+  let fn p = {p with min_page_after = max p.min_page_after nb} in
+  set_parameters fn
 
-let do_ragged_left parameters a b c d e f g line=
-  let par=parameters a b c d e f g line in
-  { par with measure=line.nom_width }
+let linesBefore : int -> content list = fun nb ->
+  let fn p = {p with min_lines_before = max p.min_lines_before nb} in
+  set_parameters fn
 
-let do_ragged_right parameters a b c d e f g line=
-  let par=parameters a b c d e f g line in
-  { par with
-    measure=line.nom_width;
-    left_margin=par.left_margin+.par.measure-.line.nom_width }
+let linesAfter : int -> content list = fun nb ->
+  let fn p = {p with min_lines_after = max p.min_lines_after nb} in
+  set_parameters fn
 
+let notFirstLine : content list =
+  set_parameters (fun p -> {p with not_first_line = true})
+
+let notLastLine : content list =
+  set_parameters (fun p -> {p with not_last_line = true})
+
+let hspace : float -> content list = fun sp ->
+  [bB (fun env -> let sp = sp *. env.size in [glue sp sp sp])]
+
+let hfill : content list =
+  [bB (fun env -> let mes = env.normalMeasure in [glue 0.0 (0.5 *. mes) mes])]
+
+let do_center parameters a b c d e f g line =
+  let param = parameters a b c d e f g line in
+  let min_w = line.min_width in
+  let nom_w = line.nom_width in
+  if param.measure >= nom_w then
+    let left_margin = param.left_margin +. (param.measure -. nom_w) /. 2.0 in
+    {param with measure = nom_w; left_margin}
+  else if param.measure < min_w then
+    let left_margin = param.left_margin +. (param.measure -. min_w) /. 2.0 in
+    {param with measure = min_w; left_margin}
+  else param
+
+let do_ragged_left parameters a b c d e f g line =
+  let param = parameters a b c d e f g line in
+  {param with measure = line.nom_width}
+
+let do_ragged_right parameters a b c d e f g line =
+  let param = parameters a b c d e f g line in
+  let left_margin = param.left_margin +. param.measure -. line.nom_width in
+  {param with measure = line.nom_width; left_margin}
 
 
 
@@ -997,7 +1003,7 @@ let make_name name=
     if UTF8.out_of_range name i then
       UTF8.Buf.contents realName
     else (
-      if is_space (UTF8.look name i) then
+      if UChar.is_space (UTF8.look name i) then
         if sp then fill (i+1) true
         else (
           UTF8.Buf.add_char realName (UChar.of_char ' ');
@@ -1035,7 +1041,7 @@ let lref ?refType name=
       in
       let refType=match refType with Some x->x | None->refType_ in
       let lvl,num_=StrMap.find refType counters in
-      let num=if refType="_structure" then drop 1 num_ else num_ in
+      let num=if refType="_structure" then List.drop 1 num_ else num_ in
       let str_counter=
         try
           let _,str_counter=StrMap.find "_structure" counters in
@@ -1043,16 +1049,16 @@ let lref ?refType name=
         with
             Not_found->[]
       in
-      let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
+      let sect_num = List.drop (List.length str_counter - max 0 lvl+1) str_counter in
       [bB (fun _->[Marker (BeginLink (Intern name))]);
        tT (String.concat "." (List.map (fun x->string_of_int (x+1))
                                 (List.rev (num@sect_num))));
        bB (fun _->[Marker EndLink])]
     with
       Not_found ->
-	let refType=match refType with Some x->x | None-> "Default" in
-	if !pass_number <> 0 then Printf.eprintf "Unknown label %S of labelType %S (%d)\n%!" name refType !pass_number;
-	color Color.red [tT "??"]
+        let refType=match refType with Some x->x | None-> "Default" in
+        if !pass_number <> 0 then Printf.eprintf "Unknown label %S of labelType %S (%d)\n%!" name refType !pass_number;
+        color Color.red [tT "??"]
   )]
 
 let generalRef t x = lref ~refType:t x
@@ -1287,7 +1293,7 @@ let boxify buf nbuf env0 l=
     *)
     | T (t,cache) :: s -> (
         match !cache with
-	      | Some l when keep_cache ->
+        | Some l when keep_cache ->
            IntMap.iter (fun _->List.iter (append buf nbuf)) l;
            boxify keep_cache env s
         | _                      ->
@@ -1299,7 +1305,7 @@ let boxify buf nbuf env0 l=
              if i >= String.length t then
                let sub = String.sub t i0 (i-i0) in
                l := mappend !l (gl_of_str env sub)
-             else if is_space (UTF8.look t i) then
+             else if UChar.is_space (UTF8.look t i) then
                let sub = String.sub t i0 (i-i0) in
                l := mappend !l (gl_of_str env (nfkc sub));
                if i <> i0 || i = 0 then
@@ -1355,17 +1361,17 @@ let draw_boxes env l=
     | Marker (BeginLink l)::s->(
       (*      Printf.fprintf stderr "****BeginURILink %S****\n" l;*)
       let k = match l with
-	  Box.Extern l -> RawContent.Extern l;
-	| Box.Intern l ->
-	  let dest_page=
+      Box.Extern l -> RawContent.Extern l;
+    | Box.Intern l ->
+        let dest_page=
             try
               let line=MarkerMap.find (Label l) env.user_positions in
               layout_page line
             with
               Not_found->(-1)
-	  in
-	  RawContent.Intern(l,dest_page,0.,0.);
-	| Box.Button(t,n) -> RawContent.Button(t,n)
+      in
+      RawContent.Intern(l,dest_page,0.,0.);
+    | Box.Button(t,n) -> RawContent.Button(t,n)
       in
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                  link_order=0;
@@ -1379,7 +1385,7 @@ let draw_boxes env l=
       let rec link_contents u l=match l with
           []-> assert false
         | (Link h)::s when not h.link_closed->(
-	  let u = List.rev u in
+          let u = List.rev u in
           h.link_contents<-u;
           let (_,y0,_,y1)=bounding_box u in
           h.link_y0<-y0;
@@ -1445,127 +1451,127 @@ let adjust_width env buf nbuf =
       incr i0;
 
     | Drawing _ | GlyphBox _ | Hyphen _ as x0-> (
-	let adjust = ref (match x0 with
-	    Drawing x -> if x.drawing_width_fixed then None else Some(x0,!i0)
-	  | _ -> None)
-	in
-	let min = ref 0.0 in
-	let nominal = ref 0.0 in
-	let max = ref 0.0 in
+        let adjust = ref (match x0 with
+            Drawing x -> if x.drawing_width_fixed then None else Some(x0,!i0)
+          | _ -> None)
+        in
+        let min = ref 0.0 in
+        let nominal = ref 0.0 in
+        let max = ref 0.0 in
 
-	let left = draw_boxes env [x0] in
-	let bezier_left = bezier_of_boxes left in
-	let profile_left' = Distance.bezier_profile dir epsilon bezier_left in
-	let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning left in
+        let left = draw_boxes env [x0] in
+        let bezier_left = bezier_of_boxes left in
+        let profile_left' = Distance.bezier_profile dir epsilon bezier_left in
+        let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning left in
 
-	if !Distance.debug then
-	  Printf.fprintf stderr "Drawing(1): i0 = %d (%d,%d)\n" !i0 (List.length !profile_left) (List.length profile_left');
+        if !Distance.debug then
+          Printf.fprintf stderr "Drawing(1): i0 = %d (%d,%d)\n" !i0 (List.length !profile_left) (List.length profile_left');
 
-	profile_left := Distance.translate_profile (Distance.profile_union dir  !profile_left  profile_left') (x0_l -. x1_l);
+        profile_left := Distance.translate_profile (Distance.profile_union dir  !profile_left  profile_left') (x0_l -. x1_l);
 
-	incr i0;
-	try while !i0 < !nbuf do
-	  match buf.(!i0) with
-	  | Marker AlignmentMark -> incr i0; raise Exit
-	  | Marker _ -> incr i0
-	  | Drawing x as b when x.drawing_nominal_width = 0.0 ->
-	    if !Distance.debug then Printf.fprintf stderr "0 Drawing(2)\n";
-	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
-	    incr i0
-	  | Glue x as b ->
-	    min := !min +.  x.drawing_min_width;
-	    max := !max +.  x.drawing_max_width;
-	    nominal := !nominal +. x.drawing_nominal_width;
+        incr i0;
+        try while !i0 < !nbuf do
+          match buf.(!i0) with
+          | Marker AlignmentMark -> incr i0; raise Exit
+          | Marker _ -> incr i0
+          | Drawing x as b when x.drawing_nominal_width = 0.0 ->
+            if !Distance.debug then Printf.fprintf stderr "0 Drawing(2)\n";
+            if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
+            incr i0
+          | Glue x as b ->
+            min := !min +.  x.drawing_min_width;
+            max := !max +.  x.drawing_max_width;
+            nominal := !nominal +. x.drawing_nominal_width;
             profile_left := Distance.translate_profile !profile_left (-.x.drawing_nominal_width);
-	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
-	    incr i0
-	  | Drawing _ | GlyphBox _ | Hyphen _ as y0 -> (
-	    let before =
-	      match y0 with
-		Drawing y when !adjust = None && y.drawing_adjust_before ->
-		  adjust := Some(y0, !i0);
-		  true
-	      | _ -> false
-	    in
-	    match !adjust with
-	    | None -> raise Exit
-	    | Some (b,i) ->
+            if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
+            incr i0
+          | Drawing _ | GlyphBox _ | Hyphen _ as y0 -> (
+            let before =
+              match y0 with
+                Drawing y when !adjust = None && y.drawing_adjust_before ->
+                  adjust := Some(y0, !i0);
+                  true
+              | _ -> false
+            in
+            match !adjust with
+            | None -> raise Exit
+            | Some (b,i) ->
 
 
-	      let right = draw_boxes env [y0] in
-	      let profile_left = !profile_left in
-	      let bezier_right = bezier_of_boxes right in
-	      let profile_right = Distance.bezier_profile dir' epsilon bezier_right in
-	      if !Distance.debug then
-		Printf.fprintf stderr "Drawing(2): i0 = %d (%d,%d)\n" !i0 (List.length profile_left) (List.length profile_right);
-	      if profile_left = [] || profile_right = [] then raise Exit;
+              let right = draw_boxes env [y0] in
+              let profile_left = !profile_left in
+              let bezier_right = bezier_of_boxes right in
+              let profile_right = Distance.bezier_profile dir' epsilon bezier_right in
+              if !Distance.debug then
+                Printf.fprintf stderr "Drawing(2): i0 = %d (%d,%d)\n" !i0 (List.length profile_left) (List.length profile_right);
+              if profile_left = [] || profile_right = [] then raise Exit;
 
-	      if !Distance.debug then
-		Printf.fprintf stderr "Drawing(2b): i0 = %d\n" !i0;
+              if !Distance.debug then
+                Printf.fprintf stderr "Drawing(2b): i0 = %d\n" !i0;
 
-	      let d space =
-		let pr = List.map (fun (x,y) -> (x+.space,y)) profile_right in
-		let r = Distance.distance beta dir profile_left pr in
-		r
-	      in
+              let d space =
+                let pr = List.map (fun (x,y) -> (x+.space,y)) profile_right in
+                let r = Distance.distance beta dir profile_left pr in
+                r
+              in
 
-	      let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
-	      let (x0_r',y0_r',x1_r',y1_r')=bounding_box_full right in
+              let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
+              let (x0_r',y0_r',x1_r',y1_r')=bounding_box_full right in
 
 
- 	      let nominal' = !nominal +. char_space in
-	      let min' = Pervasives.min  (Pervasives.max (x0_r -. x1_r) (x0_l -. x1_l))  (!min -. nominal') in
-	      let max' = Pervasives.max (2. *. char_space) (!max -. nominal') in
-	      let da = d min' in
-	      let db = d max' in
-	      let target = nominal' in
+               let nominal' = !nominal +. char_space in
+              let min' = Pervasives.min  (Pervasives.max (x0_r -. x1_r) (x0_l -. x1_l))  (!min -. nominal') in
+              let max' = Pervasives.max (2. *. char_space) (!max -. nominal') in
+              let da = d min' in
+              let db = d max' in
+              let target = nominal' in
 
-	      if !Distance.debug then
-		Printf.fprintf stderr "start Adjust: min = %f => %f, max = %f => %f, target = %f\n" min' da max' db nominal';
+              if !Distance.debug then
+                Printf.fprintf stderr "start Adjust: min = %f => %f, max = %f => %f, target = %f\n" min' da max' db nominal';
 
-	      let epsilon = epsilon /. 16. in
-	      let r  =
-		if da > target then min' else
-		  if db < target then max' else (
+              let epsilon = epsilon /. 16. in
+              let r  =
+                if da > target then min' else
+                  if db < target then max' else (
 
-		    let rec fn sa da sb db  =
-		      let sc = (sa +. sb) /. 2.0 in
-		      let dc = d sc in
-		      if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
-		      else if dc < target then fn sc dc sb db
-		      else fn sa da sc dc
-		    in
-		    fn min' da max' db)
+                    let rec fn sa da sb db  =
+                      let sc = (sa +. sb) /. 2.0 in
+                      let dc = d sc in
+                      if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
+                      else if dc < target then fn sc dc sb db
+                      else fn sa da sc dc
+                    in
+                    fn min' da max' db)
 
-	      in
+              in
 
-(*	      let r = r -. x0_r' +. x0_r -. x1_l +. x1_l' in*)
+(*              let r = r -. x0_r' +. x0_r -. x1_l +. x1_l' in*)
 
-	      if !Distance.debug then Printf.fprintf stderr "end Adjust: r = %f nominal = %f" r !nominal;
+              if !Distance.debug then Printf.fprintf stderr "end Adjust: r = %f nominal = %f" r !nominal;
 
-	      buf.(i) <-
-		(match b with
-		| Drawing x when before -> Drawing { x with
-		  drawing_contents =
-		      (fun w -> List.map (RawContent.translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
-		}
-		| Drawing x -> Drawing { x with
-		  drawing_nominal_width = r +. x.drawing_nominal_width;
-		  drawing_min_width = r +. x.drawing_min_width;
-		  drawing_max_width = r +. x.drawing_max_width;
-		}
-		| Glue x -> Glue { x with
-		  drawing_nominal_width = r +. x.drawing_nominal_width;
-		  drawing_min_width = r +. x.drawing_min_width;
-		  drawing_max_width = r +. x.drawing_max_width;
-		}
-		| _ -> assert false);
-	      raise Exit)
-	    | _ ->
-	      incr i0;
-	      raise Exit
+              buf.(i) <-
+                (match b with
+                | Drawing x when before -> Drawing { x with
+                  drawing_contents =
+                      (fun w -> List.map (RawContent.translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
+                }
+                | Drawing x -> Drawing { x with
+                  drawing_nominal_width = r +. x.drawing_nominal_width;
+                  drawing_min_width = r +. x.drawing_min_width;
+                  drawing_max_width = r +. x.drawing_max_width;
+                }
+                | Glue x -> Glue { x with
+                  drawing_nominal_width = r +. x.drawing_nominal_width;
+                  drawing_min_width = r +. x.drawing_min_width;
+                  drawing_max_width = r +. x.drawing_max_width;
+                }
+                | _ -> assert false);
+              raise Exit)
+            | _ ->
+              incr i0;
+              raise Exit
 
-	  done with Exit -> ())
+          done with Exit -> ())
     | _ -> incr i0
   done
 
@@ -1602,13 +1608,13 @@ let altStates l =
     let ds = List.map (fun (st,x) -> (st, draw env x)) l in
     (* FIXME : each state should have its own offset !!!*)
     let off = List.fold_left (fun acc (_,d) ->
-	let (_,off,_,_) = bounding_box_kerning d in
-	min acc off) 0.0 ds
+      let (_,off,_,_) = bounding_box_kerning d in
+      min acc off) 0.0 ds
     in
     [Drawing
         (drawing ~offset:off
             (List.map (fun (st, d) ->
-	      States { states_contents=d;
+              States { states_contents=d;
                       states_states=st;
                       states_order=0 }) ds
             ))]

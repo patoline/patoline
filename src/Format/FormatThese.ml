@@ -17,12 +17,12 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Typography
 open Fonts
 open FTypes
 open Typography.Document
-open Util
-open UsualMake
+open Extra
 open Typography.Box
 open Printf
 
@@ -145,7 +145,7 @@ let postprocess_tree tree=
                   List.map (RawContent.in_order 1)
                     (draw {env with size=env.size*.(sz-.h);fontColor=Color.gray }
                        [tT (String.concat "." (List.map (fun x->string_of_int (x+1))
-                                                 (List.rev (drop 1 b))))])
+                                                 (List.rev (List.drop 1 b))))])
                 else
                   []
               in
@@ -157,7 +157,7 @@ let postprocess_tree tree=
               let text=
                 let dr=try
                          snd (IntMap.min_binding (
-			   let d,_,_ = (* FIXME: lost Marker(Label ...) ?? *)
+                           let d,_,_ = (* FIXME: lost Marker(Label ...) ?? *)
                            OutputDrawing.minipage' {env with hyphenate=(fun _->[||]);
                              normalLeftMargin=0.;
                              normalMeasure=env.normalMeasure-.(x1-.x0)/.2.-.w;
@@ -191,7 +191,7 @@ let postprocess_tree tree=
               [C (fun env->
                 let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                 bB (fun _->[Marker (Structure path)])
-                ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
+                ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (List.drop 1 b))))
                 ::tT " "
                 ::n.displayname
               )]
@@ -208,7 +208,7 @@ let postprocess_tree tree=
 
                      { (envAlternative ~features:(Opentype.oldStyleFigures::env.fontFeatures)
                           (if List.length b>=4 then Regular else Caps) env) with
-		       par_indent = [];
+                       par_indent = [];
                        hyphenate=(fun _->[||]);
                          size=(if List.length b=1 then sqrt phi else
                                  if List.length b <= 2 then sqrt (sqrt phi) else
@@ -514,9 +514,6 @@ end
     module Env_proof=Default.Proof
   end
 
-  open Util
-
-
   let utf8Char x=[tT (UTF8.init 1 (fun _->UChar.chr x))]
   let glyph x=
     bB (fun env->
@@ -564,18 +561,18 @@ end
       D.structure Complete.normal pars
       [ Env (fun env ->Document.incr_counter "equation" env) ;
         C (fun env ->
-	     let _,w = boxes_width env contents in
-	     let _,x = try StrMap.find "equation" env.counters with _-> -1,[] in
-	     let num,w' = boxes_width env
-	       (italic [tT "(";
-		        tT (string_of_int (1 + List.hd x));
-		        tT ")" ]) in
+             let _,w = boxes_width env contents in
+             let _,x = try StrMap.find "equation" env.counters with _-> -1,[] in
+             let num,w' = boxes_width env
+               (italic [tT "(";
+                        tT (string_of_int (1 + List.hd x));
+                        tT ")" ]) in
              let w0=(env.normalMeasure -. w)/.2. in
              let w1=env.normalMeasure -. w'-.w0-.w in
              bB(fun _->[glue w0 w0 w0])::
                contents@
                [bB (fun _->glue w1 w1 w1 :: num)]
-	  )];
+          )];
     []
 
 end

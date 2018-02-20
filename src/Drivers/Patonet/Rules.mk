@@ -4,10 +4,11 @@ d := $(if $(d),$(d)/,)$(mod)
 
 PATONET_DRIVER_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(PACK_DRIVER_Patonet)
 
-$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATONET_DRIVER_INCLUDES)
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
+
+$(DEPENDS_$(d)) $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATONET_DRIVER_INCLUDES)
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
 -include $(DEPENDS_$(d))

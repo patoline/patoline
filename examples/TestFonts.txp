@@ -4,7 +4,7 @@
 
 \Caml(
 
-let fonts_dir = "./Fonts"
+let fonts_dir = "../Fonts"
 let pangramme =
   "Portez ce vieux whisky au juge blond qui fume sur son île intérieure, à \
    côté de l'alcôve ovoïde, où les bûches se consument dans l'âtre, ce qui \

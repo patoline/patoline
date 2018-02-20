@@ -10,8 +10,7 @@ type patoconfig =
 
 val patoconfig : patoconfig
 
-exception File_not_found of string
-
+(* These functions may raise [Not_found]. *)
 val findFont    : string -> string
 val findGrammar : string -> string
 val findHyphen  : string -> string

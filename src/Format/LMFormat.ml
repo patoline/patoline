@@ -17,14 +17,15 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Typography
 open Typography.Document
 open Typography.Complete
 open FTypes
-open Util
 open Fonts
 open Typography.Box
 open DefaultFormat
+open Extra
 
 let _=Random.self_init ()
 
@@ -122,7 +123,7 @@ module LMMath = struct
     { default_env2 with mathsSize=2./.3. };
     { default_env2 with mathsSize=4./.9. };
     { default_env2 with mathsSize=4./.9. }
-	      |]
+              |]
 
 end
 
@@ -145,14 +146,14 @@ let lmEnv env=
     lead=13./.10.*.fsize;
     normalMeasure=150.;
     normalLead=13./.10.*.fsize;
-    normalLeftMargin=(fst a4-.150.)/.2.;
+    normalLeftMargin=(fst env.normalPageFormat-.150.)/.2.;
     normalPageFormat=env.normalPageFormat;
     par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
                             drawing_max_width= 4.0 *. phi;
                             drawing_y0=0.;drawing_y1=0.;
                             drawing_nominal_width= 4.0 *. phi;
-			    drawing_width_fixed = true;
-			    drawing_adjust_before = false;
+                            drawing_width_fixed = true;
+                            drawing_adjust_before = false;
                             drawing_contents=(fun _->[]);
                             drawing_break_badness=0.;
                             drawing_states=[];

@@ -1,0 +1,591 @@
+(* #FORMAT FormatThese *)
+(* #PACKAGES bibi *)
+
+\Caml(
+  open Bibi
+  let _=
+    let _=Sys.command "bibi biblio.bib" in
+    bibfile "biblio.bibi"
+module Bib=BiblioNames
+open Bib
+)
+
+=> Macros and environments
+
+Patoline is written in a language called OCaml. This language has
+several interesting features making it a good language for this kind
+of projects: it is functional, and a quite good compiler has been
+written for it, that does the type-inference, typechecking, and
+optimization job for us. The idea of ``focusing on contents instead of
+typesetting'' is thus respected: you do not even have to take care of
+performance considerations or ``runtime errors'' yourself: Patoline
+and OCaml do most of it for you.
+
+To understand how to write macros to simplify and automate common
+tasks, you will need to understand a little more about Patoline's
+internal structure, and how it compiles documents. This is the purpose
+of section \sectref("eight layers"). Then, we will see how to use
+this model to write your own macros.
+
+Patoline's interface tries to stick with basic OCaml concepts, so that
+even readers unfamiliar with OCaml programming can find their way quickly
+through the api. If you find something too complicated, or if you see a
+possible simplification, we would be happy to hear about it.
+
+=> The eight layers of Patoline\label("eight layers")
+
+Patoline is a layered system. Each layer is a representation of your
+document, and at each step of the process, a different module is
+used. This way, if you are dissatisfied with a module or another, you
+can replace them, and still benefit from the work done in other
+parts. For instance, experience suggests that few Patoline users will
+want to rewrite the font or pdf library, while agreeing on an input
+language is difficult, and writing parsers is quite easy.
+
+\begin{enumerate}
+
+\item The first layer is high-level code. That is, the code we have
+described since the beginning of this book.
+
+\item This code is then translated to ocaml source code.
+
+\item The ocaml code is compiled and linked against an ocaml library
+called ``\emph{Typography}'', and an \emph{output driver} library,
+such as the one called \emph{Pdf}, or \emph{SVG}. Patoline relies on
+ocaml tools to automatically detect the dependencies of your document.
+
+\item \label("layer:document structure")Then, the resulting program is
+executed, generating a document structure, which is actually a tree
+structure. We may write functions to modify this tree, which is the
+way most ``environments'' work.
+
+\item \label("layer:paragraphs")This structure is then converted to an array
+of ``\emph{paragraphs}'', a paragraph being itself an array of small
+rectangular boxes, each containing an elementary graphical element.
+
+\item Then, the paragraphs are broken into lines and pages. We call this process
+the ``optimizing layer''. The result is an array of pages, which are themselves
+lists of lines.
+
+\item These lines pass through an ``\emph{output routine}'', which convert them to
+basic graphical elements, the same kind of elements that are contained inside
+boxes at step \id(generalRef "enumerate" "layout:paragraphs").
+
+\item Finally, the output routine calls an \emph{output driver} with
+these graphical elements, which can do anything with them, such as writing
+them into a pdf file, displaying them on the screen, saving them in
+ocaml format with \verb{output_value}, or anything else.
+
+\end{enumerate}
+
+Macros are always written in OCaml. They may be written in external files,
+or inlined in your documents.
+Before beginning more detailed explanations, you may want to check the
+documentation of Patoline's main library, called \verb{Typography}:
+
+\extLink("http://lama.univ-savoie.fr/~meunier/patoline/Typography.doc"){\verb{http://lama.univ-savoie.fr/~meunier/patoline/Typography.doc}}
+
+This library is
+usable independently of the main compiler, by using ocamlfind, for instance,
+with package \verb{Typography}.
+
+=<
+
+=> Text and maths macros\label("macros")
+
+As you probably understood it, the goal of a macro is to generate an
+ocaml data structure that will be used in the highest level structures
+of the executable: that is, inside the document tree. There are
+several different types of contents that a macro may return. For now,
+we will mainly focus on the text contents, and raw boxes (the ``door''
+to the inferior layer). Let us define a first macro:
+
+###
+\Caml(
+let a ()=[]
+)
+\a
+###
+
+This macro does nothing: it returns an empty list of content elements,
+that will be integrated to the document. Not really interesting, but
+still a good start: for instance, we may already notice that macros
+always take arguments in Patoline. If no arguments are necessary, then
+they are given \verb{()} as their only argument by the high-level
+parser.  This is to control macro evaluation: for instance, if a macro
+has side effects, then we surely want to execute the side effects each
+time we call it. Let us add more contents to our macro:
+
+###
+\Caml(
+let a ()=[tT "Macro"]
+)
+\a
+###
+
+\verb{tT} is the text constructor, at this level of content.  It is
+defined in module \verb{Typography.Document} of package
+\verb{Typography}. Its argument is a string, that will be converted to
+glyph boxes before optimization, according to the current font
+parameters.
+
+As we already pointed out, any argument passed to a macro between curly
+braces is considered ``text to be typeset'', that is, arguments at the
+same level of content as our '\verb{a}' macro. To see that, you could do:
+
+###
+\Caml(
+let a x=x
+)
+\a{Macro}
+###
+
+Now, we need more knowledge of module \verb{Typography.Document}, in order
+to understand how to modify content structures. Specifically, we need
+to know that \verb{tT} is not primitive: it allocates a font cache and
+stores the string, along with this cache, into the primitive constructor
+called \verb{T}. Let us just ignore this cache, and see what we can do
+with this constructor:
+
+###
+\Caml(
+  let caps x=List.map (fun content->match content with
+      T (t,_)->tT (String.capitalize t)
+    | _->content
+  ) x
+)
+\caps{bla}
+###
+
+The other frequently used constructor is \verb{B}, and we use it to
+generate \emph{raw boxes}, which are the types used in the next level.
+The interface of boxes is defined in interface \verb{Typography.Box}, so
+you can check the documentation of this module for more details. Usually,
+this constructor is used to make drawing boxes, as in the following example:
+
+###
+\Caml(
+let dr ()=
+  [bB (fun _->
+    [Drawing (drawing [Path (default,[rectangle (0.,0.) (10.,10.)])])]
+  )]
+)
+\dr
+###
+
+In this example, we needed a few more constructs. The first one is \verb{Path},
+defined in \verb{Typography.OutputCommon}. Actually, a drawing is a collection
+of graphical elements, among which paths, glyphs, hypertext links and raster images.
+The whole list is given in the documentation of \verb{Typography.OutputCommon}.
+Again, all measurement units in Patoline are \emph{metric}. The rectangle we have
+just drawn is actually a square of 1cm by 1cm.
+
+Now, what we call a path is a list of arrays of Bezier curves. Each
+array of the list is a connected path. More than one element in the
+list means that the surface we are drawing has holes. I'll let you
+experiment on that:
+
+\begin{exercise}
+Draw a rectangle, with a rectangular hole inside.
+\end{exercise}
+
+Another important type of constructor that one may need is called
+\verb{C}. This is a constructor containing a function of the
+environment to a list of other content constructors (or
+\verb{C}s again!).
+
+For instance, to typeset the state of a counter,
+we may use:
+
+###
+\Caml(
+  let counter c=
+    [C (fun env->
+      let _,counter=try StrMap.find c env.counters with Not_found -> -1,[0] in
+      [tT (String.concat "." (List.map string_of_int counter))]
+    )]
+)
+###
+
+A few explanations may be needed in order to understand this
+command. What we call a \emph{counter} is a couple \verb{(a,b)}, where
+\verb{a} is called the counter's \emph{level}, and \verb{b} its
+\emph{value}. The level is meant to control when the counter is reset:
+every time the \verb{_structure} counter value stack goes below length
+\verb{a}, \verb{b}'s top of the stack is popped, and replaced by a 0. A
+counter level of $-1$ means the counter is never reset.
+
+One more word on counters: they are stacks because this is sometimes needed.
+Recall for instance environment \verb{enumerate}, that we defined in section
+\sectref("more structure"). If one of the items uses a new enumerate or
+itemize environment, the same counter will be used; this is possible only
+if ##\\begin{enumerate}## pushes a new zero on the counter stack.
+
+Now that you understand counters, what about the following exercise:
+
+\begin{exercise}
+If you recall section \sectref("counters"), the most basic counter is called
+\verb{"_structure"}. Call our freshly defined \verb{counter} macro on this counter.
+Then put it inside ##=>## and ##=<##. How does the counter value change with sections ?
+\end{exercise}
+
+There are many things to say about the environment, but maybe the most
+useful thing you need to know right now is about \emph{names}. The
+environment has a record field called \verb{names}, in which all the
+labels of a document are stored, along with their positions and the
+state of all counters at the time it appeared. Unless you know what
+you are doing, this record field should never be accessed
+directly. Instead, you should call function
+\verb{Typography.Document.names} on the environment to access it. This
+is to prevent the activation of caches in the case the initially
+computed position is changed after compilation.
+Example:
+
+###
+=> First section
+
+\Caml(
+  let mark labelType name=
+    [Env (fun env->
+      { env with names=StrMap.add name
+            (env.counters, labelType, Layout.uselessLine)
+            (names env) })
+    ]
+
+  let remark name=
+    [C (fun env->
+      let (counters,_,_)=StrMap.find name (names env) in
+      let _,str=StrMap.find "_structure" counters in
+      [tT ("At the time of typesetting name "^name^
+           ", counter _structure was in state ");
+       tT (String.concat "." (List.map string_of_int str))]
+    )]
+)
+
+\mark("test")("example")
+
+=<
+
+\remark("example")
+###
+
+Then, upon invoking patoline on this example, it will need to iterate
+the optimization algorithm, in order to resolve its position. Since we
+have placed no marker in the document, but only modified the
+environment, there is no reason the name should be resolved. We need to
+place a marker, which can be done by modifying the above example like this:
+
+###
+=> First section
+
+\Caml(
+  let mark labelType name=
+    [Env (fun env->
+      { env with names=StrMap.add name
+            (env.counters, labelType, Layout.uselessLine)
+            (names env) });
+     bB (fun _->[User (Label name)])
+    ]
+
+  let remark name=
+    [C (fun env->
+      let (counters,_,_)=StrMap.find name (names env) in
+      let _,str=StrMap.find "_structure" counters in
+      [tT ("At the time of typesetting name "^name^
+           ", counter _structure was in state ");
+       tT (String.concat "." (List.map string_of_int str))]
+    )]
+)
+
+\mark("test")("example")
+
+=<
+
+\remark("example")
+###
+
+Since markers are an information used by the optimizer, we need to
+talk to it directly through \emph{boxes}. The special kind of boxes
+used to make markers is called \verb{User}. Read the documentation of
+module \verb{Typography.Box} to find all possible markers.
+
+Moreover, module \verb{Typography.Document} contains everything needed
+to create and manipulate counters. Just remember that counter names
+beginning with a '\verb{_}' are reserved, and you may confuse Patoline
+if you change them. An example internal behavior using this feature is
+the reset of all counters up to level $x$ when counter \verb{_structure}
+is changed.
+
+=<
+
+=> Defining environments\label("ext : environments")
+
+An environment, that is, a global command acting on a portion of the document,
+is called with ##\\begin{bla}## … ##\\end{bla}##. In this section,
+we will see how to define new ones, as well as a few examples of definitions
+and general methods that you may find useful.
+
+First of all, the following exercise will allow you to get a good understanding
+of how environments are compiled to ocaml code:
+
+\begin{exercise}
+Write the following code to a file called \verb{environments.txp}:
+###
+\begin{test}
+
+\end{test}
+###
+Now compile this file
+with \verb{patoline --ml environments.txp}, and examine the resulting
+file, called \verb{environments.tml}.
+\end{exercise}
+
+Now that you understand how environments are compiled, we need to tell
+more about how the document structure is represented in Patoline. A
+document, internally, is an element of type
+\verb{Typography.Document.tree}.  At the beginning of any document,
+Patoline creates a module called \verb{D}, containing several fields,
+among which a reference to a zipper over type
+\verb{Typography.Document.tree}, in a field called
+\verb{structure}. The idea of this module is to get a ``state
+monad-like'' behavior, especially when including other modules, as we
+saw in section \sectref("include"). Patoline compiles external
+inclusions as ocaml files with extension \verb{.ttml}, containing a
+single functor taking this \verb{D} module as its arguments, and doing
+the same as a regular \verb{.tml} file would do. This way, each
+different inclusion of the same file gets instanciated properly at the
+correct position in the document, independently of the number of times
+it appears, and the order on the compilation order we give to the
+ocaml compiler.
+
+=> Document zippers
+
+Most beginners in Patoline, not acquainted with functional programming,
+will probably wonder what a \emph{zipper} is. A zipper is nothing more
+than a data structure, and an marker on a particular position in it.
+It is a good way to functionally edit structures such as a tree, since
+we can do the edition locally, without specifying paths to the node
+we are editing. At the same time, it is a persistent data structure,
+meaning that a function can ``save'' a particular version of the tree
+for later use; the ``current version'' may still evolve, the saved one
+will stay the same, and the two versions will share as much memory as
+possible.
+
+Now, if you look at the type of document structures, e.g. in module
+\verb{Typography.Document}, it is:
+
+###
+type cxt=tree * (int * tree) list
+###
+
+Its first component is a tree, the one we are editing. The second component
+is the sequence of trees we needed to left aside, when walking from the top
+to the current tree, along with the integer referencing the new subtree,
+at each step of the walk.
+
+For instance, imagine a function \verb{touch} changing something on document trees.
+Then, to do the change, while staying at the same position, we could do:
+
+###
+\Caml(
+   let _=
+       D.structure:= (touch (fst !D.structure), snd !D.structure)
+)
+###
+
+A cool thing
+about zippers is that you can ``navigate'' through them in both
+directions, as opposed to a tree, where the only possible direction is
+from the top down. For instance, the following code goes to the upper
+level, if it exists, and else does nothing:
+
+###
+\Caml(
+   let _=D.structure:=
+     match !D.structure with
+       t0,((i0,Node t1)::s)->
+          Node { t1 with children=IntMap.add i0 t0 t1.children }, s
+     | x->x
+)
+###
+
+Several functions are defined in module \verb{Typography.Document} to
+manipulate document zippers. Have a look at the documentation for this
+module.
+
+\begin{exercise}
+Using function \verb{top} in module \verb{Typography.Document}, write
+a macro outputting the document graph in dot. Then compile it with
+command \verb{graphviz}.
+\end{exercise}
+
+=<
+
+Here is the general things most environments defined in Patoline do:
+
+\begin{enumerate}
+
+\item Create a module called \verb{Env_example}, with two functions,
+\verb{do_begin_env} and \verb{do_end_env},
+taking \verb{()} as their only argument.
+
+\item In function \verb{do_begin_env}, do nothing but push the current
+zipper path (the second component) on a stack. This will ensure that
+nested environments behave well. The stack does not need to be common
+to all environments. Defining it inside your newly created environment
+is fine.
+
+\item In function \verb{do_end_env}, go to the saved position, do some
+magic on this subtree, then change \verb{D.structure} to this subtree.
+This way, whatever you do on a subtree stays inside this subtree, and
+upon exiting your environment, the position inside the document has not
+changed.
+
+\end{enumerate}
+
+One possible way of finding your way back into a saved position is the
+following:
+
+###
+D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
+env_stack:=List.tl !env_stack
+###
+
+Assuming that \verb{env_stack} is the stack where you saved your zipper.
+Frequently, \verb{do_begin_env} needs to create a new sub-tree, in order
+for your modification functions to identify the correct part of the document,
+on which they must act. In this case, an
+example \verb{do_begin_env} would look like:
+
+###
+let do_begin_env ()=
+  D.structure:=newChildAfter (!D.structure) (Node empty);
+  env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+###
+
+And a corresponding \verb{do_end_env} would be:
+
+###
+let do_end_env ()=
+  let a,b=follow (top !D.structure) (List.rev (List.hd !env_stack));
+  env_stack:=List.tl !env_stack
+  (* Do some magic here with a, resulting in a' *)
+  D.structure:=up (a',b)
+###
+
+Functions \verb{newChildAfter}, \verb{follow} and \verb{top}, as well
+as the empty node \verb{empty}, are defined in
+\verb{Typography.Document}.
+
+=<
+
+=> Accessing Patoline syntax from within \\Caml
+
+When writing ocaml code, using Patoline's syntax is sometimes
+needed. For instance, you may want to draw a text containing maths,
+or simply draw text without caring about \verb{tT} and list syntax.
+In this case, you would do:
+
+###
+\Caml(
+let a ()= <<a>>
+)
+\a
+###
+
+To simply write an ``a''. You can also include maths:
+
+###
+\Caml(
+let a ()= <<math example: $a+b$>>
+)
+\a
+###
+
+Finally, another similar syntax can be used to create new math
+commands: math list. This one creates a list of
+\verb{Typography.Maths.math}. Math macros do not need an argument.
+
+###
+\Caml(
+let a=<$a$>
+)
+$$\a$$
+###
+
+=<
+
+
+=> Compilation options, formats and drivers
+
+Fortunately enough, many patterns occur with quite high frequency when
+typesetting documents, and we end up writing only very few functions
+to customize Patoline for each document. In a normal document such as
+this book, only the title page, and a few drawings, need to use
+command \verb{\\Caml}.
+
+Also, the same document could be typeset to several different output
+formats: PDFs, which is the default in Patoline, does not necessarily
+fit all needs. For instance, the PDF specification for long-time
+document archiving is still confidential, and no open-source or free
+compliance verifier exists. In this case, you might want to use open
+formats such as SVG. But then, your output gets split between lots of
+different files, which may not be convenient if you want to send them
+by mail, for instance.
+
+To handle this diversity of uses, we designed Patoline with different
+\emph{formats} and \emph{drivers}. A format is a collection of functions
+and environments that may be used in a document, such as \verb{italic},
+\verb{itemize} or \verb{theorem}. This is also where output routines
+are defined; these are the functions that call all the transformation
+functions to transform the document at layer
+\generalRef("enumerate")("layer:document structure") into an output
+suitable for the drivers.
+
+=> Formats
+
+Writing formats requires time, patience, and experience. Looking at
+\verb{src/Format/FormatArticle.ml} in the Patoline source tree, for
+instance, will show you an example of how to use the default format to
+write new ones. At the time of this writing, only two different output
+routines have been written: one for all paper-based documents, the
+other one for slides. Output routines are still a somewhat fragile
+part in Patoline, and the api may changed quickly to fit more complex
+situations than it does now.
+
+To select a format other than the default one when compiling your
+document, for instance one called ``OtherFormat'', you can simply call
+Patoline with option \verb{--format OtherFormat}. There is a better option
+though: if your document uses format-specific features, or simply
+if you always want to compile it with the same format, then you can
+use compilation pragmas. For instance, to always compile your documents
+with format ``OtherFormat'', just write, in the first line of your document:
+
+###
+(* #FORMAT OtherFormat *)
+###
+
+=<
+
+=> Drivers
+
+Patoline's system of output drivers is meant to be easy to use and extend.
+If you wrote a document, then just invoking Patoline with command-line option
+\verb{--driver GL}, or \verb{--driver SVG}, for instance, is enough to
+see it with the corresponding drivers. Of course, you can also add a
+compilation pragma, if you know you'll always want this document to be
+compiled with a particular driver:
+
+###
+(* #DRIVER SVG *)
+###
+
+In the particular case of the SVG driver, it creates a directory named
+\verb{document} (if your document was named \verb{document.txp}), an
+html file named \verb{index.html}, and svg files in this directory.
+
+=<
+
+=<
+
+=<

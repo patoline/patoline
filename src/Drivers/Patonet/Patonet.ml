@@ -21,8 +21,7 @@
 open Db
 open RawContent
 open Driver
-open Util
-open UsualMake
+open Extra
 open HtmlFonts
 
 let _ = Printexc.record_backtrace true
@@ -51,7 +50,7 @@ exception Send_error
 (* Encoding for websocket *)
 let resp_slave fd data=
   let chunk_size = 1000000 in
-  let pos = ref 0 and len = String.length data in
+  let pos = ref 0 and len = Bytes.length data in
   while !pos < len do
   let x=Buffer.create 128 in
     let size = min (len - !pos) chunk_size in
@@ -88,7 +87,7 @@ let resp_slave fd data=
 
 (* Decoding for websocket *)
 let decode_slave fd =
-  let res = Rbuffer.create 256 in
+  let res = Buffer.create 256 in
   let rec fn () =
     let c = int_of_char (input_char fd) in
     let fin = 0x80 land c <> 0 in
@@ -127,9 +126,9 @@ let decode_slave fd =
     for i = 0 to length - 1 do
       let c = input_char fd in
       let c = char_of_int (int_of_char c lxor mask_array.(i land 0x3)) in
-      Rbuffer.add_char res c;
+      Buffer.add_char res c;
     done;
-    if fin then Rbuffer.contents res else fn ()
+    if fin then Buffer.contents res else fn ()
   in fn ()
 
 let master_page=ref ""
@@ -335,7 +334,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         let len = in_channel_length ch in
         let buf = Bytes.create len in
         really_input ch buf 0 len;
-        buf
+        Bytes.to_string buf
     in
     StrMap.add filename buf m) imgs StrMap.empty
   in
@@ -592,30 +591,28 @@ function start_drag(el,name,ev,touch) {
   }
   return false;
 }
-/*
-Copyright (c) 2008 Fred Palmer fred.palmer_at_gmail.com
-
-Permission is hereby granted, free of charge, to any person
-obtaining a copy of this software and associated documentation
-files (the \"Software\"), to deal in the Software without
-restriction, including without limitation the rights to use,
-copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
-*/
+// Copyright (c) 2008 Fred Palmer fred.palmer_at_gmail.com
+//
+// Permission is hereby granted, free of charge, to any person
+// obtaining a copy of this software and associated documentation
+// files (the \"Software\"), to deal in the Software without
+// restriction, including without limitation the rights to use,
+// copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the
+// Software is furnished to do so, subject to the following
+// conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+// OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+// OTHER DEALINGS IN THE SOFTWARE.
 function StringBuffer()
 {
     this.buffer = [];
@@ -858,26 +855,26 @@ function gotoSlide(n){
     cache structure pages ""
   in
 
-  let slides = Array.map (Array.map (fun (x,y) -> Rbuffer.contents x, Rbuffer.contents y)) slides in
-  let page = Rbuffer.contents page in
-  let css = Rbuffer.contents css in
+  let slides = Array.map (Array.map (fun (x,y) -> Buffer.contents x, Buffer.contents y)) slides in
+  let page = Buffer.contents page in
+  let css = Buffer.contents css in
 
   let output_cache out i j =
-    Rbuffer.add_string out "<defs id=\"svg_defs\">";
+    Buffer.add_string out "<defs id=\"svg_defs\">";
     Hashtbl.iter (fun k (d, ptr, _, _) ->
       try
         let c = match !ptr with
             Some c -> (*Printf.eprintf "From cache\n%!";*)  c
           | None -> let c = try d.dyn_contents () with _ -> "" in ptr := Some c; c
         in
-        Rbuffer.add_string out (Printf.sprintf "<g id=\"@%s\">%s</g>" d.dyn_label c)
+        Buffer.add_string out (Printf.sprintf "<g id=\"%@%s\">%s</g>" d.dyn_label c)
       with e ->
         let e = Printexc.to_string e in
         Printf.eprintf "[ERROR]uncaught exception %s from dyn_contents %s\n%!" e d.dyn_label;
         Printexc.print_backtrace stderr;
-        Rbuffer.add_string out (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label e)
+        Buffer.add_string out (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label e)
     ) (fst dynCache.(i).(j));
-    Rbuffer.add_string out "</defs>";
+    Buffer.add_string out "</defs>";
   in
 
   let reset_cache () =
@@ -890,11 +887,11 @@ function gotoSlide(n){
 
   let build_svg i j =
     let prefix,suffix = slides.(i).(j) in
-    let buf = Rbuffer.create 256 in
-    Rbuffer.add_string buf prefix;
+    let buf = Buffer.create 256 in
+    Buffer.add_string buf prefix;
     output_cache buf i j;
-    Rbuffer.add_string buf suffix;
-    Rbuffer.contents buf;
+    Buffer.add_string buf suffix;
+    Buffer.contents buf;
   in
 
   let pushto ?(change=Ping) num a =
@@ -904,7 +901,7 @@ function gotoSlide(n){
           Ping -> present.cur_slide, present.cur_state, "\"Ping\"", "[]"
         | Slide(i,j) ->
           let svg = build_svg i j in
-          i, j, "\"Slide\"", Printf.sprintf "\"%s\"" (base64_encode svg)
+          i, j, "\"Slide\"", Printf.sprintf "\"%s\"" (Base64.encode svg)
         | Dynamics(i,j,l) ->
            let l = List.fold_left
                      (fun acc label ->
@@ -918,18 +915,18 @@ function gotoSlide(n){
                          | Some c -> c
                        in
                        Printf.sprintf "{\"dyn_label\":\"%s\", \"dyn_contents\":\"%s\"}"
-                                      d.dyn_label (base64_encode c)::acc)
+                                      d.dyn_label (Base64.encode c)::acc)
                      [] l
            in
            if l = [] then raise Exit;
            let full = "[" ^ String.concat "," l ^"]" in
            i, j, "\"Dynamics\"", full
       in
-      resp_slave a (
+      resp_slave a (Bytes.of_string (
         Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"change\":%s, \"change_list\":%s }"
           slide state
           change change_list
-      );
+      ));
     with
     | Exit -> ()
     | e-> log_son num "unexpected exception in pushto: %s" (Printexc.to_string e)
@@ -1015,9 +1012,9 @@ function gotoSlide(n){
       Printf.eprintf "building slide %d_%d for %d\n%!" i j num;
       try
         let prefix,suffix = slides.(i).(j) in
-        let dyns = Rbuffer.create 256 in
+        let dyns = Buffer.create 256 in
         output_cache dyns i j;
-        let dyns = Rbuffer.contents dyns in
+        let dyns = Buffer.contents dyns in
         Printf.eprintf "start sent image/svg+xml %d %s\n%!" num sessid;
         http_send 200 "image/svg+xml" [prefix; dyns; suffix] ouc;
       Printf.eprintf "sent image/svg+xml %d %s\n%!" num sessid;
@@ -1029,8 +1026,8 @@ function gotoSlide(n){
 
   let fonts = StrMap.fold (fun key font acc ->
   (*  Printf.eprintf "Font: %S\n%!" key;*)
-    let key = List.hd (List.rev (Util.split '/' key)) in
-    StrMap.add key (Rbuffer.contents font) acc) cache.fontBuffers StrMap.empty
+    let key = List.hd (List.rev (String.split_on_char '/' key)) in
+    StrMap.add key (Buffer.contents font) acc) cache.fontBuffers StrMap.empty
   in
 
   let serve_font font ouc=
@@ -1173,6 +1170,7 @@ function gotoSlide(n){
                     else d.dyn_label::acc) priv ds
               in
               let ds =
+                let open Util in
                 if snd key = Private then
                   (try Hashtbl.find graph (fst key, Group) (* Group differently from public *)
                   with Not_found -> [])
@@ -1273,9 +1271,9 @@ function gotoSlide(n){
 
           let name, contents =
             try
-              match Util.split ' ' rest with
+              match String.split_on_char ' ' rest with
                 [name;contents] ->
-                  name, base64_decode contents
+                  name, Base64.decode contents
               | _ -> raise Not_found
             with _ -> failwith "Bad edit"
           in
@@ -1339,6 +1337,7 @@ function gotoSlide(n){
             log_son num "slave (%s)" get;
             let _ = reject_unlogged () in
             let _ = check_guest in
+            Printf.eprintf "before send\n%!";
             http_send ~sessid:(read_sessid_fs ()) 200 "text/html" [page]  ouc;
             process_req false "" [] reste
 
@@ -1383,7 +1382,7 @@ function gotoSlide(n){
                   let sha=Cryptokit.Hash.sha1 () in
                   sha#add_string websocket_key;
                   sha#add_string "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-                  base64_encode (sha#result)
+                  Base64.encode (sha#result)
                 in
                 output_string ouc "HTTP/1.1 101 Switching\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-WebSocket-Accept: ";
                 output_string ouc key;
@@ -1450,7 +1449,7 @@ function gotoSlide(n){
         if a = "Cookie" || a = "Cookies" then (
           let ls = Str.split (Str.regexp ";[ \t]+") b in
           let ls = List.fold_left (fun acc s ->
-            match Util.split '=' s with
+            match String.split_on_char '=' s with
               [key;v] -> (key,v)::acc
             | _ -> acc) [] (List.rev ls)
           in
@@ -1529,13 +1528,16 @@ function gotoSlide(n){
                    (List.length master_sockets) (List.length !sonsBySock);
         (try while (fst (Unix.waitpid [WNOHANG] (-1)) <> 0) do () done with _ -> ());
         let socks,_,errors=Unix.select (master_sockets@List.map fst !sonsBySock) [] (List.map fst !sonsBySock) 30. in
+        Printf.eprintf "read: %d, errors: %d\n%!" (List.length socks) (List.length errors);
         List.iter (fun sock -> kill_son sock) errors;
         List.iter (fun sock ->
           if not (List.mem sock errors) then (
           if not (List.mem sock master_sockets) then (
           let son = try List.assoc sock !sonsBySock with _ -> assert false in
           try
-            let cmd = Util.split ' ' (input_line son.fd) in
+            Printf.eprintf "coucou 0\n%!";
+            let cmd = String.split_on_char ' ' (input_line son.fd) in
+            Printf.eprintf "coucou 2\n%!";
             match cmd with
               ["move";sessid;groupid;slide;state] -> (
                 let slide = int_of_string slide and state = int_of_string state in
@@ -1563,7 +1565,7 @@ function gotoSlide(n){
                let dest = List.map (fun s ->
                               log_father ">>> dest: %S" s;
                               try
-                                match Util.split ',' s with
+                                match String.split_on_char ',' s with
                                 | [d;i;j] -> (d, int_of_string i, int_of_string j)
                                 | _ -> raise Exit
                               with _ ->
@@ -1586,25 +1588,23 @@ function gotoSlide(n){
             Unix.set_nonblock conn_sock;
             let num = !conn_num in
             incr conn_num;
-            let fd2,fd1 =  Unix.(socketpair PF_UNIX SOCK_STREAM 0) in
+            let fd_in,fd_out =  Unix.(socketpair PF_UNIX SOCK_STREAM 0) in
             List.iter (fun f -> f ()) !interaction_start_hook;
             let pid = Unix.fork () in
             if pid = 0 then (
               try
-                Util.close_in_cache ();
-                Unix.close fd2;
+                FUtil.close_in_cache ();
                 Sys.(set_signal sigterm Signal_default);
                 close_all_other conn_sock;
                 log_son num "connection started";
-                serve fd1 num conn_sock;
+                serve fd_out num conn_sock;
                 assert false;
               with _ -> exit 0);
-            Unix.close fd1;
-            sonsBySock := (fd2,{ fd = in_channel_of_descr fd2;
-                                 df = out_channel_of_descr fd2;
-                           pid = pid; num = num; addr;
-                           served_sock = conn_sock;
-                           sessid = None; slide = 0; state = 0})::!sonsBySock))
+            sonsBySock := (fd_in,{ fd = in_channel_of_descr  fd_in
+                                 ; df = out_channel_of_descr fd_out
+                                 ; pid = pid; num = num; addr
+                                 ; served_sock = conn_sock
+                                 ; sessid = None; slide = 0; state = 0})::!sonsBySock))
           ) socks
       done)
 

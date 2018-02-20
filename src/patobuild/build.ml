@@ -1,36 +1,6 @@
 open Parallel
 open PatConfig
-
-(* Some useful functions for manipulating files. *)
-module Filename =
-  struct
-    include Filename
-
-    (* Decompose a filename into directory, basename and extension. *)
-    let decompose : string -> string * string * string = fun fn ->
-      let dir  = dirname  fn in
-      let base = basename fn in
-      let name = chop_extension base in
-      let base_len = String.length base in
-      let name_len = String.length name in
-      let ext =
-        if base_len = name_len then ""
-        else String.sub base name_len (base_len - name_len)
-      in
-      (dir, name, ext)
-
-    (* Set the extension of the given file. *)
-    let set_extension : string -> string -> string = fun fn ext ->
-      chop_extension fn ^ ext
-
-    (* Get the extension of the given file. *)
-    let get_extension : string -> string = fun fn ->
-      let (_,_,ext) = decompose fn in ext
-
-    (* Ensure that concat ignores the "." directory. *)
-    let concat : string -> string -> string = fun dir fn ->
-      if dir = "." then fn else concat dir fn
-  end
+open Extra
 
 (* Time representation as a float. *)
 module Time =

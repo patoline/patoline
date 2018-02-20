@@ -19,7 +19,7 @@
 *)
 open Printf
 open Sqlite3
-open UsualMake
+open Extra
 
 let fields=[
   "id","INTEGER PRIMARY KEY AUTOINCREMENT";
@@ -156,10 +156,10 @@ let make_name n=
     | h::s->
         let initiales=List.map
                         (fun x->
-            let xx=try Util.unspace x with _->"" in
+            let xx = try UTF8.trim x with _ -> "" in
             (String.sub xx 0 (UTF8.next xx 0)) ^ ".") s
         in
-        (String.concat "" (List.rev initiales),try Util.unspace h with _->"")
+        (String.concat "" (List.rev initiales),try UTF8.trim h with _->"")
 
 exception Bib_error of string
 
@@ -200,7 +200,6 @@ let author_ bib auth=
 (* let _=List.iter (fun (a,x)->printf "%s : %s\n" a (Document.string_of_contents x)) *)
 (*   (cite "biblio" "title LIKE '%arameterized%'") *)
 
-open Util
 open Box
 exception No_bib of string
 let bib:((int*string option array) IntMap.t) ref=ref IntMap.empty
@@ -213,22 +212,18 @@ let bibfile_ =
 
 let bibfile x=bibfile_:=Some x
 
-let no_results x=match Typography.TypoLanguage.lang with
-    `FR->Printf.sprintf "La requête n'a pas donné de résultats :\n%s" x
-  | _->Printf.sprintf "The request gave no results:\n%s" x
-let more_than_one x=match Typography.TypoLanguage.lang with
-    `FR->Printf.sprintf "Attention : La requête a donné plus d'un résultat :\n%s" x
-  | _->Printf.sprintf "Warning : The request gave more than one result :\n%s" x
+let no_results x=Printf.sprintf "The request gave no results:\n%s" x
+let more_than_one x=Printf.sprintf "Warning : The request gave more than one result :\n%s" x
 
 module type CitationStyle=sig
     val item_format: ?separator:string ->
-		     ?and_last:string ->
-		     ?and_:string ->
-		     ?editeur:string ->
-		     ?editeurs:string ->
-		     ?inclusion:string ->
-		     ?follow_crossrefs:bool
-		   -> Sqlite3.row -> content list
+                     ?and_last:string ->
+                     ?and_:string ->
+                     ?editeur:string ->
+                     ?editeurs:string ->
+                     ?inclusion:string ->
+                     ?follow_crossrefs:bool
+                   -> Sqlite3.row -> content list
   val citation_format:int->string option array->content list
   val compare:(int*string option array)->(int*string option array)->int
 end
@@ -243,9 +238,9 @@ end
 (*         match b.(field_num "id") with *)
 (*             Some bid->( *)
 (*           try *)
-(* 	        fst (IntMap.find (int_of_string bid) !bib) *)
+(*                 fst (IntMap.find (int_of_string bid) !bib) *)
 (*               with *)
-(* 	        Not_found-> *)
+(*                 Not_found-> *)
 (*                     let key=(IntMap.cardinal !bib)+1 in *)
 (*                     bib:=IntMap.add (int_of_string bid) (key, b) !bib; *)
 (*                     revbib:=IntMap.add key b !revbib; *)
@@ -255,18 +250,18 @@ end
 (*       in *)
 (*       let rec fn l = *)
 (*         match  l with *)
-(* 	    []-> raise (No_bib (no_results x)); *)
+(*             []-> raise (No_bib (no_results x)); *)
 (*           | (row)::l-> *)
 (*             let a=match row.(field_num "id") with None->assert false | Some a->int_of_string a in *)
-(* 	    citeCounter:=IntMap.add a () !citeCounter; *)
+(*             citeCounter:=IntMap.add a () !citeCounter; *)
 (*             let _=num row in *)
-(* 	    let item = *)
+(*             let item = *)
 (*               bB (fun _->[Marker (BeginLink (Intern (sprintf "_bibi_%d" (num row))))]) *)
 (*               ::(C.citation_format (num row) row) *)
 (*               @[bB (fun _->[Marker EndLink])] *)
-(* 	    in *)
-(* 	    if l = [] then item@[tT"]"] else *)
-(* 	      item@tT ", "::fn l *)
+(*             in *)
+(*             if l = [] then item@[tT"]"] else *)
+(*               item@tT ", "::fn l *)
 (*       in *)
 (*       let l = bibitem bibfile x in *)
 (*       tT"["::fn l *)
@@ -282,7 +277,7 @@ let bibref name=
       env_accessed:=true;
       let counters,refType_=
         let a,t,_=StrMap.find name (names env)
-	in a,t 
+        in a,t 
       in
       let _,num=StrMap.find refType counters in
       [bB (fun _->[Marker (BeginLink (Intern name))]);
@@ -291,8 +286,8 @@ let bibref name=
        bB (fun _->[Marker EndLink])]
     with
       Not_found ->
-	Printf.eprintf "Unknown label %S of labelType %S\n%!" name refType;
-	[ tT "???"]
+        Printf.eprintf "Unknown label %S of labelType %S\n%!" name refType;
+        [ tT "???"]
   )]
 
 let bibnum name env =
@@ -307,8 +302,8 @@ let bibnum name env =
     match num with
       [] -> 
       begin
-	Printf.eprintf "Unknown label %S of labelType %S\n%!" name refType;
-	-1
+        Printf.eprintf "Unknown label %S of labelType %S\n%!" name refType;
+        -1
       end
     | n :: _ -> 1+n
   with
@@ -323,9 +318,9 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
         match b.(field_num "id") with
             Some bid->(
           try
-	        fst (IntMap.find (int_of_string bid) !bib)
+                fst (IntMap.find (int_of_string bid) !bib)
               with
-	        Not_found->
+                Not_found->
                     let key=(IntMap.cardinal !bib)+1 in
                     bib:=IntMap.add (int_of_string bid) (key, b) !bib;
                     revbib:=IntMap.add key b !revbib;
@@ -335,20 +330,20 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
       in
       let rec fn l =
         match  l with
-	    []-> raise (No_bib (no_results x));
+            []-> raise (No_bib (no_results x));
           | (row)::l->
             let a=match row.(field_num "id") with None->assert false | Some a->int_of_string a in
-	    citeCounter:=IntMap.add a () !citeCounter;
+            citeCounter:=IntMap.add a () !citeCounter;
             let i=num row in
-	    let name = sprintf "_bibi_%d" i in
-	    let item = bibref name in
-	    (* let item = *)
+            let name = sprintf "_bibi_%d" i in
+            let item = bibref name in
+            (* let item = *)
             (*   bB (fun _->[Marker (BeginLink (Intern (sprintf "_bibi_%d" (num row))))]) *)
             (*   ::(C.citation_format (num row) row) *)
             (*   @[bB (fun _->[Marker EndLink])] *)
-	    (* in *)
-	    if l = [] then item@[tT"]"] else
-	      item@tT ", "::fn l
+            (* in *)
+            if l = [] then item@[tT"]"] else
+              item@tT ", "::fn l
       in
       let l = bibitem bibfile x in
       tT"["::fn l
@@ -391,13 +386,13 @@ end
 
 
 let rec default_biblio_format ?separator:(separator=". ")
-		  ?and_last:(and_last=" et ")
-			 ?and_:(and_=" et ")	   (* en anglais ca serait " and " *)
-			 ?editeur:(editeur=" (éditeur)")
-			 ?editeurs:(editeurs=" (éditeurs)")
-			      ?inclusion:(inclusion="In: ")
-			      ?follow_crossrefs:(follow_crossrefs=true)
-			      row=
+                  ?and_last:(and_last=" et ")
+                         ?and_:(and_=" et ")           (* en anglais ca serait " and " *)
+                         ?editeur:(editeur=" (éditeur)")
+                         ?editeurs:(editeurs=" (éditeurs)")
+                              ?inclusion:(inclusion="In: ")
+                              ?follow_crossrefs:(follow_crossrefs=true)
+                              row=
   match !bibfile_ with
       None->[]
     | Some bf->(
@@ -440,10 +435,10 @@ let rec default_biblio_format ?separator:(separator=". ")
               None->[]
             | Some a->[tT (sprintf "%s" a)]
           in
-	  let date_after = if date=[] then [] else tT ", "::date in
+          let date_after = if date=[] then [] else tT ", "::date in
           let pub_date=match row.(field_num "publisher"),date with
               None,[]->[]
-	    | None,date-> date
+            | None,date-> date
             | Some j, _ -> (
               let pub=ref [] in
               let cb row _=match row.(0) with Some a->pub:=a::(!pub) | None -> () in
@@ -497,28 +492,28 @@ let biblio_format_of citation_format item_format params comp i row=
       par_contents=
         [C (fun env->
             try
-	      let name = sprintf "_bibi_%d" i in
+              let name = sprintf "_bibi_%d" i in
               Env (fun env ->Document.incr_counter "bibliography" env)
-	       ::
-		 tT"["
-	       ::
-		 ((citation_format (bibnum name env) row)
-		  @
-		    [ tT"] " ]
+               ::
+                 tT"["
+               ::
+                 ((citation_format (bibnum name env) row)
                   @
-		    [ bB (fun env->let s=env.size/.3. in
-				   [glue s s s;
-				    Marker AlignmentMark]) ]
-		  @
-		    label ~labelType:"bibliography" name
-		  @ item_format row)
+                    [ tT"] " ]
+                  @
+                    [ bB (fun env->let s=env.size/.3. in
+                                   [glue s s s;
+                                    Marker AlignmentMark]) ]
+                  @
+                    label ~labelType:"bibliography" name
+                  @ item_format row)
             with
               _->[]
            )];
       par_env=(fun env->{env with par_indent=[]});
       par_post_env=(fun env1 env2 -> { env1 with names=names env2;
-						 counters=env2.counters;
-						 user_positions=user_positions env2 });
+                                                 counters=env2.counters;
+                                                 user_positions=user_positions env2 });
       par_parameters=params;
       par_badness=badness;
       par_completeLine=comp;
@@ -570,33 +565,23 @@ module MarginBiblio (C:CitationStyle)=struct
 
 end
 
-module DefaultBiblio (C:CitationStyle)=struct
+module DefaultBiblio(C : CitationStyle) =
+  struct
+    let params env a1 a2 a3 a4 a5 a6 line =
+      let p = Document.parameters env a1 a2 a3 a4 a5 a6 line in
+      if line.lineStart = 0 then p else
+      let left_margin = p.left_margin +. Extra.phi *. env.size in
+      let measure = p.measure -. Extra.phi *. env.size in
+      {p with left_margin ; measure}
 
-  open Box
+    let comp mes a1 a2 a3 a4 line a6 =
+      if line.lineStart = 0 then Complete.normal mes a1 a2 a3 a4 line a6 else
+      let normalMeasure = mes.normalMeasure -. Extra.phi *. mes.size in
+      Complete.normal {mes with normalMeasure} a1 a2 a3 a4 line a6
 
-  let w=phi
-  let params env a1 a2 a3 a4 a5 a6 line=
-    let p=Document.parameters env a1 a2 a3 a4 a5 a6 line in
-    if line.lineStart=0 then (
-      p
-    ) else
-      {p with
-        left_margin=p.left_margin+.w*.env.size;
-        measure=p.measure-.w*.env.size}
-  let comp mes a1 a2 a3 a4 line a6=
-    if line.lineStart=0 then
-      Complete.normal mes a1 a2 a3 a4 line a6
-    else (
-      Complete.normal { mes with
-        normalMeasure=mes.normalMeasure-.w*.mes.size
-      }
-        a1 a2 a3 a4 line a6
-    )
-
-
-  let biblio_format = biblio_format_of C.citation_format C.item_format params comp
-
-end
+    let biblio_format =
+      biblio_format_of C.citation_format C.item_format params comp
+  end
 
 module CitationInt=struct
   let item_format = default_biblio_format
@@ -693,7 +678,8 @@ module EtAl=struct
     if List.length auteurs<=2 then
       List.concat (intercalate [tT ", "] auteurs)
     else
-      List.concat (intercalate [tT ", "] (take 1 auteurs)) @ [tT " et al."]
+      List.concat (intercalate [tT ", "] (List.take 1 auteurs))
+      @ [tT " et al."]
 end
 
 

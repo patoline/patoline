@@ -19,12 +19,13 @@
 *)
 open Fonts
 open Printf
-open Util
-open UsualMake
+open Extra
 open FTypes
 open RawContent
 open Color
 open Driver
+
+let pt_of_mm = Util.pt_of_mm
 
 let driver_options = []
 let filter_options argv = argv
@@ -64,22 +65,18 @@ let initial_state =
 
 type state = state_data ref
 
-#ifdef CAMLZIP
 let stream buf=
-  let out_buf = Rbuffer.create 100000 in
+  let out_buf = Buffer.create 100000 in
   let buf_pos = ref 0 in
   Zlib.compress (fun zbuf ->
-    let m = min (Rbuffer.length buf - !buf_pos) (String.length zbuf) in
+    let m = min (Buffer.length buf - !buf_pos) (Bytes.length zbuf) in
     for i = 0 to m-1 do
-      Bytes.set zbuf i (Rbuffer.nth buf (!buf_pos));
+      Bytes.set zbuf i (Buffer.nth buf (!buf_pos));
       incr buf_pos
     done; m
   )
-    (fun buf len -> Rbuffer.add_substring out_buf buf 0 len);
+    (fun buf len -> Buffer.add_subbytes out_buf buf 0 len);
   "/Filter [/FlateDecode]", out_buf
-#else
-let stream buf="",buf
-#endif
 
 
 let output ?(structure:structure=empty_structure) pages fname =
@@ -87,7 +84,7 @@ let output ?(structure:structure=empty_structure) pages fname =
   let fname = (try Filename.chop_extension fname with _ -> fname) ^ ".pdf" in
   let oc = open_out_bin fname in
 
-  let pageBuf=Rbuffer.create 100000 in
+  let pageBuf=Buffer.create 100000 in
   let xref=ref (IntMap.singleton 1 0) in (* Le pagetree est toujours l'objet 1 *)
   (* let fonts=ref StrMap.empty in *)
   let resumeObject n=
@@ -106,22 +103,22 @@ let output ?(structure:structure=empty_structure) pages fname =
       n+1
   in
   let endObject pdf=fprintf oc "\nendobj\n" in
-  let pdf_string_buf=Rbuffer.create 1000 in
+  let pdf_string_buf=Buffer.create 1000 in
   let pdf_string utf=
-    Rbuffer.clear pdf_string_buf;
+    Buffer.clear pdf_string_buf;
     let rec fill i=
       try
         let code= (UTF8.look utf i) in
-        (if is_space code then
-            Rbuffer.add_string pdf_string_buf "20"
+        (if UChar.is_space code then
+            Buffer.add_string pdf_string_buf "20"
          else if UChar.code code<=0xff then
-           Rbuffer.add_string pdf_string_buf (sprintf "%02x" (UChar.code code)));
+           Buffer.add_string pdf_string_buf (sprintf "%02x" (UChar.code code)));
         fill (UTF8.next utf i)
       with
           _->()
     in
     fill 0;
-    Rbuffer.contents pdf_string_buf
+    Buffer.contents pdf_string_buf
   in
   let pageObjects=Array.make (Array.length pages) 0 in
   for i=0 to Array.length pageObjects-1 do pageObjects.(i)<-futureObject ()
@@ -138,20 +135,20 @@ let output ?(structure:structure=empty_structure) pages fname =
       if Array.length path > 0 then (
         let (x0,y0)=path.(0) in
         if are_valid x0 0 && are_valid y0 0 then (
-          Rbuffer.add_string buf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
+          Buffer.add_string buf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
           Array.iter (
             fun (x,y)->if are_valid x 0 && are_valid y 0 then (
               if Array.length x<=2 && Array.length y<=2 then (
                 let x1=if Array.length x=2 then x.(1) else x.(0) in
                 let y1=if Array.length y=2 then y.(1) else y.(0) in
-                Rbuffer.add_string buf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
+                Buffer.add_string buf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
               ) else if Array.length x=3 && Array.length y=3 then (
-                Rbuffer.add_string buf (sprintf "%f %f %f %f %f %f c "
+                Buffer.add_string buf (sprintf "%f %f %f %f %f %f c "
                                           (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
                                           (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
                                           (pt_of_mm x.(2)) (pt_of_mm y.(2)));
               ) else if Array.length x=4 && Array.length y=4 then (
-                Rbuffer.add_string buf (sprintf "%f %f %f %f %f %f c "
+                Buffer.add_string buf (sprintf "%f %f %f %f %f %f c "
                                           (pt_of_mm x.(1)) (pt_of_mm y.(1))
                                           (pt_of_mm x.(2)) (pt_of_mm y.(2))
                                           (pt_of_mm x.(3)) (pt_of_mm y.(3)));
@@ -161,15 +158,15 @@ let output ?(structure:structure=empty_structure) pages fname =
         ))
     ) paths;
     match RawContent.(params.fillColor, params.strokingColor) with
-        None, None-> Rbuffer.add_string pageBuf "n "
+        None, None-> Buffer.add_string pageBuf "n "
       | None, Some col -> (
-        if params.close then Rbuffer.add_string pageBuf "s " else
-          Rbuffer.add_string pageBuf "S "
+        if params.close then Buffer.add_string pageBuf "s " else
+          Buffer.add_string pageBuf "S "
       )
-      | Some col, None -> (Rbuffer.add_string pageBuf "f ")
+      | Some col, None -> (Buffer.add_string pageBuf "f ")
       | Some fCol, Some sCol -> (
-        if params.close then Rbuffer.add_string pageBuf "b " else
-          Rbuffer.add_string pageBuf "B "
+        if params.close then Buffer.add_string pageBuf "b " else
+          Buffer.add_string pageBuf "B "
       )
   in
 
@@ -242,7 +239,7 @@ let output ?(structure:structure=empty_structure) pages fname =
         )
   in
   for page=0 to Array.length pages-1 do
-    Rbuffer.reset pageBuf;
+    Buffer.reset pageBuf;
     let pageLinks=ref [] in
     let pageImages=ref [] in
     let pageFonts=ref IntMap.empty in
@@ -263,8 +260,8 @@ let output ?(structure:structure=empty_structure) pages fname =
     let nsopacities=ref (FloatMap.singleton 1. 0) in
 
     let close_line ()=
-      if !openedWord then (Rbuffer.add_string pageBuf ")"; openedWord:=false);
-      if !openedLine then (Rbuffer.add_string pageBuf " ] TJ ";
+      if !openedWord then (Buffer.add_string pageBuf ")"; openedWord:=false);
+      if !openedLine then (Buffer.add_string pageBuf " ] TJ ";
                            openedLine:=false; xline:=0.);
     in
     let close_text ()=
@@ -273,7 +270,7 @@ let output ?(structure:structure=empty_structure) pages fname =
         currentFont:=(-1);
         currentSize:=(-.infinity);
         state := {!state with nonStrokingColor = None; strokingColor = None};
-        Rbuffer.add_string pageBuf " ET "; isText:=false
+        Buffer.add_string pageBuf " ET "; isText:=false
       );
       xt:=0.; yt:=0.
     in
@@ -294,10 +291,10 @@ let output ?(structure:structure=empty_structure) pages fname =
         in
         if alpha <> (!state).strokingOpacity then (
           state := {!state with strokingOpacity = alpha};
-          Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
+          Buffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
         );
         state := {!state with strokingColor = Some col};
-        Rbuffer.add_string pageBuf (sprintf "%f %f %f RG " r g b);
+        Buffer.add_string pageBuf (sprintf "%f %f %f RG " r g b);
       )
     in
     let change_non_stroking_color col =
@@ -317,17 +314,17 @@ let output ?(structure:structure=empty_structure) pages fname =
         in
         if alpha <> (!state).nonstrokingOpacity then (
           state := {!state with nonstrokingOpacity = alpha};
-          Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
+          Buffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
         );
         state := {!state with nonStrokingColor = Some col};
-        Rbuffer.add_string pageBuf (sprintf "%f %f %f rg " r g b);
+        Buffer.add_string pageBuf (sprintf "%f %f %f rg " r g b);
       )
     in
     let set_line_join j=
       if j<> (!state).lineJoin then (
         close_text ();
         state := {!state with lineJoin = j};
-        Rbuffer.add_string pageBuf (
+        Buffer.add_string pageBuf (
           match j with
               Miter_join->" 0 j "
             | Round_join->" 1 j "
@@ -340,7 +337,7 @@ let output ?(structure:structure=empty_structure) pages fname =
       if c<> (!state).lineCap then (
         close_text ();
         state := {!state with lineCap = c};
-        Rbuffer.add_string pageBuf (
+        Buffer.add_string pageBuf (
           match c with
               Butt_cap->" 0 J "
             | Round_cap->" 1 J "
@@ -353,7 +350,7 @@ let output ?(structure:structure=empty_structure) pages fname =
       if w <> (!state).lineWidth then (
         close_text (); (* FIXME is this line required? *)
         state := {!state with lineWidth = w};
-        Rbuffer.add_string pageBuf (sprintf "%f w " w);
+        Buffer.add_string pageBuf (sprintf "%f w " w);
       )
     in
     let set_dash_pattern l=
@@ -361,21 +358,21 @@ let output ?(structure:structure=empty_structure) pages fname =
         close_text ();
         state := {!state with dashPattern = l};
         match l with
-            []->(Rbuffer.add_string pageBuf "[] 0 d ")
+            []->(Buffer.add_string pageBuf "[] 0 d ")
           | _::_->(
-            Rbuffer.add_string pageBuf " [";
-            List.iter (fun x->Rbuffer.add_string pageBuf (sprintf "%f " (pt_of_mm x))) l;
-            Rbuffer.add_string pageBuf (sprintf "] 0. d ");
+            Buffer.add_string pageBuf " [";
+            List.iter (fun x->Buffer.add_string pageBuf (sprintf "%f " (pt_of_mm x))) l;
+            Buffer.add_string pageBuf (sprintf "] 0. d ");
           )
       )
     in
     let rec output_contents c =
       match c with
       | Animation a ->
-	List.iter output_contents (a.anim_contents.(a.anim_default))
+        List.iter output_contents (a.anim_contents.(a.anim_default))
       | Glyph gl->(
         change_non_stroking_color gl.glyph_color;
-        if not !isText then Rbuffer.add_string pageBuf " BT ";
+        if not !isText then Buffer.add_string pageBuf " BT ";
         isText:=true;
         let gx=pt_of_mm gl.glyph_x in
         let gy=pt_of_mm gl.glyph_y in
@@ -400,36 +397,36 @@ let output ?(structure:structure=empty_structure) pages fname =
         in
         if idx <> !currentFont || size <> !currentSize then (
           close_line ();
-          Rbuffer.add_string pageBuf (sprintf "/F%d %f Tf " idx size);
+          Buffer.add_string pageBuf (sprintf "/F%d %f Tf " idx size);
           currentFont:=idx;
           currentSize:=size;
         );
         if !yt<>gy || (not !openedLine) then (
           close_line ();
-          Rbuffer.add_string pageBuf (sprintf "%f %f Td " (gx-. !xt) (gy-. !yt));
+          Buffer.add_string pageBuf (sprintf "%f %f Td " (gx-. !xt) (gy-. !yt));
           xline:=0.;
           xt:=gx;yt:=gy
         );
 
-        if not !openedLine then (Rbuffer.add_string pageBuf "["; openedLine:=true; xline:=0.);
+        if not !openedLine then (Buffer.add_string pageBuf "["; openedLine:=true; xline:=0.);
 
         if !xt +. !xline <> gx then (
           let str=sprintf "%f" (1000.*.(!xt+. !xline -. gx)/.size) in
           let i=ref 0 in
           while !i<String.length str && (str.[!i]='0' || str.[!i]='.' || str.[!i]='-') do incr i done;
           if !i<String.length str then (
-            if !openedWord then (Rbuffer.add_string pageBuf ")"; openedWord:=false);
-            Rbuffer.add_string pageBuf str;
+            if !openedWord then (Buffer.add_string pageBuf ")"; openedWord:=false);
+            Buffer.add_string pageBuf str;
             xline:= !xline -. size*.(float_of_string str)/.1000.;
           )
         );
-        if not !openedWord then (Rbuffer.add_string pageBuf "("; openedWord:=true);
+        if not !openedWord then (Buffer.add_string pageBuf "("; openedWord:=true);
         let c=char_of_int enc in
         if c='\\' || c='(' || c=')' then (
-          Rbuffer.add_char pageBuf '\\';
-          Rbuffer.add_char pageBuf c;
+          Buffer.add_char pageBuf '\\';
+          Buffer.add_char pageBuf c;
         ) else (
-          Rbuffer.add_char pageBuf c
+          Buffer.add_char pageBuf c
         );
         xline:= !xline +. size*.Fonts.glyphWidth gl.glyph/.1000.
       )
@@ -456,7 +453,7 @@ let output ?(structure:structure=empty_structure) pages fname =
         pageImages:=i::(!pageImages);
         let num=List.length !pageImages in
         close_text ();
-        Rbuffer.add_string pageBuf
+        Buffer.add_string pageBuf
           (Printf.sprintf "q %f 0 0 %f %f %f cm /Im%d Do Q "
              (pt_of_mm i.image_width) (pt_of_mm i.image_height)
              (pt_of_mm i.image_x) (pt_of_mm i.image_y) num);
@@ -466,7 +463,7 @@ let output ?(structure:structure=empty_structure) pages fname =
       | Affine aff->(
         close_text ();
         let saved_state= { !state with strokingColor= (!state).strokingColor } in
-        Rbuffer.add_string pageBuf
+        Buffer.add_string pageBuf
           (Printf.sprintf "q %f %f %f %f %f %f cm "
              aff.affine_matrix.(0).(0)
              aff.affine_matrix.(1).(0)
@@ -476,7 +473,7 @@ let output ?(structure:structure=empty_structure) pages fname =
              (pt_of_mm aff.affine_matrix.(1).(2)));
         List.iter output_contents aff.affine_contents;
         close_text ();
-        Rbuffer.add_string pageBuf "Q ";
+        Buffer.add_string pageBuf "Q ";
         state:=saved_state
       )
       | Video _-> Printf.fprintf stderr "Video not support by Pdf driver\n%!"
@@ -509,15 +506,15 @@ let output ?(structure:structure=empty_structure) pages fname =
         (* Objets de la page *)
         let contentObj=beginObject () in
         let filt, data=stream pageBuf in
-        let len=Rbuffer.length data in
+        let len=Buffer.length data in
           fprintf oc "<< /Length %d %s>>\nstream\n" len filt;
-          Rbuffer.output_buffer oc data;
+          Buffer.output_buffer oc data;
           fprintf oc "\nendstream";
           endObject ();
           resumeObject pageObjects.(page);
           let w,h=pages.(page).size in
           fprintf oc "<< /Type /Page /Parent 1 0 R /MediaBox [ 0 0 %f %f ] " (pt_of_mm w) (pt_of_mm h);
-	  fprintf oc "/Group << /Type /Group /S /Transparency /I false /K true /CS /DeviceRGB >>";
+          fprintf oc "/Group << /Type /Group /S /Transparency /I false /K true /CS /DeviceRGB >>";
           fprintf oc "/Resources << /ProcSet [/PDF /Text%s] "
             (if !pageImages=[] then "" else " /ImageB");
           if FloatMap.cardinal !sopacities > 1 || FloatMap.cardinal !nsopacities>1 then (
@@ -562,27 +559,27 @@ let output ?(structure:structure=empty_structure) pages fname =
                 let inf3=match classify_float l.link_y1 with FP_nan | FP_infinite->false
                   | _->true in
                 if inf0 && inf1 && inf2 && inf3 then
-		  match l.link_kind with
-		    Intern(label,dest_page,dest_x,dest_y)->
+                  match l.link_kind with
+                    Intern(label,dest_page,dest_x,dest_y)->
                       if dest_page>=0 && dest_page<Array.length pageObjects then (
                         fprintf oc
-			  "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
-			  (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
-			  (pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(dest_page)
-			  (pt_of_mm dest_x) (pt_of_mm dest_y)
+                          "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
+                          (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
+                          (pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(dest_page)
+                          (pt_of_mm dest_x) (pt_of_mm dest_y)
                       ) else (
                         Printf.fprintf stderr "Please report: Pdf.ml Intern link problem %S %d/%d\n"
                           label
                           dest_page (Array.length pageObjects);
                         flush stderr;
                       )
-		  | Extern(uri) ->
+                  | Extern(uri) ->
                     fprintf oc
                       "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /A <</Type /Action /S /URI /URI (%s)>> /Border [0 0 0]  >> "
                       (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
                       (pt_of_mm l.link_x1) (pt_of_mm l.link_y1)
                       uri
-		  | _ -> ()
+                  | _ -> ()
               ) !pageLinks;
               fprintf oc "]";
             );
@@ -593,103 +590,103 @@ let output ?(structure:structure=empty_structure) pages fname =
               List.iter Image.(fun (obj,_,i)->
                 let image=ImageLib.openfile i.image_file in
                 let w=image.width and h=image.height in
-		let bits_per_component =
-		  if image.max_val <= 255 then 8 else 16 in
-		let device, nbc = match image.pixels with
-		    RGB _ | RGBA _ -> "RGB", 3
+                let bits_per_component =
+                  if image.max_val <= 255 then 8 else 16 in
+                let device, nbc = match image.pixels with
+                    RGB _ | RGBA _ -> "RGB", 3
                   | Grey _ | GreyA _ -> "Gray", 1
-		in
-                let img_buf=Rbuffer.create (w*h*nbc*(bits_per_component/8)) in
-		let alpha_buf =
+                in
+                let img_buf=Buffer.create (w*h*nbc*(bits_per_component/8)) in
+                let alpha_buf =
       match image.pixels with
       | RGB _  | Grey _  -> None
-      | RGBA _ | GreyA _ -> Some (Rbuffer.create (w*h*(bits_per_component/8)))
-		in
-		if device = "RGB" then
+      | RGBA _ | GreyA _ -> Some (Buffer.create (w*h*(bits_per_component/8)))
+                in
+                if device = "RGB" then
                   for j=0 to h-1 do
                     for i=0 to w-1 do
                       Image.read_rgba image i j (fun r g b a ->
-			if image.max_val <= 255 then (
-			  let r = (r * 255 * 2 + 1) / (2 * image.max_val) in
-			  let g = (g * 255 * 2 + 1) / (2 * image.max_val) in
-			  let b = (b * 255 * 2 + 1) / (2 * image.max_val) in
+                        if image.max_val <= 255 then (
+                          let r = (r * 255 * 2 + 1) / (2 * image.max_val) in
+                          let g = (g * 255 * 2 + 1) / (2 * image.max_val) in
+                          let b = (b * 255 * 2 + 1) / (2 * image.max_val) in
 
-			  Rbuffer.add_char img_buf (char_of_int r);
-			  Rbuffer.add_char img_buf (char_of_int g);
-			  Rbuffer.add_char img_buf (char_of_int b))
-			else (
-			  let r = (r * 65535 * 2 + 1) / (2 * image.max_val) in
-			  let g = (g * 65535 * 2 + 1) / (2 * image.max_val) in
-			  let b = (b * 65535 * 2 + 1) / (2 * image.max_val) in
-			  let r0 = char_of_int (r land 255) in
-			  let r1 = char_of_int (r lsr 8) in
-			  let g0 = char_of_int (g land 255) in
-			  let g1 = char_of_int (g lsr 8) in
-			  let b0 = char_of_int (b land 255) in
-			  let b1 = char_of_int (b lsr 8) in
-			  Rbuffer.add_char img_buf r1;
-			  Rbuffer.add_char img_buf r0;
-			  Rbuffer.add_char img_buf g1;
-			  Rbuffer.add_char img_buf g0;
-			  Rbuffer.add_char img_buf b1;
-			  Rbuffer.add_char img_buf b0);
-			match alpha_buf with
-			| None -> ()
-			| Some buf ->
-			  if image.max_val <= 255 then (
-			    let a = (a * 255 * 2 + 1) / (2 * image.max_val) in
-			    Rbuffer.add_char buf (char_of_int a))
-			  else (
-			    let a = (a * 65535) / image.max_val in
-			    let a0 = char_of_int (a land 255) in
-			    let a1 = char_of_int (a lsr 8) in
-			    Rbuffer.add_char buf a1;
-			    Rbuffer.add_char buf a0))
-		    done
+                          Buffer.add_char img_buf (char_of_int r);
+                          Buffer.add_char img_buf (char_of_int g);
+                          Buffer.add_char img_buf (char_of_int b))
+                        else (
+                          let r = (r * 65535 * 2 + 1) / (2 * image.max_val) in
+                          let g = (g * 65535 * 2 + 1) / (2 * image.max_val) in
+                          let b = (b * 65535 * 2 + 1) / (2 * image.max_val) in
+                          let r0 = char_of_int (r land 255) in
+                          let r1 = char_of_int (r lsr 8) in
+                          let g0 = char_of_int (g land 255) in
+                          let g1 = char_of_int (g lsr 8) in
+                          let b0 = char_of_int (b land 255) in
+                          let b1 = char_of_int (b lsr 8) in
+                          Buffer.add_char img_buf r1;
+                          Buffer.add_char img_buf r0;
+                          Buffer.add_char img_buf g1;
+                          Buffer.add_char img_buf g0;
+                          Buffer.add_char img_buf b1;
+                          Buffer.add_char img_buf b0);
+                        match alpha_buf with
+                        | None -> ()
+                        | Some buf ->
+                          if image.max_val <= 255 then (
+                            let a = (a * 255 * 2 + 1) / (2 * image.max_val) in
+                            Buffer.add_char buf (char_of_int a))
+                          else (
+                            let a = (a * 65535) / image.max_val in
+                            let a0 = char_of_int (a land 255) in
+                            let a1 = char_of_int (a lsr 8) in
+                            Buffer.add_char buf a1;
+                            Buffer.add_char buf a0))
+                    done
                   done
-		else
+                else
                   for j=0 to h-1 do
                     for i=0 to w-1 do
                       Image.read_greya image i j (fun g a ->
-			if image.max_val <= 255 then (
-			  let g = (g * 255) / image.max_val in
-			  Rbuffer.add_char img_buf (char_of_int g))
-			else (
-			  let g = (g * 65535) / image.max_val in
-			  let g0 = char_of_int (g land 255) in
-			  let g1 = char_of_int (g lsr 8) in
-			  Rbuffer.add_char img_buf g1;
-			  Rbuffer.add_char img_buf g0);
-			match alpha_buf with
-			| None -> ()
-			| Some buf ->
-			  if image.max_val <= 255 then (
-			    let a = (a * 255 * 2 + 1) / (2 * image.max_val) in
-			    Rbuffer.add_char buf (char_of_int a))
-			  else (
-			    let a = (a * 65535) / image.max_val in
-			    let a0 = char_of_int (a land 255) in
-			    let a1 = char_of_int (a lsr 8) in
-			    Rbuffer.add_char buf a1;
-			    Rbuffer.add_char buf a0))
+                        if image.max_val <= 255 then (
+                          let g = (g * 255) / image.max_val in
+                          Buffer.add_char img_buf (char_of_int g))
+                        else (
+                          let g = (g * 65535) / image.max_val in
+                          let g0 = char_of_int (g land 255) in
+                          let g1 = char_of_int (g lsr 8) in
+                          Buffer.add_char img_buf g1;
+                          Buffer.add_char img_buf g0);
+                        match alpha_buf with
+                        | None -> ()
+                        | Some buf ->
+                          if image.max_val <= 255 then (
+                            let a = (a * 255 * 2 + 1) / (2 * image.max_val) in
+                            Buffer.add_char buf (char_of_int a))
+                          else (
+                            let a = (a * 65535) / image.max_val in
+                            let a0 = char_of_int (a land 255) in
+                            let a1 = char_of_int (a lsr 8) in
+                            Buffer.add_char buf a1;
+                            Buffer.add_char buf a0))
                     done
                   done;
-		let mask = match alpha_buf with
-		| None -> ""
-		| Some buf ->
+                let mask = match alpha_buf with
+                | None -> ""
+                | Some buf ->
                   let a,b=stream buf in
-		  let m = beginObject () in
-                  fprintf oc "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray /BitsPerComponent %d /Length %d %s>>\nstream\n" w h bits_per_component (Rbuffer.length b) a;
-		  Rbuffer.output_buffer oc b;
-		  let res = sprintf "/SMask %d 0 R" m in
+                  let m = beginObject () in
+                  fprintf oc "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray /BitsPerComponent %d /Length %d %s>>\nstream\n" w h bits_per_component (Buffer.length b) a;
+                  Buffer.output_buffer oc b;
+                  let res = sprintf "/SMask %d 0 R" m in
                   fprintf oc "\nendstream";
                   endObject ();
-		  res
-		in
+                  res
+                in
                 resumeObject obj;
                 let a,b=stream img_buf in
-                fprintf oc "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /Device%s /BitsPerComponent %d /Length %d %s %s>>\nstream\n" w h device bits_per_component (Rbuffer.length b) mask a;
-                Rbuffer.output_buffer oc b;
+                fprintf oc "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /Device%s /BitsPerComponent %d /Length %d %s %s>>\nstream\n" w h device bits_per_component (Buffer.length b) mask a;
+                Buffer.output_buffer oc b;
                 fprintf oc "\nendstream";
                 endObject ()
               ) actual_pageImages
@@ -767,9 +764,9 @@ let output ?(structure:structure=empty_structure) pages fname =
       fprintf oc ">>";
       endObject ();
 
-      let bu=Rbuffer.create 1000 in
+      let bu=Buffer.create 1000 in
       List.iter (fun (o,w,outlines)->
-        Rbuffer.clear bu;
+        Buffer.clear bu;
         x0:=infinity;
         x1:=(-.infinity);
         y0:=infinity;
@@ -778,14 +775,14 @@ let output ?(structure:structure=empty_structure) pages fname =
           Array.iter (fun u->x0:=min u !x0;x1:=max u !x1) x;
           Array.iter (fun u->y0:=min u !y0;y1:=max u !y1) y
         )) outlines;
-        Rbuffer.add_string bu (sprintf "%f %d %f %f %f %f d1 " w 0 !x0 !y0 !x1 !y1);
+        Buffer.add_string bu (sprintf "%f %d %f %f %f %f d1 " w 0 !x0 !y0 !x1 !y1);
         writePath bu (fun x->x)(List.map (Array.of_list) outlines) default_path_param;
-        Rbuffer.add_string bu "f ";
+        Buffer.add_string bu "f ";
         let filt, data=stream bu in
-        let len=Rbuffer.length data in
+        let len=Buffer.length data in
         resumeObject o;
         fprintf oc "<< /Length %d %s>>\nstream\n" len filt;
-        Rbuffer.output_buffer oc data;
+        Buffer.output_buffer oc data;
         fprintf oc "\nendstream";
         endObject ();
       ) charprocs;
@@ -861,9 +858,9 @@ let output ?(structure:structure=empty_structure) pages fname =
       in
       let cffdata=CFF.subset cff fontinfo enc glyphs in
       let filt, data=stream cffdata in
-      let len=Rbuffer.length data in
+      let len=Buffer.length data in
       fprintf oc "<< /Length %d /Subtype /Type1C %s>>\nstream\n" len filt;
-      Rbuffer.output_buffer oc data;
+      Buffer.output_buffer oc data;
       fprintf oc "\nendstream";
       endObject ();
     with
@@ -893,11 +890,11 @@ let output ?(structure:structure=empty_structure) pages fname =
     in
     StrMap.iter (fun _ x->
       if x.fontToUnicode>=0 then (
-        let buf=Rbuffer.create 100000 in
-        Rbuffer.add_string buf "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n";
-        Rbuffer.add_string buf "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n";
-        Rbuffer.add_string buf "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n";
-        Rbuffer.add_string buf "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
+        let buf=Buffer.create 100000 in
+        Buffer.add_string buf "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n";
+        Buffer.add_string buf "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n";
+        Buffer.add_string buf "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n";
+        Buffer.add_string buf "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
         let range=ref [] in
         let one=ref [] in
         let multRange=ref [] in
@@ -965,46 +962,46 @@ let output ?(structure:structure=empty_structure) pages fname =
         make_cmap x.revFontGlyphs;
         let rec print_utf8 utf idx=
           try
-            Rbuffer.add_string buf (sprintf "%04x" (UChar.code (UTF8.look utf idx)));
+            Buffer.add_string buf (sprintf "%04x" (UChar.code (UTF8.look utf idx)));
             print_utf8 utf (UTF8.next utf idx)
           with
               _->()
         in
         let one_nonempty=List.filter (fun (_,b)->b<>"") !one in
         if one_nonempty<>[] then (
-          Rbuffer.add_string buf (sprintf "%d beginbfchar\n" (List.length !one));
+          Buffer.add_string buf (sprintf "%d beginbfchar\n" (List.length !one));
           List.iter (fun (a,b)->
-            Rbuffer.add_string buf (sprintf "<%04x> <" a);
+            Buffer.add_string buf (sprintf "<%04x> <" a);
             print_utf8 b (UTF8.first b);
-            Rbuffer.add_string buf ">\n"
+            Buffer.add_string buf ">\n"
           ) one_nonempty;
-          Rbuffer.add_string buf "endbfchar\n"
+          Buffer.add_string buf "endbfchar\n"
         );
 
         let mult_nonempty=List.filter (fun (_,b)->b<>[])
           (List.map (fun (a,b)->a, List.filter (fun c->c<>"") b) !multRange) in
 
         if !range<>[] || mult_nonempty<>[] then (
-          Rbuffer.add_string buf (sprintf "%d beginbfrange\n" (List.length !range+List.length !multRange));
-          List.iter (fun (a,b,c)->Rbuffer.add_string buf (sprintf "<%04x> <%04x> <%04x>\n"
+          Buffer.add_string buf (sprintf "%d beginbfrange\n" (List.length !range+List.length !multRange));
+          List.iter (fun (a,b,c)->Buffer.add_string buf (sprintf "<%04x> <%04x> <%04x>\n"
                                                             a b (UChar.code c))) !range;
           List.iter (fun (a,b)->
-            Rbuffer.add_string buf (sprintf "<%04x> <%04x> [" a (a+List.length b-1));
+            Buffer.add_string buf (sprintf "<%04x> <%04x> [" a (a+List.length b-1));
             List.iter (fun c->
-              Rbuffer.add_string buf "<";
+              Buffer.add_string buf "<";
               print_utf8 c (UTF8.first c);
-              Rbuffer.add_string buf ">") b;
-            Rbuffer.add_string buf "]\n"
+              Buffer.add_string buf ">") b;
+            Buffer.add_string buf "]\n"
           ) mult_nonempty;
-          Rbuffer.add_string buf "endbfrange\n"
+          Buffer.add_string buf "endbfrange\n"
         );
-        Rbuffer.add_string buf "endcmap\nCMapName currentdict /CMap defineresource pop\nend end\n";
+        Buffer.add_string buf "endcmap\nCMapName currentdict /CMap defineresource pop\nend end\n";
 
         resumeObject x.fontToUnicode;
         let filt, data=stream buf in
-        let len=Rbuffer.length data in
+        let len=Buffer.length data in
         fprintf oc "<< /Length %d %s>>\nstream\n" len filt;
-        Rbuffer.output_buffer oc data;
+        Buffer.output_buffer oc data;
         fprintf oc "\nendstream";
         endObject ()
       )
@@ -1022,15 +1019,15 @@ let output ?(structure:structure=empty_structure) pages fname =
 
     (* Ecriture du catalogue *)
 
-    let rdf=Rbuffer.create 1000 in
-    Rbuffer.add_string rdf"<?xpacket begin='' id='W5M0MpCehiHzreSzNTczkc9d'?>\n";
+    let rdf=Buffer.create 1000 in
+    Buffer.add_string rdf"<?xpacket begin='' id='W5M0MpCehiHzreSzNTczkc9d'?>\n";
 
-    Rbuffer.add_string rdf "<rdf:RDF
+    Buffer.add_string rdf "<rdf:RDF
 xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"
 xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
-    Rbuffer.add_string rdf "<rdf:Description rdf:about=\"\" xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\">\n<pdfaid:part>1</pdfaid:part>\n<pdfaid:conformance>A</pdfaid:conformance>\n</rdf:Description>\n";
+    Buffer.add_string rdf "<rdf:Description rdf:about=\"\" xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\">\n<pdfaid:part>1</pdfaid:part>\n<pdfaid:conformance>A</pdfaid:conformance>\n</rdf:Description>\n";
 
-    Rbuffer.add_string rdf "<rdf:Description rdf:about=\"\">\n";
+    Buffer.add_string rdf "<rdf:Description rdf:about=\"\">\n";
 
 
     List.iter (fun (meta, cont)->
@@ -1051,16 +1048,16 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
         | Title->"title"
         | Type->"type"
       in
-      Rbuffer.add_string rdf (sprintf "<dc:%s>%s</dc:%s>\n" descr cont descr)
+      Buffer.add_string rdf (sprintf "<dc:%s>%s</dc:%s>\n" descr cont descr)
     ) structure.metadata;
 
-    Rbuffer.add_string rdf "</rdf:Description>\n</rdf:RDF>\n";
-    Rbuffer.add_string rdf "<?xpacket end='w'?>\n";
+    Buffer.add_string rdf "</rdf:Description>\n</rdf:RDF>\n";
+    Buffer.add_string rdf "<?xpacket end='w'?>\n";
 
     let metadata=beginObject () in
     fprintf oc "<< /Length %d /Type /Metadata /Subtype /XML >>\nstream\n"
-      (Rbuffer.length rdf);
-    Rbuffer.output_buffer oc rdf;
+      (Buffer.length rdf);
+    Buffer.output_buffer oc rdf;
     fprintf oc "\nendstream\n";
     endObject ();
 

@@ -2,7 +2,6 @@ open Maths
 open Document
 open Document.Mathematical
 open Box
-open Util
 open FTypes
 open RawContent
 

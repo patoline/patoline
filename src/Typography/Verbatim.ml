@@ -1,3 +1,10 @@
+(** Handling verbatim environments
+
+This module provides functions to generate verbatim (preformatted)
+content, and a preliminary support for syntax highlighting for a few
+predefined languages.
+*)
+
 open Document
 open FTypes
 open Box
@@ -7,9 +14,9 @@ let verb_counter filename =
   let get_line env =
     if filename = "" then 1 else
       try
-	match StrMap.find filename env.counters
-	with a,[line] -> line
-	| _ -> raise Not_found
+        match StrMap.find filename env.counters
+        with a,[line] -> line
+        | _ -> raise Not_found
       with Not_found -> 1
   in
   C (fun env ->
@@ -23,7 +30,7 @@ let verb_counter filename =
 
 let file_cache = Hashtbl.create 31
 
-(* [lines_to_file lines fn] writes the lines [lines] to the optional file
+(** [lines_to_file lines fn] writes the lines [lines] to the optional file
    [fn] if it is provided. Do nothing otherwise. *)
 let lines_to_file : string list -> string option -> unit = fun lines fn ->
   match fn with
@@ -32,28 +39,28 @@ let lines_to_file : string list -> string option -> unit = fun lines fn ->
      let nb_lines = List.length lines in
      let oc, nbl =
        try
-	 Hashtbl.find file_cache fn
+         Hashtbl.find file_cache fn
        with Not_found ->
-	 (open_out fn, 1)
+         (open_out fn, 1)
      in
      List.iter (Printf.fprintf oc "%s\n") lines;
      Hashtbl.replace file_cache fn (oc, nbl + nb_lines);
      flush oc
 
-(* [glue_space n] corresponds to [n] spaces from the font. *)
+(** [glue_space n] corresponds to [n] spaces from the font. *)
 let glue_space : int -> content = fun n ->
   let f env =
-	  let font,_,_,_ = selectFont env.fontFamily Regular false in
+          let font,_,_,_ = selectFont env.fontFamily Regular false in
     let glyph_index = Fonts.glyph_of_char font ' ' in
     let sp = Fonts.loadGlyph font {empty_glyph with glyph_index} in
     let spw = Fonts.glyphWidth sp in
-	  let w =  float_of_int n *. env.size *. spw /. 1000.0 in
-	  [glue w w w]
+          let w =  float_of_int n *. env.size *. spw /. 1000.0 in
+          [glue w w w]
   in bB f
 
 let lines_skip = ref 2
 
-(* [line_per_line f lines] builds each line of [lines] using [f] and display
+(** [line_per_line f lines] builds each line of [lines] using [f] and display
    each of them using the verbatim font. *)
 let line_per_line : 'a -> (string -> content list) -> string list -> unit =
   fun str f lines ->
@@ -67,13 +74,13 @@ let line_per_line : 'a -> (string -> content list) -> string list -> unit =
     in
     List.iteri draw_line lines
 
-(* Parameter type for the word handler bellow. *)
+(** Parameter type for the word handler below. *)
 type param =
   { keywords : string list
   ; separators : string list
   ; symbols  : (string * content) list }
 
-(* [handle_spaces w_to_c line] builds a line using the function [w_to_c] to
+(** [handle_spaces w_to_c line] builds a line using the function [w_to_c] to
    build words (i.e. sections without spaces) and takes care of the spaces
    (one text space is as wide as any other character). *)
 let handle_spaces : param -> (string -> content list) -> string -> content list =
@@ -89,21 +96,21 @@ let handle_spaces : param -> (string -> content list) -> string -> content list 
         else glue_space !nbsp :: l_to_a pos
       else
         let nbnsp = ref 1 in
-	let sep_at pos =
-	  List.exists (fun sep ->
-	    let s = try String.sub l pos (String.length sep) with _ -> "" in
-	    s = sep) param.separators
-	in
+        let sep_at pos =
+          List.exists (fun sep ->
+            let s = try String.sub l pos (String.length sep) with _ -> "" in
+            s = sep) param.separators
+        in
         while pos + !nbnsp < len &&
-	  not (List.mem (String.sub l pos !nbnsp) param.separators) &&
-	  not (sep_at (pos + !nbnsp)) &&
-	  l.[pos + !nbnsp] <> ' ' do incr nbnsp done;
-	let str = String.sub l pos !nbnsp in
+          not (List.mem (String.sub l pos !nbnsp) param.separators) &&
+          not (sep_at (pos + !nbnsp)) &&
+          l.[pos + !nbnsp] <> ' ' do incr nbnsp done;
+        let str = String.sub l pos !nbnsp in
         let pos = pos + !nbnsp in
         w_to_c str @ l_to_a pos
     in l_to_a 0
 
-(* [fit_on_grid c] adds spacing on both sides of the content element [c] so
+(** [fit_on_grid c] adds spacing on both sides of the content element [c] so
    that its width becomes a multiple of the width of a single character. *)
 let fit_on_grid : content -> content = fun c ->
   let boxwidth env cs =
@@ -119,7 +126,7 @@ let fit_on_grid : content -> content = fun c ->
   in C f
 
 
-(* [symbol s] build a mathematical symbole from the string [s]. Its width
+(** [symbol s] build a mathematical symbole from the string [s]. Its width
    on the page will be a multiple of the width of one verbatim character. *)
 let symbol : string -> content = fun s ->
   let f env =
@@ -137,7 +144,7 @@ let symbol : string -> content = fun s ->
 
 exception Found_symbol of int * string * content
 
-(* [handle_word par w] build the contents corresponding to the word [w]. The
+(** [handle_word par w] build the contents corresponding to the word [w]. The
    [par] variable provides parameters for keywords to be put in bold and
    special symbols to be displayed using the maths font. *)
 let handle_word : param -> string -> content list = fun par w ->
@@ -169,7 +176,7 @@ let handle_word : param -> string -> content list = fun par w ->
         build_word str acc pos
   in build_word w [] 0
 
-(* [verb_text build s] builds verbatim contents from a string [s] and a
+(** [verb_text build s] builds verbatim contents from a string [s] and a
    generation function [build]. *)
 let verb_text : (string -> content list) -> string -> content list =
   fun build s ->
@@ -188,17 +195,17 @@ let param_Default =
 
 let param_SML =
   { keywords = ["fun";"as";"fn";"*";"(";")";",";";";"val";
-		"and";"type";"|";"=";"case";"of";
-		"datatype";"let";"rec";"end"]
+                "and";"type";"|";"=";"case";"of";
+                "datatype";"let";"rec";"end"]
   ; separators = ["*";"(";")";",";";"]
   ; symbols = [("->", symbol "→");  ("=>", symbol "⇒")]
   }
 
 let param_OCaml =
   { keywords = ["fun";"as";"function";"(";")";"*";";";",";"val";
-		"and";"type";"|";"=";"match";"with";
-		"rec";"let";"begin";"end";"while";"for";"do";"done";
-		"struct"; "sig"; "module"; "functor"; "if"; "then";
+                "and";"type";"|";"=";"match";"with";
+                "rec";"let";"begin";"end";"while";"for";"do";"done";
+                "struct"; "sig"; "module"; "functor"; "if"; "then";
           "else"; "try"; "parser"; "in" ]
   ; separators = ["*";"(";")";",";";"]
   ; symbols = [("->", symbol "→");("→", symbol "→");("->>", symbol "↠");("↠", symbol "↠")]
@@ -218,7 +225,7 @@ let param_PML =
 
 let param_Python =
   { keywords = ["def";"(";")";"*";";";",";"|";"=";":";"else";"elif";
-		"while";"for";"if";"else";"return";"try";"except";"break"]
+                "while";"for";"if";"else";"return";"try";"except";"break"]
   ; separators = ["*";"(";")";",";";";":"]
   ; symbols  = [] }
 

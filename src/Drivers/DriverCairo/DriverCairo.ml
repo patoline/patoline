@@ -19,16 +19,15 @@
 *)
 open RawContent
 open Driver
-open Util
 open Color 
 
 let driver_options = []
-let filter_options argv = argv			    
+let filter_options argv = argv                            
 
 let pixels_per_mm=ref 10.
 
 let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;children=[||]})
+                                  page= -1;struct_x=0.;struct_y=0.;children=[||]})
     pages fileName=
 
 
@@ -96,9 +95,9 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       )
       | Link l::s->draw_page (l.link_contents@s)
       | Animation a::s ->
-	draw_page (a.anim_contents.(a.anim_default) @s)
+        draw_page (a.anim_contents.(a.anim_default) @s)
       | Dynamic d::s ->
-	draw_page (d.dyn_contents ()@s)
+        draw_page (d.dyn_contents ()@s)
       | (Video _|States _|Image _)::s -> draw_page s
       | Affine a::s->(
         let x0=0.
@@ -114,7 +113,7 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
            x0=a.affine_matrix.(0).(2)*. !pixels_per_mm -.x1;
            y0= heightf -. a.affine_matrix.(1).(2)*. !pixels_per_mm +.y1;
           };
-	draw_page a.affine_contents;
+        draw_page a.affine_contents;
         Cairo.identity_matrix ctx;
         draw_page s)
       | []->()
@@ -125,36 +124,11 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     Cairo_png.surface_write_to_file surface fname;
   ) pages
 
-(* open Typography.Fonts *)
-(* open Typography.Fonts.FTypes *)
-(* let _= *)
-(*   let dr=[Path({default with fillColor=Some red;strokingColor=Some green},[rectangle (100.,100.) (200.,200.)])] in *)
-(*   let font=loadFont "/Users/pe/Projets/patoline/Fonts/Alegreya/Alegreya-Regular.otf" in *)
-(*   let gl=loadGlyph font { glyph_utf8="A";glyph_index=(glyph_of_char font 'A')} in *)
-(*   let g=Glyph { glyph_x=10.;glyph_y=10.;glyph=gl;glyph_color=black;glyph_size=3.8} in *)
-(*   output [|{pageFormat=a4;pageContents=[g]}|] "test" *)
-
-let output'=output_to_prime output
-
-(* Useless?
-let makeImage filename cont env=
-  let w=cont.drawing_nominal_width in
-  let h=cont.drawing_y1-.cont.drawing_y0 in
-  output [|{size=(w,h);contents=List.map (RawContent.translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] filename;
-  let f=try Filename.chop_extension filename with _->filename in
-
-  let i={image_file=(Printf.sprintf "%s0.png" f);
-         image_width=w;
-         image_height=h;
-         image_pixel_width=int_of_float (w*. !pixels_per_mm);
-         image_pixel_height=int_of_float (h*. !pixels_per_mm);
-         image_x=0.;
-         image_y=cont.drawing_y0;
-         image_order=0;
-        }
-  in
-  drawing [RawContent.Image i]
-*)
+let output' = output_to_prime output
 
 let _ = 
-  Hashtbl.add DynDriver.drivers "DriverCairo" (module struct let output = output let output' = output' end:OutputDriver)
+  Hashtbl.add DynDriver.drivers "DriverCairo"
+    (module struct
+      let output  = output
+      let output' = output'
+     end:OutputDriver)

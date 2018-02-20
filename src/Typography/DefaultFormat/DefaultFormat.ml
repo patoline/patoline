@@ -22,8 +22,7 @@ open Typography.Document
 open Typography.Complete
 open Typography.Break
 open FTypes
-open Util
-open UsualMake
+open Extra
 open Fonts
 open Box
 open PatConfig
@@ -107,20 +106,15 @@ module type Output=
 module Format=functor (D:Document.DocumentStructure)->(
   struct
 
-let hyphenate_dict dict=
+let hyphenate_dict dict = (* Should probably move to Hyphen *)
   try
-    let i=open_in_bin (findHyphen dict) in
-    let inp=input_value i in
-    close_in i;
-    (fun str->
-     let hyphenated=Hyphen.hyphenate inp str in
-     Array.of_list (hyphenated)
-    )
-  with
-      FilenameExtra.No_matching_path (f,p)->
-	(Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;
-         List.iter (Printf.fprintf stderr "%s\n") p;
-         fun x->[||])
+    let ic = open_in_bin (findHyphen dict) in
+    let inp = input_value ic in
+    close_in ic;
+    (fun str-> Array.of_list (Hyphen.hyphenate inp str))
+  with Not_found ->
+          Printf.eprintf "Warning: hyphenation dictionary %s not found...\n" dict;
+    (fun x -> [||])
 
 
 
@@ -287,14 +281,14 @@ let defaultEnv:environment=
     footnote_y=10.;
     size=fsize;
     lead=13./.10.*.fsize;
-    normalMeasure=(fst a4)*.2./.3.;
+    normalMeasure=(fst Util.a4)*.2./.3.;
     normalLead=13./.10.*.fsize;
     normalLeftMargin=0.;
-    normalPageFormat=a4;
+    normalPageFormat=Util.a4;
     par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
                             drawing_max_width= 4.0 *. phi;
-			    drawing_width_fixed = true;
-			    drawing_adjust_before = false;
+                            drawing_width_fixed = true;
+                            drawing_adjust_before = false;
                             drawing_y0=0.;drawing_y1=0.;
                             drawing_nominal_width= 4.0 *. phi;
                             drawing_contents=(fun _->[]);
@@ -452,7 +446,7 @@ let defaultEnv:environment=
               [C (fun env->
                   let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                   bB (fun _->[Marker (Structure path)])
-                  ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
+                  ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (List.drop 1 b))))
                   ::tT " "
                   ::n.displayname
                  )]
@@ -539,12 +533,12 @@ let defaultEnv:environment=
 
     let glue_space n =
       bB(fun env ->
-	let font,_,_,_=selectFont env.fontFamily Regular false in
-	let x= Fonts.loadGlyph font
-	  ({empty_glyph with glyph_index=Fonts.glyph_of_char font ' '})
-	in
-	let w =  float n *. env.size *. Fonts.glyphWidth x /.1000. in
-	[glue w w w])
+        let font,_,_,_=selectFont env.fontFamily Regular false in
+        let x= Fonts.loadGlyph font
+          ({empty_glyph with glyph_index=Fonts.glyph_of_char font ' '})
+        in
+        let w =  float n *. env.size *. Fonts.glyphWidth x /.1000. in
+        [glue w w w])
 
     (* New parser version of verbatim environment. *)
     let verbs_default fn lines =
@@ -580,7 +574,7 @@ let defaultEnv:environment=
 
 
       let do_end_env ()=
-	D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
+        D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
         env_stack:=List.tl !env_stack;
 
         let t,num=match !D.structure with
@@ -688,10 +682,10 @@ let figure_drawing ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) dra
   let dr=resize_drawing scale dr in
   let lvl,num=try StrMap.find "figure" env.counters with Not_found -> -1,[] in
   let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
-  let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
+  let sect_num=List.drop (List.length str_counter - max 0 lvl+1) str_counter in
   let caption, env, ms = (* FIXME: ms lost !!! no label inside caption will work *)
     OutputDrawing.minipage' {env with normalLeftMargin=0.}
-	                     (paragraph ((
+                             (paragraph ((
                                          [ tT "Figure"; tT " ";
                                            tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
                                          @(if caption=[] then [] else tT" "::tT"–"::tT" "::caption)
@@ -781,8 +775,8 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                   drawing_min_width= !x;
                   drawing_max_width= !x;
                   drawing_nominal_width= !x;
-		  drawing_width_fixed = true;
-		  drawing_adjust_before = false;
+                  drawing_width_fixed = true;
+                  drawing_adjust_before = false;
                   drawing_y0= !min_y;
                   drawing_y1= !max_y;
                   drawing_break_badness=0.;
@@ -800,7 +794,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 
 
       let do_end_env ()=
-	D.structure :=follow (top !D.structure) (List.rev (List.hd !env_stack)) ;
+        D.structure :=follow (top !D.structure) (List.rev (List.hd !env_stack)) ;
         env_stack:=List.tl !env_stack
 
     end
@@ -814,17 +808,17 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 
 
       let do_end_env ()=
-	D.structure :=follow (top !D.structure) (List.rev (List.hd !env_stack)) ;
+        D.structure :=follow (top !D.structure) (List.rev (List.hd !env_stack)) ;
         env_stack:=List.tl !env_stack
     end
 
     let noindent = [Env (fun env -> Printf.printf "coucou 2\n%!";{env with par_indent=[] } )]
 
     let hfill t = [bB (fun env-> let x = env.normalMeasure in
-				  [match glue 0. env.size (x /. t) with
-				    Glue x -> Drawing x
-				  | _ -> assert false
-				  ])]
+                                  [match glue 0. env.size (x /. t) with
+                                    Glue x -> Drawing x
+                                  | _ -> assert false
+                                  ])]
 
     let hand = hfill 4. @ hspace 0. @ hfill 4.
 
@@ -834,19 +828,19 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
     module Env_mathpar = struct
 
       let do_begin_env () =
-	D.structure:=newChildAfter !D.structure (Node Document.empty) ;
-	env_stack := (List.map fst (snd !D.structure)) :: !env_stack
+        D.structure:=newChildAfter !D.structure (Node Document.empty) ;
+        env_stack := (List.map fst (snd !D.structure)) :: !env_stack
 
       let do_end_env () =
-	D.structure := follow (top !D.structure) (List.rev (List.hd !env_stack)) ;
-	env_stack:=List.tl !env_stack ;
-	let rec truc t = match t with
-	  | Paragraph p -> Paragraph { p with par_contents =
-	      (hfill 2.) @ p.par_contents @ (hfill 2.) }
-	  | Node n -> Node ({ n with children = IntMap.map truc n.children })
-	  | _ -> t
-	in
-	D.structure := up (truc (fst !D.structure), (snd !D.structure))
+        D.structure := follow (top !D.structure) (List.rev (List.hd !env_stack)) ;
+        env_stack:=List.tl !env_stack ;
+        let rec truc t = match t with
+          | Paragraph p -> Paragraph { p with par_contents =
+              (hfill 2.) @ p.par_contents @ (hfill 2.) }
+          | Node n -> Node ({ n with children = IntMap.map truc n.children })
+          | _ -> t
+        in
+        D.structure := up (truc (fst !D.structure), (snd !D.structure))
 
     end
 
@@ -925,7 +919,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
               (fun env0 env1->
                 let cou=try
                           let lvl,enum=StrMap.find "enumerate" env1.counters in
-                          StrMap.add "enumerate" (lvl,drop 1 enum) env1.counters
+                          StrMap.add "enumerate" (lvl,List.drop 1 enum) env1.counters
                   with Not_found-> env1.counters
                 in
                 { env0 with names=env1.names;user_positions=env1.user_positions;counters=cou });
@@ -1023,8 +1017,8 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                                      let x1=tiret_w env-.x0 in
                                        { drawing_min_width=tiret_w env;
                                          drawing_nominal_width=tiret_w env;
-					 drawing_width_fixed = true;
-					 drawing_adjust_before = false;
+                                         drawing_width_fixed = true;
+                                         drawing_adjust_before = false;
                                          drawing_max_width=tiret_w env;
                                          drawing_y0=y; drawing_y1=y;
                                          drawing_break_badness=0.;
@@ -1049,16 +1043,16 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 
     module Env_genumerate = functor (Pat:Enumerate_Pattern) ->
       Enumerate(struct
-	let c, f = Pat.arg1
-	let g = match c with
-	    Arabic -> string_of_int
-	  | AlphaLower -> Numerals.alphabetic ~capital:false
-	  | AlphaUpper -> Numerals.alphabetic ~capital:true
-	  | RomanLower -> Numerals.roman ~capital:false
-	  | RomanUpper -> Numerals.roman ~capital:true
-	let from_counter x =
-	  let x = List.hd x + 1 in
-	  f (g x)
+        let c, f = Pat.arg1
+        let g = match c with
+            Arabic -> string_of_int
+          | AlphaLower -> Numerals.alphabetic ~capital:false
+          | AlphaUpper -> Numerals.alphabetic ~capital:true
+          | RomanLower -> Numerals.roman ~capital:false
+          | RomanUpper -> Numerals.roman ~capital:true
+        let from_counter x =
+          let x = List.hd x + 1 in
+          f (g x)
       end)
 
     module Env_enumerate =
@@ -1223,7 +1217,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                                   StrMap.find "_structure" env.counters
                 with Not_found -> -1,[0]
               in
-              let sect_num=drop (max 1 (List.length str_counter - lvl+1))
+              let sect_num=List.drop (max 1 (List.length str_counter - lvl+1))
                 str_counter
               in
               Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) ((List.rev sect_num)@num)))
@@ -1257,7 +1251,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
             Node x,y->Node { x with node_tags=("structure","")::x.node_tags },y
           | _->assert false
         in
-	D.structure := up (retag (last_par (add_name stru),path));
+        D.structure := up (retag (last_par (add_name stru),path));
         env_stack:=List.tl !env_stack
     end
 
@@ -1278,7 +1272,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
               Node n->
                 Node { n with node_tags=("title already typeset","")::n.node_tags },[]
             | x->x,[]);
-	D.structure :=follow (top !D.structure) (List.rev (List.hd !env_stack));
+        D.structure :=follow (top !D.structure) (List.rev (List.hd !env_stack));
         env_stack:=List.tl !env_stack
     end
 
@@ -1462,7 +1456,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                         | GlyphBox a->(
                           page.contents<-translate x y (Glyph a):: page.contents;
                           let w=a.glyph_size*.Fonts.glyphWidth a.glyph/.1000. in
-	                  if env.show_boxes then (
+                          if env.show_boxes then (
                             let y0=lower_y box
                                 and y1=upper_y box
                             in
@@ -1474,16 +1468,16 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                         | Drawing g ->(
                           let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
                           page.contents<- (List.map (translate x y) (g.drawing_contents w)) @ page.contents;
-	                  if env.show_boxes then
+                          if env.show_boxes then
                             page.contents<- Path ({RawContent.default_path_param with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.contents;
                           w
                         )
                         | Marker (BeginLink l)->(
-			  let k = match l with
-			      Box.Extern l -> RawContent.Extern l;
-			    | Box.Intern l -> RawContent.Intern(l,layout_page line,0.,0.);
-			    | Box.Button (t,n) -> RawContent.Button(t,n)
-			  in
+                          let k = match l with
+                              Box.Extern l -> RawContent.Extern l;
+                            | Box.Intern l -> RawContent.Intern(l,layout_page line,0.,0.);
+                            | Box.Button (t,n) -> RawContent.Button(t,n)
+                          in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                      link_order=0;link_closed=false;
                                      link_contents=[] }
@@ -1549,14 +1543,14 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
 
 
               (*
-		for j=0 to Array.length pp-1 do
+                for j=0 to Array.length pp-1 do
                 let param=pp.(j).line_params
                 and line=pp.(j).line in
 
                 (* Affichage des frames (demouchage) *)
                 (* * *)
 
-	        if env.show_boxes then
+                if env.show_boxes then
                   page.contents<- Path ({RawContent.default_path_param with close=true;lineWidth=0.1 },
                                             [rectangle (param.left_margin,y+.fig.drawing_y0)
                                                 (param.left_margin+.fig.drawing_nominal_width,
@@ -1613,44 +1607,44 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
             )
           in
 
-	  let pages=Array.of_list (List.rev (snd (draw_all_pages opt_pages 0 []))) in
-	  let pages=Array.map (fun p->
-	      { p with
+          let pages=Array.of_list (List.rev (snd (draw_all_pages opt_pages 0 []))) in
+          let pages=Array.map (fun p->
+              { p with
                 contents=List.map (fun a->match a with
-		  Link ({ link_kind = Intern(label,dest_page,dest_x,dest_y) } as l)->(
-		    try
+                  Link ({ link_kind = Intern(label,dest_page,dest_x,dest_y) } as l)->(
+                    try
                       let (p',x,y0,y1)=StrMap.find label !destinations in
                       let dx0,dy0,dx1,dy1=bounding_box l.link_contents in
                       Link { l with link_kind = Intern(label,p',x,y0+.(y1-.y0)*.phi);
                         link_x0=dx0;link_x1=dx1;
                         link_y0=dy0;link_y1=dy1
-			   }
-		    with
+                           }
+                    with
                       Not_found->a
-		  )
+                  )
                 | a->a
                 ) p.contents
-	      }
-	    ) pages
-	    in
-	  pages, positions);;
+              }
+            ) pages
+            in
+          pages, positions);;
 
      let basic_output _ tree defaultEnv file=
        let pages, structure =
-	 match !Driver.input_bin with
-	   None ->
-	     let pages, positions = resolve tree 0 defaultEnv in
-	     let structure = make_struct positions tree in
-	     pages, structure
-	 | Some fileName ->
-	   let ch = open_in fileName in
-	   let b = input_value ch in
-	   if b then failwith "Wrong bin for this format";
-	   let structure = Marshal.from_channel ch in
-	   let pages = Marshal.from_channel ch in
-	   close_in ch;
-	   Printf.fprintf stderr "File %s read.\n" fileName;
-	   pages, structure
+         match !Driver.input_bin with
+           None ->
+             let pages, positions = resolve tree 0 defaultEnv in
+             let structure = make_struct positions tree in
+             pages, structure
+         | Some fileName ->
+           let ch = open_in fileName in
+           let b = input_value ch in
+           if b then failwith "Wrong bin for this format";
+           let structure = Marshal.from_channel ch in
+           let pages = Marshal.from_channel ch in
+           close_in ch;
+           Printf.fprintf stderr "File %s read.\n" fileName;
+           pages, structure
        in
 
        M.output ~structure pages file

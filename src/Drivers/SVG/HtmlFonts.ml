@@ -17,7 +17,7 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open UsualMake
+open Extra
 open Fonts
 open FTypes
 open RawContent
@@ -30,7 +30,7 @@ module ClassMap = Map.Make(
 
 type font_cache={
   subfonts:(Fonts.font * (FTypes.glyph_id*int) IntMap.t) StrMap.t;
-  fontBuffers:Rbuffer.t StrMap.t;
+  fontBuffers:Buffer.t StrMap.t;
   mutable instances:(int StrMap.t) StrMap.t;
   fontFamilies:(string * int) StrMap.t;
   mutable classes:int ClassMap.t
@@ -79,9 +79,9 @@ let build_font_cache prefix pages=
         make_fonts i s (Array.fold_left (fun fonts c -> make_fonts (-2) c fonts) fonts a.anim_contents)
       | (Video _ | Image _ | Path _)::s->make_fonts i s fonts
       | Dynamic d::s ->
-	make_fonts i s (make_fonts (-2) (d.dyn_contents ()) (make_fonts (-2) d.dyn_sample fonts));
+        make_fonts i s (make_fonts (-2) (d.dyn_contents ()) (make_fonts (-2) d.dyn_sample fonts));
       | Affine a::s ->
-	make_fonts i s (make_fonts (-2) a.affine_contents fonts)
+        make_fonts i s (make_fonts (-2) a.affine_contents fonts)
   in
   let f=make_fonts (-1) [] StrMap.empty in
   (* Il faut fusionner les maps de tous les glyphes utilisés, pour ne
@@ -106,8 +106,8 @@ let build_font_cache prefix pages=
     inst_num
   in
 
-  let style_buf=Rbuffer.create 256 in
-  Rbuffer.add_string style_buf "body{line-height:0;}\n.z { font-size:0; }\n";
+  let style_buf=Buffer.create 256 in
+  Buffer.add_string style_buf "body{line-height:0;}\n.z { font-size:0; }\n";
   let families=ref StrMap.empty in
   let fontBuffers=ref StrMap.empty in
   let classes=ref ClassMap.empty in
@@ -139,7 +139,7 @@ let build_font_cache prefix pages=
       Fonts.add_kerning info [];
       let buf=Fonts.subset font info (make_bindings 1 IntMap.empty) glyphs in
       let notFull = Printf.sprintf "%s_%d_%d_" (Fonts.fontName font).postscript_name instance subfont in
-      let full = notFull ^ (Digest.to_hex (Digest.string (Rbuffer.contents buf))) in
+      let full = notFull ^ (Digest.to_hex (Digest.string (Buffer.contents buf))) in
       families:=StrMap.add (notFull) (full, StrMap.cardinal !families) !families;
       let filename=Filename.concat prefix (full^".otf") in
       fontBuffers:=StrMap.add filename buf !fontBuffers;
@@ -155,7 +155,7 @@ let build_font_cache prefix pages=
 let output_fonts cache=
   StrMap.iter (fun filename buf->
       let out=open_out filename in
-      Rbuffer.output_buffer out buf;
+      Buffer.output_buffer out buf;
       close_out out;
   ) cache.fontBuffers
 
@@ -165,18 +165,18 @@ let filter_fonts cmd cache =
   StrMap.iter (fun filename buf->
     let filename = Filename.(concat temp_dir (basename filename)) in
     let out=open_out filename in
-    Rbuffer.output_buffer out buf;
+    Buffer.output_buffer out buf;
     close_out out;
     let cmd = cmd ^ " " ^ filename in
     Printf.eprintf "filtering: %s\n" cmd;
     if Sys.command cmd <> 0 then
       begin
-	Printf.eprintf "font filter command %S failed\n" cmd;
-	exit 1
+        Printf.eprintf "font filter command %S failed\n" cmd;
+        exit 1
       end;
-    Rbuffer.clear buf;
+    Buffer.clear buf;
     let cin =open_in filename in
-    Rbuffer.add_channel buf cin (in_channel_length cin);
+    Buffer.add_channel buf cin (in_channel_length cin);
     close_in cin;
     Sys.remove filename;
   ) cache.fontBuffers;
@@ -230,9 +230,9 @@ let className ?(create_new_class=true) cache gl_=
 
 
 let make_style cache=
-  let style_buf=Rbuffer.create 256 in
+  let style_buf=Buffer.create 256 in
   StrMap.iter (fun _ (full, class_name) ->
-    Rbuffer.add_string style_buf (Printf.sprintf "@font-face { font-family:f%d;
+    Buffer.add_string style_buf (Printf.sprintf "%@font-face { font-family:f%d;
 src:url(\"%s.otf\") format(\"opentype\"); }
 .f%d { font-family:f%d; }\n"
                                     class_name full class_name class_name)

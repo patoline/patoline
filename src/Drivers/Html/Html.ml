@@ -17,8 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open FTypes
-open Util
 open HtmlFonts
 open Driver
 open RawContent
@@ -50,7 +50,7 @@ let output ?(structure:structure=empty_structure) pages fileName =
 <title>%s</title>
 <style type=\"text/css\">
 body{line-height:0;}\n" structure.name;
-    Rbuffer.output_buffer o (make_style cache);
+    Buffer.output_buffer o (make_style cache);
     Printf.fprintf o "</style></head><body>\n";
 
     let w,h=pages.(i).size in

@@ -6,9 +6,9 @@ let error fmt = Printf.printf ("\027[31m" ^^ fmt ^^ "\027[0m")
 let _ =
   (* Check OCaml version. *)
   let version = Scanf.sscanf Sys.ocaml_version "%u.%u" (fun i j -> (i,j)) in
-  if version < (4, 1) then
+  if version < (4, 3) then
     begin
-      error "You need at least OCaml 4.01 for Patoline.\n%!";
+      error "You need at least OCaml 4.03 for Patoline.\n%!";
       error "Current version: %s\n%!" Sys.ocaml_version;
       exit 1
     end;
@@ -33,19 +33,6 @@ let get_config name default =
     | _         -> default
   with _ -> default
 
-(* List of supported languages. *)
-let languages =
-  let f = open_in "src/Typography/TypoLanguage.ml" in
-  let buf = Bytes.create (in_channel_length f) in
-  really_input f buf 0 (in_channel_length f);
-  close_in f;
-  let rec make_str i acc =
-    if i > String.length buf - 7 then acc
-    else if String.sub buf i 5 = "LANG_" then
-      make_str (i+7) (String.sub buf (i+5) 2 :: acc)
-    else make_str (i+1) acc
-  in make_str 0 []
-
 (* Default configurations. *)
 let default_prefix   = get_config "prefix"   "/usr/local"
 let default_bindir   = get_config "bin"      "/usr/local/bin"
@@ -53,8 +40,6 @@ let default_libdir   = get_config "lib"      "/usr/local/lib/ocaml"
 let default_stublibs = get_config "stublibs" "/usr/local/lib/ocaml/stublibs"
 let default_share    = get_config "share"    "/usr/local/share"
 
-let default_lang           = "EN"
-let default_ban_comic_sans = false
 let default_type3_only = false
 
 (* Command-line arguments parsing. *)
@@ -63,12 +48,7 @@ let bindir     = ref ""
 let libdir     = ref ""
 let stublibs   = ref ""
 let share      = ref ""
-let lang       = ref "EN"
 let type3_only = ref false
-
-let set_language l =
-  if List.mem l languages then lang := l else
-  warn "Unknown language %S... using default.\n%!" l
 
 let spec =
   let open Printf in
@@ -96,11 +76,6 @@ let spec =
   ; ( "--type3-only"
     , Arg.Set type3_only
     , " Convert all fonts to vector graphics in PDFs.")
-
-  ; ( "--lang"
-    , Arg.String set_language
-    , Printf.sprintf "s Set the language for error messages (available: %s)."
-        (String.concat ", " (List.rev languages)))
   ]
 
 let _ =
@@ -119,7 +94,6 @@ let bindir     = set_default !bindir   default_bindir   "bin"
 let libdir     = set_default !libdir   default_libdir   "lib/ocaml"
 let stublibs   = set_default !stublibs default_stublibs "lib/ocaml/stublibs"
 let share      = set_default !share    default_share    "share"
-let lang       = !lang
 let type3_only = !type3_only
 
 let _ =
@@ -163,7 +137,7 @@ type local_packages =
 let local_packages =
   [ { package_name = "patutil"
     ; macro_suffix = "UTIL"
-    ; local_deps   = ["rbuffer"; "unicodelib"]
+    ; local_deps   = ["unicodelib"]
     ; extern_deps  = ["bytes"; "earley"; "earley.str"]
     ; subdirs      = []
     ; has_meta     = true }
@@ -179,13 +153,6 @@ let local_packages =
     ; macro_suffix = "UNICODELIB"
     ; local_deps   = []
     ; extern_deps  = ["bytes"; "earley"; "earley.str"; "earley_ocaml"; "sqlite3"; "compiler-libs"]
-    ; subdirs      = []
-    ; has_meta     = true }
-
-  ; { package_name = "rbuffer"
-    ; macro_suffix = "RBUFFER"
-    ; local_deps   = []
-    ; extern_deps  = ["bytes"]
     ; subdirs      = []
     ; has_meta     = true }
 
@@ -235,7 +202,7 @@ let local_packages =
 
   ; { package_name = "patobuild"
     ; macro_suffix = "PATOBUILD"
-    ; local_deps   = []
+    ; local_deps   = ["patutil"]
     ; extern_deps  = ["earley";"earley.str";"bytes";"compiler-libs"]
     ; subdirs      = []
     ; has_meta     = false }
@@ -472,8 +439,8 @@ let all_patoline_drivers =
     ; internals = [ Package "rawlib" ] }
 
   ; { name      = "Pdf"
-    ; needs     = [ Package "bytes" ]
-    ; suggests  = [ Package "zip" ]
+    ; needs     = [ Package "bytes"; Package "zip" ]
+    ; suggests  = []
     ; internals = [ Package "rawlib" ] }
 
   ; { name      = "Bin"
@@ -484,7 +451,7 @@ let all_patoline_drivers =
   ; { name      = "Html"
     ; needs     = []
     ; suggests  = []
-    ; internals = [ Package "rawlib"; Package "unicodelib" ] }
+    ; internals = [ Driver svg_driver; Package "rawlib"; Package "unicodelib" ] }
 
   ; { name      = "Patonet"
     ; needs     = [ Package "cryptokit"; Package "bytes" ]
@@ -519,7 +486,7 @@ let includes_driver ?(subdir_only=true) name =
     match name with
     | Driver p ->
        let acc = if false && subdir_only then acc else
-	 add ("-I "^(Filename.concat (Filename.concat "src" "Drivers") p.name)) acc
+         add ("-I "^(Filename.concat (Filename.concat "src" "Drivers") p.name)) acc
        in
        let acc = List.fold_left fn acc p.internals in
        acc
@@ -587,13 +554,12 @@ let _=
   (* Generation of src/Makefile.config *)
   let make = open_out "src/Makefile.config" in
 
-  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s%s\n"
+  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s\n"
     (if Sys.word_size = 32  then "-DINT32 " else "")
     (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
     (if has_mysql then "-DMYSQL " else "")
     (if has_sqlite3 then "-DSQLITE3 " else "")
-    (if type3_only then "-DPDF_TYPE3_ONLY " else "")
-    (if lang <> "EN" then ("-DLANG_" ^ (lang)) else "");
+    (if type3_only then "-DPDF_TYPE3_ONLY " else "");
 
   Printf.fprintf make "CAMLZIP :=%s\n"
     (if ocamlfind_has "zip" then " " ^ (snd (ocamlfind_query "zip")) else "");
@@ -615,7 +581,6 @@ let _=
   Printf.fprintf make "INSTALL_PACKAGES_DIR :=%s\n" pack_dir;
   Printf.fprintf make "INSTALL_DLLS_DIR :=%s\n" stublibs;
   Printf.fprintf make "INSTALL_EMACS_DIR :=%s\n" emacsdir;
-  Printf.fprintf make "INSTALL_RBUFFER_DIR :=%s/rbuffer\n" libdir;
   Printf.fprintf make "INSTALL_UTIL_DIR :=%s/patutil\n" libdir;
   Printf.fprintf make "INSTALL_RAWLIB_DIR :=%s/rawlib\n" libdir;
   Printf.fprintf make "INSTALL_DB_DIR :=%s/db\n" libdir;
@@ -717,7 +682,7 @@ let _=
         let buf = Bytes.create custom_meta_len in
         really_input custom_meta_fd buf 0 custom_meta_len;
         close_in custom_meta_fd;
-        Printf.fprintf meta "%s\n" buf
+        Printf.fprintf meta "%s\n" (Bytes.to_string buf)
       with Sys_error _ ->
         Printf.fprintf meta
           "package \"%s\" (\nrequires=\"rawlib,Typography\"\narchive(native)=\"%s\"\narchive(byte)=\"%s\"\n)\n"

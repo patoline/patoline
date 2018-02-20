@@ -116,8 +116,8 @@ let positioning =
   let cache = Hashtbl.create 101 in
   let positioning font glyphs =
     match font with
-	  | CFF f -> CFF.positioning f glyphs
-	  | OpT f -> OpT.positioning f glyphs
+    | CFF f -> CFF.positioning f glyphs
+    | OpT f -> OpT.positioning f glyphs
   in
   let positioning font glyphs =
     try Hashtbl.find cache (font, glyphs) with Not_found ->
@@ -133,7 +133,7 @@ let fontInfo =
   let cache = Hashtbl.create 101 in
   let fontInfo font =
     match font with
-	  | CFF f -> CFFInfo (CFF.fontInfo f)
+    | CFF f -> CFFInfo (CFF.fontInfo f)
     | OpT f -> OpTInfo (OpT.fontInfo f)
   in
   let fontInfo font =

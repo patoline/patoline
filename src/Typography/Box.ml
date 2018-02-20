@@ -1,3 +1,4 @@
+(** Patoline boxes *)
 (*
   Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
   Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
@@ -18,11 +19,11 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open RawContent
-open Util
-open UsualMake
+open Extra
 open FTypes
 open Bezier
 
+(** Elementary box in a paragraph *)
 type box =
   | GlyphBox    of RawContent.glyph
   | Kerning     of box FTypes.kerningBox
@@ -35,6 +36,11 @@ type box =
   | Parameters  of (parameters->parameters)
   | Layout      of (frame_zipper->frame_zipper)
   | Empty
+
+(** A paragraph is an array of elementary boxes. The line breaking
+ algorithm produces lines (given by the type {!type:line}) by selecting
+ chunks in a paragraph array. *)
+and paragraph = box array
 
 and drawingBox =
   { drawing_min_width     : float
@@ -67,16 +73,22 @@ and marker =
   | EndLink
   | AlignmentMark
 
+(**
+ Description of a line, which should be produced by the line breaking
+ algorithm. A line is merely described as the index of its first box and
+ the index of its last box inside the paragraph (which itself is an
+ array of boxes).
+ *)
 and line =
-  (** The index of the paragraph in the array. *)
   { paragraph        : int
-  (** The last placed figure (initially -1) *)
+  (** Index of the paragraph containing this line in the array *)
   ; lastFigure       : int
-  (** The index of the first box of the line in the paragraph. *)
+  (** Last placed figure (initially -1) *)
   ; lineStart        : int
-  (** The index of the box next to the last box of the line, or the box with
-      the hyphenation if the line is hyphenated. *)
+  (** Index of the first box of the line in the paragraph. *)
   ; lineEnd          : int
+  (** Index of the box next to the last box of the line, or the box with
+      the hyphenation if the line is hyphenated. *)
   ; hyphenStart      : int
   ; hyphenEnd        : int
   ; isFigure         : bool
@@ -223,7 +235,7 @@ let hyphenate hyph subs kern font size color str =
 
 
 
-(* Helper functions for layouts *)
+(** {1 Helper functions for layouts } *)
 
 let frame_up (t,cxt)=
   match cxt with
@@ -303,8 +315,8 @@ let frame_page l=
   let rec last cxt=match cxt with
       [h,t]->(
         let a,_,_=IntMap.split h t.frame_children in
-	IntMap.fold (fun _ f n ->
-	  if List.mem "not_first_state" f.frame_tags then n else n + 1) a 0
+        IntMap.fold (fun _ f n ->
+          if List.mem "not_first_state" f.frame_tags then n else n + 1) a 0
       )
     | _::s->last s
     | []->(-1)
@@ -320,12 +332,27 @@ let all_contents frame=
   in
   collect frame []
 
-(* Helper functions for lines *)
+(** {1 Helper functions for lines} *)
 
 let uselessLine=
-  { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
-    lastFigure=(-1); height= infinity;paragraph_height= -1; page_line= -1;layout=doc_frame,[];
-    min_width=0.;nom_width=0.;max_width=0.;line_y0=infinity;line_y1= -.infinity }
+  {
+    paragraph = 0;
+    lineStart = -1;
+    lineEnd = -1;
+    hyphenStart = -1;
+    hyphenEnd = -1;
+    isFigure = false;
+    lastFigure = (-1);
+    height = infinity;
+    paragraph_height = -1;
+    page_line = -1;
+    layout = doc_frame,[];
+    min_width = 0.;
+    nom_width = 0.;
+    max_width = 0.;
+    line_y0 = infinity;
+    line_y1 = -.infinity
+  }
 
 let default_params={ measure=0.;
                      left_margin=0.;
@@ -368,7 +395,7 @@ let empty_drawing_box=
 let drawing ?(adjust_before=false) ?(vcenter=false) ?(hcenter=false)
             ?(offset=0.) ?(width_fixed=true) ?(states=[]) cont=
   let states=List.fold_left (fun st0 x->match x with
-      States s-> unique (st0@s.states_states)
+      States s-> List.sort_uniq compare (st0@s.states_states)
     | _->st0
   ) states cont
   in
@@ -401,7 +428,7 @@ let drawing_blit a x0 y0 b=
       drawing_y0=min a.drawing_y0 (y0+.b.drawing_y0);
       drawing_y1=max a.drawing_y1 (y0+.b.drawing_y1);
       drawing_break_badness=0.;
-      drawing_states=unique (a.drawing_states@b.drawing_states);
+      drawing_states=List.sort_uniq compare (a.drawing_states@b.drawing_states);
       drawing_badness=(fun w->
                          let fact=w/.(w1-.w0) in
                            a.drawing_badness ((a.drawing_max_width-.a.drawing_min_width)*.fact)
@@ -473,8 +500,8 @@ let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.
 let glue a b c=
   Glue { drawing_min_width= a;
          drawing_max_width= c;
-	 drawing_width_fixed = true;
-	 drawing_adjust_before = false;
+         drawing_width_fixed = true;
+         drawing_adjust_before = false;
          drawing_y0=infinity; drawing_y1= -.infinity;
          drawing_nominal_width= b;
          drawing_contents=(fun _->[]);
@@ -540,14 +567,14 @@ let vkern_percent_under' gs p envs st =
   let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
     | [] -> (sy/.float nb,mi,sk/.float nb,ma)
     | GlyphBox g::gs ->
-	let acc =
-	  sy +. g.glyph_y,
-	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
-	  sk +. g.glyph_ky,
-	  max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
-	  nb + 1
-	in vbox' acc gs
-	| _ -> failwith "vkern on non glyph"
+        let acc =
+          sy +. g.glyph_y,
+          min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
+          sk +. g.glyph_ky,
+          max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
+          nb + 1
+        in vbox' acc gs
+        | _ -> failwith "vkern on non glyph"
   in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
   let y,yl,y0,yh = vbox gs in
@@ -555,9 +582,9 @@ let vkern_percent_under' gs p envs st =
   let center = (yh +. yl) /. 2.0 -. dy in
   center, List.map (function
       GlyphBox g -> GlyphBox {
-	g with
-	  glyph_y = g.glyph_y -. dy;
-	  glyph_ky = 0.0;
+        g with
+          glyph_y = g.glyph_y -. dy;
+          glyph_ky = 0.0;
       }
     | _ -> failwith "vkern on non glyph") gs
 
@@ -569,23 +596,23 @@ let vkern_center gs c envs st =
   let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
     | [] -> (sy/.float nb,mi,sk/.float nb,ma)
     | GlyphBox g::gs ->
-	let acc =
-	  sy +. g.glyph_y,
-	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
-	  sk +. g.glyph_ky,
-	  max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
-	  nb + 1
-	in vbox' acc gs
-	| _ -> failwith "vkern on non glyph"
+        let acc =
+          sy +. g.glyph_y,
+          min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
+          sk +. g.glyph_ky,
+          max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
+          nb + 1
+        in vbox' acc gs
+        | _ -> failwith "vkern on non glyph"
   in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
   let y,yl,y0,yh = vbox gs in
   let dy = (yh +. yl) /. 2.0 -. c in
   List.map (function
       GlyphBox g -> GlyphBox {
-	g with
-	  glyph_y = g.glyph_y -. dy;
-	  glyph_ky = 0.0;
+        g with
+          glyph_y = g.glyph_y -. dy;
+          glyph_ky = 0.0;
       }
     | _ -> failwith "vkern on non glyph") gs
 
@@ -594,9 +621,9 @@ let vkern_translate gs dy envs st =
   let gs = gs envs st in
   List.map (function
       GlyphBox g -> GlyphBox {
-	g with
-	  glyph_y = g.glyph_y -. dy;
-	  glyph_ky = 0.0;
+        g with
+          glyph_y = g.glyph_y -. dy;
+          glyph_ky = 0.0;
       }
     | _ -> failwith "vkern on non glyph") gs
 
@@ -607,14 +634,14 @@ let vkern_as gs gs' envs st =
   let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
     | [] -> (sy/.float nb,mi,sk/.float nb,ma)
     | GlyphBox g::gs ->
-	let acc =
-	  sy +. g.glyph_y,
-	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
-	  sk +. g.glyph_ky,
-	  max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
-	  nb + 1
-	in vbox' acc gs
-	| _ -> failwith "vkern on non glyph"
+        let acc =
+          sy +. g.glyph_y,
+          min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
+          sk +. g.glyph_ky,
+          max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
+          nb + 1
+        in vbox' acc gs
+        | _ -> failwith "vkern on non glyph"
   in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
   let y,yl,y0,yh = vbox gs in
@@ -622,15 +649,21 @@ let vkern_as gs gs' envs st =
   let s = (yh' -. yl') /. (yh -. yl) in
   List.map (function
       GlyphBox g -> GlyphBox {
-	g with
-	  glyph_size = g.glyph_size *. s;
-	  glyph_y = g.glyph_y *. s;
-	  glyph_ky = y0';
-	  glyph_x = g.glyph_x *. s;
-	  glyph_kx = g.glyph_kx *. s;
+        g with
+          glyph_size = g.glyph_size *. s;
+          glyph_y = g.glyph_y *. s;
+          glyph_ky = y0';
+          glyph_x = g.glyph_x *. s;
+          glyph_kx = g.glyph_kx *. s;
       }
     | _ -> failwith "vkern on non glyph") gs
 
+(**
+ Calling [fold_left_line paragraphs f x0 line] computes
+ [f (... (f (f (f x0 box0) box1) box2) ...) boxn]
+ where [box0], [box1], [box2], … [boxn] are the boxes which belong to
+ [line] in its corresponding paragraph [paragraphs.(line.paragraph)].
+ *)
 let fold_left_line paragraphs f x0 line=
   if line.paragraph>=Array.length paragraphs || line.paragraph<0 then x0 else (
     let rec fold boxes i maxi result=

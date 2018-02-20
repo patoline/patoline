@@ -1,0 +1,31 @@
+(* #FORMAT FormatThese *)
+(* #PACKAGES bibi *)
+
+\Caml(
+  open Bibi
+  let _=
+    let _=Sys.command "bibi biblio.bib" in
+    bibfile "biblio.bibi"
+module Bib=BiblioNames
+open Bib
+)
+
+=> Patoline and text editors \label("text editors")
+
+When you compiled Patoline, it generated a free emacs mode in a
+directory called \verb{emacs}, at the root of the Patoline source
+tree. In order to use it, copy all the files in this directory to some
+place on your file system, say \verb{/path/to/patoline}, and then
+append the following lines to your \verb{~/.emacs}:
+
+###
+(add-to-list 'load-path "/path/to/patoline/")
+(require 'patoline-mode)
+###
+
+This mode also gets installed to a default location emacs knows of,
+when you install Patoline by invoking \verb{make install} at the root
+of the Patoline source tree. In order to use it, you must install
+\verb{mmm-mode} and \verb{tuareg-mode}.
+
+=<

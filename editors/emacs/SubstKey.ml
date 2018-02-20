@@ -29,12 +29,12 @@ let table =
     while true do
       let l = input_line ch in
       if Str.string_match regexp l 0 then begin
-	let key = Str.matched_group 1 l in
-	let char = Str.matched_group 2 l in
-	if UTF8.length char = 1 then begin
-(*	  Printf.fprintf stderr "read %s => %s\n" key char;*)
-	  r := (key, char)::!r;
-	end;
+        let key = Str.matched_group 1 l in
+        let char = Str.matched_group 2 l in
+        if UTF8.length char = 1 then begin
+(*          Printf.fprintf stderr "read %s => %s\n" key char;*)
+          r := (key, char)::!r;
+        end;
       end;
     done;
     assert false
@@ -57,12 +57,12 @@ let _ =
     while true do
       let l = input_line ch in
       if Str.string_match regexp l 0 then begin
-	let typ = Str.matched_group 1 l in
-	let key = Str.matched_group 2 l in
-	let char = Str.matched_group 3 l in
-	match find_all key table with
-	  [] -> if UTF8.length key = String.length key then Printf.printf "%s\n" l
-	| ls -> List.iter (fun k -> Printf.printf "(\"%s%s\" ?%s)\n" typ k char) ls
+        let typ = Str.matched_group 1 l in
+        let key = Str.matched_group 2 l in
+        let char = Str.matched_group 3 l in
+        match find_all key table with
+          [] -> if UTF8.length key = String.length key then Printf.printf "%s\n" l
+        | ls -> List.iter (fun k -> Printf.printf "(\"%s%s\" ?%s)\n" typ k char) ls
       end;
     done;
     assert false

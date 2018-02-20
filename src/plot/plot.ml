@@ -20,10 +20,11 @@
 open Typography.Document
 open Color
 open RawContent
-open Util
 open Typography.Box
 open Typography
 open DefaultFormat
+open Extra
+
 module Plot(D:Document.DocumentStructure)=struct
 
   let colors i n=

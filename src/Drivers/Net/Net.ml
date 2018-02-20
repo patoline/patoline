@@ -18,7 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open UsualMake
+open Extra
 open HtmlFonts
 open Driver
 
@@ -123,11 +123,11 @@ function gotoSlide(n){
   in
 
   let o=open_out (prefix^"_server.c") in
-  Printf.fprintf o "char* page=%S;\n" (Rbuffer.contents html);
-  Printf.fprintf o "char* master=%S;\n" (Rbuffer.contents master);
-  Printf.fprintf o "char* css=%S;\n" (Rbuffer.contents style);
+  Printf.fprintf o "char* page=%S;\n" (Buffer.contents html);
+  Printf.fprintf o "char* master=%S;\n" (Buffer.contents master);
+  Printf.fprintf o "char* css=%S;\n" (Buffer.contents style);
 
-  let print_double_arr pref (arr:(Rbuffer.t*Rbuffer.t) array array) bin=
+  let print_double_arr pref (arr:(Buffer.t*Buffer.t) array array) bin=
     let arr_len=(Array.map (Array.length) arr) in
     Printf.fprintf o "int n_%s=%d;" pref (Array.length arr);
     Printf.fprintf o "int n_%s_[]={%s};" pref
@@ -135,22 +135,22 @@ function gotoSlide(n){
     for i=0 to Array.length arr-1 do
       Printf.fprintf o "int n_%s_%d[]={%s};\n" pref i
         (String.concat "," (List.map string_of_int
-                              (Array.to_list (Array.map (fun (x,y) -> Rbuffer.length x + Rbuffer.length y) arr.(i)))));
+                              (Array.to_list (Array.map (fun (x,y) -> Buffer.length x + Buffer.length y) arr.(i)))));
       Printf.fprintf o "char* %s%d[]={" pref i;
       for j=0 to Array.length arr.(i)-1 do
         if j>0 then Printf.fprintf o ",";
-	let prefix,suffix = arr.(i).(j) in
+        let prefix,suffix = arr.(i).(j) in
         if bin then (
           Printf.fprintf o "\"";
-          for k=0 to Rbuffer.length prefix-1 do
-            Printf.fprintf o "\\x%02x" (int_of_char (Rbuffer.nth prefix k));
+          for k=0 to Buffer.length prefix-1 do
+            Printf.fprintf o "\\x%02x" (int_of_char (Buffer.nth prefix k));
           done;
-          for k=0 to Rbuffer.length suffix-1 do
-            Printf.fprintf o "\\x%02x" (int_of_char (Rbuffer.nth suffix k));
+          for k=0 to Buffer.length suffix-1 do
+            Printf.fprintf o "\\x%02x" (int_of_char (Buffer.nth suffix k));
           done;
           Printf.fprintf o "\"";
         ) else
-          Printf.fprintf o "%S%S" (Rbuffer.contents prefix) (Rbuffer.contents suffix)
+          Printf.fprintf o "%S%S" (Buffer.contents prefix) (Buffer.contents suffix)
       done;
       Printf.fprintf o "};\n";
     done;
@@ -172,18 +172,18 @@ function gotoSlide(n){
 
   let bin=
     (List.map (fun (a,b)->
-      let buf=Rbuffer.create (String.length a) in
-      Rbuffer.add_string buf a;
+      let buf=Buffer.create (String.length a) in
+      Buffer.add_string buf a;
       [|buf,b|]
      ) (StrMap.bindings cache.fontBuffers))
     @
     (List.map (fun (a,b)->
-      let buf=Rbuffer.create 10000 in
+      let buf=Buffer.create 10000 in
       let i=open_in a in
-      Rbuffer.add_channel buf i (in_channel_length i);
+      Buffer.add_channel buf i (in_channel_length i);
       close_in i;
-      let buf'=Rbuffer.create (String.length b) in
-      Rbuffer.add_string buf b;
+      let buf'=Buffer.create (String.length b) in
+      Buffer.add_string buf b;
       [|buf',buf|]
      ) (StrMap.bindings imgs))
   in
@@ -192,31 +192,35 @@ function gotoSlide(n){
     true;
 
 (*
-  let buf=Rbuffer.create 2000 in
+  let buf=Buffer.create 2000 in
   Printf.fprintf o "let imgs=[";
   first_f:=true;
   StrMap.iter (fun img k->
     if not !first_f then Printf.fprintf o ";";
     first_f:=false;
 
-    Rbuffer.clear buf;
+    Buffer.clear buf;
     let i=open_in img in
-    Rbuffer.add_channel buf i (in_channel_length i);
+    Buffer.add_channel buf i (in_channel_length i);
     close_in i;
 
-    Printf.fprintf o "(%S,%S)" k (Rbuffer.contents buf)
+    Printf.fprintf o "(%S,%S)" k (Buffer.contents buf)
   ) imgs;
   Printf.fprintf o "]\n";
 *)
   let patonet =
     let open PatConfig in
     let paths = ["."] in
-    let pato = FilenameExtra.findPath "patonet.c" paths in
+    let pato =
+      try Filename.find_file "patonet.c" paths with Not_found ->
+        Printf.eprintf "patonet.c not found...\n%!";
+        exit 1
+    in
     let patof=open_in pato in
     let s=Bytes.create (in_channel_length patof) in
-    really_input patof s 0 (String.length s);
+    really_input patof s 0 (Bytes.length s);
     close_in patof;
-    s
+    Bytes.to_string s
   in
   Printf.fprintf o "# 1 \"patonet.c\"\n%s\n" patonet;
   close_out o;

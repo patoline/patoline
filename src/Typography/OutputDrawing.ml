@@ -22,8 +22,7 @@ open Document
 open Box
 open FTypes
 open Break
-open Util
-open UsualMake
+open Extra
 open RawContent
 
 type page={mutable pageContents:raw list}
@@ -59,7 +58,7 @@ let output ?state paragraphs figures env (opt_pages:frame)=
         let rec link_contents u l=match l with
             []->[]
           | (Link h)::s->(
-	    let u = List.rev u in
+            let u = List.rev u in
             if cont then continued_link:=Some (Link h);
             let x0,y0,x1,y1=bounding_box u in
             Link { h with
@@ -130,7 +129,7 @@ let output ?state paragraphs figures env (opt_pages:frame)=
         in
         y1:=max !y1 y;
         y0:=min !y0 (fig.drawing_y1+.fig.drawing_y0);
-	if env.show_boxes then
+        if env.show_boxes then
           page.pageContents<- Path ({RawContent.default_path_param with close=true },
                                     [rectangle (param.left_margin,y+.fig.drawing_y0)
                                         (param.left_margin+.fig.drawing_nominal_width,
@@ -184,16 +183,16 @@ let output ?state paragraphs figures env (opt_pages:frame)=
             )
             | Glue g
             | Drawing g ->(
-              states:=unique (g.drawing_states@ !states);
+              states:=List.sort_uniq compare (g.drawing_states@ !states);
               let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
-	      let cont = g.drawing_contents w in
+              let cont = g.drawing_contents w in
               let cont = List.filter (fun x->match x,state with
                   States s, Some st when s.states_states<>[] &&
                       not (List.mem st s.states_states) -> false
                 | _->true
               ) cont in
               page.pageContents<- (List.map (translate x y) cont) @ page.pageContents;
-	      if env.show_boxes
+              if env.show_boxes
                 && classify_float g.drawing_y1<>FP_infinite
                 && classify_float g.drawing_y0<>FP_infinite
               then
@@ -201,11 +200,11 @@ let output ?state paragraphs figures env (opt_pages:frame)=
               w
             )
             | Marker (BeginLink l)->(
-	      let k = match l with
-		  Box.Extern l -> RawContent.Extern l
-		| Box.Intern l -> RawContent.Intern(l,Box.layout_page line,0.,0.);
-		| Box.Button(t,n) -> RawContent.Button(t,n)
-	      in
+              let k = match l with
+                  Box.Extern l -> RawContent.Extern l
+                | Box.Intern l -> RawContent.Intern(l,Box.layout_page line,0.,0.);
+                | Box.Button(t,n) -> RawContent.Button(t,n)
+              in
               let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                          link_order=0;
                          link_closed=false;
@@ -222,7 +221,7 @@ let output ?state paragraphs figures env (opt_pages:frame)=
             )
             | Marker (Label l) as m ->(
               destinations:=m :: !destinations;
-	      0.
+              0.
             )
                       (* | User (Footnote (_,g))->( *)
                       (*   footnotes:= g::(!footnotes); *)

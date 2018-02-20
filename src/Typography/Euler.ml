@@ -17,7 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open UsualMake
+
+open Extra
 
 type 'a spec=
     Alpha of 'a
@@ -126,7 +127,6 @@ let subst l cs=List.map (fun c->{ c with glyph_index=make_subst l c.glyph_index 
 open Document
 open Document.Mathematical
 open Maths
-open Util
 
 let compose f g x=f(g x)
 let changeFont l env=

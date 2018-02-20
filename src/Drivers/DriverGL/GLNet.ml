@@ -35,32 +35,32 @@ let rec service master_sock netcgi_processor =
   if errfd <> [] then
     opened_fd := List.filter (fun (fd,(id,reactor)) -> 
       if List.mem fd errfd then (
-	Printf.fprintf stderr "Closing connection %d\n" id;
-	flush stderr;
-	false)
+        Printf.fprintf stderr "Closing connection %d\n" id;
+        flush stderr;
+        false)
       else
-	true) !opened_fd
+        true) !opened_fd
   else begin
     let pending_connection = List.mem master_sock infd in
     let infd = List.filter (fun fd -> fd <> master_sock) infd in
     match infd with
     [] ->
       if pending_connection then begin
-	let cid = !connection_id in
-	incr connection_id;
-	Printf.fprintf stderr "Accepting connection %d\n" cid;
-	flush stderr;
-	let conn_sock, _ = Unix.accept master_sock in
-	Unix.set_nonblock conn_sock;
-	let config = new modify_http_reactor_config
-	  ~modify_http_processor_config:(
-	    new modify_http_processor_config
-	      ~config_timeout:0.25
-	      ~config_timeout_next_request:0.0)
-	  Nethttpd_reactor.default_http_reactor_config
-	in
-	let reactor = new http_reactor config conn_sock in
-	opened_fd := (conn_sock,(cid,reactor))::!opened_fd;  
+        let cid = !connection_id in
+        incr connection_id;
+        Printf.fprintf stderr "Accepting connection %d\n" cid;
+        flush stderr;
+        let conn_sock, _ = Unix.accept master_sock in
+        Unix.set_nonblock conn_sock;
+        let config = new modify_http_reactor_config
+          ~modify_http_processor_config:(
+            new modify_http_processor_config
+              ~config_timeout:0.25
+              ~config_timeout_next_request:0.0)
+          Nethttpd_reactor.default_http_reactor_config
+        in
+        let reactor = new http_reactor config conn_sock in
+        opened_fd := (conn_sock,(cid,reactor))::!opened_fd;  
       end
   | fd::_ ->
     let cid, reactor = List.assoc fd !opened_fd in
@@ -69,22 +69,22 @@ let rec service master_sock netcgi_processor =
     match reactor # next_request () with
     | Some req ->
       ( try
-	  req # accept_body();   (* Always! *)
-	  let env =
-	    req # environment in
-	  let cgi = 
-	    Netcgi_common.cgi_with_args 
-	      (new Netcgi_common.cgi)
-	      (env :> Netcgi.cgi_environment)
-	      Netcgi.buffered_transactional_outtype
-	      env#input_channel
-	      (fun _ _ _ -> `Automatic) in
-	  netcgi_processor cgi
-	with
-	  e ->
-	    Printf.fprintf stderr "Uncaught exception in request: %s\n" (Printexc.to_string e);
-	    flush stderr;
-	    if e = Sys.Break then raise e
+          req # accept_body();   (* Always! *)
+          let env =
+            req # environment in
+          let cgi = 
+            Netcgi_common.cgi_with_args 
+              (new Netcgi_common.cgi)
+              (env :> Netcgi.cgi_environment)
+              Netcgi.buffered_transactional_outtype
+              env#input_channel
+              (fun _ _ _ -> `Automatic) in
+          netcgi_processor cgi
+        with
+          e ->
+            Printf.fprintf stderr "Uncaught exception in request: %s\n" (Printexc.to_string e);
+            flush stderr;
+            if e = Sys.Break then raise e
       );
       req # finish();
       
@@ -126,13 +126,13 @@ let make_page cgi id cmd fmt width height format=
   out "<html>";
   out "<head>";
   out "<style>
-    body { color: #B04040; border: 0; margin: 0; padding: 0; text-align: center; vertical-align: 	middle; }
+    body { color: #B04040; border: 0; margin: 0; padding: 0; text-align: center; vertical-align:         middle; }
     .button { width: 60px; height: 60px; margin-top: 6px; margin-left: 8px; margin-right: 8px }
     a { color : #B04040; }
     a:visited { color : #B04040; }
     a:hover { color : #B0B0B0; }
-    div#leftbar { position: absolute; top: 0px; left: 0px; width: 76px; bottom:0px ; border-right: 4px solid #4040B0; padding-top:30px; background: #202040;  text-align: center; vertical-align: 	middle; }
-    div#rightbar { position: absolute; top: 0px; right: 0px; width: 76px; bottom: 0px; border-left: 4px solid #4040B0; padding-top: 30px ; background: #202040;  text-align: center; vertical-align: 	middle; }
+    div#leftbar { position: absolute; top: 0px; left: 0px; width: 76px; bottom:0px ; border-right: 4px solid #4040B0; padding-top:30px; background: #202040;  text-align: center; vertical-align:         middle; }
+    div#rightbar { position: absolute; top: 0px; right: 0px; width: 76px; bottom: 0px; border-left: 4px solid #4040B0; padding-top: 30px ; background: #202040;  text-align: center; vertical-align:         middle; }
     div#image { position: absolute; top: 0px; left:80px; right:80px; bottom:0px; overflow:auto;}
   </style>";
 (*  out "<link rel=\"stylesheet\" type=\"text/css\" href=\"/themes/alpinux/handheld.css\" media=\"screen and (max-device-width: 480px)\" />";
@@ -262,29 +262,29 @@ let process (cgi : cgi_activation) =
     cgi # output # commit_work();
   with
       error -> 
-	(* An error has happened. Generate now an error page instead of
-	 * the current page. By rolling back the output buffer, any 
-	 * uncomitted material is deleted.
-	 *)
-	cgi # output # rollback_work();
+        (* An error has happened. Generate now an error page instead of
+         * the current page. By rolling back the output buffer, any 
+         * uncomitted material is deleted.
+         *)
+        cgi # output # rollback_work();
 
-	(* We change the header here only to demonstrate that this is
-	 * possible.
-	 *)
-	cgi # set_header 
+        (* We change the header here only to demonstrate that this is
+         * possible.
+         *)
+        cgi # set_header 
 
-	  ~status:`Forbidden                  (* Indicate the error *)
-	  ~cache:`No_cache 
-	  ~content_type:"text/html; charset=\"iso-8859-1\""
-	  ();
+          ~status:`Forbidden                  (* Indicate the error *)
+          ~cache:`No_cache 
+          ~content_type:"text/html; charset=\"iso-8859-1\""
+          ();
 
-	(*begin_page cgi "Software error";*)
+        (*begin_page cgi "Software error";*)
         cgi # output # output_string "While processing the request an O'Caml exception has been raised:<BR>";
         cgi # output # output_string ("<TT>" ^ text(Printexc.to_string error) ^ "</TT><BR>");
-	(*end_page cgi;*)
+        (*end_page cgi;*)
 
-	(* Now commit the error page: *)
-	cgi # output # commit_work()
+        (* Now commit the error page: *)
+        cgi # output # commit_work()
 
 
 

@@ -17,7 +17,7 @@ endif
 endif
 
 # Building
-UTIL_MODS:= FilenameExtra UsualMake Zipper Util Graph
+UTIL_MODS:= Extra Base64 Zipper Util Graph DynArray
 
 UTIL_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UTIL_MODS)))
 UTIL_MLI:=$(wildcard $(d)/*.mli)

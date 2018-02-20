@@ -17,7 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Util
+
+open Extra
 open Box
 open FTypes
 open Document
@@ -250,14 +251,14 @@ let adjust_space ?(absolute=false) env target minimum box_left box_right =
   let r =
     if da > target then minimum else if db < target then target else
 
-	let rec fn sa da sb db  =
-	  let sc = (sa +. sb) /. 2.0 in
-	  let dc = d sc in
-	  if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
-	  else if dc < target then fn sc dc sb db
-	  else fn sa da sc dc
-	in
-	fn minimum da target db
+        let rec fn sa da sb db  =
+          let sc = (sa +. sb) /. 2.0 in
+          let dc = d sc in
+          if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
+          else if dc < target then fn sc dc sb db
+          else fn sa da sc dc
+        in
+        fn minimum da target db
   in
 
   if !debug_kerning then Printf.fprintf stderr "Adjust => %f\n" r;
@@ -287,8 +288,8 @@ let rec draw draw_env env_stack mlist =
 
         []->[]
       | Glue x::s->(
-	  let right=draw draw_env env_stack s in
-	  Box.Glue x :: right) (* in this case, if you want a badness, give it *)
+          let right=draw draw_env env_stack s in
+          Box.Glue x :: right) (* in this case, if you want a badness, give it *)
       | Scope l::s->(
           (draw draw_env env_stack (l env style))@(draw draw_env env_stack s)
         )
@@ -303,13 +304,13 @@ let rec draw draw_env env_stack mlist =
              c'est rapide et ça marche bien dans la plupart des
              cas. *)
 
-	  let nucleus = n.nucleus env style in
+          let nucleus = n.nucleus env style in
             if n.superscript_right<>[] ||
               n.superscript_left<>[] ||
               n.subscript_right<>[] ||
               n.subscript_left<>[] then (
 
-		let box_nucleus = draw_boxes env nucleus in
+                let box_nucleus = draw_boxes env nucleus in
                 let x0,y0,x1,y1=bounding_box box_nucleus in
                 let is_letter=
                   match nucleus with
@@ -336,10 +337,10 @@ let rec draw draw_env env_stack mlist =
                           )
                         | _->false)
                 in
-		if !debug_kerning then begin
-		  Printf.printf "indices:\n" ;
-		  Printf.printf "box nucleus: (%f,%f) (%f,%f)\n"  x0 x1 y0 y1;
-		end;
+                if !debug_kerning then begin
+                  Printf.printf "indices:\n" ;
+                  Printf.printf "box nucleus: (%f,%f) (%f,%f)\n"  x0 x1 y0 y1;
+                end;
 
                 let x_height=
                   let x_h=let x=Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
@@ -350,11 +351,11 @@ let rec draw draw_env env_stack mlist =
                 in
                 let xc_height=
                   let x_h=let x=Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
-			     ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) 'X'}) in
-			   (Fonts.glyph_y1 x)/.1000.
+                             ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) 'X'}) in
+                           (Fonts.glyph_y1 x)/.1000.
                   in
                   if x_h=infinity || x_h= -.infinity then 1./.phi else x_h
-		in
+                in
 
 
                 let sub_env = env_stack in
@@ -377,12 +378,12 @@ let rec draw draw_env env_stack mlist =
                 let y_place sup sub sup' same_script =
                   let xa0,ya0,xa1,ya1=bb.(sub) in
                   let xb0,yb0,xb1,yb1=bb.(sup) in
-		  let delta = if same_script then -. yb0 else 0. in
+                  let delta = if same_script then -. yb0 else 0. in
                   let u,v= match is_letter with
-		      true ->
-			delta +. xc_height*.mathsEnv.mathsSize*.env.size -. mathsEnv.sup_drop*.mathsEnv.mathsSize*.env.size,
-			mathsEnv.sub_drop*.mathsEnv.mathsSize*.env.size
-		    | false ->
+                      true ->
+                        delta +. xc_height*.mathsEnv.mathsSize*.env.size -. mathsEnv.sup_drop*.mathsEnv.mathsSize*.env.size,
+                        mathsEnv.sub_drop*.mathsEnv.mathsSize*.env.size
+                    | false ->
                       delta +. y1-. mathsEnv.sup_drop*.mathsEnv.mathsSize*.env.size,
                       -.y0 +. mathsEnv.sub_drop*.mathsEnv.mathsSize*.env.size
                   in
@@ -390,13 +391,13 @@ let rec draw draw_env env_stack mlist =
                       0., max v (ya1 -. 4./.5. *. abs_float x_height*.mathsEnv.mathsSize*.env.size)
                     ) else (
                       let u=max u
-			(delta +. (abs_float x_height*.mathsEnv.mathsSize*.env.size)/.4.)
-		      in
+                        (delta +. (abs_float x_height*.mathsEnv.mathsSize*.env.size)/.4.)
+                      in
                       if bezier.(sub)=[] then (
                         u,0.
                       ) else (
                           let v=max v  (ya1 -. 4./.5. *. abs_float x_height*.mathsEnv.mathsSize*.env.size) in
-			  let psi = (u+.yb0) -. (ya1 -. v) -. 6.*.mathsEnv.default_rule_thickness in
+                          let psi = (u+.yb0) -. (ya1 -. v) -. 6.*.mathsEnv.default_rule_thickness in
                             if psi > 0.0 then (
                               u,v
                             ) else (
@@ -416,29 +417,29 @@ let rec draw draw_env env_stack mlist =
                   let xc0,_,xc1,_=bb.(2) in
                   let xd0,_,xd1,_=bb.(3) in
                   [| x1 -. xa0 +. mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
-		       -. xb1 +. x0 -. mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
-		       x1 -. xc0 +. mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance;
-		       -. xd1 +. x0 -. mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance
-		  |]
+                       -. xb1 +. x0 -. mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
+                       x1 -. xc0 +. mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance;
+                       -. xd1 +. x0 -. mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance
+                  |]
                 in
-		let xoff =
+                let xoff =
                   [| mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
-		     mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
-		     mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance;
-		     mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance
-		  |]
+                     mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
+                     mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance;
+                     mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance
+                  |]
                 in
                 let yoff=[| off_ya;off_yb; -.off_yc; -.off_yd |] in
 
                 let xoff=Array.mapi (fun i l->
                   if mathsEnv.kerning then
-		    let ll = List.map (RawContent.translate 0.0 yoff.(i)) l in
-		    let x0', _, x1', _ = bb.(i) in
-		    let m = max ((x0 -. x1) *. 4. /. 9.) (x0' -. x1') in
+                    let ll = List.map (RawContent.translate 0.0 yoff.(i)) l in
+                    let x0', _, x1', _ = bb.(i) in
+                    let m = max ((x0 -. x1) *. 4. /. 9.) (x0' -. x1') in
                     if i mod 2 = 0 then
-		      adjust_space ~absolute:true mathsEnv xoff.(i) m box_nucleus ll
-		    else
-		      -. (adjust_space ~absolute:true mathsEnv xoff.(i) m ll box_nucleus)
+                      adjust_space ~absolute:true mathsEnv xoff.(i) m box_nucleus ll
+                    else
+                      -. (adjust_space ~absolute:true mathsEnv xoff.(i) m ll box_nucleus)
                   else
                     start.(i)
                 ) [|a;b;c;d|]
@@ -447,18 +448,18 @@ let rec draw draw_env env_stack mlist =
                   @ (if n.superscript_right=[] then [] else
                       List.map (RawContent.translate (xoff.(0)) yoff.(0)) a)
                   @ (if n.superscript_left=[] then [] else
-		      List.map (RawContent.translate (xoff.(1)) yoff.(1)) b)
+                      List.map (RawContent.translate (xoff.(1)) yoff.(1)) b)
                   @ (if n.subscript_right=[] then [] else
-		      List.map (RawContent.translate (xoff.(2)) yoff.(2)) c)
+                      List.map (RawContent.translate (xoff.(2)) yoff.(2)) c)
                   @ (if n.subscript_left=[] then [] else
-		      List.map (RawContent.translate (xoff.(3)) yoff.(3)) d)
+                      List.map (RawContent.translate (xoff.(3)) yoff.(3)) d)
                 in
                 let (a0,a1,a2,a3) = bounding_box dr in
                   [ Drawing ({ drawing_min_width=a2-.a0;
                                drawing_nominal_width=a2-.a0;
                                drawing_max_width=a2-.a0;
-			       drawing_width_fixed = true;
-			       drawing_adjust_before = false;
+                               drawing_width_fixed = true;
+                               drawing_adjust_before = false;
                                drawing_y0=a1;
                                drawing_y1=a3;
                                drawing_break_badness=0.;
@@ -481,108 +482,108 @@ let rec draw draw_env env_stack mlist =
           in
           let priorities=mathsEnv.priorities in
           let prio=find_priority (Binary b) in
-	  let draw_env =
-	    if b.bin_priority > draw_env.prio then
-	      { depth = draw_env.depth + 1; prio = b.bin_priority; }
-	    else draw_env
-	  in
+          let draw_env =
+            if b.bin_priority > draw_env.prio then
+              { depth = draw_env.depth + 1; prio = b.bin_priority; }
+            else draw_env
+          in
           let fact=
               (priorities.(prio) -. priorities.(b.bin_priority))
               /.priorities.(b.bin_priority)
           in
-	  let style_factor = match style with
-	      Display | Display' | Text | Text'-> mathsEnv.priority_unit
-	    | _ -> mathsEnv.priority_unit /. 1.5
-	  in
-	  let bin_left = draw draw_env env_stack b.bin_left in
-	  let bin_right = draw draw_env env_stack b.bin_right in
-	  let box_left = draw_boxes env bin_left in
-	  let box_right = draw_boxes env bin_right in
+          let style_factor = match style with
+              Display | Display' | Text | Text'-> mathsEnv.priority_unit
+            | _ -> mathsEnv.priority_unit /. 1.5
+          in
+          let bin_left = draw draw_env env_stack b.bin_left in
+          let bin_right = draw draw_env env_stack b.bin_right in
+          let box_left = draw_boxes env bin_left in
+          let box_right = draw_boxes env bin_right in
           let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning box_right in
           let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning box_left in
 
-	    match b.bin_drawing with
-	        Invisible ->
-		  let space = (mathsEnv.mathsSize*.env.size*.mathsEnv.invisible_binary_factor)*.
-		    (1.+.fact*.fact) *. priorities.(b.bin_priority) *. style_factor
-		  in
-		  let dist = adjust_space mathsEnv space (max ((x0_r -. x1_r) /. 2.0)((x0_l -. x1_l) /. 2.0)) box_left box_right in
-		  let gl0=glue dist dist dist in
-		  let gl0=match gl0 with
-		      Box.Glue x->Drawing
+            match b.bin_drawing with
+                Invisible ->
+                  let space = (mathsEnv.mathsSize*.env.size*.mathsEnv.invisible_binary_factor)*.
+                    (1.+.fact*.fact) *. priorities.(b.bin_priority) *. style_factor
+                  in
+                  let dist = adjust_space mathsEnv space (max ((x0_r -. x1_r) /. 2.0)((x0_l -. x1_l) /. 2.0)) box_left box_right in
+                  let gl0=glue dist dist dist in
+                  let gl0=match gl0 with
+                      Box.Glue x->Drawing
                         { x with
                           drawing_badness=(fun w->100.*.(knuth_h_badness dist w));
                         }
-		    | x->assert false
-		  in
-		    bin_left@
+                    | x->assert false
+                  in
+                    bin_left@
                     gl0::
                     bin_right
 
-	    | Normal(no_sp_left, op, no_sp_right) ->
+            | Normal(no_sp_left, op, no_sp_right) ->
 
-		let space = (mathsEnv.mathsSize*.env.size)
-		  *. (1.+.fact*.fact) *. priorities.(b.bin_priority) *. style_factor in
-		let op = draw draw_env env_stack [Ordinary op] in
-		let box_op = draw_boxes env op in
-		let (x0,_,x1,_) = bounding_box_full box_op in
-		let (x0',_,x1',_) = bounding_box_kerning box_op in
-		assert (x0 <= x1);
-		let dist0 =
-		  if bin_left = [] then 0.0 else
-		  let space = if no_sp_left then
-		      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
-			(mathsEnv.punctuation_factor *. space)
-		    else space in
-		  adjust_space mathsEnv space (x0 -. x1') box_left box_op
-		in
-		let dist1 =
-		  if bin_right= [] then 0.0 else
-		  let space = if no_sp_right then
-		      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
-			(mathsEnv.punctuation_factor *. space)
-		    else space in
-		  adjust_space mathsEnv space  (x0' -. x1) box_op box_right
-		in
-		(* computes distance left - right to avoid collisions above binary symbols *)
-		let dist2 =
-		  if bin_left = [] || bin_right = [] then -. infinity else
-		    let m_l = (x0_l -. x1_l)/.2.0 in
-		    let m_r = (x0_r -. x1_r)/.2.0 in
-		    adjust_space mathsEnv space (max m_r m_l) box_left box_right
-		in
-		let dist0, dist1 =
-		  let delta = (dist2 -. dist0 -. dist1 -. (x1 -. x0)) in
-		  if delta > 0.0 then
-		    let l = if no_sp_left then 0.0 (*mathsEnv.punctuation_factor*) else 1.0 in
-		    let r = if no_sp_right then 0.0 (*mathsEnv.punctuation_factor*) else 1.0 in
-		    dist0 +. delta *. l /. (l +. r),
-		    dist1 +. delta *. r /. (l +. r)
-		  else
-		    dist0, dist1
-		in
-		let gl0=
-		  if bin_left = [] then [] else (
-		    match glue (0.90 *. dist0) dist0 (1.10 *. dist0) with
-		        Box.Glue x->
-		          [Box.Drawing { x with
+                let space = (mathsEnv.mathsSize*.env.size)
+                  *. (1.+.fact*.fact) *. priorities.(b.bin_priority) *. style_factor in
+                let op = draw draw_env env_stack [Ordinary op] in
+                let box_op = draw_boxes env op in
+                let (x0,_,x1,_) = bounding_box_full box_op in
+                let (x0',_,x1',_) = bounding_box_kerning box_op in
+                assert (x0 <= x1);
+                let dist0 =
+                  if bin_left = [] then 0.0 else
+                  let space = if no_sp_left then
+                      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
+                        (mathsEnv.punctuation_factor *. space)
+                    else space in
+                  adjust_space mathsEnv space (x0 -. x1') box_left box_op
+                in
+                let dist1 =
+                  if bin_right= [] then 0.0 else
+                  let space = if no_sp_right then
+                      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
+                        (mathsEnv.punctuation_factor *. space)
+                    else space in
+                  adjust_space mathsEnv space  (x0' -. x1) box_op box_right
+                in
+                (* computes distance left - right to avoid collisions above binary symbols *)
+                let dist2 =
+                  if bin_left = [] || bin_right = [] then -. infinity else
+                    let m_l = (x0_l -. x1_l)/.2.0 in
+                    let m_r = (x0_r -. x1_r)/.2.0 in
+                    adjust_space mathsEnv space (max m_r m_l) box_left box_right
+                in
+                let dist0, dist1 =
+                  let delta = (dist2 -. dist0 -. dist1 -. (x1 -. x0)) in
+                  if delta > 0.0 then
+                    let l = if no_sp_left then 0.0 (*mathsEnv.punctuation_factor*) else 1.0 in
+                    let r = if no_sp_right then 0.0 (*mathsEnv.punctuation_factor*) else 1.0 in
+                    dist0 +. delta *. l /. (l +. r),
+                    dist1 +. delta *. r /. (l +. r)
+                  else
+                    dist0, dist1
+                in
+                let gl0=
+                  if bin_left = [] then [] else (
+                    match glue (0.90 *. dist0) dist0 (1.10 *. dist0) with
+                        Box.Glue x->
+                          [Box.Drawing { x with
                             drawing_badness=(fun w->100.*.(knuth_h_badness dist0 w))
                            }]
-		      | x->assert false
+                      | x->assert false
                   )
-		in
-		let gl1 =
-		  if bin_right = [] then [] else (
-		    match glue (0.90 *. dist1) dist1 (1.10 *. dist1) with
-		        Box.Glue x->
-			  let f = if no_sp_right then fun x -> Box.Drawing x else fun x -> Box.Glue x in
-		          [f { x with
+                in
+                let gl1 =
+                  if bin_right = [] then [] else (
+                    match glue (0.90 *. dist1) dist1 (1.10 *. dist1) with
+                        Box.Glue x->
+                          let f = if no_sp_right then fun x -> Box.Drawing x else fun x -> Box.Glue x in
+                          [f { x with
                             drawing_badness=(fun w->10.*.(knuth_h_badness dist1 w));
-			    drawing_break_badness = env.math_break_badness *. (float draw_env.depth)
+                            drawing_break_badness = env.math_break_badness *. (float draw_env.depth)
                           }]
-		      | x->assert false
+                      | x->assert false
                   )
-		in
+                in
 
                 bin_left@
                   gl0@op@gl1@
@@ -594,7 +595,7 @@ let rec draw draw_env env_stack mlist =
         let ln=f.line env style in
         let hx =
           let x= Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
-	    ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) '-'}) in
+            ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) '-'}) in
           mathsEnv.mathsSize*.env.size*.(Fonts.glyph_y1 x +. Fonts.glyph_y0 x +.ln.lineWidth)/.2000.
         in
 
@@ -608,36 +609,36 @@ let rec draw draw_env env_stack mlist =
           let wb=x1b-.x0b in
           let wa'=x1a'-.x0a' in
           let wb'=x1b'-.x0b' in
-	  let w = max wa' wb' in
-	  let dxa,dxb =
-	    try if wa' > wb' then (
-	      let dx = (w -. wb) /. 2. in
-	      if dx +. x0b' < 0.0 || dx +. x1b' > w then raise Exit;
-	      x0a-.x0a', dx )
-	    else (
-		let dx = (w -. wa) /. 2. in
-		if dx +. x0a' < 0.0 || dx +. x1a' > w then raise Exit;
-		dx , x0b-.x0b')
-	    with Exit ->
-		x0a-.x0a'+.(w -. wa')/.2.0, x0b-.x0b'+.(w -. wb')/.2.0
-	  in
-	  let w, dxa, dxb =
+          let w = max wa' wb' in
+          let dxa,dxb =
+            try if wa' > wb' then (
+              let dx = (w -. wb) /. 2. in
+              if dx +. x0b' < 0.0 || dx +. x1b' > w then raise Exit;
+              x0a-.x0a', dx )
+            else (
+                let dx = (w -. wa) /. 2. in
+                if dx +. x0a' < 0.0 || dx +. x1a' > w then raise Exit;
+                dx , x0b-.x0b')
+            with Exit ->
+                x0a-.x0a'+.(w -. wa')/.2.0, x0b-.x0b'+.(w -. wb')/.2.0
+          in
+          let w, dxa, dxb =
             let min_width=
               let x=Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
                 ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) '+'}) in
               mathsEnv.mathsSize*.env.size*.(Fonts.glyph_x1 x-.Fonts.glyph_x0 x)/.1000.
             in
-	    if w < min_width then
-	      min_width, dxa +. (min_width -. w)/.2., dxb +. (min_width -. w)/.2.
-	    else
-	      w+.min_width/.2.,dxa+.min_width/.4.,dxb+.min_width/.4.
+            if w < min_width then
+              min_width, dxa +. (min_width -. w)/.2., dxb +. (min_width -. w)/.2.
+            else
+              w+.min_width/.2.,dxa+.min_width/.4.,dxb+.min_width/.4.
           in
 
             Drawing ({ drawing_min_width=w;
                        drawing_nominal_width=w;
                        drawing_max_width=w;
-		       drawing_width_fixed = true;
-		       drawing_adjust_before = false;
+                       drawing_width_fixed = true;
+                       drawing_adjust_before = false;
                        drawing_y0=hx +. y0b-.y1b-.mathsEnv.mathsSize*.env.size*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.);
                        drawing_y1=hx +. y1a-.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.);
                        drawing_badness=(fun _->0.);
@@ -676,27 +677,27 @@ let rec draw draw_env env_stack mlist =
                                      check_inf x1_l_,
                                      check_inf y1_l_)
           in
-	  let factor = if op.op_limits then
-	      mathsEnv.op_limits_tolerance else
-	      mathsEnv.op_tolerance
-	  in
-	  let op_node_choice =
-	    let ll = op.op_node.nucleus in
-	    let lc = List.map (fun left ->
-	      let left' = left env style in
-	      let left'=draw_boxes env left' in
-	      left, bounding_box left') ll
-	    in
-	    let rec fn = function
-	      | [] -> assert false
-	      | [c] -> c
-	      | (left, (x0,y0,x1,y1)) as c :: l ->
-		if (y1 -. y0) >= factor *. (y1_l -. y0_l) &&  (y1 -. y0) >= factor *. (y1_r -. y0_r) then c	else
-		  fn  l
-	    in
-	    fst (fn lc)
-	  in
-	  let op_node = { op.op_node with nucleus = op_node_choice } in
+          let factor = if op.op_limits then
+              mathsEnv.op_limits_tolerance else
+              mathsEnv.op_tolerance
+          in
+          let op_node_choice =
+            let ll = op.op_node.nucleus in
+            let lc = List.map (fun left ->
+              let left' = left env style in
+              let left'=draw_boxes env left' in
+              left, bounding_box left') ll
+            in
+            let rec fn = function
+              | [] -> assert false
+              | [c] -> c
+              | (left, (x0,y0,x1,y1)) as c :: l ->
+                if (y1 -. y0) >= factor *. (y1_l -. y0_l) &&  (y1 -. y0) >= factor *. (y1_r -. y0_r) then c        else
+                  fn  l
+            in
+            fst (fn lc)
+          in
+          let op_node = { op.op_node with nucleus = op_node_choice } in
           let op_node =
             if op.op_limits && (style=Display || style=Display') then (
               let op', sup=
@@ -767,8 +768,8 @@ let rec draw draw_env env_stack mlist =
                     drawing_min_width=max (x1-.x0) (max (x1a-.x0a) (x1b-.x0b));
                     drawing_nominal_width=max (x1-.x0) (max (x1a-.x0a) (x1b-.x0b));
                     drawing_max_width=max (x1-.x0) (max (x1a-.x0a) (x1b-.x0b));
-		    drawing_width_fixed = true;
-		    drawing_adjust_before = false;
+                    drawing_width_fixed = true;
+                    drawing_adjust_before = false;
                     drawing_y0=miny;
                     drawing_y1=maxy;
                     drawing_break_badness=0.;
@@ -784,25 +785,25 @@ let rec draw draw_env env_stack mlist =
             ) else draw (dincr draw_env) env_stack [Ordinary op_node]
           in
 
-	  let box_op = draw_boxes env op_node in
+          let box_op = draw_boxes env op_node in
           let x0,y0,x1,y1=bounding_box box_op in
-	  let half = (x0 -. x1)/.2. in
-	  let dist_l = if left=[] then 0. else
-	      adjust_space mathsEnv (mathsEnv.mathsSize*.env.size*.mathsEnv.left_op_dist) half
-	    left box_op
-	  in
+          let half = (x0 -. x1)/.2. in
+          let dist_l = if left=[] then 0. else
+              adjust_space mathsEnv (mathsEnv.mathsSize*.env.size*.mathsEnv.left_op_dist) half
+            left box_op
+          in
 
-	  let dist_r = if right=[] then 0. else
-	      adjust_space mathsEnv (mathsEnv.mathsSize*.env.size*.mathsEnv.right_op_dist) half
-	    box_op right
-	  in
+          let dist_r = if right=[] then 0. else
+              adjust_space mathsEnv (mathsEnv.mathsSize*.env.size*.mathsEnv.right_op_dist) half
+            box_op right
+          in
 
             (if left = [] then [] else [Drawing {
                drawing_min_width=x1_l +. dist_l;
                drawing_nominal_width=x1_l +. dist_l;
                drawing_max_width=x1_l +. dist_l;
-	       drawing_width_fixed = true;
-	       drawing_adjust_before = false;
+               drawing_width_fixed = true;
+               drawing_adjust_before = false;
                drawing_y0=y0_l;
                drawing_y1=y1_l;
                drawing_badness=(fun _->0.);
@@ -813,8 +814,8 @@ let rec draw draw_env env_stack mlist =
                  drawing_min_width=x1 +. dist_r;
                  drawing_nominal_width=x1 +. dist_r;
                  drawing_max_width=x1 +. dist_r;
-		 drawing_width_fixed = true;
-		 drawing_adjust_before = false;
+                 drawing_width_fixed = true;
+                 drawing_adjust_before = false;
                  drawing_y0=y0;
                  drawing_y1=y1;
                  drawing_badness=(fun _->0.);
@@ -825,8 +826,8 @@ let rec draw draw_env env_stack mlist =
                  drawing_min_width=x1_r;
                  drawing_nominal_width=x1_r;
                  drawing_max_width=x1_r;
-		 drawing_width_fixed = true;
-		 drawing_adjust_before = false;
+                 drawing_width_fixed = true;
+                 drawing_adjust_before = false;
                  drawing_y0=y0_r;
                  drawing_y1=y1_r;
                  drawing_badness=(fun _->0.);
@@ -844,7 +845,7 @@ let rec draw draw_env env_stack mlist =
             draw (dincr draw_env) ({env with mathStyle} :: env_stack)
           in
           let l = M.C.draw env style (M.C.map fn  env style M.content) in
-	        l @ (draw draw_env env_stack s)
+                l @ (draw draw_env env_stack s)
 
 let draw = draw { prio = 0; depth = 0 }
 
@@ -956,19 +957,19 @@ let open_close left right env_ style box=
     let rec select_size = function
       | [] -> [], [], (0.0, 0.0, 0.0, 0.0)
       | (d, d', (dx0,dy0,dx1,dy1 as dd)) :: l ->
-	let delta_up =  (dy1 -. dy0) *. env.delimiter_up_tolerance in
-	let delta_down =  (dy1 -. dy0) *. env.delimiter_down_tolerance in
-	if (y1 <=  dy1 +. delta_up && y0 >= dy0 -. delta_down) then
-	  (d,d',dd)
-	else if l = [] then
-	  let alpha = (y1' -. y0') /. (dy1 -. dy0) in
-	  let delta = y1' -. alpha *. dy1 in
-	  (List.map (fun x -> Box.translate 0. delta (Box.resize alpha x)) d,
-	   List.map (fun x -> RawContent.translate 0. delta
+        let delta_up =  (dy1 -. dy0) *. env.delimiter_up_tolerance in
+        let delta_down =  (dy1 -. dy0) *. env.delimiter_down_tolerance in
+        if (y1 <=  dy1 +. delta_up && y0 >= dy0 -. delta_down) then
+          (d,d',dd)
+        else if l = [] then
+          let alpha = (y1' -. y0') /. (dy1 -. dy0) in
+          let delta = y1' -. alpha *. dy1 in
+          (List.map (fun x -> Box.translate 0. delta (Box.resize alpha x)) d,
+           List.map (fun x -> RawContent.translate 0. delta
                                   (RawContent.resize alpha x)) d',
-	   (alpha *. dx0, alpha *. dy0, alpha *. dx1, alpha *. dy1))
+           (alpha *. dx0, alpha *. dy0, alpha *. dx1, alpha *. dy1))
 
-	else select_size l
+        else select_size l
     in
     select_size ll, select_size lr
   in
@@ -995,14 +996,14 @@ let open_close left right env_ style box=
   let gl0=
     if left = [] then [] else (
       match glue dist0 dist0 dist0 with
-	Box.Glue x-> [Drawing x]
+        Box.Glue x-> [Drawing x]
       | x->assert false
     )
   in
   let gl1 =
     if right = [] then [] else (
       match glue dist1 dist1 dist1 with
-	Box.Glue x-> [Drawing x]
+        Box.Glue x-> [Drawing x]
       | x->assert false
     )
   in
@@ -1149,8 +1150,8 @@ let make_sqrt env_ style box=
          drawing_min_width=c-.a;
          drawing_nominal_width=c-.a;
          drawing_max_width=c-.a;
-	 drawing_width_fixed = true;
-	 drawing_adjust_before = false;
+         drawing_width_fixed = true;
+         drawing_adjust_before = false;
          drawing_y0=b;
          drawing_y1=d;
          drawing_break_badness=0.;
@@ -1194,8 +1195,8 @@ let make_sqrt env_ style box=
         drawing_min_width=c-.a;
         drawing_nominal_width=c-.a;
         drawing_max_width=c-.a;
-	drawing_width_fixed = true;
-	drawing_adjust_before = false;
+        drawing_width_fixed = true;
+        drawing_adjust_before = false;
         drawing_y0=b;
         drawing_y1=d;
         drawing_break_badness=0.;
@@ -1259,7 +1260,7 @@ let adjusted_asana_delimiters' name ls =
   | x::ls ->
      let x0 = vkern_percent_under' x 0.166 in
      (fun envs st -> snd (x0 envs st)) :: List.map (fun x envs st ->
-	                                      let center, _ = x0 envs st in vkern_center x center envs st) ls
+                                              let center, _ = x0 envs st in vkern_center x center envs st) ls
 
 let adjusted_asana_delimiters name ls =
   adjusted_asana_delimiters' name (List.map (asana name) ls)
@@ -1275,7 +1276,7 @@ let fix_asana_delimiters name ls =
   in
   adjusted_asana_delimiters' name (map2
                                      (fun g g' -> vkern_as (asana name g)
-	                                                   (asana "[" g'))
+                                                           (asana "[" g'))
                                      ls [61;3340;3341;3342])
 
 let adjusted_euler_delimiters name ls =
@@ -1287,5 +1288,5 @@ let adjusted_euler_delimiters name ls =
   in
   adjusted_asana_delimiters' name (map2
                                      (fun g g' -> vkern_as (euler name g)
-	                                                   (asana "[" g'))
+                                                           (asana "[" g'))
                                      ls [61;3340;3341;3342])

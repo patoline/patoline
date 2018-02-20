@@ -1,0 +1,91 @@
+(* #FORMAT FormatThese *)
+(* #PACKAGES bibi *)
+
+\Caml(
+  open Bibi
+  let _=
+    let _=Sys.command "bibi biblio.bib" in
+    bibfile "biblio.bibi"
+  module Bib=BiblioNames
+  open Bib
+
+  let nothing = []
+)
+
+=> Mathematical formulas
+
+Patoline's mathematical system is based on a syntax quite close to what
+you would use to speak orally of mathematics, on the phone, for instance.
+But, since Patoline is a computing program, and not a fellow
+mathematician, it is much more picky about what it considers ``valid''
+maths. However, unlike your colleagues, it won't complain if you try to
+customize its understanding of mathematics.
+
+Patoline's pickiness comes from the fact that it first needs to
+understand your formulas unambiguously, in order to compute the
+correct spacing between its symbols. Then, it uses tricky numerical
+algorithms to do its best and optimize the spacing of formulas. Even
+though the current version of Patoline does not compensate optical
+illusions, or precisely computes ink density, this is clearly one of
+our long-term goals.
+
+The grammar of mathematical formulas is based on a technology called
+\emph{dypgen}, that allows for ambiguous grammars. If your grammar is
+ambiguous, that is, the same valid expression may have different
+meanings, then Patoline will not be able to find the right spacings,
+and will tell you to correct it. Most of the time, adding curly brackets
+at the right places is enough to satisfy it.
+
+=> Typing maths in patoline
+
+Most mathematical formulas, in patoline, are typed between \verb{$}
+signs.  For instance, writing \verb{$x$} yields the following result:
+$x$.  Writing operations is not much more complicated: $a+b$ is simply
+written \verb{$a+b$}. Again, like \verb{\\\\} yielded a \\ sign in the
+output, \verb{\\$} can be used to get a plain \$ sign.
+
+There are thirteen classes of special symbols in Patoline:
+
+\begin{enumerate}
+\item Additive operators, like ${+}$ or ${∪}$
+\item Multiplicative operators, like ${⋅}$, ${×}$ or ${∩}$
+\item Big operators, like ${∑}$ or ${∫}$
+\item Prefix operators, like ${+}$, ${-}$ or ${⊢}$
+\item Postfix operators, like ${!}$ (*, ${*}$*) (* FIXME *)
+(*\item Accents, like ${'}$*) (* FIXME *)
+\item Arrows, like ${→}$, ${⇒}$, ${↪}$ or ${↠}$
+\item Logical connectors, like ${\land}$, ${\lor}$, ${¬}$
+\item Relations, like ${=}$, ${∈}$, or ${≡}$
+\item Quantifiers, like ${∀}$ or ${∃}$
+\item Negations, like ${¬}$
+\item Punctuation, like ${…}$, ${.}$ or ${,}$
+\item Delimiters, like ${\{\nothing\}}$, ${(\nothing)}$ or ${||\nothing||}$
+\end{enumerate}
+
+These symbols all have a way to call them in ascii; that is, they can
+all be called by a normal Patoline command like \verb{\\int} or
+\verb{\\forall}, with no special or accentuated characters.  However,
+many symbols have a unicode representation, and Patoline also accepts
+UTF-8 encodings of these. Several symbols have already been defined in Patoline.
+Chapter \sectref("defined symbols") of this book is automatically generated
+to include all symbols from Patoline's default grammar.
+
+First of all, any symbol can be made a normal symbol by surrounding it
+with curly braces: to get a ${∀}$ in the middle of a sentence, we just
+have to write ##${∀}$##, or ##{\\forall}##.
+
+To get a formula in \emph{display style}, you may just use two dollar signs
+instead of one: for instance, \verb{$$a+b$$} will produce the following result:
+
+$$a+b$$
+
+=<
+
+=> Extending the maths grammar
+
+
+
+=<
+
+=<
+

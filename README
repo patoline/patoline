@@ -1,6 +1,15 @@
 This repository contains the source code of Patoline (https://patoline.org).
 
-Compilation :
+Dependencies:
+ - OCaml (4.03.0 or higher)
+ - OCamlFind
+ - Earley (install from https://github.com/rlepigre/ocaml-earley)
+ - Earley-ocaml (install from https://github.com/rlepigre/ocaml-earley-ocaml)
+ - Camlzip (available on opam)
+ - Imagelib (available on opam)
+ - other libraries (listed in "configure" step)
+
+Compilation:
   > make configure
   > ./configure
   > make -j 4

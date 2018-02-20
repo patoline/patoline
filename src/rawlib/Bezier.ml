@@ -130,9 +130,9 @@ let length' nb_div t (xa,ya) =
       let xd2 = eval xb t' in
       let yd2 = eval yb t' in
       if i0 = 0 then
-	s := !s +. sqrt (xd1*.xd1 +. yd1*.yd1) +. 4. *. sqrt (xd2*.xd2 +. yd2*.yd2)
+        s := !s +. sqrt (xd1*.xd1 +. yd1*.yd1) +. 4. *. sqrt (xd2*.xd2 +. yd2*.yd2)
       else
-	s := !s +. 2. *. sqrt (xd1*.xd1 +. yd1*.yd1) +. 4. *. sqrt (xd2*.xd2 +. yd2*.yd2)
+        s := !s +. 2. *. sqrt (xd1*.xd1 +. yd1*.yd1) +. 4. *. sqrt (xd2*.xd2 +. yd2*.yd2)
   done;
   !s /. 6. *. n
     
@@ -145,11 +145,11 @@ let restrict f0 a b=
     | 1 -> Printf.printf ("Warning: attempt to restrict a trivial curve.\n") ; [|f0.(0)|]
     | 2 ->
       let x = f0.(0) in
-	   let y = f0.(1) in
-	   let xy = y -. x in
-	   [| x +. a *. xy ;
-	      y -. (1. -. b) *. xy
-	   |]
+           let y = f0.(1) in
+           let xy = y -. x in
+           [| x +. a *. xy ;
+              y -. (1. -. b) *. xy
+           |]
     | _ ->
       let f=Array.copy f0 in
       casteljau_left (casteljau_right f a) ((b-.a)/.(1.-.a))
@@ -301,15 +301,15 @@ let oriente all =
   let horizontal_intercept x y bs =
     let count = ref 0 in
     List.iter (fun (xs, ys) ->
-	let s = Array.length xs - 1 in
-	let xa = xs.(0) in
-	let xb = xs.(s) in
-	let ya = ys.(0) in
-	let yb = ys.(s) in
+        let s = Array.length xs - 1 in
+        let xa = xs.(0) in
+        let xb = xs.(s) in
+        let ya = ys.(0) in
+        let yb = ys.(s) in
       if (ya -. y)*.(yb -. y) <= 0.0 then begin
-	let t = (ya -. y) /. (ya -. yb) in
-	let xt = xa *. (1. -. t) +. xb *. t in
-	if xt >= x then incr count
+        let t = (ya -. y) /. (ya -. yb) in
+        let xt = xa *. (1. -. t) +. xb *. t in
+        if xt >= x then incr count
       end) bs;
     !count mod 2 <> 0
   in
@@ -317,24 +317,24 @@ let oriente all =
   let orientation_composante bs =
     let area =
       List.fold_left (fun a (xs, ys) ->
-	let s = Array.length xs - 1 in
-	let xa = xs.(0) in
-	let xb = xs.(s) in
-	let ya = ys.(0) in
-	let yb = ys.(s) in
-	a +. xa *. yb -. xb *. ya) 0.0 bs 
+        let s = Array.length xs - 1 in
+        let xa = xs.(0) in
+        let xb = xs.(s) in
+        let ya = ys.(0) in
+        let yb = ys.(s) in
+        a +. xa *. yb -. xb *. ya) 0.0 bs 
     in
     area >= 0.0 (* =0 should be treated by subdivision,
-	      but very smalle values too ?*)
+              but very smalle values too ?*)
   in
 
   let num_outside bs others =
     match bs with
       (xs,ys)::_ ->
-	let x = xs.(0) in
-	let y = ys.(0) in
-	let l = List.filter (fun bs -> horizontal_intercept x y bs) others in
-	List.length l = 0 mod 2
+        let x = xs.(0) in
+        let y = ys.(0) in
+        let l = List.filter (fun bs -> horizontal_intercept x y bs) others in
+        List.length l = 0 mod 2
     | [] -> assert false
   in
 
@@ -385,8 +385,8 @@ let det a=
 
         if (pivot-j) land 1 = 1 then sign:= - !sign;
         for i=j+1 to Array.length a-1 do
-	  if a.(j).(j) <> 0.0 then
-	    (let fact= a.(i).(j)/.a.(j).(j) in
+          if a.(j).(j) <> 0.0 then
+            (let fact= a.(i).(j)/.a.(j).(j) in
              for k=0 to Array.length a.(0)-1 do
                a.(i).(k)<-a.(i).(k) -. fact *. a.(j).(k)
              done)
@@ -525,10 +525,10 @@ let intersect' (a,b) extr_a (c,d) extr_c =
               let m2=(u2+.v2)/.2. in
                 if v1-.u1 < eps && v2-.u2 < eps then
                   (if (inside a b x0' y0' *. inside a b x1' y1' < 0. ||
-			 inside a b x0' y0' = 0.)
-		     &&
-			 (inside c d x0 y0 *. inside c d x1 y1 <= 0.)
-		   then inter s ((m1,m2)::res)
+                         inside a b x0' y0' = 0.)
+                     &&
+                         (inside c d x0 y0 *. inside c d x1 y1 <= 0.)
+                   then inter s ((m1,m2)::res)
                    else
                      inter s res
                   )
@@ -1006,7 +1006,7 @@ let intersection ?(epsilon=1e-6) ?(thick=1e-4) (xa, ya as ba) (xb, yb as bb) =
   let epsilon2 = epsilon ** 2.0 in
   let add (x,y as p) acc = 
       match acc with
-	(x',y')::acc' -> if  (x' -. x) ** 2.0 +. (y' -. y) ** 2.0 < epsilon2 then acc else p::acc
+        (x',y')::acc' -> if  (x' -. x) ** 2.0 +. (y' -. y) ** 2.0 < epsilon2 then acc else p::acc
       | [] -> [p]
   in
   let rec fn acc alpha_a beta_a xa ya ra ta alpha_b beta_b xb yb rb tb = 
@@ -1023,9 +1023,9 @@ let intersection ?(epsilon=1e-6) ?(thick=1e-4) (xa, ya as ba) (xb, yb as bb) =
     if ta < thick && tb < thick then (
 (*      Printf.eprintf "not thick\n%!";*)
       try
-	let mu, lambda = inter_segment ea eb (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, yb_2) in
-	let r = (alpha_a +. mu *. beta_a, alpha_b +. lambda *. beta_b) in
-	add r acc
+        let mu, lambda = inter_segment ea eb (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, yb_2) in
+        let r = (alpha_a +. mu *. beta_a, alpha_b +. lambda *. beta_b) in
+        add r acc
       with Not_found -> acc)
     else 
     let aa = area2_rect ra and ab = area2_rect rb in
@@ -1038,47 +1038,47 @@ let intersection ?(epsilon=1e-6) ?(thick=1e-4) (xa, ya as ba) (xb, yb as bb) =
         (fst p1) (snd p1) (fst p2) (snd p2) (fst p3) (snd p3) (fst p4) (snd p4);*)
       let q1,q2,q3,q4 = rb in
 (*      Printf.printf "Rectangle b: (%f,%f) (%f,%f) (%f,%f) (%f,%f)\n%!"
-	(fst q1) (snd q1) (fst q2) (snd q2) (fst q3) (snd q3) (fst q4) (snd q4);*)
+        (fst q1) (snd q1) (fst q2) (snd q2) (fst q3) (snd q3) (fst q4) (snd q4);*)
       if not (
-	  in_rect p1 rb || in_rect q1 ra ||
-	  test_inter_segment ea eb p1 p2 q1 q2 ||
-	  test_inter_segment ea eb p1 p2 q2 q3 ||
-	  test_inter_segment ea eb p1 p2 q3 q4 ||
-	  test_inter_segment ea eb p1 p2 q4 q1 ||
-	  test_inter_segment ea eb p2 p3 q1 q2 ||
-	  test_inter_segment ea eb p2 p3 q2 q3 ||
-	  test_inter_segment ea eb p2 p3 q3 q4 ||
-	  test_inter_segment ea eb p2 p3 q4 q1 ||
-	  test_inter_segment ea eb p3 p4 q1 q2 ||
-	  test_inter_segment ea eb p3 p4 q2 q3 ||
-	  test_inter_segment ea eb p3 p4 q3 q4 ||
-	  test_inter_segment ea eb p3 p4 q4 q1 ||
-	  test_inter_segment ea eb p4 p1 q1 q2 ||
-	  test_inter_segment ea eb p4 p1 q2 q3 ||
-	  test_inter_segment ea eb p4 p1 q3 q4 ||
-	  test_inter_segment ea eb p4 p1 q4 q1)
+          in_rect p1 rb || in_rect q1 ra ||
+          test_inter_segment ea eb p1 p2 q1 q2 ||
+          test_inter_segment ea eb p1 p2 q2 q3 ||
+          test_inter_segment ea eb p1 p2 q3 q4 ||
+          test_inter_segment ea eb p1 p2 q4 q1 ||
+          test_inter_segment ea eb p2 p3 q1 q2 ||
+          test_inter_segment ea eb p2 p3 q2 q3 ||
+          test_inter_segment ea eb p2 p3 q3 q4 ||
+          test_inter_segment ea eb p2 p3 q4 q1 ||
+          test_inter_segment ea eb p3 p4 q1 q2 ||
+          test_inter_segment ea eb p3 p4 q2 q3 ||
+          test_inter_segment ea eb p3 p4 q3 q4 ||
+          test_inter_segment ea eb p3 p4 q4 q1 ||
+          test_inter_segment ea eb p4 p1 q1 q2 ||
+          test_inter_segment ea eb p4 p1 q2 q3 ||
+          test_inter_segment ea eb p4 p1 q3 q4 ||
+          test_inter_segment ea eb p4 p1 q4 q1)
       then (
-(*	  Printf.eprintf "no inter\n%!";*)
-	  acc)
+(*          Printf.eprintf "no inter\n%!";*)
+          acc)
       else
 
-	if aa > ab then (
-(*	  Printf.eprintf "subdivise a\n%!";*)
-	  let (xa1,ya1 as b1) = (restrict xa 0.0 0.5, restrict ya 0.0 0.5) in
-	  let (xa2,ya2 as b2) = (restrict xa 0.5 1.0, restrict ya 0.5 1.0) in
-	  let ra1, ta1 = thickness2 b1 and ra2, ta2 = thickness2 b2 in
-	  let beta_a = beta_a /. 2. in
-	  fn (fn acc alpha_a beta_a xa1 ya1 ra1 ta1 alpha_b beta_b xb yb rb tb)
-	    (alpha_a +. beta_a) beta_a xa2 ya2 ra2 ta2 alpha_b beta_b xb yb rb tb
-	) else (
-(*	  Printf.eprintf "subdivise b\n%!";*)
-	  let (xb1,yb1 as b1) = (restrict xb 0.0 0.5, restrict yb 0.0 0.5) in
-	  let (xb2,yb2 as b2) = (restrict xb 0.5 1.0, restrict yb 0.5 1.0) in
-	  let rb1, tb1 = thickness2 b1 and rb2, tb2 = thickness2 b2 in
-	  let beta_b = beta_b /. 2. in
-	  fn (fn acc alpha_a beta_a xa ya ra ta alpha_b beta_b xb1 yb1 rb1 tb1)
-	    alpha_a beta_a xa ya ra ta (alpha_b +. beta_b) beta_b xb2 yb2 rb2 tb2
-	))
+        if aa > ab then (
+(*          Printf.eprintf "subdivise a\n%!";*)
+          let (xa1,ya1 as b1) = (restrict xa 0.0 0.5, restrict ya 0.0 0.5) in
+          let (xa2,ya2 as b2) = (restrict xa 0.5 1.0, restrict ya 0.5 1.0) in
+          let ra1, ta1 = thickness2 b1 and ra2, ta2 = thickness2 b2 in
+          let beta_a = beta_a /. 2. in
+          fn (fn acc alpha_a beta_a xa1 ya1 ra1 ta1 alpha_b beta_b xb yb rb tb)
+            (alpha_a +. beta_a) beta_a xa2 ya2 ra2 ta2 alpha_b beta_b xb yb rb tb
+        ) else (
+(*          Printf.eprintf "subdivise b\n%!";*)
+          let (xb1,yb1 as b1) = (restrict xb 0.0 0.5, restrict yb 0.0 0.5) in
+          let (xb2,yb2 as b2) = (restrict xb 0.5 1.0, restrict yb 0.5 1.0) in
+          let rb1, tb1 = thickness2 b1 and rb2, tb2 = thickness2 b2 in
+          let beta_b = beta_b /. 2. in
+          fn (fn acc alpha_a beta_a xa ya ra ta alpha_b beta_b xb1 yb1 rb1 tb1)
+            alpha_a beta_a xa ya ra ta (alpha_b +. beta_b) beta_b xb2 yb2 rb2 tb2
+        ))
   in
   let ra, ta = thickness2 ba and rb, tb = thickness2 bb in
   let r = fn [] 0.0 1.0 xa ya ra ta 0.0 1.0 xb yb rb tb in

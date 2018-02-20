@@ -15,7 +15,7 @@ let is_num c =
   c >= int_of_char '0' && c <= int_of_char '9'
 
 let insert tree a =
-  let breaks0 = String.make (String.length a) '0' in
+  let breaks0 = Bytes.make (String.length a) '0' in
   let j = ref 0 in
 
   let rec fill_breaks i =
@@ -29,7 +29,8 @@ let insert tree a =
   in
   fill_breaks 0;
 
-  let breaks = String.sub breaks0 0 (String.length breaks0 - !j) in
+  let breaks = Bytes.sub breaks0 0 (Bytes.length breaks0 - !j) in
+  let breaks = Bytes.to_string breaks in
 
   let rec insert i tree =
     if i >= String.length a then
@@ -99,8 +100,9 @@ let hyphenate tree a0 =
   let a = Bytes.create (first_punct+2) in
   String.blit a0 0 a 1 first_punct;
   Bytes.set a 0 '.';
-  Bytes.set a (String.length a - 1) '.';
-  let breaks = String.make (String.length a + 1) (char_of_int 0) in
+  Bytes.set a (Bytes.length a - 1) '.';
+  let a = Bytes.to_string a in
+  let breaks = Bytes.make (String.length a + 1) (char_of_int 0) in
 
   let rec hyphenate i j t =
     if j <= String.length a then
@@ -114,7 +116,7 @@ let hyphenate tree a0 =
       | Node (x,t) ->
         if String.length x > 0 then begin
           let rec fill_breaks k =
-            Bytes.set breaks (i+k) (max breaks.[i+k] x.[k]);
+            Bytes.set breaks (i+k) (max (Bytes.get breaks (i+k)) x.[k]);
             fill_breaks (UTF8.next a (i+k)-i)
           in fill_breaks 0
         end;
@@ -135,9 +137,9 @@ let hyphenate tree a0 =
   let total = UTF8.length a in
 
   let rec make_hyphens j k =
-    if j >= String.length a || j + 1 >= String.length breaks || total - k < 6 then []
+    if j >= String.length a || j + 1 >= Bytes.length breaks || total - k < 6 then []
     else begin
-      if (int_of_char breaks.[j + 1]) land 1 = 1 && k >= 3 then
+      if (int_of_char (Bytes.get breaks (j + 1))) land 1 = 1 && k >= 3 then
         let j' = UTF8.next a j - 1 in
         (String.sub a0 0 j' ^ "-", String.sub a0 j' (String.length a0 - j'))
           :: make_hyphens (UTF8.next a j) (k + 1)

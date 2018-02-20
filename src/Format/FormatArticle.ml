@@ -22,9 +22,9 @@ open Fonts
 open FTypes
 (* open Typography.Constants *)
 open Typography.Document
-open Util
 open Box
 (* open Binary *)
+open Extra
 
 let boxes_width env contents =
   let boxes = boxify_scoped env contents in
@@ -131,18 +131,18 @@ module Env_remark=Default.Make_theorem
       D.structure Complete.normal pars
       [ Env (fun env ->Document.incr_counter "equation" env) ;
         C (fun env ->
-	     let _,w = boxes_width env contents in
-	     let _,x = UsualMake.StrMap.find "equation" env.counters in
-	     let num,w' = boxes_width env
-	       (italic [tT "(";
-		        tT (string_of_int (1 + List.hd x));
-		        tT ")" ]) in
+             let _,w = boxes_width env contents in
+             let _,x = StrMap.find "equation" env.counters in
+             let num,w' = boxes_width env
+               (italic [tT "(";
+                        tT (string_of_int (1 + List.hd x));
+                        tT ")" ]) in
              let w0=(env.normalMeasure -. w)/.2. in
              let w1=env.normalMeasure -. w'-.w0-.w in
              bB(fun _->[glue w0 w0 w0])::
                contents@
                [bB (fun _->glue w1 w1 w1 :: num)]
-	  )];
+          )];
     []
 
 (* Default.Make_theorem *)
@@ -154,10 +154,6 @@ module Env_remark=Default.Make_theorem
 (*    end) *)
 
 
-
-
-
-  open Util
   (* open Binary *)
 
 
