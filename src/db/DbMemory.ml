@@ -1,7 +1,7 @@
 open Util
 
 type dbinfo = unit
-type database = (string, string) Hashtbl.t
+type database = (string, string list) Hashtbl.t
 
 let connect () =
   Hashtbl.create 1001
@@ -12,7 +12,8 @@ let disconnect _ =
 let init_db _ _ =
   ()
 
-let create_data total_table _ ?(log=false) ?(visibility=Private) coding name init =
+let create_data total_table (_:string) ?(log=false)
+      ?(visibility=Private) coding name init =
   let rec data =
     let table = Hashtbl.create 1001 in
     let sessid () = match !Db.sessid with

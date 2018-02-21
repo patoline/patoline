@@ -10,6 +10,7 @@ open DefaultFormat
 
 let caml x = x
 
+(*
 let db_info = Mysql.(
     { defaults with
       dbhost = Some "localhost";
@@ -18,8 +19,10 @@ let db_info = Mysql.(
       dbuser = Some "demo";})
 
 let db = Db.init_db (module DbMysql) "demo" db_info
+ *)
 
-(*let db = init_db "demo" Memory*)
+let db = Db.init_db (module DbMemory) "demo" ()
+
 module MyDb = struct
   let db = db
   let base_dir = "/tmp"

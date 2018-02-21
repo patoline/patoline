@@ -1126,15 +1126,15 @@ function gotoSlide(n){
     let read_sessid () = match !sessid with
       | Some (s,g,_) -> s, g
       | _ ->
-         Printf.eprintf "Session not set\n%!";
-         exit 1;
+         let s = make_sessid () in
+         (s, "guest")
     in
 
     let read_sessid_fs () = match !sessid with
       | Some (s,g,fs) -> s, g, fs
       | _ ->
-         Printf.eprintf "Session not set\n%!";
-         exit 1;
+         let s = make_sessid () in
+         (s, "guest", [])
     in
 
 
