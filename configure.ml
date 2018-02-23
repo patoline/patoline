@@ -552,7 +552,7 @@ let _=
   (* Generation of src/Makefile.config *)
   let make = open_out "src/Makefile.config" in
 
-  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s\n"
+  Printf.fprintf make "PATFONTS_CPP := cpp -C -ffreestanding -w %s\n"
     (if Sys.word_size = 32  then "-DINT32 " else "");
 
   Printf.fprintf make "CAMLZIP :=%s\n"

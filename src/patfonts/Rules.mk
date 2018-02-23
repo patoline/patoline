@@ -6,10 +6,20 @@ LIBFONTS_INCLUDES := -I $(d) $(PACK_FONTS) -I $(UNICODE_DIR) -I $(UNICODE_DIR)/e
 
 # Compute ML files dependencies
 $(d)/%.depends $(d)/CFF/%.depends $(d)/Opentype/%.depends $(d)/unicodeRanges/%.depends: INCLUDES:=$(DEPS_DIR)
-$(d)/%.cmx $(d)/%.cmo $(d)/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
-$(d)/CFF/%.cmx $(d)/CFF/%.cmo $(d)/CFF/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
-$(d)/Opentype/%.cmx $(d)/Opentype/%.cmo $(d)/Opentype/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
-$(d)/unicodeRanges/%.cmx $(d)/unicodeRanges/%.cmo $(d)/unicodeRanges/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
+
+$(d)/%.cmx $(d)/%.cmo $(d)/%.cmi \
+  $(d)/CFF/%.cmx $(d)/CFF/%.cmo $(d)/CFF/%.cmi \
+  $(d)/Opentype/%.cmx $(d)/Opentype/%.cmo $(d)/Opentype/%.cmi \
+  $(d)/unicodeRanges/%.cmx $(d)/unicodeRanges/%.cmo \
+  $(d)/unicodeRanges/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
+
+$(d)/%.depends $(d)/CFF/%.depends $(d)/Opentype/%.depends \
+  $(d)/unicodeRanges/%.depends \
+  $(d)/%.cmx $(d)/%.cmo $(d)/%.cmi \
+  $(d)/CFF/%.cmx $(d)/CFF/%.cmo $(d)/CFF/%.cmi \
+  $(d)/Opentype/%.cmx $(d)/Opentype/%.cmo $(d)/Opentype/%.cmi \
+  $(d)/unicodeRanges/%.cmx $(d)/unicodeRanges/%.cmo \
+  $(d)/unicodeRanges/%.cmi: private OCPP := $(PATFONTS_CPP)
 
 $(d)/Opentype/Opentype.ml.depends: $(UNICODE_DIR)/ROMAN.ml $(UNICODE_DIR)/LATIN1.ml $(UNICODE_DIR)/UTF8.ml
 
@@ -53,7 +63,7 @@ $(d)/fonts.cmxs: $(LIBFONTS_CMX)
 
 $(d)/unicodeRanges/unicode_ranges_cpp.ml: $(d)/unicodeRanges/unicode_ranges.ml
 	$(ECHO) "[CPP] $@"
-	$(Q)$(OCPP) $< $@
+	$(Q)$(PATFONTS_CPP) $< $@
 
 $(d)/UnicodeRanges.ml: $(d)/unicodeRanges/unicode_ranges_cpp.ml $(d)/unicodeRanges/unicode
 	$(ECHO) "[GEN] $@"
