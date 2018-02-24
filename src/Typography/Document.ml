@@ -18,6 +18,21 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+(** High-level representation of documents
+
+The module defines the {!type:tree} type, which describes whole
+documents. This tree is typically produced by running the OCaml
+executable obtained after parsing a [.txp] file, but can be produced by
+anyy other mean. It is the main input to Patoline Typography library in
+order to produce the final document.
+
+Values of type {!type:tree} are meant to be transformed by some format's
+output routine.
+
+We also provide a tree zipper interface to ease construction of a
+{!type:tree} when reading linearly an input file.
+*)
+
 open Extra
 open Fonts
 open FTypes
@@ -25,9 +40,10 @@ open RawContent
 open Driver
 open Box
 
-type fontAlternative = Regular | Bold | Caps | Demi
 
-(* font, substitutions, positioning *)
+(** {1 Font, substitutions, positioning} *)
+
+type fontAlternative = Regular | Bold | Caps | Demi
 
 let simpleFamilyMember:(unit->font)->(font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t =
   fun a->Lazy.from_fun (fun ()->(a (),(fun x->x),(fun x->x),(fun x->x)))
@@ -83,8 +99,7 @@ module TS = Break.Make(
   end)
 
 
-
-
+(** {1 Mathematical formulae} *)
 
 module Mathematical=struct
   type env={
@@ -136,6 +151,8 @@ module Mathematical=struct
     | ScriptScript
     | ScriptScript'
 end
+
+(** {1 Environments} *)
 
 (** Environments. These are typically folded on document trees, and
     control many different things about the fonts, counters, or
@@ -192,39 +209,33 @@ let displayname n=
   env_accessed:=true;
   n.raw_name
 
+(** {1 Document content} *)
 
-
-
-
-
-
-
-
-(* Main type used to hold document contents. *)
+(** Main type used to hold document contents. *)
 type content =
-  (* List of boxes depending on an environment. The second parameters is a
+  (** List of boxes depending on an environment. The second parameters is a
      cache used when compilation is iterated to resolve names. *)
   | B of (environment -> box list) * box list option ref
 
-  (* A contents list depending on the environment. This may be used to
+  (** A contents list depending on the environment. This may be used to
      typeset the state of a counter for example. *)
   | C of (environment -> content list)
 
-  (* Simple text. *)
+  (** Simple text. *)
   | T of string * (box list IntMap.t option) ref
 
-  (* Environment modification function. It can be used to register a name
+  (** Environment modification function. It can be used to register a name
      or modify the state of a counter for instance. *)
   | Env of (environment -> environment)
 
-  (* A scoped environment transformation applied on a (small) list of
+  (** A scoped environment transformation applied on a (small) list of
      contents. *)
   | Scoped of (environment -> environment) * (content list)
 
-  (* A document tree. *)
+  (** A document tree. *)
   | N of tree
 
-(* First type of leaves in a document: paragraphs. *)
+(** First type of leaves in a document: paragraphs. *)
 and paragraph =
   { par_contents   : content list
   ; par_env        : environment -> environment
@@ -245,7 +256,7 @@ and paragraph =
   ; par_paragraph : int
 }
 
-(* Second type of leaves in a document: figures. *)
+(** Second type of leaves in a document: figures. *)
 and figuredef =
   { fig_contents   : environment -> drawingBox
   ; fig_env        : environment -> environment
@@ -255,7 +266,7 @@ and figuredef =
                        -> line MarkerMap.t -> line -> line -> parameters
 }
 
-(* Internal node of the document tree (e.g. section, chapter...). *)
+(** Internal node of the document tree (e.g. section, chapter...). *)
 and node =
   { name          : string
   ; displayname   : content list
@@ -271,13 +282,13 @@ and node =
   ; node_states   : int list
   ; mutable node_paragraph : int }
 
-(* Type of a document tree. *)
+(** Type of a document tree. *)
 and tree =
   | Paragraph of paragraph
   | FigureDef of figuredef
   | Node      of node
 
-(* Empty node (with no child tree). *)
+(** Empty node (with no child tree). *)
 let empty : node =
   { name = ""
   ; node_tags = []
@@ -291,15 +302,15 @@ let empty : node =
   ; node_states = []
   ; node_paragraph = 0 }
 
-(* Build a node with a single child tree. *)
+(** Build a node with a single child tree. *)
 let singleton : tree -> node = fun t ->
   { empty with children = IntMap.singleton 0 t }
 
-(* The main datatype is a zipper over a document tree. It consists in a
-   couple which first component is a tree. The second component represents
+(** The main datatype is a zipper over a document tree. It consists in a
+   couple whose first component is a tree. The second component represents
    the context identifying a position in the tree.
 
-   The tree represented by the zipper (t, [(p1,t1), ... , (pn,tn)]) is
+   The tree represented by the zipper [(t, [(p1,t1), ... , (pn,tn)])] is
    built by:
      - appending the tree t at position p1 in t1,
      - appending the resulting tree at poistion p2 in t2,
@@ -307,24 +318,24 @@ let singleton : tree -> node = fun t ->
      - appending the resulting tree at poistion pn in tn. *)
 type tree_zipper = tree * (int * node) list
 
-(* Function that take a tree zipper (t,cxt) pointing to some node t and
-   returns a zipper pointing to the father node of t. If this function is
-   called on a zipper that points to the root of the tree, a new empty node
-   is created to have t as its only child. *)
+(** Function that takes a tree zipper [(t,cxt)] pointing to some node
+   [t] and returns a zipper pointing to the father node of t. If this
+   function is called on a zipper that points to the root of the tree, a
+   new empty node is created to have [t] as its only child. *)
 let up : tree_zipper -> tree_zipper = function
   | (t, []      ) -> (Node (singleton t), [])
   | (t, (a,b)::s) -> (Node {b with children = IntMap.add a t b.children }, s)
 
-(* Function that applies up n times on a zipper, effectively moving the
+(** Function that applies {!val:up} n times on a zipper, effectively moving the
    zipper to the n-th ancestor of the currently pointed node. *)
 let rec up_n : int -> tree_zipper -> tree_zipper =
   fun n z -> if n <= 0 then z else up_n (n-1) (up z)
 
-(* Move the zipper to the root of the tree *)
+(** Move the zipper to the root of the tree *)
 let rec top : tree_zipper -> tree_zipper =
   fun z -> if snd z = [] then z else top (up z)
 
-(* Move the zipper to point to the child of the pointed node with the higher
+(** Move the zipper to point to the child of the pointed node with the higher
    index. It the pointed tree is not a node the zipper is left unchanged. *)
 let lastChild : tree_zipper -> tree_zipper = fun (t,cxt) ->
   match t with
@@ -334,9 +345,9 @@ let lastChild : tree_zipper -> tree_zipper = fun (t,cxt) ->
                with Not_found -> (t,cxt))
   | _      -> (t,cxt)
 
-(* Take a zipper (t,cxt) and a tree c and adds c as the last child of the
+(** Take a zipper [(t,cxt)] and a tree [c] and adds [c] as the last child of the
    pointed node. If the pointed subtree is not a node, a new node is
-   created to hold t and c. In the end the zipper points to c. *)
+   created to hold [t] and [c]. The returned zipper points to [c]. *)
 let rec newChildAfter : tree_zipper -> tree -> tree_zipper =
   let next_key t = try fst (IntMap.max_binding t) + 1 with Not_found -> 0 in
   fun (t,cxt) c ->
@@ -345,7 +356,7 @@ let rec newChildAfter : tree_zipper -> tree -> tree_zipper =
     | (_     , []) -> (c, [(1, singleton t)])
     | _            -> newChildAfter (up (t,cxt)) c
 
-(* Same as newChildAfter but adds the tree as the first child. *)
+(** Same as {!val:newChildAfter} but adds the tree as the first child. *)
 let rec newChildBefore : tree_zipper -> tree -> tree_zipper =
   let prev_key t = try fst (IntMap.min_binding t) - 1 with Not_found -> 0 in
   fun (t,cxt) c ->
@@ -354,8 +365,8 @@ let rec newChildBefore : tree_zipper -> tree -> tree_zipper =
     | (_     , []) -> (c, [(1, singleton t)])
     | _            -> newChildBefore (up (t,cxt)) c
 
-(* Take a zipper pointing to a node and move it down its i-th child. If the
-   zipper does not point to a node, Invalid_argument is raised. If the i-th
+(** Take a zipper pointing to a node and move it down its i-th child. If the
+   zipper does not point to a node, [Invalid_argument] is raised. If the i-th
    child does not exists, it is created as a new empty node. *)
 let child : tree_zipper -> int -> tree_zipper =
   fun (t,cxt) i ->
@@ -365,14 +376,14 @@ let child : tree_zipper -> int -> tree_zipper =
                 in (t, (i,n)::cxt)
     | _      -> raise (Invalid_argument "Typography.child")
 
-(* Take a tree zipper and an path represented as a list of integers and move
+(** Take a tree zipper and an path represented as a list of integers and move
    the zipper down the path (i.e. calling child on the successive indices. *)
 let rec follow : tree_zipper -> int list -> tree_zipper =
   fun z -> function
     | []      -> z
     | n :: ns -> follow (child z n) ns
 
-(* Module type of a document format. *)
+(** Module type of a document format. *)
 module type Format =
   sig
     val defaultEnv : environment
@@ -384,7 +395,7 @@ module type Format =
           -> line -> parameters
   end
 
-(* Module type to be used as a document wrapper. The document structure is
+(** Module type to be used as a document wrapper. The document structure is
    stored in its zipper form in a reference. Functions are provided bellow
    to edit the document tree. *)
 module type DocumentStructure =
