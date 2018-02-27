@@ -63,7 +63,7 @@ $(d)/fonts.cmxs: $(LIBFONTS_CMX)
 
 $(d)/unicodeRanges/unicode_ranges_cpp.ml: $(d)/unicodeRanges/unicode_ranges.ml
 	$(ECHO) "[CPP] $@"
-	$(Q)$(PATFONTS_CPP) $< $@
+	$(Q)$(PATFONTS_CPP) -o $@ $<
 
 $(d)/UnicodeRanges.ml: $(d)/unicodeRanges/unicode_ranges_cpp.ml $(d)/unicodeRanges/unicode
 	$(ECHO) "[GEN] $@"
