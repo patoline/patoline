@@ -104,7 +104,12 @@ let _ =
 
 (* Initialisation of findlib, and configuration verification. *)
 let _ =
-  Findlib.init ~env_ocamlpath:"src" ();
+  let env_ocamlpath =
+    match Unix.getenv "OCAMLPATH" with
+    | s -> "src:" ^ s
+    | exception Not_found -> "src"
+  in
+  Findlib.init ~env_ocamlpath ();
   let findlib_dir = Findlib.default_location () in
   if libdir <> findlib_dir then
     begin
