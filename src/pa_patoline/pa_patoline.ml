@@ -870,7 +870,7 @@ let parser all_right_delimiter =
 
 let symbol_paragraph _loc syms names =
   <:struct<
-    let _ = newPar D.structure
+    let _ = D.structure := newPar !D.structure
       ~environment:(fun x -> {x with par_indent = []})
 
       Complete.normal Patoline_Format.parameters
@@ -1795,11 +1795,11 @@ let _ = set_grammar math_toplevel (parser
     (fun indented ->
          if indented then
            <:struct<
-             let _ = newPar D.structure
+             let _ = D.structure := newPar !D.structure
                             Complete.normal Patoline_Format.parameters $p$ >>
          else
            <:struct<
-             let _ = newPar D.structure
+             let _ = D.structure := newPar !D.structure
                             ~environment:(fun x -> { x with par_indent = [] })
                             Complete.normal Patoline_Format.parameters $p$>>
         )
@@ -1886,7 +1886,7 @@ let _ = set_grammar math_toplevel (parser
                         end>>)
     | m:{ "\\[" math_toplevel "\\]" | "$$" math_toplevel "$$" } ->
          (fun _ ->
-           <:struct<let _ = newPar D.structure
+           <:struct<let _ = D.structure newPar !D.structure
                         ~environment:(fun x -> {x with par_indent = []})
                         Complete.normal displayedFormula
                         [bB (fun env0 -> Maths.kdraw
@@ -1944,8 +1944,8 @@ let parser text_item lvl =
       assert(lvl' = lvl);
       let code =
         <:struct<
-          let _ = newStruct ~in_toc:$bool:in_toc$ ~numbered:$bool:num$
-                    D.structure $title$
+          let _ = D.structure := newStruct ~in_toc:$bool:in_toc$ ~numbered:$bool:num$
+                    !D.structure $title$
           $struct:txt false (lvl+1)$
           let _ = go_up D.structure
         >>
@@ -1959,7 +1959,7 @@ let parser text_item lvl =
        assert (lvl' >= lvl);
       let code =
         <:struct<
-          let _ = newStruct ~numbered:$bool:num$ D.structure $title$
+          let _ = D.structure := newStruct ~numbered:$bool:num$ !D.structure $title$
           $struct:txt false (lvl+1)$
           let _ = go_up D.structure
         >>

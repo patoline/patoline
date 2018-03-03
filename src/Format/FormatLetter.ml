@@ -124,7 +124,7 @@ module Format=functor (D:DocumentStructure)->struct
 
 
   let lieu_date lieu x =
-      newPar D.structure Complete.normal ragged_right
+      D.structure := newPar !D.structure Complete.normal ragged_right
         ((vspaceBefore 10.) @ [tT (!lieu_date_text lieu x)])
   let dear x=(vspaceBefore 13.)@(vspaceAfter 3.)@x
   let subject x= !subject_text @ x

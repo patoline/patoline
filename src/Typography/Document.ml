@@ -943,7 +943,7 @@ let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=[]) complet
     ; par_completeLine = complete
     ; par_states       = states
     ; par_paragraph    = (-1) }
-  in str := up (newChildAfter !str (Paragraph para))
+  in up (newChildAfter str (Paragraph para))
 
 (** Adds a new node, just below the last one. *)
 let newStruct str ?(in_toc=true) ?label ?(numbered=true) ?(extra_tags=[]) displayname =
@@ -989,13 +989,10 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) ?(extra_tags=[]) displa
               ) env'.counters }
       );
   }
-  in
-    str:=newChildAfter !str para
+  in newChildAfter str para
 
 
 (** {3 References, labels and links} *)
-
-
 
 let pageref x=
   [C (fun env->

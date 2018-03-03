@@ -522,7 +522,7 @@ let defaultEnv:environment=
             },path
         in
         str:=follow (t0',[]) (List.map fst (List.rev path)); true
-      with Exit -> newStruct D.structure displayname; false
+      with Exit -> D.structure := newStruct !D.structure displayname; false
 
     module TableOfContents=struct
       let do_begin_env ()=
@@ -590,7 +590,7 @@ let defaultEnv:environment=
             Paragraph x,y->
               D.structure:=up (Paragraph {x with par_contents=x.par_contents@cont},y);
           | _->(
-            newPar D.structure Complete.normal parameters cont;
+            D.structure := newPar !D.structure Complete.normal parameters cont;
             (* D.structure:=lastChild !D.structure *)
           )
 
@@ -670,8 +670,8 @@ module Env_dynamic(X : sig val arg1 : content list
                     ~env_mod:(fun e -> { e with normalLeftMargin=0. }) (res0,[])
     in
     let cont = dynamic X.arg1 cont in
-    D.structure:=up (Node empty, path0);
-    newPar ~environment:(fun env->{env with par_indent=[];}) D.structure
+    D.structure := up (Node empty, path0);
+    D.structure := newPar ~environment:(fun env->{env with par_indent=[];}) !D.structure
            Complete.normal parameters cont;
     env_stack:=List.tl !env_stack;
 
@@ -714,7 +714,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
       Paragraph _,_->go_up D.structure;
     | _->()
   in
-  newPar D.structure ~environment:(fun env->{env with par_indent=[]}) Complete.normal parameters
+  D.structure := newPar !D.structure ~environment:(fun env->{env with par_indent=[]}) Complete.normal parameters
          (Env (incr_counter "figure")::bB (fun env->[Drawing (figure_drawing ~parameters ~name ~caption ~scale drawing env)])::label name)
 
 
@@ -1156,7 +1156,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
         in
         D.structure:=(follow (top !D.structure) (List.rev (List.hd !env_stack)));
         D.structure:=up (retag (add_proof (fst !D.structure), snd !D.structure));
-        newPar D.structure ~badness:bad Complete.normal par
+        D.structure:=newPar !D.structure ~badness:bad Complete.normal par
           [bB (fun env->
                 let w=env.size/.phi in
                   [Drawing (

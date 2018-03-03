@@ -557,8 +557,8 @@ end
         if line.lineEnd>=Array.length b.(line.paragraph) then a.lead else 0.
                            }
     in
-    newPar ~environment:(fun env -> { env with par_indent = [] })
-      D.structure Complete.normal pars
+    D.structure := newPar ~environment:(fun env -> { env with par_indent = [] })
+      !D.structure Complete.normal pars
       [ Env (fun env ->Document.incr_counter "equation" env) ;
         C (fun env ->
              let _,w = boxes_width env contents in
