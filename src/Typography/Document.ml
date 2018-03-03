@@ -318,6 +318,15 @@ let singleton : tree -> node = fun t ->
    + appending the resulting tree at position [pn] in [tn]. *)
 type tree_zipper = tree * (int * node) list
 
+(** Build a zipper from a tree. The resulting zipper points to the root
+    of the tree. *)
+let (zipper_of_tree : tree -> tree_zipper) = fun tree ->
+  (tree, [])
+
+(** Build a zipper whose single node is {!val:empty}. *)
+let empty_zipper : tree_zipper =
+  zipper_of_tree (Node(empty))
+
 (** Function that takes a tree zipper [(t,cxt)] pointing to some node
    [t] and returns a zipper pointing to the father node of [t]. If this
    function is called on a zipper that points to the root of the tree, a
