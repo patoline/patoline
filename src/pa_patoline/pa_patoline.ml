@@ -1886,7 +1886,7 @@ let _ = set_grammar math_toplevel (parser
                         end>>)
     | m:{ "\\[" math_toplevel "\\]" | "$$" math_toplevel "$$" } ->
          (fun _ ->
-           <:struct<let _ = D.structure newPar !D.structure
+           <:struct<let _ = D.structure := newPar !D.structure
                         ~environment:(fun x -> {x with par_indent = []})
                         Complete.normal displayedFormula
                         [bB (fun env0 -> Maths.kdraw
