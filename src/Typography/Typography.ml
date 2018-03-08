@@ -13,7 +13,6 @@ module Geometry = Geometry
 module Offset = Offset
 module OutputDrawing = OutputDrawing
 module Proj3d = Proj3d
-module TypoLanguage = TypoLanguage
 module Euler = Euler
 module DefaultMacros = DefaultMacros
 module Debug = Debug

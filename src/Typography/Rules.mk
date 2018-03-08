@@ -13,7 +13,7 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-TYPOGRAPHY_MODS:= TypoLanguage FontPattern ConfigFindFont Distance Offset \
+TYPOGRAPHY_MODS:= FontPattern ConfigFindFont Distance Offset \
 	Box Badness Break Document Complete Maths OutputDrawing Geometry Proj3d \
 	Diagrams Verbatim Euler DefaultMacros Debug Typography
 

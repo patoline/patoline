@@ -1308,8 +1308,6 @@ let boxify buf nbuf env0 l=
            IntMap.iter (fun _->List.iter (append buf nbuf)) l;
            boxify keep_cache env s
         | _                      ->
-           if not (UTF8.validate t) then
-             failwith (TypoLanguage.message (TypoLanguage.BadEncoding t));
            let l = ref IntMap.empty in
            let t = env.word_substitutions (nfkc t) in
            let rec cut_str i0 i =

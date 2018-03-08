@@ -1,5 +1,15 @@
 (** Line and page breaking algorithm *)
 
+type optim_error =
+  | Normal
+  | No_solution    of string
+  | Overfull_line  of string
+  | Underfull_line of string
+  | Widow          of string
+  | Orphan         of string
+
+val message : optim_error -> string
+
 val is_last : Box.box array -> int -> bool
 
 type figurePosition = Placed of Box.line | Flushed | Begun
@@ -59,7 +69,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) :
              array ->
         states:int list array ->
         Box.box array array ->
-        TypoLanguage.message list *
+        optim_error list *
           Box.frame *
           figurePosition Extra.IntMap.t * Line.t Box.MarkerMap.t
   end

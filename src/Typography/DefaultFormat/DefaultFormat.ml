@@ -1316,7 +1316,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
           resolve tree (i+1) env
         ) else (
 
-          List.iter (fun x->Printf.fprintf stderr "%s\n" (Typography.TypoLanguage.message x)) logs;
+          List.iter (fun x->Printf.fprintf stderr "%s\n" (Break.message x)) logs;
 
           let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
           let par=ref (-1) in

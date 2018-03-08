@@ -22,6 +22,24 @@ open Extra
 open Box
 open FTypes
 
+type optim_error =
+  | Normal
+  | No_solution    of string
+  | Overfull_line  of string
+  | Underfull_line of string
+  | Widow          of string
+  | Orphan         of string
+
+let message err =
+  match err with
+  | No_solution("")     -> "No solution, empty document."
+  | No_solution(str)    -> "No solution, empty document:\n\t" ^ str
+  | Widow(str)          -> "Widow:\n\t" ^ str
+  | Orphan(str)         -> "Orphan:\n\t" ^ str
+  | Overfull_line(str)  -> "Overfull line:\n\t" ^ str
+  | Underfull_line(str) -> "Underfull line:\n\t" ^ str
+  | Normal              -> ""
+
 let is_last paragraph j=
   let rec is_last i=
     (i>=Array.length paragraph ||
@@ -52,7 +70,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
       end)
 
     module Hstruct = struct
-        type t=Val of Line.t*float*TypoLanguage.message*parameters*(frame_zipper list)*float*(t option)*(figurePosition IntMap.t)*Line.t MarkerMap.t
+        type t=Val of Line.t*float*optim_error*parameters*(frame_zipper list)*float*(t option)*(figurePosition IntMap.t)*Line.t MarkerMap.t
         let equal (Val(a,_,_,_,_,_,_,_,_)) (Val(b,_,_,_,_,_,_,_,_))=(Line.compare a b)==0
         let hash (Val(a,_,_,_,_,_,_,_,_))=Line.hash a
       end
@@ -141,7 +159,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
       let first_parameters=parameters.(0)
         paragraphs figures default_params IntMap.empty MarkerMap.empty initial_line initial_line
       in
-      let first_line=Hstruct.Val(initial_line,0.,TypoLanguage.Normal,first_parameters,[],0.,None,IntMap.empty,MarkerMap.empty) in
+      let first_line=Hstruct.Val(initial_line,0.,Normal,first_parameters,[],0.,None,IntMap.empty,MarkerMap.empty) in
       let last_todo_line=ref first_line in
       let demerits=H.create (Array.length paragraphs) in
 
@@ -268,7 +286,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                      node haut.DynArray.data 0 lastParameters 0.
                      nextNode bas.DynArray.data 0 params 0.
                    else 0.)
-                TypoLanguage.Normal
+                Normal
                 params
                 lastPages
                 0.;
@@ -296,7 +314,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                      node haut.DynArray.data 0 lastParameters 0.
                      nextNode bas.DynArray.data 0 params 0.
                    else 0.)
-                TypoLanguage.Normal
+                Normal
                 params
                 lastPages
                 0.;
@@ -494,13 +512,13 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                                 let Hstruct.Val(_,_,_,_,_,_,prec,_,_)=cur_node in
                                 let Hstruct.Val(pr,a,b,c,d,e,f,g,h)=match prec with None->raise Not_found | Some a->a  in
                                 if node.paragraph=nextNode.paragraph || (lastParameters.not_last_line && not c.not_last_line) then (
-                                  extreme_solutions:=(pr,a,(TypoLanguage.Opt_error (TypoLanguage.Orphan (text_line paragraphs node))),
+                                  extreme_solutions:=(pr,a,(Orphan (text_line paragraphs node)),
                                                       { c with min_page_after=1 },
                                                       d,e,f,g,h)::(!extreme_solutions)
                                 ) else raise Not_found
                               with
                                   Not_found->(
-                                    extreme_solutions:=(nextNode,lastBadness,(TypoLanguage.Opt_error (TypoLanguage.Orphan (text_line paragraphs nextNode))),
+                                    extreme_solutions:=(nextNode,lastBadness,(Orphan (text_line paragraphs nextNode)),
                                                         nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!extreme_solutions)
                                   )
                             )
@@ -511,13 +529,13 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                                 let Hstruct.Val(_,_,_,_,_,_,prec,_,_)=cur_node in
                                 let Hstruct.Val(pr,a,b,c,d,e,f,g,h)=match prec with None->raise Not_found | Some a->a  in
                                 if node.paragraph=nextNode.paragraph || (nextParams.not_first_line) && not lastParameters.not_first_line then (
-                                  extreme_solutions:=(pr,a,(TypoLanguage.Opt_error (TypoLanguage.Widow (text_line paragraphs nextNode))),
+                                  extreme_solutions:=(pr,a,(Widow (text_line paragraphs nextNode)),
                                                       { c with min_page_after=1 },
                                                       d,e,f,g,h)::(!extreme_solutions)
                                 ) else raise Not_found
                               with
                                   Not_found->(
-                                    extreme_solutions:=(nextNode,lastBadness,(TypoLanguage.Opt_error (TypoLanguage.Widow (text_line paragraphs nextNode))),
+                                    extreme_solutions:=(nextNode,lastBadness,(Widow (text_line paragraphs nextNode)),
                                                         nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!extreme_solutions)
                                   )
                             )
@@ -531,7 +549,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                                              nextNode bas.DynArray.data (DynArray.length bas) nextParams comp1) in
                                   local_opt:=(nextNode,
                                               max 0. bad,
-                                              (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (text_line paragraphs nextNode))),
+                                              (Overfull_line (text_line paragraphs nextNode)),
                                               nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                                 )
                               )
@@ -546,7 +564,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                                              nextNode bas.DynArray.data (DynArray.length bas) nextParams comp1) in
                                   local_opt:=(nextNode,
                                               max 0. bad,
-                                              (TypoLanguage.Opt_error (TypoLanguage.Underfull_line (text_line paragraphs nextNode))),
+                                              (Underfull_line (text_line paragraphs nextNode)),
                                               nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                                 )
                               )
@@ -558,7 +576,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                                            nextNode bas.DynArray.data (DynArray.length bas) nextParams comp1) in
                                 if bad<infinity || allow_impossible then
                                   local_opt:=(nextNode,
-                                              max 0. bad,TypoLanguage.Normal,
+                                              max 0. bad,Normal,
                                               nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                               )
                             )
@@ -605,7 +623,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                         extreme_solutions:=
                           (nextNode,
                            lastBadness,
-                           (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (text_line paragraphs nextNode))),
+                           (Overfull_line (text_line paragraphs nextNode)),
                            nextParams,layouts,0.,Some cur_node,lastFigures,lastUser)::[]
                       )
                     )
@@ -655,7 +673,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
             let param0=LineMap.find b !last_failure in
             if param0.min_page_after<>param.min_page_after then raise Not_found;
             Printf.fprintf stderr "%s\n" (
-              TypoLanguage.message (TypoLanguage.No_solution (text_line paragraphs b)));
+              message (No_solution (text_line paragraphs b)));
             finished:=true
           with
               Not_found->(
@@ -691,7 +709,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
           match next with
               None->log,frame
             | Some n->(
-              makeParagraphs (match log_ with TypoLanguage.Normal -> log | _->log_::log)
+              makeParagraphs (match log_ with Normal -> log | _->log_::log)
                 n
                 (add_content frame
                    (match snd n0.layout with []->[] | _::s->s)
@@ -709,7 +727,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
             if Array.length paragraphs=0 && Array.length figures=0 then
               ([],empty_frame,IntMap.empty,MarkerMap.empty)
             else (
-              Printf.fprintf stderr "%s" (TypoLanguage.message (TypoLanguage.No_solution ""));
+              Printf.fprintf stderr "%s" (message (No_solution ""));
               [],empty_frame,IntMap.empty,MarkerMap.empty
             )
       end
