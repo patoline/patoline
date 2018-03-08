@@ -23,7 +23,6 @@ before_install:
   - opam install ocamlbuild ocamlfind
   - opam install earley earley-ocaml
   - opam install camlzip imagelib sqlite3
-  - opam install cryptokit cairo lablgl
   - make configure
   - ./configure
   - make
