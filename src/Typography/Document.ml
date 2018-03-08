@@ -312,14 +312,23 @@ let singleton : tree -> node = fun t ->
 
    The tree represented by the zipper [(t, [(p1,t1), ... , (pn,tn)])] is
    built by:
-     - appending the tree t at position p1 in t1,
-     - appending the resulting tree at poistion p2 in t2,
-     - ...
-     - appending the resulting tree at poistion pn in tn. *)
+   + appending the tree [t] at position [p1] in [t1],
+   + appending the resulting tree at position [p2] in [t2],
+   + ...
+   + appending the resulting tree at position [pn] in [tn]. *)
 type tree_zipper = tree * (int * node) list
 
+(** Build a zipper from a tree. The resulting zipper points to the root
+    of the tree. *)
+let (zipper_of_tree : tree -> tree_zipper) = fun tree ->
+  (tree, [])
+
+(** Build a zipper whose single node is {!val:empty}. *)
+let empty_zipper : tree_zipper =
+  zipper_of_tree (Node(empty))
+
 (** Function that takes a tree zipper [(t,cxt)] pointing to some node
-   [t] and returns a zipper pointing to the father node of t. If this
+   [t] and returns a zipper pointing to the father node of [t]. If this
    function is called on a zipper that points to the root of the tree, a
    new empty node is created to have [t] as its only child. *)
 let up : tree_zipper -> tree_zipper = function
@@ -336,7 +345,7 @@ let rec top : tree_zipper -> tree_zipper =
   fun z -> if snd z = [] then z else top (up z)
 
 (** Move the zipper to point to the child of the pointed node with the higher
-   index. It the pointed tree is not a node the zipper is left unchanged. *)
+   index. If the pointed tree is not a node the zipper is left unchanged. *)
 let lastChild : tree_zipper -> tree_zipper = fun (t,cxt) ->
   match t with
   | Node x -> (try
@@ -396,15 +405,12 @@ module type Format =
   end
 
 (** Module type to be used as a document wrapper. The document structure is
-   stored in its zipper form in a reference. Functions are provided bellow
+   stored in its zipper form in a reference. Functions are provided below
    to edit the document tree. *)
 module type DocumentStructure =
   sig
     val structure : tree_zipper ref
   end
-
-
-
 
 
 
@@ -943,7 +949,7 @@ let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=[]) complet
     ; par_completeLine = complete
     ; par_states       = states
     ; par_paragraph    = (-1) }
-  in str := up (newChildAfter !str (Paragraph para))
+  in up (newChildAfter str (Paragraph para))
 
 (** Adds a new node, just below the last one. *)
 let newStruct str ?(in_toc=true) ?label ?(numbered=true) ?(extra_tags=[]) displayname =
@@ -989,13 +995,10 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) ?(extra_tags=[]) displa
               ) env'.counters }
       );
   }
-  in
-    str:=newChildAfter !str para
+  in newChildAfter str para
 
 
 (** {3 References, labels and links} *)
-
-
 
 let pageref x=
   [C (fun env->

@@ -25,7 +25,7 @@ open Typography.Box
 open Extra
 
 let centered parameters str tree _=
-  newPar str ~environment:(fun x->{x with par_indent=[]}) Complete.normal parameters [
+  str := newPar !str ~environment:(fun x->{x with par_indent=[]}) Complete.normal parameters [
     bB (
       fun env->
         let spacing=1. in
@@ -128,7 +128,7 @@ let these parameters str tree max_level=
   let params a b c d e f g line=
       parameters a b c d e f g line
   in
-  newPar str ~environment:(fun x->{x with par_indent=[]}) Complete.normal params [
+  str := newPar !str ~environment:(fun x->{x with par_indent=[]}) Complete.normal params [
     bB (
       fun env->
         let margin=env.size*.phi in
@@ -205,7 +205,7 @@ let these parameters str tree max_level=
 
 let slides ?(hidden_color=Color.rgb 0.8 0.8 0.8) parameters str tree max_level=
 
-  newPar str ~environment:(fun x->{x with par_indent=[]; lead=phi*.x.lead }) Complete.normal parameters [
+  str := newPar !str ~environment:(fun x->{x with par_indent=[]; lead=phi*.x.lead }) Complete.normal parameters [
     bB (
       fun env->
         let _,b0=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in

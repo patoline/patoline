@@ -70,7 +70,7 @@ let line_per_line : 'a -> (string -> content list) -> string list -> unit =
       let cs = f l in
       let cs = if i = 0 then linesBefore !lines_skip @ cs else cs in
       let cs = if i = len - 1 then linesAfter !lines_skip @ cs else cs in
-      newPar str ~environment:verbEnv Complete.normal par cs
+      str := newPar !str ~environment:verbEnv Complete.normal par cs
     in
     List.iteri draw_line lines
 
