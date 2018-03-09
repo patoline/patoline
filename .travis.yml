@@ -41,6 +41,8 @@ before_install:
 install:
   - make install
 script:
+  - cd patobook
+  - make
   - echo "OK"
 os:
   - linux

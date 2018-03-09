@@ -119,7 +119,9 @@ Pierre-Etienne Meunier
   let new_page_first env={env with par_indent = [];
     (* new_page=(fun t->Box.make_page env.normalPageFormat (frame_top t))*) }
 
-  let _ = newPar D.structure ~environment:new_page_first Complete.normal param [couverture]
+  let _ =
+    D.structure := newPar !D.structure ~environment:new_page_first
+      Complete.normal param [couverture]
 
 )
 
