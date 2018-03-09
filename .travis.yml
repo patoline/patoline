@@ -23,8 +23,8 @@ before_install:
   - make
   - mkdir make_bin
   - cp make make_bin
-  - export PATH="$HOME/make-4.1/make_bin:$PATH"
   - cd ..
+  - export PATH="`pwd`/make-4.1/make_bin:$PATH"
   - echo "Should now have GNU make 4.1."
   - export OPAMYES=1
   - export OPAMVERBOSE=1
