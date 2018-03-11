@@ -344,6 +344,10 @@ let rec up_n : int -> tree_zipper -> tree_zipper =
 let rec top : tree_zipper -> tree_zipper =
   fun z -> if snd z = [] then z else top (up z)
 
+(** Retrieve the complete tree from a zipper *)
+let tree_of_zipper zipper =
+  fst (top zipper)
+
 (** Move the zipper to point to the child of the pointed node with the higher
    index. If the pointed tree is not a node the zipper is left unchanged. *)
 let lastChild : tree_zipper -> tree_zipper = fun (t,cxt) ->
