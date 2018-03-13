@@ -316,49 +316,70 @@ let singleton : tree -> node = fun t ->
    + appending the resulting tree at position [p2] in [t2],
    + ...
    + appending the resulting tree at position [pn] in [tn]. *)
-type tree_zipper = tree * (int * node) list
+module TreeData = struct
+  type nonrec node = node
+  type nonrec tree = tree
+
+  let tree_of_node node = Node(node)
+
+  let node_of_tree = function
+    | Node(node) -> node
+    | _ -> invalid_arg "Document.TreeData.node_of_tree"
+
+  let get_child node i = IntMap.find i node.children
+
+  let set_child node i tree =
+    {node with children = IntMap.add i tree node.children}
+
+  let remove_child node i =
+    {node with children = IntMap.remove i node.children}
+
+  let has_child node i =
+    IntMap.mem i node.children
+
+  let min_index node =
+    fst (IntMap.min_binding node.children)
+
+  let max_index node =
+    fst (IntMap.max_binding node.children)
+
+end
+
+module DocZipper = Zipper.Make(TreeData)
+
+type tree_zipper = DocZipper.zipper
 
 (** Build a zipper from a tree. The resulting zipper points to the root
     of the tree. *)
-let (zipper_of_tree : tree -> tree_zipper) = fun tree ->
-  (tree, [])
+let zipper_of_tree = DocZipper.zipper_to_tree
 
 (** Build a zipper whose single node is {!val:empty}. *)
-let empty_zipper : tree_zipper =
-  zipper_of_tree (Node(empty))
+let empty_zipper = DocZipper.empty empty
 
 (** Function that takes a tree zipper [(t,cxt)] pointing to some node
    [t] and returns a zipper pointing to the father node of [t]. If this
    function is called on a zipper that points to the root of the tree, a
    new empty node is created to have [t] as its only child. *)
-let up : tree_zipper -> tree_zipper = function
-  | (t, []      ) -> (Node (singleton t), [])
-  | (t, (a,b)::s) -> (Node {b with children = IntMap.add a t b.children }, s)
+let up = DocZipper.up
+  [@@ocaml.deprecated "Use DocZipper.up instead"]
 
 (** Function that applies {!val:up} n times on a zipper, effectively moving the
    zipper to the n-th ancestor of the currently pointed node. *)
-let rec up_n : int -> tree_zipper -> tree_zipper =
-  fun n z -> if n <= 0 then z else up_n (n-1) (up z)
+let up_n = DocZipper.up_n
 
 (** Move the zipper to the root of the tree *)
-let rec top : tree_zipper -> tree_zipper =
-  fun z -> if snd z = [] then z else top (up z)
+let top = DocZipper.top
 
 (** Retrieve the complete tree from a zipper *)
-let tree_of_zipper zipper =
-  fst (top zipper)
+let tree_of_zipper = DocZipper.zipper_to_tree
 
 (** Move the zipper to point to the child of the pointed node with the higher
    index. If the pointed tree is not a node the zipper is left unchanged. *)
-let lastChild : tree_zipper -> tree_zipper = fun (t,cxt) ->
-  match t with
-  | Node x -> (try
-                 let (i,t') = IntMap.max_binding x.children in
-                 (t', (i,x)::cxt)
-               with Not_found -> (t,cxt))
-  | _      -> (t,cxt)
+let lastChild zip =
+  try DocZipper.down_last zip
+  with Invalid_argument(_) -> zip
 
-(** Take a zipper [(t,cxt)] and a tree [c] and adds [c] as the last child of the
+(** Take a zipper [zip] and a tree [c] and adds [c] as the last child of the
    pointed node. If the pointed subtree is not a node, a new node is
    created to hold [t] and [c]. The returned zipper points to [c]. *)
 let rec newChildAfter : tree_zipper -> tree -> tree_zipper =
