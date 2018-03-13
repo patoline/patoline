@@ -240,10 +240,10 @@ and paragraph =
   { par_contents   : content list
   ; par_env        : environment -> environment
   ; par_post_env   : environment -> environment -> environment
-  ; par_parameters : environment -> Box.box array array -> drawingBox array
+  ; par_parameters : environment -> Box.box array array -> Box.drawingBox array
                        -> parameters ->  Break.figurePosition IntMap.t
                        -> line MarkerMap.t -> line -> line -> parameters
-  ; par_badness    : environment -> Box.box array array -> drawingBox array
+  ; par_badness    : environment -> Box.box array array -> Box.drawingBox array
                        -> Break.figurePosition IntMap.t -> Box.line
                        -> Box.box array -> int -> Box.parameters -> float
                        -> Box.line -> Box.box array -> int
@@ -258,10 +258,10 @@ and paragraph =
 
 (** Second type of leaves in a document: figures. *)
 and figuredef =
-  { fig_contents   : environment -> drawingBox
+  { fig_contents   : environment -> Box.drawingBox
   ; fig_env        : environment -> environment
   ; fig_post_env   : environment -> environment -> environment
-  ; fig_parameters : environment -> Box.box array array -> drawingBox array
+  ; fig_parameters : environment -> Box.box array array -> Box.drawingBox array
                        -> parameters -> Break.figurePosition IntMap.t
                        -> line MarkerMap.t -> line -> line -> parameters
 }
@@ -424,7 +424,7 @@ module type Format =
     val postprocess_tree : tree -> tree
     val title : (tree * (IntMap.key * tree) list) ref -> ?label:'a
           -> ?extra_tags:(string * string) list -> content list -> bool
-    val parameters : environment -> box array array -> drawingBox array
+    val parameters : environment -> box array array -> Box.drawingBox array
           -> parameters -> Break.figurePosition IntMap.t -> line MarkerMap.t
           -> line -> parameters
   end
