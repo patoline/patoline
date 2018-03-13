@@ -3,32 +3,51 @@
 (** Module defining the types carried by the node or leaf of a tree. *)
 module type TreeData =
   sig
+    (** Type of a tree. *)
+    type tree
+
+    (** Type of internal nodes in the tree, which may contain child
+        tree indexed by integers. *)
     type node
-    type leaf
+
+    (** Building a tree from a node. *)
+    val tree_of_node : node -> tree
+
+    (** If the argument is a node, retrieves this node. This function
+        must raise an exception if the argument is a leaf. *)
+    val node_of_tree : tree -> node
+
+    (** Get the n-th child of a node. *)
+    val get_child : node -> int -> tree
+
+    (** Build a new node by replacing the n-th child. *)
+    val set_child : node -> int -> tree -> node
+
+    (** Remove a designated child from the list of children. *)
+    val remove_child : node -> int -> node
+
+    (** Test if a specific child exists. *)
+    val has_child : node -> int -> bool
+
+    (** Minimum index of existing children. *)
+    val min_index : node -> int
+
+    (** Maximum index of existing children. *)
+    val max_index : node -> int
   end
 
 (** Functor to build tree and zipper data structurs with data on the nodes
     and on the leaves. *)
 module Make(D : TreeData) :
   sig
-    type node = D.node
-    type leaf = D.leaf
-
     (** Type of a tree. *)
-    type tree =
-      (** A node carries data and a map of children. *)
-      | Node of (node * tree Extra.IntMap.t)
-      (** A leaf only carries data. *)
-      | Leaf of leaf
+    type tree = D.tree
 
-    (** Build a node with no children using the provided node data. *)
-    val node : node -> tree
-
-    (** Build a leaf using the provided node data. *)
-    val leaf : leaf -> tree
+    (** Type of internal nodes in the tree. *)
+    type node = D.node
 
     (** Type of a zipper. *)
-    type zipper = tree * (int * (node * tree Extra.IntMap.t)) list
+    type zipper = tree * (int * node) list
 
     (** Convert a tree into a zipper pointing at its root. *)
     val tree_to_zipper : tree -> zipper
@@ -41,9 +60,6 @@ module Make(D : TreeData) :
 
     (** Return [true] if the zipper points at the root of the tree. *)
     val is_root : zipper -> bool
-
-    (** Return [true] if the zipper points to a node. *)
-    val is_node : zipper -> bool
 
     (** Go up one level in the zipper. Raises [Invalid_argument] if the
         zipper points at the root of the tree. *)
@@ -64,10 +80,6 @@ module Make(D : TreeData) :
     (** Move down branches along the given path. Raises [Invalid_argument] if
         the path is not valid. *)
     val down_path : zipper -> int list -> zipper
-
-    (** Return the list of valid children indices for the pointed tree.
-        Raises [Invalid_argument] if the pointed tree is not a node. *)
-    val indices : zipper -> int list
 
     (** Return the minimum child index for the pointed tree. Raises
         [Invalid_argument] if the pointed tree is not a node. *)
