@@ -487,7 +487,7 @@ is a first way to add graphics to your text. For now, let us assume
 that you have produced a png image called ``\verb{pato.png}''.
 To include it, use the command \verb{\\includeGraphics("pato.png")}:
 \begin{center}
-\includeGraphics("pato.png")
+\id(includeGraphics ~scale:0.2 "pato.png")
 \end{center}
 
 Since most raster graphics do not specify an ``optimal'' size of the
@@ -496,7 +496,7 @@ not enough, and we need to rescale our pictures. For this purpose, you
 can use the following command:
 
 ###
-\id(includeGraphics ~scale=0.2 "pato.png")
+\id(includeGraphics ~scale:0.2 "pato.png")
 ###
 
 Even if this may look somewhat cryptic for now, you can simply set

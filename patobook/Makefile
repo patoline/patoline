@@ -1,7 +1,11 @@
 all: patobook.pdf
 
-patobook.pdf: patobook.txp
-	patoline $<
+patobook.pdf: $(wildcard *.txp)
+	patoline patobook.txp
 
 clean:
-	rm -f *.html *.pdf *~ *.o *.cm[ioxa] *.cmxs *.cmxa *.svg *.tml *.ttml *.tmx *.otf *.tgx
+	patoline --clean
+	rm -f *~
+
+distclean: clean
+	rm -f patobook.pdf
