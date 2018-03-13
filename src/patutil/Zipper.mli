@@ -99,12 +99,13 @@ module Make(D : TreeData) :
 
     (** Add a new child under the pointed node, at the given index. If the
         pointed tree is not a node, or if there is already a child at the
-        given index, the exception [Invalid_argument] is raised. *)
+        given index, the exception [Invalid_argument] is raised. The
+        returned zipper points to the new child. *)
     val new_child : zipper -> tree -> int -> zipper
 
     (** Add a new child with the highest indext under the current node. The
         exception [Invalid_argument] is raised if the pointed tree is not
-        a node. *)
+        a node. The returned zipper points to the new child. *)
     val new_last_child : zipper -> tree -> zipper
 
     (** Same as [new_last_child] but the inserted child will have the lowest
