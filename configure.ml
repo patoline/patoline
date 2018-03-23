@@ -662,7 +662,7 @@ let _=
                                          "cesure"; Package
                                          "db"]));
     Printf.fprintf meta "archive(native)=\"patoconfig.cmxa Typography.cmxa, DefaultFormat.cmxa\"\n";
-    Printf.fprintf meta "archive(byte)=\"patoconfig.cma Typography.cma, DefaultFormat.cmx\"\n";
+    Printf.fprintf meta "archive(byte)=\"patoconfig.cma Typography.cma, DefaultFormat.cma\"\n";
 
   let check_name file=
     let valid=ref (String.length file>0) in
