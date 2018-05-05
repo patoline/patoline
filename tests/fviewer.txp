@@ -3,7 +3,12 @@
   open FTypes
   open Fonts
 
-  let file = Sys.getenv "FONT_PATH"
+  let file =
+    try Sys.getenv "FONT_PATH" with Not_found ->
+      Printf.eprintf "This document requires the FONT_PATH environment\n";
+      Printf.eprintf "variable to point to a font file.\n";
+      exit 1
+
   let name =
     let n = Filename.basename file in
     try Filename.chop_extension n with | Invalid_argument _ -> n
@@ -33,6 +38,7 @@ Glyphs of the font \id([ tT name ])
   let _ =
     for i = 0 to nb_glyphs - 1 do
       let l = nthglyph i in
-      newPar D.structure Complete.normal Patoline_Format.parameters l
+      D.structure :=
+        newPar !D.structure Complete.normal Patoline_Format.parameters l
     done
 )
