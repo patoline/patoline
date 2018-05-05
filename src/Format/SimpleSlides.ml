@@ -76,6 +76,7 @@ module Format(D:DocumentStructure) =
       ; normalLeftMargin = (slidew -. measure) /. 2.0
       ; normalLead       = Default.defaultEnv.normalLead *. 1.2
       ; lead             = Default.defaultEnv.normalLead *. 1.2
+      ; normalPageFormat = (slidew, slideh)
       ; hyphenate        = (fun _ -> [||])
       ; par_indent       = []
       ; new_line         = (fun env _ _ _ _ _ height -> height -. env.lead)
