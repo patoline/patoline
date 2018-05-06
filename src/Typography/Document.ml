@@ -474,6 +474,29 @@ let string_of_contents l =
   fill_buf l;
   Buffer.contents buf
 
+let raw : (environment -> RawContent.raw list) -> content = fun f ->
+  let contents env =
+    let dr env =
+      let raw = f env in
+      let (x0,y0,x1,y1) = RawContent.bounding_box raw in
+      let w = x1 -. x0 in
+      let open Box in
+      { drawing_min_width     = w
+      ; drawing_nominal_width = w
+      ; drawing_max_width     = w
+      ; drawing_width_fixed   = true
+      ; drawing_adjust_before = false
+      ; drawing_y0            = y0
+      ; drawing_y1            = y1
+      ; drawing_badness       = (fun _ -> 0.0)
+      ; drawing_break_badness = infinity
+      ; drawing_states        = []
+      ; drawing_contents      = (fun _ -> raw) }
+    in
+    [bB (fun env -> [Drawing (dr env)])]
+  in
+  C contents
+
 let _names env=
   env.names
 let _user_positions env=
