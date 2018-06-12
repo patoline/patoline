@@ -23,6 +23,8 @@ module Format(D:DocumentStructure) =
     let env_stack = Default.env_stack
     let parameters = Default.parameters
 
+    let verbs_default = Default.verbs_default
+
     (* Some default environments. *)
     module Env_env         = Default.Env_env
     module Env_center      = Default.Env_center
@@ -382,7 +384,7 @@ module Format(D:DocumentStructure) =
           let draw_slide_number env i=
             match !slide_numbering with
             | None    -> []
-            | Some sn -> (
+            | Some sn ->
                  let i=try List.hd (snd (StrMap.find "slide" env.counters)) with _->0 in
                  let i_fin=try List.hd (snd (StrMap.find "slide" env_final.counters)) with _->0 in
                  let num =
@@ -394,7 +396,10 @@ module Format(D:DocumentStructure) =
                  let boxes=boxify_scoped env num in
                  let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in
                  let x=draw_boxes env boxes in
+                 (*
                  List.map (fun y->RawContent.translate (slidew-.w-.2.) 2. (in_order max_int y)) x)
+                 *)
+                 x
           in
 
           let draw_slide slide_number (path,tree,paragraphs,figures,figure_trees,env,opts,slide_num)=
