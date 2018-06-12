@@ -206,7 +206,7 @@ let param_OCaml =
                 "and";"type";"|";"=";"match";"with";
                 "rec";"let";"begin";"end";"while";"for";"do";"done";
                 "struct"; "sig"; "module"; "functor"; "if"; "then";
-          "else"; "try"; "parser"; "in" ]
+                "else"; "try"; "parser"; "in"; "of" ]
   ; separators = ["*";"(";")";",";";"]
   ; symbols = [("->", symbol "→");("→", symbol "→");("->>", symbol "↠");("↠", symbol "↠")]
   }
