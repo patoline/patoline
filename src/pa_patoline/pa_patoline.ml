@@ -2,7 +2,7 @@ open Earley
 open Extra
 open Pa_ocaml_prelude
 
-let _ = Sys.catch_break true
+let _ = Printexc.record_backtrace true; Sys.catch_break true
 
 (*
  * The patoline language is implemented as a DeCaP OCaml syntax extension. It
@@ -850,13 +850,17 @@ let add_grammar g =
   let (gpath, gpaths) = patoconfig.grammars_dir in
   let path = "." :: ".patobuild" :: gpath :: gpaths in
   if !no_default_grammar && g = "DefaultGrammar" then () else
-    let g = Filename.find_file (g ^ ".tgy") path in
-    (*Printf.eprintf "Reading grammar %s\n%!" g;*)
-    let ch = open_in_bin g in
-    let st = input_value ch in
-    merge_states state st;
-    close_in ch;
-  (*Printf.eprintf "Done with grammar %s\n%!" g*)
+    begin
+      let g =
+        try Filename.find_file (g ^ ".tgy") path with Not_found ->
+          Printf.eprintf "Cannot find [%s.tgi] in the folders:\n%!" g;
+          List.iter (Printf.eprintf " - [%s]\n%!")path; exit 1
+      in
+      let ch = open_in_bin g in
+      let st = input_value ch in
+      merge_states state st;
+      close_in ch
+    end
 
 let parser all_left_delimiter =
   | math_left_delimiter
@@ -1998,8 +2002,7 @@ let patoline_config : unit grammar =
   ) no_blank
 
 let parser header = _:patoline_config* ->
-  List.iter add_grammar !patoline_grammar;
-  build_grammar ()
+  List.iter add_grammar !patoline_grammar; build_grammar ()
 
 let parser title =
   | RE("==========\\(=*\\)")
@@ -2068,7 +2071,7 @@ let parser init =
     cache := "cache_" ^ basename; basename)
 
 let parser full_text =
-  | h:header basename:{basename:init -> basename ()} t:{tx1:text t:title}? tx2:text EOF ->
+  | _:header basename:{basename:init -> basename ()} t:{tx1:text t:title}? tx2:text EOF ->
      begin
        let t = match t with
          | None   -> []
@@ -2172,7 +2175,6 @@ let write_main_file driver form build_dir dir name =
 (* Creating and running the extension *)
 let _ =
   try
-    let _ = Printexc.record_backtrace true in
     let module ParserExt = Pa_parser.Ext(Pa_ocaml_prelude.Initial) in
     let module PaExt = Ext(ParserExt) in
     let module PatolineDefault = Pa_ocaml.Make(PaExt) in
