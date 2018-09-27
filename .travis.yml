@@ -32,7 +32,7 @@ before_install:
   - opam switch ${OCAML_VERSION}
   - eval `opam config env`
   - opam install ocamlbuild ocamlfind
-  - opam install earley earley-ocaml
+  - opam install earley.1.0.2 earley-ocaml.1.0.2
   - opam install camlzip imagelib sqlite3
   - make configure
   - ./configure

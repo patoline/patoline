@@ -9,8 +9,8 @@ at https://patoline.github.io.
 Dependencies include:
  - OCaml (version 4.03.0 or higher)
  - OCamlFind
- - Earley (available on opam)
- - Earley-OCaml (available on opam)
+ - Earley version 1.0.2 (available on opam)
+ - Earley-OCaml version 1.0.2 (available on opam)
  - Camlzip (available on opam)
  - Imagelib (available on opam)
  - other libraries (listed in "configure" step)
@@ -25,7 +25,7 @@ compiler and the required libraries as follows.
 opam switch 4.05.0
 eval `opam config env`
 opam install ocamlfind ocamlbuild
-opam install earley earley-ocaml
+opam install earley.1.0.2 earley-ocaml.1.0.2
 opam install camlzip imagelib sqlite3
 ```
 
