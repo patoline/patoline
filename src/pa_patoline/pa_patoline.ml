@@ -853,8 +853,11 @@ let add_grammar g =
     begin
       let g =
         try Filename.find_file (g ^ ".tgy") path with Not_found ->
-          Printf.eprintf "Cannot find [%s.tgi] in the folders:\n%!" g;
-          List.iter (Printf.eprintf " - [%s]\n%!")path; exit 1
+          (*
+          Printf.eprintf "Cannot find [%s.tgy] in the folders:\n%!" g;
+          List.iter (Printf.eprintf " - [%s]\n%!")path;
+          *)
+          raise Not_found
       in
       let ch = open_in_bin g in
       let st = input_value ch in
