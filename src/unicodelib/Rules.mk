@@ -52,7 +52,7 @@ $(PA_CONV): $(d)/pa_convert.ml
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT_NOPP) $(OFLAGS) $(UNICODELIB_INCLUDES) -pp pa_ocaml \
 		-package earley_ocaml -o $@ unix.cmxa str.cmxa \
-		earley.cmxa earleyStr.cmxa ocamlcommon.cmxa earley_ocaml.cmxa $<
+		earley_core.cmxa earley_str.cmxa ocamlcommon.cmxa earley_ocaml.cmxa $<
 
 $(ENCODING_ML): %.ml: $(PA_CONV)
 	$(ECHO) "[GEN] $@"

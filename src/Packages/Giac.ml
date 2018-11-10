@@ -1,3 +1,5 @@
+open Earley_core
+
 type giac =
   | Symbol of string
   | Number of string

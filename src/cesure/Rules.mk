@@ -18,7 +18,8 @@ all: $(d)/cesure $(d)/cesure.cmxa $(d)/cesure.cma
 
 $(d)/cesure.cma: $(d)/hyphen.cmo $(UNICODE_DIR)/unicodelib.cma
 	$(ECHO) "[LNK] $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(CESURE_INCLUDES) -a -o $@ earley.cma earleyStr.cma $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(CESURE_INCLUDES) -a -o $@ \
+		earley_core.cma earley_str.cma $<
 
 $(d)/cesure.cmxa: $(d)/hyphen.cmx $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[LNK] $@"
@@ -26,7 +27,8 @@ $(d)/cesure.cmxa: $(d)/hyphen.cmx $(UNICODE_DIR)/unicodelib.cmxa
 
 $(d)/cesure: $(UNICODE_DIR)/unicodelib.cmxa $(d)/hyphen.cmx $(d)/cesure.cmx
 	$(ECHO) "[NAT] $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(CESURE_INCLUDES) -o $@ unix.cmxa str.cmxa sqlite3.cmxa earley.cmxa earleyStr.cmxa $^
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(CESURE_INCLUDES) -o $@ \
+		unix.cmxa str.cmxa sqlite3.cmxa earley_core.cmxa earley_str.cmxa $^
 
 CLEAN += $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.a $(d)/*.cma $(d)/*.cmxa
 DISTCLEAN += $(d)/*.depends $(d)/cesure

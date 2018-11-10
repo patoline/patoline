@@ -185,6 +185,7 @@ let file_deps : config -> string -> string list =
         end;
       line
     in
+    let open Earley_core in
     let parse_dep =
       let file = parser f:''[^ \n]+'' in
       let dep = parser _:file " :" ds:{' ' d:file}* in

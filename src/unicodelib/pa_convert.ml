@@ -1,4 +1,6 @@
+open Earley_core
 open Earley
+open Earley_ocaml
 open Pa_ocaml_prelude
 
 #define LOCATE locate

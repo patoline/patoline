@@ -1146,12 +1146,12 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_nominal_width=i.image_width;
     drawing_width_fixed = true;
     drawing_adjust_before = false;
-    drawing_y0=offset;
-    drawing_y1=i.image_height+.offset;
+    drawing_y0=(-.offset);
+    drawing_y1=(-.offset) -. i.image_height;
     drawing_break_badness=0.;
     drawing_states=[];
     drawing_badness=(fun _->0.);
-    drawing_contents=(fun _->[RawContent.translate 0. offset (Image i)])
+    drawing_contents=(fun _->[RawContent.translate 0. (-.offset) (Image i)])
   }
   in
   let scale =

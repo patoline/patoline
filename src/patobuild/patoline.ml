@@ -22,7 +22,7 @@ open PatConfig
 (** Parse a string containing a command line options and returns the list.
     This function is useful to be able to forward command line options. *)
 let parse_args =
-  let open Earley in
+  let open Earley_core.Earley in
   let arg = parser
     | "'" o:RE("[^']+") "'" -> o
     | '"' o:RE("[^']+") '"' -> o
@@ -30,7 +30,7 @@ let parse_args =
   in
   let args = parser arg+ in
   let parse_args str =
-    try parse_string args (EarleyStr.blank_regexp "[ \t]+") str
+    try parse_string args (Earley_str.blank_regexp "[ \t]+") str
     with _ ->
       Printf.eprintf "Invalid command-line option list %S." str;
       exit 1
@@ -39,7 +39,7 @@ let parse_args =
 (** Parse a string containing a list of ocamlfind packages separated by a
     comma. The list of the package names is returned. *)
 let parse_packages =
-  let open Earley in
+  let open Earley_core.Earley in
   let pack_re = "[a-zA-Z][a-zA-Z0-9_.]*" in
   let packs = parser p:RE(pack_re) ps:{',' RE(pack_re)}* -> p::ps in
   let parse_packages str =

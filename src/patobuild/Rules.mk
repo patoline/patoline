@@ -29,7 +29,7 @@ all: $(d)/patoline
 $(d)/patoline: $(PATOBUILD_CMX) $(UTIL_DIR)/patutil.cmxa
 	$(ECHO) "[OPT] $@"
 	$(Q)$(OCAMLOPT) $(PATOBUILD_INCLUDES) -package earley,earley.str,threads \
-		unix.cmxa patoconfig.cmxa str.cmxa earley.cmxa earleyStr.cmxa \
+		unix.cmxa patoconfig.cmxa str.cmxa earley_core.cmxa earley_str.cmxa \
 		threads.cmxa patutil.cmxa -o $@ $^
 
 CLEAN     += $(d)/*.o $(d)/*.cm[iox]

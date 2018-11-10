@@ -20,14 +20,14 @@ endif
 endif
 
 $(d)/%.cmx $(d)/%.ml.depends: private OCPP=pa_ocaml
-$(d)/%.cmx: private OFLAGS+=-package earley,earley_ocaml
+$(d)/%.cmx: private OFLAGS+=-package earley.core,earley.str,earley.ocaml
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(d)/Subsup.cmx $(d)/prefixTree.cmx $(UTIL_DIR)/patutil.cmxa $(CONFIG_DIR)/patoconfig.cmxa $(UNICODE_DIR)/unicodelib.cmxa
 	$(ECHO) "[NAT] $@"
-	$(Q)$(OCAMLOPT) -package patutil,imagelib,dynlink,str,earley,earley.str,earley_ocaml,compiler-libs \
-		-I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -o $@ \
-		bigarray.cmxa unicodelib.cmxa patutil.cmxa unix.cmxa \
-		str.cmxa ocamlcommon.cmxa earley.cmxa earleyStr.cmxa earley_ocaml.cmxa \
+	$(Q)$(OCAMLOPT) -I $(PATOBUILD_DIR) -I $(PA_PATOLINE_DIR) -o $@ \
+		-package patutil,imagelib,dynlink,str,earley.core,earley.str,earley.ocaml,compiler-libs \
+		bigarray.cmxa unicodelib.cmxa patutil.cmxa unix.cmxa str.cmxa \
+		ocamlcommon.cmxa earley_core.cmxa earley_str.cmxa earley_ocaml.cmxa \
 		Subsup.cmx prefixTree.cmx $(CONFIG_DIR)/patoconfig.cmxa $<
 
 CLEAN += $(d)/*.o $(d)/*.cm[iox]

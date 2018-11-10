@@ -1,3 +1,5 @@
+open Earley_core
+open Earley_ocaml
 open Pa_ocaml_prelude
 open UCharInfo
 
@@ -232,7 +234,7 @@ let file_contents =
   parser
   | l:{single | range }* EOF
 
-let blank = EarleyStr.blank_regexp "[ \t]*"
+let blank = Earley_str.blank_regexp "[ \t]*"
 let parse = Earley.parse_file file_contents blank
 
 let flatten_data ld =

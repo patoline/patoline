@@ -1,5 +1,8 @@
-open Earley
+open Earley_core
+open Earley_ocaml
 open Extra
+
+open Earley
 open Pa_ocaml_prelude
 
 let _ = Printexc.record_backtrace true; Sys.catch_break true
@@ -94,7 +97,7 @@ let extra_spec =
  * syntax extensions using DeCaP. The argument of the functor is included
  * straight away, so that extensions can be composed.
  *)
-module Ext = functor(In:Extension) -> struct
+module Ext(In : Extension) = struct
 include In
 
 let spec = extra_spec @ spec
@@ -411,7 +414,7 @@ let parser symbol =
   | s:''[^ \t\r\n{}]+'' -> s
 
 let symbols =
-  let space_blank = EarleyStr.blank_regexp ''[ ]*'' in
+  let space_blank = Earley_str.blank_regexp ''[ ]*'' in
   change_layout (
     parser
     | "{" ss:symbol* "}" -> ss
@@ -2005,7 +2008,7 @@ let patoline_config : unit grammar =
   ) no_blank
 
 let parser header = _:patoline_config* ->
-  List.iter add_grammar !patoline_grammar; build_grammar ()
+  fun () -> List.iter add_grammar !patoline_grammar; build_grammar ()
 
 let parser title =
   | RE("==========\\(=*\\)")
@@ -2074,7 +2077,8 @@ let parser init =
     cache := "cache_" ^ basename; basename)
 
 let parser full_text =
-  | _:header basename:{basename:init -> basename ()} t:{tx1:text t:title}? tx2:text EOF ->
+  | f:header ->> let _ = f () in
+    basename:{basename:init -> basename ()} t:{tx1:text t:title}? tx2:text EOF ->
      begin
        let t = match t with
          | None   -> []
@@ -2111,9 +2115,11 @@ let extra_expressions = patoline_quotations :: extra_expressions
 (* Adding the new entry points *)
 
 let entry_points =
+  let parse_ml  = parser f:header ->> let _ = f () in structure in
+  let parse_mli = parser f:header ->> let _ = f () in signature in
   [ (".txp", Implementation (full_text, blank2))
-  ; (".ml", Implementation ((parser _:header structure), blank2))
-  ; (".mli", Interface     ((parser _:header signature), blank2)) ]
+  ; (".ml" , Implementation (parse_ml , blank2))
+  ; (".mli", Interface      (parse_mli, blank2)) ]
 
 end (* of the functor *)
 

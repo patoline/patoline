@@ -1,3 +1,5 @@
+open Earley_core
+
 let parser pattern = ''[^- \t\n\r{}]+''
 let parser hyphenation = x:pattern xs:{"-" pattern}* -> x::xs
 let hyphenation = Earley.change_layout hyphenation Earley.no_blank
