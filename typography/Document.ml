@@ -33,6 +33,10 @@ We also provide a tree zipper interface to ease construction of a
 {!type:tree} when reading linearly an input file.
 *)
 
+open Patoraw
+open Unicodelib
+open Patutil
+open Patfonts
 open Extra
 open Fonts
 open FTypes
@@ -213,27 +217,27 @@ let displayname n=
 
 (** Main type used to hold document contents. *)
 type content =
+  | B of (environment -> box list) * box list option ref
   (** List of boxes depending on an environment. The second parameters is a
      cache used when compilation is iterated to resolve names. *)
-  | B of (environment -> box list) * box list option ref
 
+  | C of (environment -> content list)
   (** A contents list depending on the environment. This may be used to
      typeset the state of a counter for example. *)
-  | C of (environment -> content list)
 
-  (** Simple text. *)
   | T of string * (box list IntMap.t option) ref
+  (** Simple text. *)
 
+  | Env of (environment -> environment)
   (** Environment modification function. It can be used to register a name
      or modify the state of a counter for instance. *)
-  | Env of (environment -> environment)
 
+  | Scoped of (environment -> environment) * (content list)
   (** A scoped environment transformation applied on a (small) list of
      contents. *)
-  | Scoped of (environment -> environment) * (content list)
 
-  (** A document tree. *)
   | N of tree
+  (** A document tree. *)
 
 (** First type of leaves in a document: paragraphs. *)
 and paragraph =
@@ -630,7 +634,7 @@ let go_up str=
   str:=(up !str)
 
 let n_go_up n str =
-  for i = 1 to n do go_up str done
+  for _ = 1 to n do go_up str done
 
 (** {3 Environment transformations} *)
 

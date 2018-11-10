@@ -18,6 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+open Patutil
+open Patfonts
 open Extra
 
 type 'a spec=

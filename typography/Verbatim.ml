@@ -5,6 +5,9 @@ content, and a preliminary support for syntax highlighting for a few
 predefined languages.
 *)
 
+open Patoraw
+open Unicodelib
+open Patfonts
 open Document
 open FTypes
 open Box

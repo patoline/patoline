@@ -17,6 +17,11 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
  *)
+
+open Unicodelib
+open Patutil
+open Patoraw
+open Patfonts
 open Document
 open Complete
 open Break
@@ -24,7 +29,7 @@ open FTypes
 open Extra
 open Fonts
 open Box
-open PatConfig
+open Patconfig.PatConfig
 
 let findFont = ConfigFindFont.findFont
 

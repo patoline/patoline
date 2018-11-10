@@ -1,5 +1,7 @@
 (** Line and page breaking algorithm *)
 
+open Patutil
+
 type optim_error =
   | Normal
   | No_solution    of string

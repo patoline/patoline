@@ -18,6 +18,10 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+open Patoraw
+open Unicodelib
+open Patutil
+open Patfonts
 open Extra
 open Box
 open FTypes
@@ -79,10 +83,10 @@ and nucleus   = Document.environment -> Mathematical.style ->  box list
 and nucleuses = nucleus list
 
 and binary_type =
-  (** Invisible product symbol. *)
   | Invisible
-  (** Regular binary symbol, the booleans remove spacing if true. *)
+  (** Invisible product symbol. *)
   | Normal of bool * nucleus node * bool
+  (** Regular binary symbol, the booleans remove spacing if true. *)
 
 and binary =
   { bin_priority : int

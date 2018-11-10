@@ -126,5 +126,5 @@ let pat_to_name pat =
 
 
 let findFont pat =
-  let open PatConfig in
+  let open Patconfig.PatConfig in
   findFont (pat_to_name pat)

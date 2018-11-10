@@ -21,6 +21,9 @@
 (* This file only contains printing functions and stuff that are only
    useful for debuging. *)
 
+open Patutil
+open Patoraw
+open Patfonts
 open Extra
 open RawContent
 open FTypes

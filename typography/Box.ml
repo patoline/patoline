@@ -18,8 +18,12 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+open Patoraw
+open Patutil
 open RawContent
 open Extra
+open Patfonts
+open Unicodelib
 open FTypes
 open Bezier
 

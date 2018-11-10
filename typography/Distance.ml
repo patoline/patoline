@@ -18,6 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+open Patoraw
+
 let debug = ref false
 let debug_union = ref false
 let debug_mediatrice = ref false

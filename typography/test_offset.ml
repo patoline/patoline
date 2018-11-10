@@ -17,6 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
+open Patoraw
 open Offset
 let to_point x=int_of_float (x*.50.)
 let draw fx fy=
@@ -42,7 +44,7 @@ let _=
   Random.init 200;
   let x=ref
     (if Array.length Sys.argv>1 then (
-       for i=1 to int_of_string Sys.argv.(1) do
+       for _ = 1 to int_of_string Sys.argv.(1) do
          let _=example () in ()
        done;
        int_of_string Sys.argv.(1))

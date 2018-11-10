@@ -18,6 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+open Patutil
+open Patfonts
 open Extra
 open Box
 open FTypes
@@ -447,7 +449,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                                                        nextParams.left_margin, nextParams.measure, { nextNode with height=0. }) !colision_cache
                                         with
                                             Not_found -> (
-                                              let dist=collide figures paragraphs node0 parameters comp0 nextNode nextParams comp1 in
+                                              let dist=collide ~figures ~paragraphs node0 parameters comp0 nextNode nextParams comp1 in
                                               colision_cache := ColMap.add (parameters.left_margin, parameters.measure,
                                                                             {node0 with height=0.;layout=doc_frame,[]},
                                                                             nextParams.left_margin, nextParams.measure,

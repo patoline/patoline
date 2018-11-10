@@ -1,0 +1,10 @@
+(library
+  (name typography)
+  (public_name patoline.typography)
+  (modules :standard)
+  (libraries patoraw patutil patconfig patfonts))
+
+(rule
+  (targets ConfigFindFont.ml)
+  (action (copy ./ConfigFindFont/ConfigFindFontLeg.ml ConfigFindFont.ml))
+  (deps ./ConfigFindFont/ConfigFindFontLeg.ml))
