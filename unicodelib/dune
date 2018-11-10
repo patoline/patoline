@@ -1,6 +1,6 @@
 (library
-  (name unicode)
-  (public_name patoline.unicode)
+  (name unicodelib)
+  (public_name patoline.unicodelib)
   (modules :standard \ pa_convert pa_unicode_data)
   (libraries permap))
 
@@ -14,7 +14,7 @@
   (name pa_unicode_data)
   (modules pa_unicode_data)
   (preprocess (action (run pa_ocaml %{input-file})))
-  (libraries earley.core earley.str earley.ocaml unicode))
+  (libraries earley.core earley.str earley.ocaml unicodelib))
 
 (rule
   (targets unicode.data)
