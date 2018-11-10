@@ -18,6 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+open Patoraw
 open Driver
 
 let driver_options = []

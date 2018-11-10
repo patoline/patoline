@@ -17,6 +17,10 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+open Patoraw
+open Patfonts
+open Patutil
+open Unicodelib
 open Fonts
 open Printf
 open Extra
@@ -869,7 +873,7 @@ let output ?(structure:structure=empty_structure) pages fname =
 
   let fn k pdffont =
     let pdftype =
-      if not PatConfig.(patoconfig.pdf_type3_only) && is_cff pdffont.font
+      if not Patconfig.PatConfig.(patoconfig.pdf_type3_only) && is_cff pdffont.font
       then pdftype1c
       else pdftype3 in
     IntMap.iter (fun k _-> pdftype pdffont k) pdffont.pdfObjects

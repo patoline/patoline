@@ -1,0 +1,5 @@
+(library
+  (name driver_none)
+  (public_name patoline.driver.none)
+  (modules :standard)
+  (libraries patoraw))
