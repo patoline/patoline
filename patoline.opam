@@ -1,0 +1,26 @@
+synopsis: "Patoline typesetting software and libraries."
+description:
+"""
+"""
+
+opam-version: "2.0"
+maintainer: "Rodolphe Lepigre <rodolphe.lepigre@inria.fr>"
+bug-reports: "https://github.com/patoline/patoline/issues"
+homepage: "http://patoline.org"
+dev-repo: "git+https://github.com/patoline/patoline.git"
+authors: [
+  "Pierre-Étienne Meunier"
+  "Christophe Raffalli <christophe@raffalli.eu>"
+  "Rodolphe Lepigre <rodolphe.lepigre@inria.fr>"
+  "Tom Hirschowitz" ]
+license: "GPLv2"
+doc: ""
+
+depends: [
+  "ocaml"   { >= "4.03.0" & <= "4.07.1" }
+  "sqlite3"
+  "dune"    { >= "1.2.0" }
+]
+
+build: [ [ "dune" "build" "-p" name "-j" jobs ] ]
+run-test: [ [ "dune" "runtest" "-p" name "-j" jobs ] ]

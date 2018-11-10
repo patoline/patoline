@@ -1,3 +1,4 @@
+open Unicode
 open Earley_core
 open Earley_ocaml
 open Pa_ocaml_prelude
@@ -263,10 +264,10 @@ let _ =
   let data = flatten_data data in
 
   (* Adding the data to the permanent map *)
-  PermanentMap.new_map outfile; (* Fails if file exists *)
-  let m = PermanentMap.open_map outfile in
-  PermanentMap.add_many m data;
+  Permap.new_map outfile; (* Fails if file exists *)
+  let m = Permap.open_map outfile in
+  Permap.add_many m data;
 
   (* Compacting *)
-  PermanentMap.compact m;
-  PermanentMap.close_map m
+  Permap.compact m;
+  Permap.close_map m

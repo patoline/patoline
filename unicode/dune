@@ -1,0 +1,49 @@
+(library
+  (name unicode)
+  (public_name patoline.unicode)
+  (modules :standard \ pa_convert pa_unicode_data)
+  (libraries permap))
+
+(executable
+  (name pa_convert)
+  (modules pa_convert)
+  (preprocess (action (run pa_ocaml %{input-file})))
+  (libraries earley.core earley.str earley.ocaml))
+
+(executable
+  (name pa_unicode_data)
+  (modules pa_unicode_data)
+  (preprocess (action (run pa_ocaml %{input-file})))
+  (libraries earley.core earley.str earley.ocaml unicode))
+
+(rule
+  (targets unicode.data)
+  (action (run ./pa_unicode_data.exe ./data/UnicodeData.txt ./unicode.data))
+  (deps
+    ./pa_unicode_data.exe
+    ./data/UnicodeData.txt))
+
+(install
+ (section share)
+ (files (unicode.data as unicode/unicode.data)))
+
+(rule
+  (targets roman.ml)
+  (action (with-stdout-to roman.ml
+    (run ./pa_convert.exe --ascii ./encoding_data/ROMAN.TXT)))
+  (deps
+    ./pa_convert.exe
+    ./encoding_data/ROMAN.TXT))
+
+(rule
+  (targets latin1.ml)
+  (action (with-stdout-to latin1.ml
+    (run ./pa_convert.exe --ascii ./encoding_data/LATIN1.TXT)))
+  (deps
+    ./pa_convert.exe
+    ./encoding_data/LATIN1.TXT))
+
+(rule
+  (targets config.ml)
+  (action (with-stdout-to config.ml
+    (echo "let unicode_data_file = \"FIXME/unicode.data\""))))

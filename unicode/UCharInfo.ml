@@ -97,25 +97,19 @@ type char_description =
   }
 
 let datafile_name () =
-  Filename.concat (try
-      Sys.getenv "UNICODELIB_PATH"
-    with Not_found -> UnicodeLibConfig.unicodelib_path)
-    "UnicodeData.data"
+  try Sys.getenv "UNICODE_DATA_FILE"
+  with Not_found -> Config.unicode_data_file
 
 let get_char_descr_from_file : UChar.t -> char_description = fun u ->
-  let m = PermanentMap.open_map (datafile_name ()) in
-  let d = PermanentMap.get m u in
-  PermanentMap.close_map m; d
+  let m = Permap.open_map (datafile_name ()) in
+  let d = Permap.get m u in
+  Permap.close_map m; d
 
 let cache : (UChar.t, char_description) Hashtbl.t = Hashtbl.create 2048
 let get_char_descr : UChar.t -> char_description = fun u ->
-  try
-    Hashtbl.find cache u
-  with Not_found ->
-    begin
-      let d = get_char_descr_from_file u in
-      Hashtbl.add cache u d; d
-    end
+  try Hashtbl.find cache u with Not_found ->
+    let d = get_char_descr_from_file u in
+    Hashtbl.add cache u d; d
 
 let general_category : UChar.t -> general_category = fun u ->
   let d = get_char_descr u in
