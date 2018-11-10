@@ -17,7 +17,7 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Extra
+open Patutil.Extra
 open FUtil
 
 let write_cmap_table cmap format lang file=
@@ -55,7 +55,8 @@ let write_cmap_table cmap format lang file=
             idDelta.(i)<-a;
             sh_length:= !sh_length+8
            ));
-          for j=int_of_char (Bytes.get last i)+1 to (k land 0xff)-1 do
+          for j = int_of_char (Bytes.get last i)+1 to (k land 0xff)-1 do
+            ignore j; (* FIXME is it normal that we dont use j ? *)
             Buffer.add_char arr.(i) (char_of_int 0);
             Buffer.add_char arr.(i) (char_of_int 0);
             ga_length:= !ga_length+2
@@ -80,7 +81,7 @@ let write_cmap_table cmap format lang file=
         if !sh_length<8*256 then(
           sh_length:= !sh_length+8;
           let buf=Buffer.create !sh_length in
-          for i=0 to 7 do Buffer.add_char buf (char_of_int 0) done;
+          for _ = 0 to 7 do Buffer.add_char buf (char_of_int 0) done;
           buf
         ) else
           Buffer.create !sh_length

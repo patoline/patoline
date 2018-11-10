@@ -10,7 +10,8 @@
     informations such as their outlines. *)
 
 (** Type font *)
-open Extra
+open Unicodelib
+open Patutil.Extra
 open FTypes
 
 type font

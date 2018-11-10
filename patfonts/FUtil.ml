@@ -18,7 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Extra
+open Patutil.Extra
 
 let readInt f n0 =
   let rec aux n x =
@@ -43,8 +43,6 @@ let strInt2 s i x=
   Bytes.set s i (char_of_int ((x lsr 8) land 0xff));
   Bytes.set s (i+1) (char_of_int (x land 0xff))
 
-#ifdef INT32
-
 let strInt4 s i x=
   let a=Int32.shift_right x 8 in
   let b=Int32.shift_right a 8 in
@@ -62,19 +60,6 @@ let strInt4_int s i x=
   Bytes.set s (i+1) (char_of_int (b land 0xff));
   Bytes.set s (i+2) (char_of_int (a land 0xff));
   Bytes.set s (i+3) (char_of_int (x land 0xff))
-#else
-
-let strInt4 s i x=
-  let a=x lsr 8 in
-  let b=a lsr 8 in
-  let c=b lsr 8 in
-  Bytes.set s (i)   (char_of_int (c land 0xff));
-  Bytes.set s (i+1) (char_of_int (b land 0xff));
-  Bytes.set s (i+2) (char_of_int (a land 0xff));
-  Bytes.set s (i+3) (char_of_int (x land 0xff))
-let strInt4_int=strInt4
-
-#endif
 
 let buf2 = Bytes.make 2 ' '
 
@@ -96,8 +81,6 @@ let bufInt2 b x=
   Buffer.add_char b (char_of_int ((x lsr 8) land 0xff));
   Buffer.add_char b (char_of_int (x land 0xff))
 
-#ifdef INT32
-
 let bufInt4 b x=
   let u=Int32.shift_right x 8 in
   let v=Int32.shift_right u 8 in
@@ -116,47 +99,22 @@ let bufInt4_int b x=
   Buffer.add_char b (char_of_int (u land 0xff));
   Buffer.add_char b (char_of_int (x land 0xff))
 
-#else
-
-let bufInt4 b x=
-  let u=x lsr 8 in
-  let v=u lsr 8 in
-  let w=v lsr 8 in
-  Buffer.add_char b (char_of_int (w land 0xff));
-  Buffer.add_char b (char_of_int (v land 0xff));
-  Buffer.add_char b (char_of_int (u land 0xff));
-  Buffer.add_char b (char_of_int (x land 0xff))
-
-let bufInt4_int=bufInt4
-
-#endif
-
-#ifdef INT32
 let int32_of_char x=Int32.of_int (int_of_char x)
 let readInt4 f=
   really_input f buf 0 4;
-  let a=Int32.shift_left (int32_of_char buf.[0]) 8 in
-  let b=Int32.shift_left (Int32.logor a (int32_of_char buf.[1])) 8 in
-  let c=Int32.shift_left (Int32.logor b (int32_of_char buf.[2])) 8 in
-  let d=Int32.logor c (int32_of_char buf.[3]) in
-  d
+  let (a,b,c,d) = Bytes.(get buf 0, get buf 1, get buf 2, get buf 3) in
+  let a = Int32.shift_left (int32_of_char a) 8 in
+  let b = Int32.shift_left (Int32.logor a (int32_of_char b)) 8 in
+  let c = Int32.shift_left (Int32.logor b (int32_of_char c)) 8 in
+  let d = Int32.logor c (int32_of_char d) in d
+
 let readInt4_int f=
   really_input f buf 0 4;
-  let a=(int_of_char buf.[0]) lsl 8 in
-  let b=(a lor (int_of_char buf.[1])) lsl 8 in
-  let c=(b lor (int_of_char buf.[2])) lsl 8 in
-  let d=c lor (int_of_char buf.[3]) in
-    d
-#else
-let readInt4 f=
-  really_input f buf 0 4;
-  let r = (int_of_char (Bytes.get buf 0)) lsl 8 in
-  let r = (r lor (int_of_char (Bytes.get buf 1))) lsl 8 in
-  let r = (r lor (int_of_char (Bytes.get buf 2))) lsl 8 in
-  r lor (int_of_char (Bytes.get buf 3))
-
-let readInt4_int=readInt4
-#endif
+  let (a,b,c,d) = Bytes.(get buf 0, get buf 1, get buf 2, get buf 3) in
+  let a = (int_of_char a) lsl 8 in
+  let b = (a lor (int_of_char b)) lsl 8 in
+  let c = (b lor (int_of_char c)) lsl 8 in
+  let d = c lor (int_of_char d) in d
 
 let int16 x=if x<0x8000 then x else x-0x10000
 
@@ -180,17 +138,4 @@ let open_in_bin_cached f=
   let ch = StrMap.find f !bin_cache in
   seek_in ch 0; ch
 
-let open_in_cached f=
-#ifdef WIN32
-  if not (StrMap.mem f !cache) then (
-    if StrMap.mem f !bin_cache then (
-      close_in (StrMap.find f !bin_cache);
-      bin_cache:=StrMap.remove f !bin_cache
-    );
-    cache:=StrMap.add f (open_in f) !cache
-  );
-  let ch = StrMap.find f !cache in
-  seek_in ch 0; ch
-#else
-  open_in_bin_cached f
-#endif
+let open_in_cached = open_in_bin_cached

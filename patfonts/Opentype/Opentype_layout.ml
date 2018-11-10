@@ -18,7 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Extra
+open Patutil.Extra
 open FUtil
 
 (* Deux scripts ne peuvent pas avoir un langage en commun (ou alors il
@@ -49,7 +49,7 @@ let write_layout (scripts:scripts_table) features lookups=
       for i=0 to min 3 (String.length script-1) do
         Buffer.add_char buf_scripts script.[i]
       done;
-      for i=String.length script to 3 do
+      for _ = String.length script to 3 do
         Buffer.add_char buf_scripts ' '
       done;
       (* script offset *)
@@ -61,7 +61,7 @@ let write_layout (scripts:scripts_table) features lookups=
         for i=0 to min 3 (String.length lang-1) do
           Buffer.add_char buf_scriptTable lang.[i]
         done;
-        for i=String.length lang to 3 do
+        for _ = String.length lang to 3 do
           Buffer.add_char buf_scriptTable ' '
         done;
         (* language offsets *)
@@ -96,7 +96,7 @@ let write_layout (scripts:scripts_table) features lookups=
       for i=0 to min 3 (String.length tag-1) do
         Buffer.add_char buf_features tag.[i]
       done;
-      for i=String.length tag to 3 do
+      for _ = String.length tag to 3 do
         Buffer.add_char buf_features ' '
       done;
       bufInt2 buf_features (2+(Array.length features)*6
@@ -123,11 +123,7 @@ let write_layout (scripts:scripts_table) features lookups=
   end;
 
   let global_buf=Buffer.create 256 in
-#ifdef INT32
   bufInt4 global_buf 0x00010000l;
-#else
-  bufInt4 global_buf 0x00010000;
-#endif
   bufInt2 global_buf 10;
   let a=10+Buffer.length buf_scripts in
   let b=a+Buffer.length buf_features in

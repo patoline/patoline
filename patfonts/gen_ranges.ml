@@ -46,34 +46,29 @@ let _ =
   let rec make_program x y l =
     match l with
       |  []     -> ()
-      | [a,b,c] -> (let bit = (a mod 32) in
-                    let test =
-                      if b = x && c = y
-                      then ""
-                      else if b = x
-                      then Printf.sprintf "if k<=%d then " c
-                      else if c = y
-                      then Printf.sprintf "if k>=%d then " b
-                      else Printf.sprintf "if k>=%d && k<=%d then " b c
-                    in
-#ifdef INT32
-                    Printf.fprintf file "%su%d:= Int32.logor !u%d (%sl);\n"
-                      test (a/32) (a/32) (Int32.to_string (Int32.shift_left 1l bit))
-#else
-                    Printf.fprintf file "%su%d:= !u%d lor %d;\n"
-                      test (a/32) (a/32) (1 lsl bit)
-#endif
-                   )
-      | l       -> (let n = List.length l in
-                    let a, b = split (n/2) l in
-                    match b with
-                      | []         -> make_program x y a
-                      | (_,v,_)::s -> (Printf.fprintf file "if k>=%d then (\n" v;
-                                       make_program v y b;
-                                       Printf.fprintf file ") else (\n";
-                                       make_program x v a;
-                                       Printf.fprintf file ")")
-                   )
+      | [a,b,c] ->
+          let bit = (a mod 32) in
+          let test =
+            if b = x && c = y
+            then ""
+            else if b = x
+            then Printf.sprintf "if k<=%d then " c
+            else if c = y
+            then Printf.sprintf "if k>=%d then " b
+            else Printf.sprintf "if k>=%d && k<=%d then " b c
+          in
+          Printf.fprintf file "%su%d:= Int32.logor !u%d (%sl);\n"
+            test (a/32) (a/32) (Int32.to_string (Int32.shift_left 1l bit))
+      | l       ->
+          let n = List.length l in
+          let a, b = split (n/2) l in
+          match b with
+            | []         -> make_program x y a
+            | (_,v,_)::s -> (Printf.fprintf file "if k>=%d then (\n" v;
+                             make_program v y b;
+                             Printf.fprintf file ") else (\n";
+                             make_program x v a;
+                             Printf.fprintf file ")")
   in
   Printf.fprintf file "let unicode_range u0 u1 u2 u3 k=\n";
   make_program (-1) max_int sorted;

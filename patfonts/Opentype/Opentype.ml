@@ -17,8 +17,9 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+open Unicodelib
+open Patutil.Extra
 open FTypes
-open Extra
 open FUtil
 open CFF
 
@@ -168,7 +169,7 @@ let getNames font off=
             try
               match platformID,encodingID with
                   1,0->(
-                    let utf8 = ROMAN.to_utf8 (Bytes.to_string str) in
+                    let utf8 = Roman.to_utf8 (Bytes.to_string str) in
                     ((languageID,nameID,utf8)::m)
                   )
                 | 3,1->(                (* UTF-16 *)
@@ -1634,7 +1635,7 @@ let fontInfo font=
               try
                 match platformID,encodingID with
                     1,_->(
-                      let utf8 = ROMAN.to_utf8 str in
+                      let utf8 = Roman.to_utf8 str in
                       ((languageID,nameID,utf8)::m)
                     )
                   | 3,1->(                (* UTF-16 *)
@@ -1660,10 +1661,6 @@ let fontInfo font=
   { tables=tables;
     fontType=Bytes.to_string fontType;
     names=names }
-
-
-
-#ifdef INT32
 
 let rec checksum32 x=
   let cs=ref 0l in
@@ -1698,44 +1695,6 @@ let rec buf_checksum32 x=
 
 let total_checksum a b c=
   Int32.sub (-1313820742l) (Int32.add a (Int32.add b c))
-
-#else
-
-let rec checksum32 x=
-  let cs=ref 0 in
-  for i=0 to Buffer.length x-1 do
-    cs:= (!cs+int_of_char (Buffer.nth x i)) land 0xffffffff
-  done;
-  !cs
-let rec str_checksum32 x=
-  let cs=ref 0 in
-  let i=ref 0 in
-  while !i<String.length x do
-    let a=int_of_char x.[!i] in
-    let b=if !i+1<String.length x then int_of_char (x.[!i+1]) else 0 in
-    let c=if !i+2<String.length x then int_of_char (x.[!i+2]) else 0 in
-    let d=if !i+3<String.length x then int_of_char (x.[!i+3]) else 0 in
-    cs:= (!cs+((((((a lsl 8) lor b) lsl 8) lor c) lsl 8) lor d)) land 0xffffffff;
-    i:= !i+4
-  done;
-  !cs
-let rec buf_checksum32 x=
-  let cs=ref 0 in
-  let i=ref 0 in
-  while !i<Buffer.length x do
-    let a=int_of_char (Buffer.nth x !i) in
-    let b=if !i+1<Buffer.length x then int_of_char (Buffer.nth x (!i+1)) else 0 in
-    let c=if !i+2<Buffer.length x then int_of_char (Buffer.nth x (!i+2)) else 0 in
-    let d=if !i+3<Buffer.length x then int_of_char (Buffer.nth x (!i+3)) else 0 in
-    cs:= (!cs+((((((a lsl 8) lor b) lsl 8) lor c) lsl 8) lor d)) land 0xffffffff;
-    i:= !i+4
-  done;
-  !cs
-
-let total_checksum a b c=
-  (-1313820742 - (a+b+c)) land 0xffffffff
-
-#endif
 
 let write_cff fontInfo=
 
@@ -1873,9 +1832,6 @@ let make_tables font fontInfo cmap glyphs_idx=
 
 
 
-#ifdef DEBUG_TTF
-  Printf.fprintf stderr "cmap\n"; flush stderr;
-#endif
   (* cmap *)
   let r_cmap=ref IntMap.empty in
   (try
@@ -1887,9 +1843,6 @@ let make_tables font fontInfo cmap glyphs_idx=
        Not_found->());
   let cmap= !r_cmap in
 
-#ifdef DEBUG_TTF
-  Printf.fprintf stderr "hmtx\n"; flush stderr;
-#endif
   (* hmtx *)
   let numberOfGlyphs=Array.length glyphs in
   let buf_hmtx=Bytes.create (4*IntMap.cardinal glyphMap) in
@@ -1908,9 +1861,6 @@ let make_tables font fontInfo cmap glyphs_idx=
   done;
   fontInfo.tables<-StrMap.add "hmtx" buf_hmtx fontInfo.tables;
 
-#ifdef DEBUG_TTF
-  Printf.fprintf stderr "hhea\n"; flush stderr;
-#endif
   (* hhea *)
   let xAvgCharWidth=ref 0. in
   let yMax=ref (-.infinity) in
@@ -1943,11 +1893,7 @@ let make_tables font fontInfo cmap glyphs_idx=
      done;
 
      let buf_hhea=StrMap.find "hhea" fontInfo_tables in
-#ifdef INT32
      strInt4 buf_hhea 0 0x00010000l;        (* Version *)
-#else
-     strInt4 buf_hhea 0 0x00010000;        (* Version *)
-#endif
      strInt2 buf_hhea 10 (int_of_float !advanceWidthMax);  (* advanceWidthMax (hmtx) *)
      strInt2 buf_hhea 12 (int_of_float !minLSB);           (* minLeftSideBearing *)
      strInt2 buf_hhea 14 (int_of_float !minRSB);           (* minRightSideBearing *)
@@ -1956,9 +1902,6 @@ let make_tables font fontInfo cmap glyphs_idx=
    with
        Not_found -> ());
 
-#ifdef DEBUG_TTF
-  Printf.fprintf stderr "head\n"; flush stderr;
-#endif
   (* head *)
   (try
      let buf_head=StrMap.find "head" fontInfo_tables in
@@ -1976,9 +1919,6 @@ let make_tables font fontInfo cmap glyphs_idx=
    with
        Not_found->());
 
-#ifdef DEBUG_TTF
-  Printf.fprintf stderr "maxp\n"; flush stderr;
-#endif
   (* maxp *)
   (if fontInfo.fontType="OTTO" then (
     let buf_maxp=Bytes.create 6 in
@@ -2040,25 +1980,17 @@ let make_tables font fontInfo cmap glyphs_idx=
        Not_found->()
   );
 
-#ifdef DEBUG_TTF
-  Printf.fprintf stderr "OS/2\n";flush stderr;
-#endif
   (* os/2 *)
   (try
      let buf_os2=StrMap.find "OS/2" fontInfo_tables in
      strInt2 buf_os2 2 ((round (!xAvgCharWidth/.float_of_int (Array.length glyphs))));
-#ifdef INT32
      let u1=ref 0l in
      let u2=ref 0l in
      let u3=ref 0l in
      let u4=ref 0l in
-#else
-     let u1=ref 0 in
-     let u2=ref 0 in
-     let u3=ref 0 in
-     let u4=ref 0 in
-#endif
-     let _=IntMap.fold (fun k _ _->UnicodeRanges.unicode_range u1 u2 u3 u4 k) cmap () in
+     let _= IntMap.fold (fun k _ _ ->
+       Unicode_ranges.unicode_range u1 u2 u3 u4 k) cmap ()
+     in
      strInt4 buf_os2 42 !u1;
      strInt4 buf_os2 46 !u2;
      strInt4 buf_os2 50 !u3;
@@ -2087,9 +2019,6 @@ let make_tables font fontInfo cmap glyphs_idx=
        Not_found->()
   );
 
-#ifdef DEBUG_TTF
-  Printf.fprintf stderr "CFF\n";flush stderr;
-#endif
   (* CFF  *)
   begin
     match font with
@@ -2187,9 +2116,6 @@ let make_tables font fontInfo cmap glyphs_idx=
     fontInfo.tables<-StrMap.remove "GPOS" fontInfo.tables;
     fontInfo.tables<-StrMap.remove "GDEF" fontInfo.tables
   end;
-#ifdef DEBUG_TTF
-  Printf.fprintf stderr "names\n";flush stderr;
-#endif
   (* names *)
   begin
     try
@@ -2205,7 +2131,7 @@ let make_tables font fontInfo cmap glyphs_idx=
         let mac= utf16 (* FIXME *)
           (*
           try
-            (1,0,language,name,ROMAN.from_utf8 str)::utf16
+            (1,0,language,name,Roman.from_utf8 str)::utf16
           with
               _->(utf16)
           *)

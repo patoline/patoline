@@ -1,4 +1,5 @@
-open Extra
+open Unicodelib
+open Patutil.Extra
 open FUtil
 open FTypes
 
@@ -28,31 +29,29 @@ type glyph= { glyphFont:font; glyphNumber:glyph_id; type2:string;
 
 
 let glyphFont gl=gl.glyphFont
-#define DEBUG
 
 exception Index
 exception Type2Int of int
 
 type cff_num=CFFFloat of float | CFFInt of int
 exception CFFNum of cff_num
-let int_of_num=function
-    CFFInt x->x
-#ifdef DEBUG
-  | x ->raise (CFFNum x)
-#else
-  | CFFFloat f->round f
-#endif
+
+let int_of_num n =
+  match n with
+  | CFFInt i   -> i
+  | CFFFloat _ -> raise (CFFNum n)
+  (* | CFFFloat f -> round f *)
 
 let float_of_num=function
     CFFFloat x->x
   | CFFInt x ->float_of_int x
 
-#ifdef DEBUG
-let print_num chan=function
-    CFFInt x->Printf.fprintf chan "CFFInt %d" x
-  | CFFFloat x->Printf.fprintf chan "CFFFloat %f" x
-#endif
-let uniqueName f=f.file
+let print_num oc =
+  function
+  | CFFInt i   -> Printf.fprintf oc "CFFInt %i" i
+  | CFFFloat f -> Printf.fprintf oc "CFFFloat %f" f
+
+let uniqueName f = f.file
 
 let readCFFNum f=
   let b0=input_byte f in
