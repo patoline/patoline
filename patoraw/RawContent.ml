@@ -1,3 +1,6 @@
+open Patfonts
+open Patutil
+
 (* A first atomic type of contents: a glyph. *)
 type glyph =
   { glyph_x     : float

@@ -1,0 +1,5 @@
+(library
+  (name patoraw)
+  (public_name patoline.patoraw)
+  (modules :standard)
+  (libraries imagelib patutil patfonts))

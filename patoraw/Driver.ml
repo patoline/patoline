@@ -41,7 +41,7 @@ end
 
 let print_structure s = 
   let rec fn lvl s =
-    for i = 0 to lvl do 
+    for _ = 0 to lvl do 
       Printf.printf " ";
     done;
     Printf.printf "%s\n" s.name;

@@ -19,8 +19,6 @@
 *)
 type curve=(float array)*(float array)
 
-exception OneDimensionalSystem
-
 let curve (a,b) i=a.(i),b.(i)
 
 
