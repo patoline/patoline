@@ -1,6 +1,8 @@
 open Earley_core
 open Earley_ocaml
-open Extra
+open Unicodelib
+open Patconfig
+open Patutil.Extra
 
 open Earley
 open Pa_ocaml_prelude

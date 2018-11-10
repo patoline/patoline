@@ -1,0 +1,9 @@
+(executable
+  (name pa_patoline)
+  (public_name pa_patoline)
+  (package patoline)
+  (modules :standard)
+  (preprocess (action (run pa_ocaml %{input-file})))
+  (libraries
+    earley.core earley.str earley.ocaml
+    patutil unicodelib patconfig))
