@@ -1,4 +1,0 @@
-addon: patoline-syntax
-description: "Addon to highlight Patoline files"
-files:
-  - syntax/patoline.vim

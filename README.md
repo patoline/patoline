@@ -8,7 +8,7 @@ at https://patoline.github.io.
 
 Dependencies include:
  - OCaml (version 4.03.0 or higher)
- - OCamlFind
+ - Dune
  - Earley version 2.0.0 (available on opam)
  - Camlzip (available on opam)
  - Imagelib (available on opam)
