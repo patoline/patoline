@@ -1,6 +1,6 @@
 open Parallel
-open PatConfig
-open Extra
+open Patconfig.PatConfig
+open Patutil.Extra
 
 (* Time representation as a float. *)
 module Time =

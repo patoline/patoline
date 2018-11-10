@@ -17,7 +17,7 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open PatConfig
+open Patconfig.PatConfig
 
 (** Parse a string containing a command line options and returns the list.
     This function is useful to be able to forward command line options. *)

@@ -30,6 +30,7 @@ This module provides tools for managing user sessions and a storage
 space for key/value pairs associated to each session.
 *)
 
+open Patutil
 open Util
 
 (** {1 Encoding and decoding data in the database} *)

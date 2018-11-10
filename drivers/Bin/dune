@@ -1,0 +1,5 @@
+(library
+  (name driver_bin)
+  (public_name patoline.driver.bin)
+  (modules :standard)
+  (libraries patoraw patodb))

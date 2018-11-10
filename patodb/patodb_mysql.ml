@@ -1,3 +1,4 @@
+open Patutil
 open Util
 
 type dbinfo = Mysql.db
@@ -19,9 +20,9 @@ let init_db db table_name =
    the 3 commented lines below report wrongly already created data.
    But not testing duplicate could lead to segfault, if type differs (due to marshalling) ...
 *)
-  Db.interaction_start_hook := (fun () ->
+  Patodb.interaction_start_hook := (fun () ->
     Mysql.disconnect db.dbd;
-    Printf.eprintf "Disconnected from db\n%!")::!Db.interaction_start_hook;
+    Printf.eprintf "Disconnected from db\n%!")::!Patodb.interaction_start_hook;
 
   (* Creating the table structure *)
   begin
@@ -54,8 +55,8 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
 
   let rec data =
     Hashtbl.add db.created name ();
-    let v = coding.Db.encode vinit in
-    let sessid () = match !Db.sessid with
+    let v = coding.Patodb.encode vinit in
+    let sessid () = match !Patodb.sessid with
         None -> "", "guest", []
       | Some (s,g,fs) ->
          match visibility with
@@ -104,7 +105,7 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
     let read () =
       try
         let sessid, groupid, _  = init () in
-        Db.do_record_read data visibility;
+        Patodb.do_record_read data visibility;
         let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
           table_name sessid name in
         (*Printf.eprintf "Sending request %s\n%!" sql;*)
@@ -114,7 +115,7 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
             | None, Some row ->
            (match row.(0) with
            | None -> vinit
-           | Some n -> coding.Db.decode n)
+           | Some n -> coding.Patodb.decode n)
         | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; vinit
         | _ -> assert false
         with
@@ -124,10 +125,10 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
     in
     let write v =
         let sessid, groupid, friends = init () in
-        Db.do_record_write data visibility;
+        Patodb.do_record_write data visibility;
         let fn (sessid, groupid) =
           try
-            let v = coding.Db.encode v in
+            let v = coding.Patodb.encode v in
             let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s',`groupid`='%s' WHERE `key` = '%s' AND `sessid` = '%s';"
                                      table_name v groupid name sessid in
             let _r = Mysql.exec db.dbd sql in
@@ -152,7 +153,7 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
     let reset () =
       try
         let sessid, groupid, _ = init () in
-        Db.do_record_write data visibility;
+        Patodb.do_record_write data visibility;
         let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s';"
           table_name name sessid in
         let _r = Mysql.exec db.dbd sql in
@@ -161,7 +162,7 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
     in
 
     let distribution ?group () =
-      Db.do_record_read data (if group = None then Public else max Group visibility);
+      Patodb.do_record_read data (if group = None then Public else max Group visibility);
       try
         let _ = init () in
         let group = match group with
@@ -189,13 +190,13 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
           try while true do
               match Mysql.fetch r with
                 None -> raise Exit
-              | Some row -> l := (coding.Db.decode (f row.(0)), f' row.(1))::!l
+              | Some row -> l := (coding.Patodb.decode (f row.(0)), f' row.(1))::!l
             done; []
           with Exit -> !l
         in
         total, scores
       with Exit -> 0, []
 
-    in Db.({name; init=vinit; read; write; reset; distribution})
+    in Patodb.({name; init=vinit; read; write; reset; distribution})
 
     in data

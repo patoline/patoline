@@ -1,0 +1,27 @@
+(library
+  (name patodb)
+  (public_name patoline.patodb)
+  (modules patodb)
+  (wrapped false)
+  (libraries patutil))
+
+(library
+  (name db_memory)
+  (public_name patoline.patodb.memory)
+  (modules patodb_memory)
+  (wrapped false)
+  (libraries patutil patodb))
+
+(library
+  (name db_sqlite3)
+  (public_name patoline.patodb.sqlite3)
+  (modules patodb_sqlite3)
+  (wrapped false)
+  (libraries sqlite3 patutil patodb))
+
+(library
+  (name db_mysql)
+  (public_name patoline.patodb.mysql)
+  (modules patodb_mysql)
+  (wrapped false)
+  (libraries mysql patutil patodb))

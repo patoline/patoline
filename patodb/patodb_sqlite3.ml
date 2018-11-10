@@ -1,5 +1,6 @@
-(** Implementation of {!modtype:Db.DbInterface} using Sqlite3 *)
+(** Implementation of {!modtype:Patodb.DbInterface} using Sqlite3 *)
 
+open Patutil
 open Util
 
 (** Connection information for Sqlite3 only consists of a filename *)
@@ -36,8 +37,8 @@ let exec db ?(cb=fun _ -> ()) sql =
 let init_db db table_name =
   let log_name = table_name ^"_log" in
 
-  Db.interaction_start_hook := (fun () ->
-    ignore (Sqlite3.db_close db.dbd); Printf.eprintf "Disconnected from db\n%!")::!Db.interaction_start_hook;
+  Patodb.interaction_start_hook := (fun () ->
+    ignore (Sqlite3.db_close db.dbd); Printf.eprintf "Disconnected from db\n%!")::!Patodb.interaction_start_hook;
 
   begin
     (* FIXME: new sql ? *)
@@ -77,8 +78,8 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
   if Hashtbl.mem db.created name then (Printf.eprintf "Data with name '%s' already created\n%!" name; exit 1);
   let rec data =
   Hashtbl.add db.created name ();
-  let v = coding.Db.encode vinit in
-  let sessid () = match !Db.sessid with
+  let v = coding.Patodb.encode vinit in
+  let sessid () = match !Patodb.sessid with
       None -> "", "guest", []
     | Some (s,g,fs) ->
        match visibility with
@@ -117,14 +118,14 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
   let read () =
     try
       let sessid, groupid, _  = init () in
-      Db.do_record_read data visibility;
+      Patodb.do_record_read data visibility;
       let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
                                table_name sessid name in
       let res = ref vinit in
       let cb row =
         match row.(0) with
         | None -> ()
-        | Some n -> res := coding.Db.decode n
+        | Some n -> res := coding.Patodb.decode n
       in
       exec db.dbd ~cb sql;
       !res
@@ -133,10 +134,10 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
   in
   let write v =
       let sessid, groupid, friends = init () in
-      Db.do_record_write data visibility;
+      Patodb.do_record_write data visibility;
       let fn (sessid, groupid) =
         try
-          let v = coding.Db.encode v in
+          let v = coding.Patodb.encode v in
           let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s',`groupid`='%s' WHERE `key` = '%s' AND `sessid` = '%s';"
                                    table_name v groupid name sessid in
           exec db.dbd sql;
@@ -154,14 +155,14 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
   let reset () =
     try
       let sessid, groupid, _ = init () in
-      Db.do_record_write data visibility;
+      Patodb.do_record_write data visibility;
       let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s';"
         table_name name sessid in
       exec db.dbd sql;
     with Exit -> ()
   in
   let distribution ?group () =
-    Db.do_record_read data (if group = None then Public else max Group visibility);
+    Patodb.do_record_read data (if group = None then Public else max Group visibility);
     try
       let _ = init () in
       let group = match group with
@@ -189,14 +190,14 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
       in
       let scores =
         let l = ref [] in
-        let cb row = l := (coding.Db.decode (f row.(0)), f' row.(1))::!l in
+        let cb row = l := (coding.Patodb.decode (f row.(0)), f' row.(1))::!l in
         exec db.dbd ~cb sql;
         !l
       in
       total, scores
     with Exit -> 0, []
   in
-  Db.({name; init=vinit; read; write; reset; distribution})
+  Patodb.({name; init=vinit; read; write; reset; distribution})
   in data
 
 

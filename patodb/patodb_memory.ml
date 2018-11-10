@@ -1,3 +1,4 @@
+open Patutil
 open Util
 
 type dbinfo = unit
@@ -16,7 +17,7 @@ let create_data total_table (_:string) ?(log=false)
       ?(visibility=Private) coding name init =
   let rec data =
     let table = Hashtbl.create 1001 in
-    let sessid () = match !Db.sessid with
+    let sessid () = match !Patodb.sessid with
       | None -> ("", "", [])
       | Some (s,g,fs) ->
          match visibility with
@@ -26,7 +27,7 @@ let create_data total_table (_:string) ?(log=false)
     in
     let read = fun () ->
       let s,g,_ = sessid () in
-      Db.do_record_read data visibility;
+      Patodb.do_record_read data visibility;
       try Hashtbl.find table (s,g) with Exit | Not_found -> init in
     let add_to_table ((s,g) as key) v =
       let old = try Hashtbl.find total_table g with Not_found -> [] in
@@ -36,18 +37,18 @@ let create_data total_table (_:string) ?(log=false)
     let write = fun v ->
       try
         let s, g, fs = sessid () in
-        Db.do_record_write data visibility;
+        Patodb.do_record_write data visibility;
         add_to_table (s,g) v;
         List.iter (fun key -> add_to_table key v) fs;
       with Exit -> ()
     in
     let reset () =
       let s,g,fs = sessid () in
-      Db.do_record_write data visibility;
+      Patodb.do_record_write data visibility;
       Hashtbl.remove table (s, g);
     in
     let distribution ?group () =
-      Db.do_record_read data (if group = None then Public else max Group visibility);
+      Patodb.do_record_read data (if group = None then Public else max Group visibility);
       let total = match group with
         | None ->
           Hashtbl.fold (fun k l acc -> acc + List.length l) total_table 0
@@ -60,6 +61,6 @@ let create_data total_table (_:string) ?(log=false)
         Hashtbl.replace res v (old + 1)) table;
       total, Hashtbl.fold (fun v n acc -> (v,n)::acc) res [];
     in
-    Db.({ name; init; read; write; reset; distribution})
+    Patodb.({ name; init; read; write; reset; distribution})
     in
     data
