@@ -2,4 +2,5 @@
   (name driver_pdf)
   (public_name patoline.driver.pdf)
   (modules :standard)
+  (wrapped false)
   (libraries camlzip patconfig unicodelib patoraw patfonts))
