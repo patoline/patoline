@@ -18,10 +18,12 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Typography
-open Typography.Document
+open Patoraw
+open Patfonts
+open Patutil
+open Document
 open FTypes
-open Typography.Box
+open Box
 open Extra
 
 let centered parameters str tree _=
