@@ -1,0 +1,6 @@
+(library
+  (name plot)
+  (public_name patoline.plot)
+  (modules plot)
+  (wrapped false)
+  (libraries patoraw default_format typography))

@@ -1,0 +1,6 @@
+(library
+  (name default_format)
+  (public_name patoline.format.default)
+  (modules DefaultFormat)
+  (wrapped false)
+  (libraries typography patconfig patoraw unicodelib hyphen))

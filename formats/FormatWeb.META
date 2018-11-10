@@ -1,5 +1,0 @@
-package "FormatWeb" (
-archive(byte)="FormatWeb.cma"
-archive(native)="FormatWeb.cmxa"
-requires="Typography,Typography.SVG"
-)

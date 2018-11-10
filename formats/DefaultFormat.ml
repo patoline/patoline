@@ -17,15 +17,20 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Typography
 open Typography.Document
 open Typography.Complete
 open Typography.Break
+open Patfonts
 open FTypes
+open Patutil
 open Extra
 open Fonts
 open Box
-open PatConfig
+open Patconfig.PatConfig
+open Patoraw
+open Unicodelib
 
 let _=Random.self_init ()
 
