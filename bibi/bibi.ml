@@ -17,9 +17,12 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Printf
 open Sqlite3
+open Patutil
 open Extra
+open Unicodelib
 
 let fields=[
   "id","INTEGER PRIMARY KEY AUTOINCREMENT";
@@ -207,7 +210,7 @@ let revbib:((string option array) IntMap.t) ref=ref IntMap.empty
 let citeCounter:unit IntMap.t ref=ref IntMap.empty
 
 let bibfile_ =
-  let open PatConfig in
+  let open Patconfig.PatConfig in
   ref (Some (Filename.concat patoconfig.user_dir "bibi.sqlite3"))
 
 let bibfile x=bibfile_:=Some x
