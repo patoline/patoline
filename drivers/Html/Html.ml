@@ -18,6 +18,9 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+open Patfonts
+open Patoraw
+open Unicodelib
 open FTypes
 open HtmlFonts
 open Driver
