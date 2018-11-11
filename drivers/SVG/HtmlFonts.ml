@@ -17,10 +17,15 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
+open Patutil
 open Extra
+open Patfonts
 open Fonts
 open FTypes
+open Patoraw
 open RawContent
+open Unicodelib
 
 module ClassMap = Map.Make(
   struct

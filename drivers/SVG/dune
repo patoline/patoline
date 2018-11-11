@@ -1,0 +1,6 @@
+(library
+  (name driver_svg)
+  (public_name patoline.driver.svg)
+  (modules :standard)
+  (wrapped false)
+  (libraries patutil patoraw typography))

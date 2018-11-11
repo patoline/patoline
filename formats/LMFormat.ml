@@ -21,11 +21,15 @@
 open Typography
 open Typography.Document
 open Typography.Complete
+open Patfonts
 open FTypes
 open Fonts
 open Typography.Box
 open DefaultFormat
+open Patutil
+open Unicodelib
 open Extra
+open Patoraw
 
 let _=Random.self_init ()
 

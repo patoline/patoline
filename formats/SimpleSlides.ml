@@ -1,5 +1,8 @@
+open Patoraw
 open RawContent
+open Patutil
 open Extra
+open Patfonts
 
 open Typography
 open Typography.Box
@@ -394,7 +397,7 @@ module Format(D:DocumentStructure) =
                    | CustomNumbering f -> f i i_fin
                  in
                  let boxes=boxify_scoped env num in
-                 let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in
+                 (*let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in*)
                  let x=draw_boxes env boxes in
                  (*
                  List.map (fun y->RawContent.translate (slidew-.w-.2.) 2. (in_order max_int y)) x)

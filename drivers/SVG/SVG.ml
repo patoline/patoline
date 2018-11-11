@@ -17,14 +17,19 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Typography
+open Patfonts
 open FTypes
 open Box
+open Patutil
 open Extra
 open HtmlFonts
+open Patoraw
 open Driver
 open RawContent
 open Color
+open Unicodelib
 
 exception Bezier_degree of int
 

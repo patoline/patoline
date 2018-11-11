@@ -17,7 +17,12 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Typography
+open Patfonts
+open Patutil
+open Patoraw
+open Unicodelib
 open Typography.Document
 open RawContent
 open Color

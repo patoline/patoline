@@ -18,6 +18,10 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Typography
+open Patfonts
+open Patutil
+open Patoraw
+open Unicodelib
 open Fonts
 open FTypes
 (* open Typography.Constants *)

@@ -20,12 +20,16 @@
 
 open Typography
 open Typography.Document
+open Patoraw
 open RawContent
+open Patutil
 open Extra
 open Box
+open Patfonts
 open Fonts
 open FTypes
 open HtmlFonts
+open Unicodelib
 
 
 type div={ div_children:page array; title:string }
