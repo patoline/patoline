@@ -40,6 +40,7 @@ let no_default_grammar = ref false
 (* store grammar to use before parsing starts,
    do not use once parsing is started, use add_grammar *)
 let add_patoline_grammar g =
+  let g = try Filename.chop_extension g with _ -> g in
   patoline_grammar := g :: !patoline_grammar
 
 let in_ocamldep = ref false
@@ -858,10 +859,9 @@ let add_grammar g =
     begin
       let g =
         try Filename.find_file (g ^ ".tgy") path with Not_found ->
-          (*
           Printf.eprintf "Cannot find [%s.tgy] in the folders:\n%!" g;
-          List.iter (Printf.eprintf " - [%s]\n%!")path;
-          *)
+          List.iter (Printf.eprintf " - [%s]\n%!") path;
+          Printf.eprintf "(in directory [%s])\n" (Sys.getcwd ());
           raise Not_found
       in
       let ch = open_in_bin g in
@@ -2009,7 +2009,7 @@ let patoline_config : unit grammar =
        add_grammar g
   ) no_blank
 
-let parser header = _:patoline_config* ->
+let parser header = _:patoline_config*$ ->
   fun () -> List.iter add_grammar !patoline_grammar; build_grammar ()
 
 let parser title =
@@ -2070,26 +2070,14 @@ let wrap basename _loc ast =
     end
    >>
 
-let parser init =
-  EMPTY -> (fun () ->
-    let file = match !file with
-                 | None -> ""
-                 | Some f -> f
-    in
-    let (_,basename,_) = Filename.decompose file in
-    cache := "cache_" ^ basename; basename)
-
-let parser full_text =
-  | f:header ->> let _ = f () in
-    basename:{basename:init -> basename ()} t:{tx1:text t:title}? tx2:text EOF ->
-     begin
-       let t = match t with
-         | None   -> []
-         | Some (tx1,t) -> tx1 @ t
-       in
-       let ast = t @ tx2 in
-       wrap basename _loc ast
-     end
+let parser full_text = f:header ->>
+  let _ = f () in
+  let file = match !file with None -> "" | Some f -> f in
+  let (_,base,_) = Filename.decompose file in
+  let _ = cache := "cache_" ^ base in
+  t:{tx1:text t:title}? tx2:text EOF ->
+    let t = match t with None -> [] | Some (tx1,t) -> tx1 @ t in
+    wrap base _loc (t @ tx2)
 
 (* Extension of Ocaml's grammar *********************************************)
 
@@ -2118,8 +2106,15 @@ let extra_expressions = patoline_quotations :: extra_expressions
 (* Adding the new entry points *)
 
 let entry_points =
-  let parse_ml  = parser f:header ->> let _ = f () in structure in
-  let parse_mli = parser f:header ->> let _ = f () in signature in
+  let parse_ml  =
+    parser f:header ->>
+      let _ =
+        try f () with e ->
+          Printf.eprintf "Exception: %s\nTrace:\n%!" (Printexc.to_string e)
+      in
+      structure
+  in
+  let parse_mli = parser f:header ->> let _ = () in signature in
   [ (".txp", Implementation (full_text, blank2))
   ; (".ml" , Implementation (parse_ml , blank2))
   ; (".mli", Interface      (parse_mli, blank2)) ]
@@ -2136,11 +2131,7 @@ let write_main_file driver form build_dir dir name =
   let fmt = Format.formatter_of_out_channel oc in
   let _loc = Location.none in
   let m =
-#ifversion >= 4.03
     let c  = (String.make 1 (Char.uppercase_ascii name.[0])) in
-#else
-    let c  = (String.make 1 (Char.uppercase name.[0])) in
-#endif
     let cs = String.sub name 1 (String.length name - 1) in
     c ^ cs
   in

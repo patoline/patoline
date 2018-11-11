@@ -1,0 +1,29 @@
+(library
+  (name Giac)
+  (public_name patoline.package.giac)
+  (modules Giac)
+  (wrapped false)
+  (preprocess (action (run pa_patoline --no-default-grammar --grammar
+                             grammars/DefaultGrammar.tgy %{input-file})))
+  (preprocessor_deps (file ../grammars/DefaultGrammar.tgy))
+  (libraries earley.core earley.str patoraw typography))
+
+(library
+  (name Interactive)
+  (public_name patoline.package.interactive)
+  (modules Interactive)
+  (wrapped false)
+  (preprocess (action (run pa_patoline --no-default-grammar --grammar
+                             grammars/DefaultGrammar.tgy %{input-file})))
+  (preprocessor_deps (file ../grammars/DefaultGrammar.tgy))
+  (libraries patodb patoraw typography Giac DefaultFormat))
+
+(library
+  (name ProofTree)
+  (public_name patoline.package.prooftree)
+  (modules ProofTree)
+  (wrapped false)
+  (preprocess (action (run pa_patoline --no-default-grammar --grammar
+                             grammars/DefaultGrammar.tgy %{input-file})))
+  (preprocessor_deps (file ../grammars/DefaultGrammar.tgy))
+  (libraries patoraw typography))

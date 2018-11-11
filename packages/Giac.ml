@@ -100,6 +100,7 @@ and prl ch l =
 let print = print pTop
 let prev_prio = prev
 
+open Typography
 open DefaultMacros
 open Maths
 open Document

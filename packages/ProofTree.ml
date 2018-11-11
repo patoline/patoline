@@ -1,8 +1,11 @@
+open Typography
 open Maths
 open Document
 open Document.Mathematical
 open Box
+open Patfonts
 open FTypes
+open Patoraw
 open RawContent
 
 let rec spacing right left =

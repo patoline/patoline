@@ -1,9 +1,11 @@
 open Typography
 open Document
-open Db
+open Patodb
+open Patoraw
 open RawContent
 open Color
 open Box
+open Patutil
 open Util
 open Extra
 open Verbatim
@@ -25,7 +27,7 @@ let strip s =
   done;
   String.sub s !i (!j - !i + 1)
 
-let group () = match !Db.sessid with
+let group () = match !Patodb.sessid with
   | None -> "guest"
   | Some(_,g,_) -> g
 
@@ -508,7 +510,7 @@ let editableText ?(log=true) ?(visibility=Private) ?(empty_case="Type in here")
                         in up (newChildAfter acc para)) (top acc) (lang_result resultLines))) in d)))])))
 
 let ocaml_dir () =
-  let sessid = match !Db.sessid with
+  let sessid = match !Patodb.sessid with
     None -> "unknown"
   | Some(s,_,_) -> s
   in
@@ -524,7 +526,7 @@ let do_dep filename =
     Printf.eprintf "write dep:%S\n%!" (Filename.concat dir filename);
     let data = Hashtbl.find file_table filename in
     Printf.eprintf "dep found:%S\n%!" (Filename.concat dir filename);
-    let prg = data.Db.read () in
+    let prg = data.Patodb.read () in
     let ch = open_out (Filename.concat dir filename) in
     output_string ch prg;
     close_out ch
