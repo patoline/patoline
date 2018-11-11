@@ -24,4 +24,5 @@
   (public_name patoline.patodb.mysql)
   (modules patodb_mysql)
   (wrapped false)
+  (optional)
   (libraries mysql patutil patodb))
