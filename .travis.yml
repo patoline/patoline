@@ -1,20 +1,28 @@
+dist: trusty
 language: c
-env:
-  - OCAML_VERSION=4.03.0
-  - OCAML_VERSION=4.04.0
-  - OCAML_VERSION=4.05.0
-  - OCAML_VERSION=4.06.0
-addons:
-  apt:
-    sources:
-      - avsm
-    packages:
-      - opam
-      - time
+
 cache:
   directories:
-    - $HOME/.opam
+  - $HOME/.opam
+
+env:
+  global:
+  - OPAMJOBS="2"
+  - OPAMYES="true"
+  - OPAMVERBOSE="true"
+  matrix:
+  - OCAML_VERSION=4.03.0
+  - OCAML_VERSION=4.04.0
+  - OCAML_VERSION=4.04.1
+  - OCAML_VERSION=4.04.2
+  - OCAML_VERSION=4.05.0
+  - OCAML_VERSION=4.06.0
+  - OCAML_VERSION=4.06.1
+  - OCAML_VERSION=4.07.0
+  - OCAML_VERSION=4.07.1
+
 before_install:
+  # Obtain and install modern GNU make
   - echo "Installing a decent version of GNU make."
   - wget http://ftp.gnu.org/gnu/make/make-4.1.tar.gz
   - tar xf make-4.1.tar.gz
@@ -26,26 +34,29 @@ before_install:
   - cd ..
   - export PATH="`pwd`/make-4.1/make_bin:$PATH"
   - echo "Should now have GNU make 4.1."
-  - export OPAMYES=1
-  - export OPAMVERBOSE=1
-  - opam init
-  - opam switch ${OCAML_VERSION}
-  - eval `opam config env`
-  - opam install ocamlbuild ocamlfind
-  - opam install earley.1.0.2 earley-ocaml.1.0.2
-  - opam install camlzip imagelib sqlite3
+  # Obtain and install opam locally.
+  - sudo wget https://github.com/ocaml/opam/releases/download/2.0.0/opam-2.0.0-x86_64-linux -O /usr/bin/opam
+  - sudo chmod 755 /usr/bin/opam
+  # Initialize the switch.
+  - opam init -a --disable-sandboxing --compiler="$OCAML_VERSION"
+  - opam update
+  - opam switch "$OCAML_VERSION"
+  - eval $(opam env)
+  # Install deps
+  - opam install ocamlbuild ocamlfind earley.2.0.0 camlzip imagelib sqlite3
+
+install:
   - make configure
   - ./configure
   - make
   - make packages
-install:
   - make install
+
 script:
   - cd patobook
   - make
   - echo "OK"
-os:
-  - linux
+
 notifications:
   email:
     - rodolphe.lepigre@inria.fr
