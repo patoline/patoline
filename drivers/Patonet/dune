@@ -1,0 +1,7 @@
+(library
+  (name driver_patonet)
+  (public_name patoline.driver.patonet)
+  (modules :standard)
+  (wrapped false)
+  (optional)
+  (libraries cryptokit patodb driver_svg patoraw))

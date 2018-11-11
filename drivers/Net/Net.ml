@@ -18,6 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+open Patoraw
+open Patutil
 open Extra
 open HtmlFonts
 open Driver
@@ -209,7 +211,7 @@ function gotoSlide(n){
   Printf.fprintf o "]\n";
 *)
   let patonet =
-    let open PatConfig in
+    let open Patconfig.PatConfig in
     let paths = ["."] in
     let pato =
       try Filename.find_file "patonet.c" paths with Not_found ->

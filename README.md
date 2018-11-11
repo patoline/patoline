@@ -28,8 +28,8 @@ opam install ocamlfind ocamlbuild earley.2.0.0 camlzip imagelib sqlite3
 
 You can optionally install more Opam packages (OCaml libraries) depending
 on the Patoline drivers that you want to use. For instance, you will need
-to install ``lablgl`` for our OpenGL driver, or ``cairo2`` for our Cairo
-driver.
+to install ``lablgl`` for our OpenGL driver, ``cairo2`` for our Cairo
+driver, ``kryptokit`` for our ``Patonet`` driver.
 
 ### Compilation from source
 

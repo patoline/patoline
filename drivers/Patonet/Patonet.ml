@@ -18,11 +18,14 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Db
+open Patodb
+open Patoraw
+open Patutil
 open RawContent
 open Driver
 open Extra
 open HtmlFonts
+open Patfonts
 
 let _ = Printexc.record_backtrace true
 
@@ -325,7 +328,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let graph = Hashtbl.create 1001 in
 
   let slides,cache,imgs=
-    SVG.buffered_output' ~structure:structure ~dynCache:(dynCache,graph,Db.record_read) pages ""
+    SVG.buffered_output' ~structure:structure ~dynCache:(dynCache,graph,Patodb.record_read) pages ""
   in
 
   let imgs = StrMap.fold (fun k filename m ->
@@ -958,7 +961,7 @@ function gotoSlide(n){
       Some (sessid, groupid, friends) ->
         Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
         Printf.fprintf ouc "Set-Cookie: GROUPID=%s;\r\n" groupid;
-        let str = Db.friends_to_string friends in
+        let str = Patodb.friends_to_string friends in
         Printf.fprintf ouc "Set-Cookie: FRIENDS=%s;\r\n" str;
     | None -> ());
     output_string ouc "\r\n";
@@ -982,7 +985,7 @@ function gotoSlide(n){
       Some (sessid, groupid, friends) ->
         Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
         Printf.fprintf ouc "Set-Cookie: GROUPID=%s;\r\n" groupid;
-        let str = Db.friends_to_string friends in
+        let str = Patodb.friends_to_string friends in
         Printf.fprintf ouc "Set-Cookie: FRIENDS=%s;\r\n" str;
     | None -> ());
     output_string ouc "\r\n";
@@ -1063,7 +1066,7 @@ function gotoSlide(n){
     let finc=Unix.in_channel_of_descr fdfather in
     let ouc=Unix.out_channel_of_descr fd in
     let fouc=Unix.out_channel_of_descr fdfather in
-    let sessid = Db.sessid in
+    let sessid = Patodb.sessid in
     sessid := None;
     Random.self_init ();
     reset_cache ();
@@ -1084,7 +1087,7 @@ function gotoSlide(n){
   in
 
     let set_sessid (login,group,friends) =
-      let friends = Db.friends_from_string friends in
+      let friends = Patodb.friends_from_string friends in
       match !sessid with
       | Some(s,g,fs) when s = login && g = group && fs = friends->
          log_son num "reuse sessid: %s from %s" s g;
