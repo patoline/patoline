@@ -52,7 +52,6 @@ typedef struct _fbo_texture {
 
 void testGL(char* msg) {
   GLenum errCode;
-  const GLubyte* errString;
 
   while((errCode = glGetError()) != GL_NO_ERROR)
     {

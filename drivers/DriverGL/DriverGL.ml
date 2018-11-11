@@ -18,6 +18,9 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+open Patfonts
+open Patutil
+open Patoraw
 open FTypes
 open Raw
 open RawContent
@@ -59,8 +62,8 @@ let prefs = ref {
 }
 
 let filter_options argv =
-  Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double";
-  Glut.init argv
+  Glut.initDisplayString ~str:"rgba>=8 alpha>=16 depth>=16 double";
+  Glut.init ~argv
 
 let driver_options = Arg.([
   "--second", Unit (fun () -> prefs := { !prefs with second_window = true })
@@ -326,8 +329,8 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let update_link = ref false in
 
   let inverse_coord win x y =
-    let w = float (Glut.get Glut.WINDOW_WIDTH)
-    and h = float (Glut.get Glut.WINDOW_HEIGHT) in
+    let w = float (Glut.get ~gtype:Glut.WINDOW_WIDTH ) in
+    let h = float (Glut.get ~gtype:Glut.WINDOW_HEIGHT) in
     let x = float x and y = h -. float y in
     let ratio = w /. h in
     let page = !cur_page in
@@ -363,14 +366,16 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let init_zoom = ref true in
 
   let set_proj win xb yb =
-    let w = Glut.get Glut.WINDOW_WIDTH in
-    let h = Glut.get Glut.WINDOW_HEIGHT in
-    GlDraw.viewport 0 0 w h;
+    let w = Glut.get ~gtype:Glut.WINDOW_WIDTH  in
+    let h = Glut.get ~gtype:Glut.WINDOW_HEIGHT in
+    GlDraw.viewport ~x:0 ~y:0 ~w ~h;
     GlMat.mode `projection;
     GlMat.load_identity ();
     GlMat.translate3 (xb /. float w , yb /. float h , 0.0);
-    GlMat.frustum ((win.cx -. win.rx)/.1000., (win.cx +. win.rx)/.1000.)
-      ((win.cy -. win.ry)/.1000., (win.cy +. win.ry)/.1000.) (1., 10000.);
+    GlMat.frustum
+      ~x:((win.cx -. win.rx)/.1000., (win.cx +. win.rx)/.1000.)
+      ~y:((win.cy -. win.ry)/.1000., (win.cy +. win.ry)/.1000.)
+      ~z:(1., 10000.);
     GlMat.translate3 (0., 0., -1000.);
     GlMat.mode `modelview;
     GlMat.load_identity ()
@@ -421,31 +426,31 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     if structure.children <> [||] then begin
       let c = ref 0 in
       List.iter (fun menu -> Glut.destroyMenu ~menu) !old_menu;
-      let menu = Glut.createMenu menu_cb in
+      let menu = Glut.createMenu ~cb:menu_cb in
       old_menu := [menu];
-      Glut.setMenu menu;
+      Glut.setMenu ~menu;
       let rec fn menu a i s =
-        Glut.addMenuEntry s.name !c;
+        Glut.addMenuEntry ~label:s.name ~value:!c;
         Hashtbl.replace menu_item !c (a, i);
         incr c;
         if s.children <> [||] then
           begin
-            let menu' = Glut.createMenu menu_cb in
+            let menu' = Glut.createMenu ~cb:menu_cb in
             old_menu := menu' :: !old_menu;
-            Glut.setMenu menu';
+            Glut.setMenu ~menu:menu';
             Array.iteri (fn menu' s.children) s.children;
-            Glut.setMenu menu;
-            Glut.addSubMenu "  ==>" menu';
+            Glut.setMenu ~menu;
+            Glut.addSubMenu ~label:"  ==>" ~submenu:menu';
           end
       in
       Array.iteri (fn menu structure.children)  structure.children;
-      Glut.attachMenu Glut.RIGHT_BUTTON
+      Glut.attachMenu ~button:Glut.RIGHT_BUTTON
     end
   in
 
   let clearCache () =
     Array.iter (function None -> () | Some win ->
-      Glut.setWindow win.winId;
+      Glut.setWindow ~win:win.winId;
       Hashtbl.iter (fun _ l ->  GlList.delete l) win.glyphCache;
       Hashtbl.clear win.glyphCache;
       Hashtbl.iter (fun _ t -> GlTex.delete_texture t) win.imageCache;
@@ -723,8 +728,8 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     | Image i ->
       Gl.enable `texture_2d;
       begin
-        try
-          GlTex.bind_texture `texture_2d (Hashtbl.find win.imageCache i)
+        try GlTex.bind_texture ~target:`texture_2d
+              (Hashtbl.find win.imageCache i)
         with Not_found ->
           let image = ImageLib.openfile i.image_file in
           let w =Image.(image.width) in
@@ -741,15 +746,15 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
                     (a * 255 * 2 + 1) / (2 * image.max_val)
                   else r,g,b,a
                 in
-                Raw.set raw ((j * w + i) * 4 + 0) r;
-                Raw.set raw ((j * w + i) * 4 + 1) g;
-                Raw.set raw ((j * w + i) * 4 + 2) b;
-                Raw.set raw ((j * w + i) * 4 + 3) a));
+                Raw.set raw ~pos:((j * w + i) * 4 + 0) r;
+                Raw.set raw ~pos:((j * w + i) * 4 + 1) g;
+                Raw.set raw ~pos:((j * w + i) * 4 + 2) b;
+                Raw.set raw ~pos:((j * w + i) * 4 + 3) a));
             done
           done;
-          let texture = GlPix.of_raw raw `rgba w h in
+          let texture = GlPix.of_raw raw ~format:`rgba ~width:w ~height:h in
           let tid = GlTex.gen_texture () in
-          GlTex.bind_texture `texture_2d tid;
+          GlTex.bind_texture ~target:`texture_2d tid;
           GlTex.image2d texture ~border:false;
           GlTex.env (`mode `modulate);
           GlTex.env (`color (1.0, 1.0, 1.0, 1.0));
@@ -823,14 +828,14 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
    in
 
     let draw_fbo fbo w h pw ph page state saa =
-      GlDraw.viewport 0 0 w h;
+      GlDraw.viewport ~x:0 ~y:0 ~w ~h;
       GlClear.clear [`color;`depth];
       GlMat.load_identity ();
       let set_proj xb yb =
         GlMat.mode `projection;
         GlMat.load_identity ();
         GlMat.translate3 (xb /. float w , yb /. float h , 0.0);
-        GlMat.ortho (0., pw) (0., ph) (-1., 1.);
+        GlMat.ortho ~x:(0., pw) ~y:(0., ph) ~z:(-1., 1.);
         GlMat.mode `modelview;
       in
       draw_saa (fun () -> draw_page (pw /. float w) page state) set_proj saa;
@@ -965,7 +970,9 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
   let redraw win =
     Glut.setWindow ~win:win.winId;
-    reshape_cb ~w:(Glut.get Glut.WINDOW_WIDTH)  ~h:(Glut.get Glut.WINDOW_HEIGHT);
+    reshape_cb
+      ~w:(Glut.get ~gtype:Glut.WINDOW_WIDTH)
+      ~h:(Glut.get ~gtype:Glut.WINDOW_HEIGHT);
     win.saved_rectangle <- None;
     win.previous_links <- [];
     Glut.postRedisplay ()
@@ -1238,10 +1245,12 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
        else if win.saved_rectangle = None then (
          win.saved_rectangle <-
            Some (GlPix.read ~x:0 ~y:0
-                            ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT)
+                            ~width:(Glut.get ~gtype:Glut.WINDOW_WIDTH)
+                            ~height:(Glut.get ~gtype:Glut.WINDOW_HEIGHT)
                             ~format:`rgba ~kind:`ubyte
                 ,GlPix.read ~x:0 ~y:0
-                            ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT)
+                            ~width:(Glut.get ~gtype:Glut.WINDOW_WIDTH)
+                            ~height:(Glut.get ~gtype:Glut.WINDOW_HEIGHT)
                             ~format:`depth_component ~kind:`float)));
 
       List.iter (fun l ->
@@ -1306,7 +1315,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       cur_page:= i;
       cur_state := j;
       Array.iter (function None -> () | Some win ->
-        Glut.setWindow win.winId;
+        Glut.setWindow ~win:win.winId;
         draw_gl_scene ();
         overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
         Glut.swapBuffers ()) all_win
@@ -1353,10 +1362,10 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
            last_changes := !cur_page, !cur_state;
            Printf.fprintf fo "GET /sync_%d_%d HTTP/1.1\r\n\r\n%!"
              !cur_page !cur_state);
-         match !Db.sessid with
+         match !Patodb.sessid with
            None -> ()
          | Some (s ,g, friends)->
-            Printf.fprintf fo "Set-Cookie: SESSID=%s; GROUPID=%s; FRIENDS=%s\r\n" s g (Db.friends_to_string friends));
+            Printf.fprintf fo "Set-Cookie: SESSID=%s; GROUPID=%s; FRIENDS=%s\r\n" s g (Patodb.friends_to_string friends));
        !send_changes ();
        Printf.fprintf stderr "Connected\n%!";
        sock_info := Some (sock,fo,fi)
@@ -1517,20 +1526,22 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     if all_win.(0) = None then begin
       Sys.catch_break true;
       Printf.fprintf stderr "Start patoline GL.\n%!";
-      let _ = Db.make_sessid () in
+      let _ = Patodb.make_sessid () in
       let _ = read_links () in
 
       Printf.fprintf stderr "Glut init finished, creating window\n%!";
-      let w =  Glut.createWindow "Patoline OpenGL Driver" in
+      let w =  Glut.createWindow ~title:"Patoline OpenGL Driver" in
       init_gl ();
       all_win.(0) <- Some (init_win w);
       if !prefs.second_window then (
-        let w2 = Glut.createWindow "Patoline OpenGL Driver (second window)" in
+        let w2 =
+          Glut.createWindow ~title:"Patoline OpenGL Driver (second window)"
+        in
         init_gl ();
         all_win.(1) <- Some (init_win w2)
       );
       Printf.fprintf stderr "Window created, number of samples: %d\n"
-        (Glut.get Glut.WINDOW_NUM_SAMPLES);
+        (Glut.get ~gtype:Glut.WINDOW_NUM_SAMPLES);
       flush stderr;
     end;
 
@@ -1540,14 +1551,14 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
       None ->
         Array.iter (function None -> () | Some win ->
           Glut.setWindow ~win:win.winId;
-          Glut.displayFunc (display_cb socket);
-          Glut.keyboardFunc keyboard_cb;
-          Glut.specialFunc special_cb;
-          Glut.reshapeFunc reshape_cb;
-          Glut.mouseFunc mouse_cb;
+          Glut.displayFunc ~cb:(display_cb socket);
+          Glut.keyboardFunc ~cb:keyboard_cb;
+          Glut.specialFunc ~cb:special_cb;
+          Glut.reshapeFunc ~cb:reshape_cb;
+          Glut.mouseFunc ~cb:mouse_cb;
           Glut.timerFunc ~ms:30 ~cb:(idle_cb (handle_request socket)) ~value:();
-          Glut.motionFunc motion_cb;
-          Glut.passiveMotionFunc passive_motion_cb)
+          Glut.motionFunc ~cb:motion_cb;
+          Glut.passiveMotionFunc ~cb:passive_motion_cb)
           all_win;
 
         Sys.set_signal Sys.sighup

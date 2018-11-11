@@ -1,0 +1,8 @@
+(library
+  (name driver_gl)
+  (public_name patoline.driver.gl)
+  (modules DriverGL GlFBO Vec3)
+  (c_names FrameBuffer)
+  (wrapped false)
+  (optional)
+  (libraries patodb lablgl patoraw))

@@ -1,0 +1,7 @@
+(library
+  (name driver_image)
+  (public_name patoline.driver.image)
+  (modules :standard)
+  (wrapped false)
+  (optional)
+  (libraries patoraw driver_gl))

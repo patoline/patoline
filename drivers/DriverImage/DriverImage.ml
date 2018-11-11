@@ -18,10 +18,12 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+open Patfonts
+open Patoraw
 open FTypes
 open Driver
 
-let format = ref "png"
+let image_format = ref "png"
 let width = ref None
 let height = ref None
 let saa = ref DriverGL.No_SAA
@@ -29,7 +31,7 @@ let saa = ref DriverGL.No_SAA
 let filter_options = DriverGL.filter_options
 let driver_options =
   [ ( "--format"
-    , Arg.String (fun s -> format := s)
+    , Arg.String (fun s -> image_format := s)
     , "specify the image format" )
   ; ( "--width"
     , Arg.Int (fun i -> width := Some i)
@@ -50,19 +52,21 @@ let driver_options =
     , Arg.Unit (fun () -> saa := DriverGL.VBGR_SAA)
     , "subpixel antialiasing for VBGR screen" ) ]
  
-let filename file = try (Filename.chop_extension file)^"_img_dir" with _->file^"_img_dir"
+let filename file =
+  try Filename.chop_extension file ^ "_img_dir" with _ ->
+    file ^ "_img_dir"
 
 
 
 let filename' file i j = 
-  try "page_"^string_of_int i^"."^ !format with _->"page_"^string_of_int i^"_"^string_of_int j^"."^ !format
+  try "page_" ^ string_of_int i ^ "." ^ !image_format with _ ->
+    "page_" ^ string_of_int i ^ "_" ^ string_of_int j ^ "." ^ !image_format
+    (* FIXME isn't this dead code? *)
 
 
-let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
-                                  page= -1;struct_x=0.;struct_y=0.;children=[||]})
-    pages fileName=
+let output ?(structure:structure=empty_structure) pages fileName=
 
-  Printf.printf "format: %s\n" !format;
+  Printf.printf "format: %s\n" !image_format;
   let dirname = filename fileName in
   if not (Sys.file_exists dirname) then
     Unix.mkdir dirname 0o777;
@@ -74,10 +78,10 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         let image = Image.create_rgb ~alpha:true w h in
         for i=0 to w-1 do
           for j=0 to h-1 do
-            let r = Raw.get raw ((j * w + i) * 4 + 0) in
-            let g = Raw.get raw ((j * w + i) * 4 + 1) in
-            let b = Raw.get raw ((j * w + i) * 4 + 2) in
-            let a = Raw.get raw ((j * w + i) * 4 + 3) in
+            let r = Raw.get raw ~pos:((j * w + i) * 4 + 0) in
+            let g = Raw.get raw ~pos:((j * w + i) * 4 + 1) in
+            let b = Raw.get raw ~pos:((j * w + i) * 4 + 2) in
+            let a = Raw.get raw ~pos:((j * w + i) * 4 + 3) in
             Image.write_rgba image i (h - j - 1) r g b a
           done
         done;
@@ -87,7 +91,9 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     ()
   in
 
-  DriverGL.prefs := { !DriverGL.prefs with DriverGL.batch_cmd = Some generate; server = None };
+  DriverGL.prefs :=
+    { !DriverGL.prefs with DriverGL.batch_cmd = Some generate
+    ; server = None };
 
   DriverGL.output ~structure pages fileName
 
