@@ -23,9 +23,9 @@
  * Third command-line argument: SubSuper.el output in emacs directory.
  *)
 
+open Unicodelib
+
 let unicodedata_file = Sys.argv.(1)
-let subsuperml_file = Sys.argv.(2)
-let subsuperel_file = Sys.argv.(3)
 
 let file = open_in unicodedata_file
 
@@ -74,19 +74,16 @@ let is_superscript c =
 let is_subscript c =
   String.length c.(5) > 5 && String.sub c.(5) 0 5 = "<sub>"
 
-
-let _ = try
-          while true do
-            let s = input_line file in
-            let c = parse_line s in
-            if is_superscript c then
-              superscripts := c :: !superscripts
-            else
-              if is_subscript c then
-              subscripts := c :: !subscripts
-              else ()
-          done
-  with End_of_file -> ()
+let _ =
+  try while true do
+    let s = input_line file in
+    let c = parse_line s in
+    if is_superscript c then
+      superscripts := c :: !superscripts
+    else if is_subscript c then
+      subscripts := c :: !subscripts
+    else ()
+  done with End_of_file -> ()
 
 let _ = close_in file
 
@@ -104,37 +101,15 @@ let subscripts =
     Scanf.sscanf c.(0) " %x" id,
     Scanf.sscanf (String.sub c.(5) 5 (String.length c.(5) - 5)) " %x" id) !subscripts
 
-(*
-let _ = List.iter (fun (c,h,h') -> Printf.printf "%s %x %x\n" c h h') subscripts
-let _ = List.iter (fun (c,h,h') -> Printf.printf "%s %x %x\n" c h h') superscripts
-*)
-
 let int_to_bytes n =
   UTF8.init 1 (fun _ -> UChar.chr n)
 
 let esc_int_to_bytes n =
   String.escaped (int_to_bytes n)
 
-
-let ch = open_out subsuperml_file
-
 let _ =
-  Printf.fprintf ch "open Decap\n";
-  Printf.fprintf ch "let parser subscript =\n";
-  List.iter (fun (c,h,h') ->
-    Printf.fprintf ch "|\"%s\" -> \"%s\"\n" (esc_int_to_bytes h) (esc_int_to_bytes h')) subscripts;
-  Printf.fprintf ch "\n";
-  Printf.fprintf ch "let parser superscript =\n";
-  List.iter (fun (c,h,h') ->
-    Printf.fprintf ch "|\"%s\" -> \"%s\"\n" (esc_int_to_bytes h) (esc_int_to_bytes h')) superscripts;
-  close_out ch
-
-
-let ch = open_out subsuperel_file
-
-let _ =
-  List.iter (fun (c,h,h') ->
-    Printf.fprintf ch "(\"_%s\" ?%s)\n" (int_to_bytes h') (int_to_bytes h)) subscripts;
-  List.iter (fun (c,h,h') ->
-    Printf.fprintf ch "(\"^%s\" ?%s)\n" (int_to_bytes h') (int_to_bytes h)) superscripts;
-  close_out ch
+  let fn c (_, h1, h2) =
+    Printf.printf "(\"%c%s\" ?%s)\n" c (int_to_bytes h2) (int_to_bytes h1)
+  in
+  List.iter (fn '_') subscripts;
+  List.iter (fn '^') superscripts

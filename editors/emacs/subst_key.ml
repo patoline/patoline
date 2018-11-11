@@ -18,6 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+open Unicodelib
+
 let f1 = Sys.argv.(1)
 let f2 = Sys.argv.(2)
 

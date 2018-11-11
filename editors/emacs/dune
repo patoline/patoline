@@ -1,0 +1,50 @@
+(executable
+  (name subst_key)
+  (modules subst_key)
+  (libraries str unicodelib))
+
+(executable
+  (name unicode_scripts)
+  (modules unicode_scripts)
+  (libraries unicodelib))
+
+(rule
+  (targets quail.el)
+  (action (copy ../../grammars/quail.el quail.el))
+  (deps ../../grammars/quail.el))
+
+(rule
+  (targets subsup_aux.el)
+  (action (with-stdout-to subsup_aux.el
+    (run ./unicode_scripts.exe ../../unicodelib/data/UnicodeData.txt)))
+  (deps
+    ./unicode_scripts.exe
+    ../../unicodelib/data/UnicodeData.txt))
+
+(rule
+  (targets subsup.el)
+  (action (with-stdout-to subsup.el
+    (run ./subst_key.exe ./quail.el ./subsup_aux.el)))
+  (deps
+    ./subst_key.exe
+    ./quail.el
+    ./subsup_aux.el))
+
+(rule
+  (targets patoline-input.el)
+  (action (with-stdout-to patoline-input.el (progn
+    (cat ./patoline-input.pre)
+    (cat ./quail.el)
+    (cat ./subsup.el)
+    (cat patoline-input.post))))
+  (deps
+    ./patoline-input.pre
+    ./quail.el
+    ./subsup.el
+    ./patoline-input.post))
+
+(install
+  (section share_root)
+  (files
+    (patoline-input.el as emacs/site-lisp/patoline-input.el)
+    (patoline-mode.el as emacs/site-lisp/patoline-mode.el)))
