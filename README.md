@@ -13,7 +13,7 @@ Dependencies include:
  - Camlzip (available on opam)
  - Imagelib (available on opam)
  - other libraries (listed in "configure" step)
- - GNU make (version 4.0 or higher)
+ - GNU make
 
 To setup a suitable OCaml environment, the simplest possible solution is to
 use the Opam package manager. It can be installed by following instructions

@@ -22,18 +22,6 @@ env:
   - OCAML_VERSION=4.07.1
 
 before_install:
-  # Obtain and install modern GNU make
-  - echo "Installing a decent version of GNU make."
-  - wget http://ftp.gnu.org/gnu/make/make-4.1.tar.gz
-  - tar xf make-4.1.tar.gz
-  - cd make-4.1
-  - ./configure
-  - make
-  - mkdir make_bin
-  - cp make make_bin
-  - cd ..
-  - export PATH="`pwd`/make-4.1/make_bin:$PATH"
-  - echo "Should now have GNU make 4.1."
   # Obtain and install opam locally.
   - sudo wget https://github.com/ocaml/opam/releases/download/2.0.0/opam-2.0.0-x86_64-linux -O /usr/bin/opam
   - sudo chmod 755 /usr/bin/opam
