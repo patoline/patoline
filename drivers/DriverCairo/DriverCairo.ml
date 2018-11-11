@@ -17,6 +17,9 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
+open Patoraw
+open Patfonts
 open RawContent
 open Driver
 open Color 
@@ -24,21 +27,16 @@ open Color
 let driver_options = []
 let filter_options argv = argv                            
 
-let pixels_per_mm=ref 10.
+let pixels_per_mm = ref 10.0
 
-let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
-                                  page= -1;struct_x=0.;struct_y=0.;children=[||]})
-    pages fileName=
+let output ?(structure=empty_structure) pages fname =
+  let f = try Filename.chop_extension fname with _ -> fname in
 
-
-  let f=try Filename.chop_extension fileName with _->fileName in
-  Array.iteri (fun i x->
+  let write_page i x =
     let width,height=x.size in
     let widthf= (width*. !pixels_per_mm) and heightf= (height*. !pixels_per_mm) in
     let width=int_of_float widthf and height=int_of_float heightf in
-    let surface = Cairo.image_surface_create Cairo.FORMAT_ARGB32 ~width:(width)
-      ~height:(height)
-    in
+    let surface = Cairo.Image.(create ARGB32 ~w:width ~h:height) in
     let ctx = Cairo.create surface in
 
     let rec draw_page x=match x with
@@ -61,23 +59,23 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
                   (heightf-. !pixels_per_mm*.yi.(Array.length yi-1))
               )
             done;
-            if param.close then Cairo.close_path ctx;
+            if param.close then Cairo.Path.close ctx;
           ) path;
           (match param.strokingColor, param.fillColor with
             | (Some cx, Some cy) ->
                 let (rx,gx,bx) = to_rgb cx in
                 let (ry,gy,by) = to_rgb cy in
-                Cairo.set_source_rgb ctx ~red:ry ~green:gy ~blue:by;
+                Cairo.set_source_rgb ctx ry gy by;
                 Cairo.fill_preserve ctx ;
-                Cairo.set_source_rgb ctx ~red:rx ~green:gx ~blue:bx;
+                Cairo.set_source_rgb ctx rx gx bx;
                 Cairo.stroke ctx 
             | (Some cx, None   ) ->
                 let (rx,gx,bx) = to_rgb cx in
-                Cairo.set_source_rgb ctx ~red:rx ~green:gx ~blue:bx;
+                Cairo.set_source_rgb ctx rx gx bx;
                 Cairo.stroke ctx 
             | (None   , Some cy) ->
                 let (ry,gy,by) = to_rgb cy in
-                Cairo.set_source_rgb ctx ~red:ry ~green:gy ~blue:by;
+                Cairo.set_source_rgb ctx ry gy by;
                 Cairo.fill ctx
             | (None   , None   ) -> ()
           );
@@ -121,8 +119,9 @@ let output ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     draw_page (drawing_sort x.contents);
     let fname = Printf.sprintf "%s_%d.png" f i in
     Printf.fprintf stderr "Writing %s\n" fname;
-    Cairo_png.surface_write_to_file surface fname;
-  ) pages
+    Cairo.PNG.write surface fname;
+  in
+  Array.iteri write_page pages
 
 let output' = output_to_prime output
 

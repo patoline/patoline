@@ -31,7 +31,7 @@ before_install:
   - opam switch "$OCAML_VERSION"
   - eval $(opam env)
   # Install deps
-  - opam install dune earley.2.0.0 camlzip imagelib sqlite3
+  - opam install dune earley.2.0.0 camlzip imagelib sqlite3 cairo2
 
 install:
   - make

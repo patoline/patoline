@@ -534,7 +534,6 @@ let tags=function
     Node n->n.node_tags
   | _->[]
 
-(**/**)
 (** Creates a new page, using 1/6th of the given lengths for margins.
  A page is implemented as two nested frames: the outer frame has the
  actual size of the whole page, while the inner frame size is the
