@@ -33,7 +33,7 @@ space for key/value pairs associated to each session.
 open Patutil
 open Util
 
-(** {1 Encoding and decoding data in the database} *)
+(** {2 Encoding and decoding data in the database} *)
 
 type 'a data = {
   name : string;
@@ -92,7 +92,7 @@ let bool_coding = {
   decode = (fun s -> s = "true");
 }
 
-(** {1 Connection to databases } *)
+(** {2 Connection to databases } *)
 
 (** Interface to be implemented by database managers *)
 module type DbInterface = sig
@@ -143,7 +143,7 @@ let init_db (type a) (module Dbms : DbInterface with type dbinfo = a) table_name
     disconnect = fun () -> Dbms.disconnect dbd;
   }
 
-(** {1 Hooks} *)
+(** {2 Hooks} *)
 
 (** List of functions called when the interactive session starts *)
 let interaction_start_hook = ref ([]: (unit -> unit) list)
@@ -194,7 +194,7 @@ let do_record_read  = fun d v -> List.iter (fun f -> f d.name v) !read_hook
 (** Run all hooks in {!val:write_hook}. *)
 let do_record_write = fun d v -> List.iter (fun f -> f d.name v) !write_hook
 
-(** {1 Utility functions} *)
+(** {2 Utility functions} *)
 
 let sessid = ref (None: (string * string * (string * string) list) option)
 (* the first string is the login *)

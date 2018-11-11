@@ -21,8 +21,10 @@
 open Box
 open Document
 
-(** {[normal]} measure paragraphs figures {already placed figures} {already placed user boxes}
-{beginning of line to complete} {is this a desperate try ?} *)
+(** [normal env m paragraphs figures last_figures last_users line desperate]
+    where [last_figures] corresponds to already placed figures, [last_users]
+    corresponds to already placed user boxes, and [desperate] is a boolean
+    indicating whether this is a desperate try. *)
 let normal env paragraphs figures last_figures last_users line allow_impossible=
   let mes0=env.normalMeasure in
   let measure=

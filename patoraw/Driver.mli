@@ -76,5 +76,5 @@ val input_bin : string option ref
 
 (** Name of the driven used to compile the current document. *)
 val driver : string option ref
-(** This value is usually set using the {[--driver]} command-line option
- * when running {[patoline]}. *)
+(** This value is usually set using the ["--driver"] command-line option
+    when running patoline. *)

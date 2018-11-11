@@ -1,13 +1,12 @@
-(** Abstract representation of a permanent map. *)
+(** Abstract representation of a permanent map (stored in a file). *)
 type t
 
 (** [new_map file] creates a new map file named [file]. If [file] already
-    exists, then exception [Invalid_arg] is raised. *)
+    exists, then exception [Invalid_argument] is raised. *)
 val new_map : string -> unit
 
 (** [open_map file] opens a map file previously created using [new_map]. If
-    [file] does not exist, the exception [Invalid_arg] is raised. The value
-    returned is a map (i.e. an object of type [t]). *)
+    [file] does not exist, the exception [Invalid_argument] is raised. *)
 val open_map : string -> t
 
 (** [close_map m] closes a map previously opened with [open_map]. This

@@ -239,7 +239,7 @@ let hyphenate hyph subs kern font size color str =
 
 
 
-(** {1 Helper functions for layouts } *)
+(** {2 Helper functions for layouts } *)
 
 let frame_up (t,cxt)=
   match cxt with
@@ -336,7 +336,7 @@ let all_contents frame=
   in
   collect frame []
 
-(** {1 Helper functions for lines} *)
+(** {2 Helper functions for lines} *)
 
 let uselessLine=
   {

@@ -45,7 +45,7 @@ open Driver
 open Box
 
 
-(** {1 Font, substitutions, positioning} *)
+(** {2 Font, substitutions, positioning} *)
 
 type fontAlternative = Regular | Bold | Caps | Demi
 
@@ -103,7 +103,7 @@ module TS = Break.Make(
   end)
 
 
-(** {1 Mathematical formulae} *)
+(** {2 Mathematical formulae} *)
 
 module Mathematical=struct
   type env={
@@ -156,7 +156,7 @@ module Mathematical=struct
     | ScriptScript'
 end
 
-(** {1 Environments} *)
+(** {2 Environments} *)
 
 (** Environments. These are typically folded on document trees, and
     control many different things about the fonts, counters, or
@@ -213,7 +213,7 @@ let displayname n=
   env_accessed:=true;
   n.raw_name
 
-(** {1 Document content} *)
+(** {2 Document content} *)
 
 (** Main type used to hold document contents. *)
 type content =
