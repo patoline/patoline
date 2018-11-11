@@ -2046,6 +2046,7 @@ let parser title =
 
 let wrap basename _loc ast =
   <:struct<
+    open Patoraw
     open Typography
     open Typography.Box
     open Typography.Document
@@ -2145,6 +2146,7 @@ let write_main_file driver form build_dir dir name =
   in
   let ast =
     <:struct<
+      open Patoraw
       open Typography
       open Typography.Box
       open Typography.Document

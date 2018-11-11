@@ -1,0 +1,31 @@
+(rule
+  (targets DefaultGrammar.ml DefaultGrammar_.ml DefaultGrammar.tgy quail.el)
+  (action (with-stdout-to DefaultGrammar.ml
+    (run pa_patoline --build-dir %{project_root}/grammars
+           --main --no-default-grammar --ascii
+           --quail-out ./quail.el
+           ./DefaultGrammar.txp)))
+  (deps ./DefaultGrammar.txp))
+
+(executable
+  (name DefaultGrammar_)
+  (modules :standard)
+  (libraries dynlink typography patoraw default_format driver_pdf))
+
+(rule
+  (targets DefaultGrammar.pdf)
+  (action (setenv UNICODE_DATA_FILE ../unicodelib/unicode.data
+    (run ./DefaultGrammar_.exe --quiet --driver Pdf
+           --extra-fonts-dir %{project_root}/fonts
+           --extra-hyph-dir %{project_root}/hyphs)))
+  (deps
+    ./DefaultGrammar_.exe
+    ../hyphs/hyph-en-us.hdict
+    ../unicodelib/unicode.data))
+
+(install
+  (section share)
+  (files
+    (DefaultGrammar.txp as grammars/DefaultGrammar.txp)
+    (DefaultGrammar.tgy as grammars/DefaultGrammar.tgy)
+    (DefaultGrammar.pdf as grammars/DefaultGrammar.pdf)))

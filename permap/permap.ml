@@ -9,7 +9,7 @@ type t =
     exists, then exception [Invalid_arg] is raised. *)
 let new_map : string -> unit = fun file ->
   if Sys.file_exists file then
-    invalid_arg "PermanentMap.open_map: map file already exists...";
+    invalid_arg ("PermanentMap.new_map: file ["^file^"] does not exist...");
   (* Opening database and creating table *)
   let db = Sqlite3.db_open file in
   let sql = "CREATE TABLE map (key INTEGER PRIMARY KEY, val BLOB)" in
@@ -24,7 +24,7 @@ let new_map : string -> unit = fun file ->
     returned is a map (i.e. an object of type [t]). *)
 let open_map : string -> t = fun file ->
   if not (Sys.file_exists file) then
-    invalid_arg "PermanentMap.open_map: map file does not exist...";
+    invalid_arg ("PermanentMap.open_map: file ["^file^"] does not exist...");
   (* Opening database *)
   let db = Sqlite3.db_open file in
   (* Creating statements *)
