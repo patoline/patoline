@@ -137,7 +137,7 @@ let decode_slave fd =
 let master_page=ref ""
 let port_num = ref 8080
 
-let close_all_other sock = ()
+let close_all_other _ = ()
 (*
   AddrMap.iter (fun _ (s,n) ->
     if s <> sock then Unix.close s) !addrs
@@ -317,9 +317,7 @@ type change =
 | Slide of int * int
 | Dynamics of int * int * string list(*Typography.OutputCommon.dynamic list*)
 
-let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
-                                  page= -1;struct_x=0.;struct_y=0.;children=[||]})
-    pages fileName=
+let output' ?structure:(structure=empty_structure) pages _ =
 
   let dynCache =
     Array.map (fun t ->
@@ -864,7 +862,7 @@ function gotoSlide(n){
 
   let output_cache out i j =
     Buffer.add_string out "<defs id=\"svg_defs\">";
-    Hashtbl.iter (fun k (d, ptr, _, _) ->
+    Hashtbl.iter (fun _ (d, ptr, _, _) ->
       try
         let c = match !ptr with
             Some c -> (*Printf.eprintf "From cache\n%!";*)  c
@@ -883,7 +881,7 @@ function gotoSlide(n){
   let reset_cache () =
     Array.iter (fun tbl ->
       Array.iter (fun (tbl,_) ->
-        Hashtbl.iter (fun k (d, ptr,_,_) -> ptr := None) tbl
+        Hashtbl.iter (fun _ (_, ptr,_,_) -> ptr := None) tbl
       ) tbl
     ) dynCache
   in
@@ -1010,7 +1008,7 @@ function gotoSlide(n){
     http_send 200 "text/plain" [data] sessid ouc;
   in
 *)
-  let serve_svg i j num (sessid,groupid) ouc =
+  let serve_svg i j num (sessid,_groupid) ouc =
     if i<Array.length slides && j<Array.length slides.(i) then (
       Printf.eprintf "building slide %d_%d for %d\n%!" i j num;
       try
@@ -1106,7 +1104,7 @@ function gotoSlide(n){
     let reject_unlogged () =
       if !no_guest then begin
         match !sessid with
-        | Some (s,g,_) when g = "guest" -> raise Exit
+        | Some (_,g,_) when g = "guest" -> raise Exit
         | None -> raise Exit
         | _ -> ()
       end
@@ -1158,8 +1156,8 @@ function gotoSlide(n){
                   assert false
         in
         let to_push = ref [] in
-        let priv, pub =
-          List.fold_left (fun (priv,pub) (_,vis as key) ->
+        let _priv, pub =
+          List.fold_left (fun (priv,pub) key ->
               let ds = try Hashtbl.find graph key
                        with Not_found -> []
               in
@@ -1221,7 +1219,7 @@ function gotoSlide(n){
            let dest =
              List.fold_left
                (fun acc (dest,i,j) ->
-                 let (d,ptr,_,_) = Hashtbl.find (fst dynCache.(i).(j)) dest in
+                 let (_,ptr,_,_) = Hashtbl.find (fst dynCache.(i).(j)) dest in
                  ptr := None;
                  if i = !cur_slide && j = !cur_state && not (List.mem dest acc) then
                    dest::acc
@@ -1232,7 +1230,7 @@ function gotoSlide(n){
            process_req master get hdr reste
          end
       | ch::_ when ch != fd -> assert false
-      | ch::_ ->
+      | _::_ ->
         let get = decode_slave inc in
 
         if Str.string_match move get 0 then (
@@ -1246,7 +1244,7 @@ function gotoSlide(n){
         else if Str.string_match refresh get 0 then (
           let slide, state = read_slide_state get in
           log_son num "websocket refresh (%d,%d) (send to websocket and father)" slide state;
-          Hashtbl.iter (fun label (dyn,ptr,_,_) -> ptr := None) (fst dynCache.(slide).(state)) ;
+          Hashtbl.iter (fun _ (_,ptr,_,_) -> ptr := None) (fst dynCache.(slide).(state)) ;
           pushto ~change:(Slide(slide,state)) num fd;
           let s, g = read_sessid () in
           Printf.fprintf fouc "move %s %s %d %d\n%!" s g slide state;
@@ -1360,7 +1358,7 @@ function gotoSlide(n){
               if present.starttime=0. then 0. else (time-.present.starttime)
             in
             Buffer.add_string data (Printf.sprintf "\"time\"=%g," t);
-            let son_descr = List.map (fun (fd,son) ->
+            let son_descr = List.map (fun (_,son) ->
               Printf.sprintf
                 "  { \"sessid\" = %s, \"addr\" = %S, \"num\" = %d, \"pid\" = %d, \"slide\" = %d, \"state\" = %d }"
                 (str_sessid son.sessid) (str_addr son.addr) son.num son.pid son.slide son.state) !sonsBySock in
@@ -1577,7 +1575,7 @@ function gotoSlide(n){
                in
                push sock sessid groupid dest;
 
-            | ["quit";sessid;pid] ->
+            | ["quit";_sessid;_pid] ->
                log_father "from [son%d] quit" son.num;
                kill_son sock;
             | _ ->

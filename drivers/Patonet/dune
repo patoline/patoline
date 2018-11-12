@@ -4,4 +4,4 @@
   (modules :standard)
   (wrapped false)
   (optional) ; requires cryptokit
-  (libraries cryptokit patodb driver_svg patoraw))
+  (libraries cryptokit patodb SVG patoraw))
