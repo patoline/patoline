@@ -29,7 +29,7 @@ let filter_options argv = argv
 
 let pixels_per_mm = ref 10.0
 
-let output ?(structure=empty_structure) pages fname =
+let output ?structure:(_=empty_structure) pages fname =
   let f = try Filename.chop_extension fname with _ -> fname in
 
   let write_page i x =
