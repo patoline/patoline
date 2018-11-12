@@ -53,7 +53,9 @@ let bin_args   = ref []
 let opt_args   = ref []
 let pp_args    = ref []
 let local_path = ref []
-let packages   = ref ["patoline.patoraw"; "patoline.typography"; "earley"; "earley.str"]
+let packages   = ref [ "patoline.patoraw"; "patoline.typography"
+                     ; "patoline.format.DefaultFormat"
+                     ; "earley"; "earley.str"]
 let pat_format = ref None
 let pat_driver = ref None
 let do_clean   = ref false
