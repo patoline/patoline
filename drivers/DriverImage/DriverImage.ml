@@ -18,9 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Patfonts
 open Patoraw
-open FTypes
 open Driver
 
 let image_format = ref "png"
@@ -58,7 +56,7 @@ let filename file =
 
 
 
-let filename' file i j = 
+let filename' _ i j = 
   try "page_" ^ string_of_int i ^ "." ^ !image_format with _ ->
     "page_" ^ string_of_int i ^ "_" ^ string_of_int j ^ "." ^ !image_format
     (* FIXME isn't this dead code? *)

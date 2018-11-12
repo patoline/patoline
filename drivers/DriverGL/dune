@@ -1,5 +1,5 @@
 (library
-  (name DriverGl)
+  (name DriverGL)
   (public_name patoline.driver.DriverGL)
   (modules DriverGL GlFBO Vec3)
   (c_names FrameBuffer)
