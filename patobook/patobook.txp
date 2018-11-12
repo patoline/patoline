@@ -1,5 +1,5 @@
 (* #FORMAT FormatThese *)
-(* #PACKAGE bibi *)
+(* #PACKAGE patoline.bibi *)
 
 (*
 
@@ -36,6 +36,7 @@ Pierre-Etienne Meunier
 
   open Patoline_Output
   open Typography.Box
+  open Patutil
   open Extra
 
   let couverture=

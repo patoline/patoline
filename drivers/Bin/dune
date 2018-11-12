@@ -1,6 +1,6 @@
 (library
-  (name driver_bin)
-  (public_name patoline.driver.bin)
+  (name Bin)
+  (public_name patoline.driver.Bin)
   (modules :standard)
   (wrapped false)
   (libraries patoraw patodb))

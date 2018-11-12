@@ -39,6 +39,8 @@ install:
   - make
 
 script:
+  - cd patobook
+  - make
   - echo "OK"
 
 notifications:

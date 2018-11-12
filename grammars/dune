@@ -10,7 +10,7 @@
 (executable
   (name DefaultGrammar_)
   (modules :standard)
-  (libraries dynlink typography patoraw DefaultFormat driver_pdf))
+  (libraries dynlink typography patoraw DefaultFormat Pdf))
 
 (rule
   (targets DefaultGrammar.pdf)

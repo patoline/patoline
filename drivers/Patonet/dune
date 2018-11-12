@@ -1,6 +1,6 @@
 (library
-  (name driver_patonet)
-  (public_name patoline.driver.patonet)
+  (name Patonet)
+  (public_name patoline.driver.Patonet)
   (modules :standard)
   (wrapped false)
   (optional) ; requires cryptokit

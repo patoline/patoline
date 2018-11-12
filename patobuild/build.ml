@@ -445,7 +445,7 @@ let extend_config config ls =
     if config.pat_format <> None then config else
     let packages =
       if List.mem f patoconfig.formats then
-        ("Typography." ^ f) :: config.packages
+        ("patoline.format." ^ f) :: config.packages
       else config.packages
     in
     { config with packages; pat_format = Some f }
@@ -454,7 +454,7 @@ let extend_config config ls =
     if config.pat_driver <> None then config else
     let packages =
       if List.mem d patoconfig.drivers then
-        ("Typography." ^ d) :: config.packages
+        ("patoline.driver." ^ d) :: config.packages
       else config.packages
     in
     { config with packages; pat_driver = Some d }

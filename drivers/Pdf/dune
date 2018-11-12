@@ -1,6 +1,6 @@
 (library
-  (name driver_pdf)
-  (public_name patoline.driver.pdf)
+  (name Pdf)
+  (public_name patoline.driver.Pdf)
   (modules :standard)
   (wrapped false)
   (libraries camlzip patconfig unicodelib patoraw patfonts))

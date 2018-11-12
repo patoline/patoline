@@ -1,6 +1,6 @@
 (library
-  (name driver_gl)
-  (public_name patoline.driver.gl)
+  (name DriverGl)
+  (public_name patoline.driver.DriverGL)
   (modules DriverGL GlFBO Vec3)
   (c_names FrameBuffer)
   (wrapped false)

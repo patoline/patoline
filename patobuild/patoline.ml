@@ -53,7 +53,7 @@ let bin_args   = ref []
 let opt_args   = ref []
 let pp_args    = ref []
 let local_path = ref []
-let packages   = ref ["rawlib"; "Typography"; "earley"; "earley.str"]
+let packages   = ref ["patoline.patoraw"; "patoline.typography"; "earley"; "earley.str"]
 let pat_format = ref None
 let pat_driver = ref None
 let do_clean   = ref false
@@ -156,15 +156,15 @@ let cfg =
   let path = "." :: !local_path in (* FIXME remove duplicates *)
   let driver_packages =
     match !pat_driver with
-    | None                                      -> ["Typography.Pdf"]
-    | Some d when List.mem d patoconfig.drivers -> ["Typography." ^ d]
+    | None                                      -> ["patoline.driver.Pdf"]
+    | Some d when List.mem d patoconfig.drivers -> ["patoline.driver." ^ d]
     | _                                         -> []
   in
   let format_packages =
     match !pat_format with
     | None                                      -> []
     | Some "DefaultFormat"                      -> []
-    | Some f when List.mem f patoconfig.formats -> ["Typography." ^ f]
+    | Some f when List.mem f patoconfig.formats -> ["patoline.format." ^ f]
     | _                                         -> []
   in
   let packages = !packages @ format_packages @ driver_packages in
