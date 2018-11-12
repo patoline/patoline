@@ -699,11 +699,9 @@ let fold_left_line paragraphs f x0 line=
         x1
   )
 
-let rec line_layout paragraphs line layout=
-  fold_left_line paragraphs (fun l x->match x with
-      Layout f->f l
-    | _->l
-  ) layout line
+let line_layout paragraphs line layout =
+  fold_left_line paragraphs (fun l x ->
+    match x with Layout f -> f l | _ -> l) layout line
 
 
 let rec fold_left f x0 boxes=match boxes with

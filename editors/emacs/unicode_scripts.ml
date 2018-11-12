@@ -54,19 +54,15 @@ let parse_line s =
 let subscripts : uchar list ref = ref []
 let superscripts : uchar list ref = ref []
 
-let rec string_forall i len p s =
+let string_forall i len p s =
   if i >= String.length s then true else
-    let len =
-      if i+len-1 < String.length s then len else
-        String.length s - i
-    in
-    let max = i + len in
-    let rec string_forall_rec res k =
-      if k < max then
-        string_forall_rec ((p s.[k] k) && res) (succ k)
-      else res
-    in string_forall_rec true i
-
+  let len = if i+len-1 < String.length s then len else String.length s - i in
+  let max = i + len in
+  let rec string_forall_rec res k =
+    if k < max then string_forall_rec ((p s.[k] k) && res) (succ k)
+    else res
+  in
+  string_forall_rec true i
 
 let is_superscript c =
   String.length c.(5) > 7 && String.sub c.(5) 0 7 = "<super>"

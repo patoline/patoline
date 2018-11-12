@@ -97,10 +97,11 @@ module Format=functor (D:Document.DocumentStructure)->(
       let do_end_env ()=
         let stru,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
         let par_env env={env with new_line=Default.defaultEnv.new_line } in
-        let rec map_params t=match t with
-            Node n->Node {n with node_env=(fun env->par_env (n.node_env env)) }
-          | Paragraph p->Paragraph { p with par_env=(fun env->par_env (p.par_env env)) }
-          | _->t
+        let map_params t =
+          match t with
+          | Node n      -> Node {n with node_env = (fun env -> par_env (n.node_env env))}
+          | Paragraph p -> Paragraph { p with par_env = (fun env -> par_env (p.par_env env))}
+          | _           -> t
         in
         (* Fabriquer un paragraphe qui va bien *)
         let stru',_=paragraph ~parameters:center [C (fun env->

@@ -1616,7 +1616,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
           let pages=Array.map (fun p->
               { p with
                 contents=List.map (fun a->match a with
-                  Link ({ link_kind = Intern(label,dest_page,dest_x,dest_y) } as l)->(
+                  Link ({link_kind = Intern(label,dest_page,dest_x,dest_y); _} as l)->(
                     try
                       let (p',x,y0,y1)=StrMap.find label !destinations in
                       let dx0,dy0,dx1,dy1=bounding_box l.link_contents in

@@ -1460,7 +1460,7 @@ let read_scripts font=
 #define GPOS_SINGLE 1
 #define GPOS_PAIR 2
 
-let rec gpos font glyphs0=
+let gpos font glyphs0 =
   let (file,off0)=otype_file font in
   let file=open_in_bin_cached file in
   let (gposOff,_)=tableLookup "GPOS" file off0 in
@@ -1662,13 +1662,13 @@ let fontInfo font=
     fontType=Bytes.to_string fontType;
     names=names }
 
-let rec checksum32 x=
+let checksum32 x=
   let cs=ref 0l in
   for i=0 to Buffer.length x-1 do
     cs:=Int32.add !cs (Int32.of_int (int_of_char (Buffer.nth x i)))
-  done;
-  !cs
-let rec str_checksum32 x=
+  done; !cs
+
+let str_checksum32 x=
   let cs=ref 0l in
   let i=ref 0 in
   while !i<String.length x do
@@ -1678,9 +1678,9 @@ let rec str_checksum32 x=
     let d=if !i+3<String.length x then Int32.of_int (int_of_char (x.[!i+3])) else 0l in
     cs:=Int32.add !cs (Int32.logor (Int32.shift_left (Int32.logor (Int32.shift_left (Int32.logor (Int32.shift_left a 8) b) 8) c) 8) d);
     i:= !i+4
-  done;
-  !cs
-let rec buf_checksum32 x=
+  done; !cs
+
+let buf_checksum32 x=
   let cs=ref 0l in
   let i=ref 0 in
   while !i<Buffer.length x do
@@ -1690,8 +1690,7 @@ let rec buf_checksum32 x=
     let d=if !i+3<Buffer.length x then Int32.of_int (int_of_char (Buffer.nth x (!i+3))) else 0l in
     cs:=Int32.add !cs (Int32.logor (Int32.shift_left (Int32.logor (Int32.shift_left (Int32.logor (Int32.shift_left a 8) b) 8) c) 8) d);
     i:= !i+4
-  done;
-  !cs
+  done; !cs
 
 let total_checksum a b c=
   Int32.sub (-1313820742l) (Int32.add a (Int32.add b c))

@@ -1457,7 +1457,11 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     | Glut.LEFT_BUTTON, Glut.DOWN ->
       let links = find_link win x y in
       let buttons = List.filter (fun l -> match l.link_kind with Button(_,_) -> true | _ -> false) links in
-      let buttons = List.map (function { link_kind = Button(bt,name) } -> bt,name | _ -> assert false) buttons in
+      let buttons = List.map (fun {link_kind; _} ->
+        match link_kind with
+        | Button(bt,name) -> (bt,name)
+        | _               -> assert false) buttons
+      in
 
       motion_ref := Some (x,y,x, y,buttons,links);
 

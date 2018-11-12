@@ -102,7 +102,7 @@ and print_marker m=match m with
   | EndLink->Printf.sprintf "EndLink"
   | AlignmentMark->Printf.sprintf "AlignmentMark"
 
-let rec print_box_type chan=function
+let print_box_type chan=function
     GlyphBox _->Printf.fprintf chan "GlyphBox "
   | Kerning _->Printf.fprintf chan "Kerning "
   | Glue _->Printf.fprintf chan "Glue "

@@ -172,7 +172,7 @@ let rec intercalate a b=match b with
   | h0::h1::s->h0::a::(intercalate a (h1::s))
 
 
-let rec dbCite db subcitation req=
+let dbCite db subcitation req=
   let results=ref [] in
   let r=sprintf "SELECT %s FROM bibliography %s" (String.concat ", " (List.map fst fields))
     (if String.length req > 0 then "WHERE "^req else "")

@@ -8,9 +8,10 @@ open FTypes
 open Patoraw
 open RawContent
 
-let rec spacing right left =
-  let above y l = match l with
-      [] -> false
+let spacing right left =
+  let above y l =
+    match l with
+    | []         -> false
     | (_, y')::_ -> y >= y'
   in
 

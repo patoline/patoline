@@ -64,8 +64,8 @@ module type OrderedHashableType =
 
 module Make(Line : OrderedHashableType with type t = Box.line) =
   struct
-    module LineMap=Map.Make(Line)
-    module ColMap=Map.Make (
+    module LineMap = Map.Make(Line)
+    module ColMap = Map.Make (
       struct
         type t=float*float*line*float*float*line
         let compare=compare
@@ -76,13 +76,13 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
         let equal (Val(a,_,_,_,_,_,_,_,_)) (Val(b,_,_,_,_,_,_,_,_))=(Line.compare a b)==0
         let hash (Val(a,_,_,_,_,_,_,_,_))=Line.hash a
       end
-    module H=Weak.Make(Hstruct)
+    module H = Weak.Make(Hstruct)
 
     (** [haut] and [bas] are arrays of boxes *)
     let haut = DynArray.make 100 Empty
     let bas  = DynArray.make 100 Empty
 
-    let rec print_graph file paragraphs graph path=
+    let print_graph file paragraphs graph path=
       let f=open_out file in
       let rec make_path p1 p2=function
           [] | [_]->false

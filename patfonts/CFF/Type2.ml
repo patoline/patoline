@@ -508,16 +508,13 @@ let rec unsubr subrs gsubrs gl=
   let lineto x1 y1=() in
   let curveto x1 y1 x2 y2 x3 y3=() in
   let moveto x1 y1=() in
-  let rec hlineto c=
-    if c <= !stackC-1 then
-      ()
-    else
-      stackC:=0
-  and vlineto c=
-    if c <= !stackC-1 then
-      ()
-    else
-      stackC:=0
+  let hlineto c =
+    if c <= !stackC-1 then ()
+    else stackC:=0
+  in
+  let vlineto c=
+    if c <= !stackC-1 then ()
+    else stackC:=0
   in
   let rec hvcurveto c=
     if c <= !stackC-4 then

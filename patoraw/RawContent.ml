@@ -153,7 +153,7 @@ let rotation_matrix th =
 let rotate a = affine (rotation_matrix a)
 
 (* Set the drawing order of a raw element. *)
-let rec in_order i = function
+let in_order i = function
   | Glyph gl    -> Glyph { gl with glyph_order = i }
   | Path (pm,p) -> Path ({ pm with path_order = i },p)
   | Link lk     -> Link { lk with link_order = i }
@@ -165,7 +165,7 @@ let rec in_order i = function
   | Affine aff  -> Affine { aff with affine_order = i }
 
 (* Obtain the drawing order of a raw element. *)
-let rec drawing_order = function
+let drawing_order = function
   | Glyph gl    -> gl.glyph_order
   | Path (pm,_) -> pm.path_order
   | Link lk     -> lk.link_order
@@ -273,7 +273,7 @@ let rec resize al = function
       Affine { a with affine_matrix = m }
 
 (* Transform a path given a matrix. *)
-let rec affine_path_transform m =
+let affine_path_transform m =
   let f (u,v) =
     let f1 i x = m.(0).(0) *. x +. m.(0).(1) *. v.(i) +. m.(0).(2) in
     let f2 i x = m.(1).(0) *. x +. m.(1).(1) *. v.(i) +. m.(1).(2) in
