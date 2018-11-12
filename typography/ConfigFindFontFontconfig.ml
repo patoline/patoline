@@ -23,5 +23,5 @@ let findFont fontspath pat =
   ) "file" 0
 
 let findFont pat =
-  let (p, ps) = PatConfig.(patoconfig.fonts_dir) in
+  let (p, ps) = Patconfig.PatConfig.(patoconfig.fonts_dir) in
   findFont (p :: ps) pat
