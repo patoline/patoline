@@ -4,10 +4,8 @@ type patoconfig =
   ; mutable hyphen_dir     : string * string list
   ; mutable drivers        : string list
   ; mutable formats        : string list
-  ; mutable has_patonet    : bool
   ; mutable max_iter       : int
-  ; mutable user_dir       : string
-  ; mutable pdf_type3_only : bool }
+  ; mutable user_dir       : string }
 
 val patoconfig : patoconfig
 

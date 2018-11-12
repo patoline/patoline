@@ -31,8 +31,19 @@ open Driver
 
 let pt_of_mm = Util.pt_of_mm
 
-let driver_options = []
-let filter_options argv = argv
+let pdf_type3_only = ref false
+
+let driver_options =
+  Arg.[("--type3-only", Set pdf_type3_only, "Use Type3 fonts only.")]
+
+let filter_options argv =
+  let is_ours flag = List.exists (fun (f, _, _) -> f = flag) driver_options in
+  let (ours, theirs) = List.partition is_ours (Array.to_list argv) in
+  let (ours, theirs) = (Array.of_list ours, Array.of_list theirs) in
+  let current = ref 0 in
+  let anon _ = assert false in
+  Arg.parse_argv ~current ours driver_options anon "PDF driver options:";
+  theirs
 
 module FloatMap = Map.Make(
   struct
@@ -873,9 +884,9 @@ let output ?(structure:structure=empty_structure) pages fname =
 
   let fn k pdffont =
     let pdftype =
-      if not Patconfig.PatConfig.(patoconfig.pdf_type3_only) && is_cff pdffont.font
-      then pdftype1c
-      else pdftype3 in
+      if not !pdf_type3_only && is_cff pdffont.font then pdftype1c
+      else pdftype3
+    in
     IntMap.iter (fun k _-> pdftype pdffont k) pdffont.pdfObjects
   in
   StrMap.iter fn !fonts;

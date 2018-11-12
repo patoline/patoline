@@ -12,7 +12,5 @@
     (echo "let extra_fonts_dir    = []\n")
     (echo "let extra_grammars_dir = []\n")
     (echo "let extra_hyphen_dir   = []\n")
-    (echo "let pdf_type3_only     = false (* FIXME *)\n")
     (echo "let drivers            = [] (* FIXME *)\n")
-    (echo "let formats            = [] (* FIXME *)\n")
-    (echo "let has_patonet        = false (* FIXME *)\n")))))
+    (echo "let formats            = [] (* FIXME *)\n")))))

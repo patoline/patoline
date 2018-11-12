@@ -1,7 +1,7 @@
-(** This module provide a simple interface to a purpose configuration files
-    format. The file format is deliberatly kept very simple, and we do not
-    provide any OCaml-specific features. A file consists in a list of named
-    fields that can contain elements of a few base types. *)
+(** This module provide a simple interface to a multi-purpose configuration
+    files format. The file format is deliberatly kept very simple, and we do
+    not provide any OCaml-specific features. A file consists in a list of
+    named fields that can contain elements of a few base types. *)
 
 module Data : sig
   (** The [Data] module provides an abstract interface for working with the
