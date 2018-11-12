@@ -5,4 +5,4 @@
   (c_names FrameBuffer)
   (wrapped false)
   (optional) ; requires lablgl
-  (libraries patodb lablgl patoraw))
+  (libraries patodb lablgl lablgl.glut patoraw))
