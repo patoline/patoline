@@ -21,12 +21,9 @@ open Typography
 open Patfonts
 open Patutil
 open Unicodelib
-open Fonts
 open FTypes
-(* open Typography.Constants *)
 open Typography.Document
 open Box
-(* open Binary *)
 open Extra
 
 let boxes_width env contents =

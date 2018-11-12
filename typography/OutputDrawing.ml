@@ -24,7 +24,6 @@ open Patfonts
 open Document
 open Box
 open FTypes
-open Break
 open Extra
 open RawContent
 
@@ -222,7 +221,7 @@ let output ?state paragraphs figures env (opt_pages:frame)=
               endlink false;
               0.
             )
-            | Marker (Label l) as m ->(
+            | Marker (Label _) as m ->(
               destinations:=m :: !destinations;
               0.
             )
@@ -308,8 +307,8 @@ let output ?state paragraphs figures env (opt_pages:frame)=
 let minipage ?state ?(env_mod=fun e -> e) str=
   [bB (fun env->
     let env = env_mod env in
-    let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees,states=flatten env (fst str) in
-    let (_,pages,fig',user')=TS.typeset
+    let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,_,figures,_,states=flatten env (fst str) in
+    let (_,pages,_,_) = TS.typeset
       ~completeLine:compl
       ~figure_parameters:fig_params
       ~figures:figures
@@ -327,8 +326,8 @@ let minipage ?state ?(env_mod=fun e -> e) str=
   )]
 
 let minipage' ?state env str=
-  let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees,states=flatten env (fst str) in
-  let (_,pages,fig',user')=TS.typeset
+  let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,_,figures,_,states=flatten env (fst str) in
+  let (_,pages,_,_) = TS.typeset
     ~completeLine:compl
     ~figure_parameters:fig_params
     ~figures:figures

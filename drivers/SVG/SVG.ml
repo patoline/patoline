@@ -102,7 +102,7 @@ let standalone w h style title svg=
   Buffer.add_string svg_buf "</svg>\n";
   svg_buf
 
-let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") prefix fontCache=
+let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") _prefix fontCache=
   let def_buf=Buffer.create 256 in
   Buffer.add_string def_buf
 "
@@ -141,7 +141,7 @@ svg .dragable rect{pointer-events:all;}
   def_buf
 
 
-let draw ?fontCache ?dynCache prefix w h contents=
+let draw ?fontCache ?dynCache prefix _w h contents=
   let dynCache, buttonCache = match dynCache with
     | None -> None, None
     | Some((d,b),g,sl,st,f) -> Some (d,g,sl,st,f), Some b
@@ -366,7 +366,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
       );
 
       (match l.link_kind with
-        Intern(label,dest_page,dest_x,dest_y) ->
+        Intern(_,dest_page,_,_) ->
           Buffer.add_string svg_buf
             (Printf.sprintf "<a xlink:href=\"#%d_%d\">"
                dest_page 0
@@ -381,7 +381,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
            | None -> ()
            | Some c -> Hashtbl.replace c name btype
          end;
-         List.iteri (fun i (w,c) ->
+         List.iteri (fun i (_,c) ->
              let (x0,y0,x1,y1) = RawContent.bounding_box_full c in
              let x0 = min x0 0.0 in
              let (x0',_,_,_) = RawContent.bounding_box_kerning c in
@@ -529,7 +529,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
                                     (Array.length a.anim_contents) (truncate (a.anim_step *. 1000.))
                                     (if a.anim_mirror then 1 else 0) prefix );
 
-      Array.iteri (fun i c ->
+      Array.iteri (fun i _ ->
         Buffer.add_string svg_buf (
           Printf.sprintf "<g id=\"Animation_%d_%d\" visibility=\"%s\">\n"
             prefix i
@@ -557,8 +557,8 @@ let draw ?fontCache ?dynCache prefix w h contents=
     let comp a b=match a,b with
         Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
                            else compare gb.glyph_y ga.glyph_y
-      | Glyph ga,_-> -1
-      | _,Glyph gb->1
+      | Glyph _,_-> -1
+      | _,Glyph _->1
       | _->0
     in
     let subsort a=match a with
@@ -593,7 +593,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
 
 
 
-let buffered_output' ?dynCache ?(structure:structure=empty_structure) pages prefix=
+let buffered_output' ?dynCache ?structure:(_=empty_structure) pages prefix=
 
   let total=Array.fold_left (fun m x->m+Array.length x) 0 pages in
   let all_pages=Array.make total (empty_page (0.0,0.0)) in
@@ -1051,7 +1051,7 @@ let output ?(structure:structure=empty_structure) pages filename=
 
 
 
-let images_of_boxes ?cache ?(css="style.css") ?(output_font_defs=true) prefix env conts_box=
+let images_of_boxes ?cache ?(css="style.css") ?output_font_defs:(_=true) prefix env conts_box=
 
   let raws=Array.map (fun cont->Document.draw_boxes env cont) conts_box in
 
@@ -1071,8 +1071,8 @@ let images_of_boxes ?cache ?(css="style.css") ?(output_font_defs=true) prefix en
       let comp a b=match a,b with
           Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
             else compare gb.glyph_y ga.glyph_y
-        | Glyph ga,_-> -1
-        | _,Glyph gb->1
+        | Glyph _,_-> -1
+        | _,Glyph _->1
         | _->0
       in
       let subsort a=match a with
@@ -1099,7 +1099,7 @@ let images_of_boxes ?cache ?(css="style.css") ?(output_font_defs=true) prefix en
 
 
   let r=Buffer.create 1000 in
-  let imgs=Array.mapi (fun i x->
+  let imgs=Array.mapi (fun i _ ->
     Buffer.clear r;
     let _,w,_=boxes_interval (Array.of_list conts_box.(i)) in
     let x0,y0,x1,y1=bounding_box_full raws.(i) in

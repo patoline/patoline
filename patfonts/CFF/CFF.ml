@@ -1071,7 +1071,7 @@ let subset font info cmap gls=
 *)
 
 
-let subset(* _encoded *) font info cmap gls=
+let subset(* _encoded *) font _ cmap gls=
   let buf=Buffer.create 256 in
 
   (* Ecriture du header *)
@@ -1144,10 +1144,7 @@ let subset(* _encoded *) font info cmap gls=
   seek_in f (font.stringIndex.(Array.length font.stringIndex-1));
   let gsubr=copyIndex f in
   let encoding=
-    let size=IntMap.fold (fun k a m->
-      if a<0x100 then m+1 else m
-    ) cmap 0
-    in
+    let size = IntMap.fold (fun _ a m -> if a<0x100 then m+1 else m) cmap 0 in
     let enc = Bytes.make (size+2) (char_of_int 0) in
     Bytes.set enc 0 (char_of_int 0);
     Bytes.set enc 1 (char_of_int size);
@@ -1255,7 +1252,7 @@ let subset(* _encoded *) font info cmap gls=
   let subr =
     try
       match findDict f (font.dictIndex.(0)) (font.dictIndex.(1)) 18 with
-      | offset::size::_ ->
+      | offset::_size::_ ->
           let off_subr=List.hd (IntMap.find 19 priv) in
           seek_in f (font.offset+int_of_num offset+int_of_num off_subr);
           Bytes.to_string (copyIndex f)

@@ -81,7 +81,8 @@ let mem : string -> 'a tree -> bool = fun s t ->
     [s] in the tree [t]. The function returns a list of couples of the value
     and the number of characters consumed for the value. The entries are
     sorted in order of the longest prefix. An optional filter may be profided *)
-let every_prefix : ?filter:('a -> bool) -> string -> 'a tree -> (int * 'a) list = fun ?(filter=fun x -> true) s t ->
+let every_prefix : ?filter:('a -> bool) -> string -> 'a tree
+     -> (int * 'a) list = fun ?(filter=fun _ -> true) s t ->
   let rec find n found cs (Node(vo,l)) =
     match (cs, vo) with
     | ([]   , None) -> found
@@ -104,7 +105,8 @@ let every_prefix : ?filter:('a -> bool) -> string -> 'a tree -> (int * 'a) list 
     in the tree [t]. The function returns a couple of the value and the
     number of characters consumed. If there is no such value, the exception
     [Not_found] is thrown. *)
-let longest_prefix : ?filter:('a -> bool) -> string -> 'a tree -> int * 'a = fun ?(filter=fun x -> true) s t ->
+let longest_prefix : ?filter:('a -> bool) -> string -> 'a tree -> int * 'a =
+    fun ?(filter=fun _ -> true) s t ->
   match every_prefix ~filter s t with
   | []   -> raise Not_found
   | r::_ -> r

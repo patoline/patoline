@@ -193,7 +193,7 @@ module Format(D:DocumentStructure) =
               | _           -> 0
             in
 
-            let (env1, fig_params0, params0, new_page0, new_line0
+            let (env1, _, params0, new_page0, new_line0
                 , compl0, badnesses0, paragraphs0, _, figures0
                 , figure_trees0, states0) =
                   flatten ~initial_path:path env0 tree
@@ -224,7 +224,7 @@ module Format(D:DocumentStructure) =
                     in
                     par_map := IntMap.add (n+1) !real_par !par_map;
                     incr real_par
-                | Paragraph p -> incr real_par
+                | Paragraph _ -> incr real_par
                 | Node n      ->
                     IntMap.iter (fun _ t -> make_paragraphs t) n.children
                 | _           -> ()
@@ -251,7 +251,7 @@ module Format(D:DocumentStructure) =
                 states.(k)     <- states0.(a)
               in IntMap.iter f !par_map;
 
-              let (logs_, opt_pages, figs', user') =
+              let (_, opt_pages, _, _) =
                 let layout = Box.frame_top layout0 in
                 let initial_line = {uselessLine with layout} in
                 TS.typeset ~initial_line ~completeLine:compl
@@ -384,7 +384,7 @@ module Format(D:DocumentStructure) =
             Printf.fprintf stderr "Optimization ends  : %f s\n%!" t; r
           in
 
-          let draw_slide_number env i=
+          let draw_slide_number env _ =
             match !slide_numbering with
             | None    -> []
             | Some sn ->
@@ -405,7 +405,7 @@ module Format(D:DocumentStructure) =
                  x
           in
 
-          let draw_slide slide_number (path,tree,paragraphs,figures,figure_trees,env,opts,slide_num)=
+          let draw_slide slide_number (_,tree,paragraphs,figures,_,env,opts,slide_num)=
             let states = ref [] in
             let destinations = ref StrMap.empty in
 
@@ -488,12 +488,12 @@ module Format(D:DocumentStructure) =
 
               let rec more_contents f =
                 let g = function
-                  | Placed_line l -> ()
+                  | Placed_line _ -> ()
                   | Raw r         ->
                       page.contents <- (in_state st r) @ page.contents
                 in
                 List.iter g f.frame_content;
-                IntMap.iter (fun k a -> more_contents a) f.frame_children;
+                IntMap.iter (fun _ a -> more_contents a) f.frame_children;
               in
               begin
                 try
@@ -508,7 +508,7 @@ module Format(D:DocumentStructure) =
             done;
 
             let env =
-              let f labl (lm, y0, y1, line) env =
+              let f labl (_, _, _, line) env =
                 { env with user_positions =
                   MarkerMap.add (Label labl) line (user_positions env)}
               in

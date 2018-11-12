@@ -23,12 +23,10 @@ open Patfonts
 open Patutil
 open Patoraw
 open Unicodelib
-open Fonts
 open FTypes
 open Typography.Document
 open Extra
 open Typography.Box
-open Printf
 
 let id x=x
 let emph x=toggleItalic x
@@ -145,7 +143,7 @@ let postprocess_tree tree=
 
               let num=
                 if List.mem_assoc "numbered" n.node_tags then
-                  let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+                  let _,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                   List.map (RawContent.in_order 1)
                     (draw {env with size=env.size*.(sz-.h);fontColor=Color.gray }
                        [tT (String.concat "." (List.map (fun x->string_of_int (x+1))
@@ -193,22 +191,20 @@ let postprocess_tree tree=
           ) else (
             if List.mem_assoc "numbered" n.node_tags  then
               [C (fun env->
-                let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+                let _,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                 bB (fun _->[Marker (Structure path)])
                 ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (List.drop 1 b))))
                 ::tT " "
                 ::n.displayname
               )]
-            else
-              bB (fun env->[Marker (Structure path)])::
-                n.displayname
+            else bB (fun _ -> [Marker (Structure path)]) :: n.displayname
           )
         in
         let par=Paragraph {
           par_contents=section_name;
           par_paragraph=(-1);par_states=[];
           par_env=(fun env->
-                     let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+                     let _,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
 
                      { (envAlternative ~features:(Opentype.oldStyleFigures::env.fontFeatures)
                           (if List.length b>=4 then Regular else Caps) env) with

@@ -32,10 +32,11 @@ let file = open_in unicodedata_file
 type uchar = string array
 
 let parse_line s =
-  let rec scan_field i = if i < String.length s then
+  let rec scan_field i =
+    if i < String.length s then
       match s.[i] with
       | ';' -> i
-      | a -> scan_field (succ i)
+      | _   -> scan_field (succ i)
     else i
   in
   let rec scan res n i =

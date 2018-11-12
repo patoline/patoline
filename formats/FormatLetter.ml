@@ -18,16 +18,12 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Typography
-open Patfonts
 open Patoraw
 open Patutil
 open Unicodelib
-open Fonts
-open FTypes
 open Typography.Document
 open Extra
 open Typography.Box
-open Printf
 
 let id x=x
 let emph x=toggleItalic x

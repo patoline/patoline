@@ -128,7 +128,6 @@ open FTypes
 let subst l cs=List.map (fun c->{ c with glyph_index=make_subst l c.glyph_index }) cs
 open Document
 open Document.Mathematical
-open Maths
 
 let compose f g x=f(g x)
 let changeFont l env=

@@ -20,8 +20,6 @@
 
 open Typography
 open Typography.Document
-open Typography.Complete
-open Typography.Break
 open Patfonts
 open FTypes
 open Patutil
@@ -119,7 +117,7 @@ let hyphenate_dict dict = (* Should probably move to Hyphen *)
     (fun str-> Array.of_list (Hyphen.hyphenate inp str))
   with Not_found ->
           Printf.eprintf "Warning: hyphenation dictionary %s not found...\n" dict;
-    (fun x -> [||])
+    (fun _ -> [||])
 
 
 
@@ -265,7 +263,7 @@ let stackCont drs=
   bB (fun env->[stackDrawings (List.map (fun x->drawing (draw env x)) drs)])
 
 let defaultEnv:environment=
-  let f,str,subst,pos=selectFont alegreya Regular false in
+  let f,_,subst,pos=selectFont alegreya Regular false in
   let fsize=3.7 in
   let feat= [ Opentype.standardLigatures ] in
   let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
@@ -449,21 +447,19 @@ let defaultEnv:environment=
           let section_name=
             if numbered' then
               [C (fun env->
-                  let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+                  let _,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                   bB (fun _->[Marker (Structure path)])
                   ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (List.drop 1 b))))
                   ::tT " "
                   ::n.displayname
                  )]
             else
-              [C(fun env->
-                 bB (fun env->[Marker (Structure path)])::
-                   n.displayname)]
+              [C (fun _ -> bB (fun _ -> [Marker (Structure path)]) :: n.displayname)]
           in
           let par=Paragraph {
                       par_contents=section_name;
                       par_env=(fun env->
-                               let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+                               let _,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                                { (envAlternative ~features:(Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
                                  size=(if List.length b <= 2 then sqrt phi else
                                          sqrt (sqrt phi))*.env.size;
@@ -501,7 +497,7 @@ let defaultEnv:environment=
 
     let defaultEnv=defaultEnv
 
-    let title str ?label ?(extra_tags=[]) displayname =
+    let title str ?label:_ ?(extra_tags=[]) displayname =
       let displayname = [C (fun _ -> env_accessed := true; displayname)] in
       try
         let name = string_of_contents displayname in
@@ -682,13 +678,13 @@ module Env_dynamic(X : sig val arg1 : content list
 
 end
 
-let figure_drawing ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing env=
+let figure_drawing ?parameters:(_=center) ?name:(_="") ?(caption=[]) ?(scale=1.) drawing env=
   let dr=drawing env in
   let dr=resize_drawing scale dr in
   let lvl,num=try StrMap.find "figure" env.counters with Not_found -> -1,[] in
   let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
   let sect_num=List.drop (List.length str_counter - max 0 lvl+1) str_counter in
-  let caption, env, ms = (* FIXME: ms lost !!! no label inside caption will work *)
+  let caption, env, _ (*ms*) = (* FIXME: ms lost !!! no label inside caption will work *)
     OutputDrawing.minipage' {env with normalLeftMargin=0.}
                              (paragraph ((
                                          [ tT "Figure"; tT " ";
@@ -1299,7 +1295,8 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
       let rec resolve tree i env0=
         if not !quiet then Printf.eprintf "Pass number %d\n%!" i;
         pass_number := i;
-        let env1,fig_params,params,new_page_list,new_line_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees,states=flatten env0 tree in
+        let env1, fig_params, params, new_page_list, new_line_list, compl,
+          badness, paragraphs, _, figures, _, states = flatten env0 tree in
         if not !quiet then
           Printf.eprintf "Optimization starts: %f s\n%!" (Sys.time ());
         let (logs,opt_pages,figs',user')=TS.typeset
@@ -1409,7 +1406,10 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                           None->l.line.height
                         | Some ll->
                           try
-                            let nextl=match List.find (function Placed_line a->true | _->false) s with Placed_line l->l | _->assert false
+                            let nextl =
+                              match List.find (function Placed_line _ -> true | _ -> false) s with
+                              | Placed_line l -> l
+                              | _ -> assert false
                             in
                             let milieu=
                               (ll.line.height+.fst (line_height paragraphs figures ll.line)
@@ -1608,7 +1608,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
             if List.mem "page" g.frame_tags then (
               i+1, draw_page i g::pages
             ) else (
-              IntMap.fold (fun k a (j,ps)->draw_all_pages a j ps) g.frame_children (i,pages)
+              IntMap.fold (fun _ a (j,ps)->draw_all_pages a j ps) g.frame_children (i,pages)
             )
           in
 
@@ -1616,7 +1616,7 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
           let pages=Array.map (fun p->
               { p with
                 contents=List.map (fun a->match a with
-                  Link ({link_kind = Intern(label,dest_page,dest_x,dest_y); _} as l)->(
+                  Link ({link_kind = Intern(label,_,_,_); _} as l)->(
                     try
                       let (p',x,y0,y1)=StrMap.find label !destinations in
                       let dx0,dy0,dx1,dy1=bounding_box l.link_contents in

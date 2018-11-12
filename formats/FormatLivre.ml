@@ -20,9 +20,7 @@
 open Typography
 open Patfonts
 open Patutil
-open Patoraw
 open Unicodelib
-open Fonts
 open FTypes
 (* open Typography.Constants *)
 open Typography.Document

@@ -504,7 +504,7 @@ let compile config file =
       let to_bin fn =
         let (dir, base, ext) = Filename.decompose fn in
         let bdir = to_build_dir dir in
-        let target_ext = match ext with ".txp" -> "_.opt" | e -> ".opt" in
+        let target_ext = match ext with ".txp" -> "_.opt" | _ -> ".opt" in
         Filename.concat bdir (base ^ target_ext)
       in
       run_binary config (to_bin file)

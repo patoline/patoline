@@ -22,15 +22,12 @@ open Typography
 open Patfonts
 open Patutil
 open Patoraw
-open Unicodelib
-open Typography.Document
 open RawContent
 open Color
 open Extra
 open Driver
 
 open Typography.Box
-open Fonts
 open FTypes
 open Typography.Document
 
@@ -121,7 +118,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             in
             let minip,env1,ms1=OutputDrawing.minipage' env1 (map_params stru,[]) in
             let stru_title,_=paragraph M.arg1 in
-            let minip_title,env1,ms2=OutputDrawing.minipage' {env1 with fontColor=(!block_title_foreground)} (stru_title,[]) in
+            let minip_title,_,ms2=OutputDrawing.minipage' {env1 with fontColor=(!block_title_foreground)} (stru_title,[]) in
             let minip_title0=try snd (IntMap.min_binding minip_title) with Not_found->empty_drawing_box in
             let minip_title0=
               if minip_title0.drawing_y0=infinity then
@@ -399,7 +396,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         lead=Default.defaultEnv.normalLead*.1.2;
         hyphenate=(fun _->[||]);
         par_indent=[];
-        new_line=(fun env node params nextNode nextParams layout height-> height -. env.lead);
+        new_line=(fun env _ _ _ _ _ height -> height -. env.lead);
         new_page= (* useless because redefined below depending upon the presence of a title *)
         (fun t->
           let zip=Box.make_page (slidew,slideh) (frame_top t) in
@@ -539,7 +536,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           format=slidew,slideh;
         }
 
-      let output out_params structure defaultEnv file=
+      let output _ structure defaultEnv file=
 
         let rec resolve comp_i env_resolved=
           Printf.eprintf "Compilation %d\n" comp_i; flush stdout;
@@ -601,7 +598,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         (List.fold_left max 0 n.node_states)
                     | _->0
                   in
-                  let env1,fig_params0,params0,new_page0,new_line0,compl0,badnesses0,paragraphs0,_,
+                  let env1,_,params0,new_page0,new_line0,compl0,badnesses0,paragraphs0,_,
                     figures0,figure_trees0,states0=flatten ~initial_path:path env0 tree
                   in
                   let max_state=
@@ -646,7 +643,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         badnesses.(k)<-badnesses0.(a);
                         states.(k)<-states0.(a);
                       ) !par_map;
-                      let (logs_,opt_pages,figs',user')=TS.typeset
+                      let (_,opt_pages,figs',user')=TS.typeset
                         ~initial_line:{ uselessLine with layout=(Box.frame_top layout0) }
                         ~completeLine:compl
                         ~figure_parameters:fig_params
@@ -788,7 +785,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             (* Dessin du menu en haut de l'écran *)
 
             let toc=List.fold_left (fun m (n,dis,path,env)->
-              let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+              let _,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
               let mm=match b with _::h::_->IntMap.add h (n,dis,path,env) m | _->m in
               mm
             ) IntMap.empty !toc
@@ -800,7 +797,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             let draw_toc env0=
               (* Où est-on actuellement ? *)
               let _,b0=try StrMap.find "_structure" env0.counters with Not_found -> -1,[0] in
-              let boxes=IntMap.map (fun (n,displayname,path,env)->
+              let boxes=IntMap.map (fun (_,displayname,path,env)->
                 (* Printf.fprintf stderr "draw_toc %S\n" n;flush stderr; *)
                 let _,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                 let b0=match b0 with
@@ -840,7 +837,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               let denom, start_space = if IntMap.cardinal toc > 1 && total > slidew *. 0.5 then
                   (* espace fixe au bord à 0.125 slidew *)
                   (float_of_int (IntMap.cardinal toc - 1)),
-                    (fun inter -> 0.125 *. slidew)
+                    (fun _ -> 0.125 *. slidew)
                 else
                   (float_of_int (IntMap.cardinal toc + 1)),
                     (fun inter -> inter +. 0.125 *. slidew)
@@ -881,7 +878,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 type numbering_kind = SimpleNumbering | RelativeNumbering
           *)
 
-            let draw_slide_number env i=
+            let draw_slide_number env _ =
               match !slide_numbering with
                | None    -> []
                | Some sn -> (
@@ -900,7 +897,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
 
             (* Dessin du slide complet *)
 
-            let draw_slide slide_number (path,tree,paragraphs,figures,figure_trees,env,opts,slide_num)=
+            let draw_slide slide_number (_,tree,paragraphs,figures,_,env,opts,slide_num)=
               let states=ref [] in
               let destinations=ref StrMap.empty in
 
@@ -1019,7 +1016,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                               []->u
                             | (Link h)::s when not h.link_closed->(
                               h.link_contents<-List.rev u;
-                              let (x0,y0,x1,y1)=bounding_box u in
+                              let (_,y0,_,y1)=bounding_box u in
                               h.link_y0<-y0;
                               h.link_y1<-y1;
                               h.link_closed<-true;
@@ -1042,14 +1039,11 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                   draw_line pp.(j)
                 done;
                 let rec more_contents f=
-                  List.iter (fun x->match x with
-                      Placed_line l->()
-                    | Raw r->(
-                      page.contents<-
-                        (in_state st r)@page.contents
-                    )
-                  ) f.frame_content;
-                  IntMap.iter (fun k a->more_contents a) f.frame_children;
+                  List.iter (function
+                    | Placed_line _ -> ()
+                    | Raw r -> page.contents <- in_state st r @ page.contents
+                    ) f.frame_content;
+                  IntMap.iter (fun _ a -> more_contents a) f.frame_children;
                 in
                 (try
                    more_contents (IntMap.find slide_num (fst (frame_top layout_final)).frame_children)
@@ -1060,7 +1054,7 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
               done;
               let env=
                 StrMap.fold (fun labl dest env ->
-                  let comp_i,lm,y0,y1,line = dest in
+                  let _,_,_,_,line = dest in
 (*                  Printf.fprintf stderr "Adding pos %s\n" labl;*)
                   { env with
                     user_positions=MarkerMap.add (Label labl) line (user_positions env)})

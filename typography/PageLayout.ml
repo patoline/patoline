@@ -32,11 +32,11 @@ let inner_frame master ((page, _) as zip) =
     zip)
 
 let new_page master zip =
-  let ((page, _) as zip) = Box.(make_page (master.paperWidth, master.paperHeight) (frame_top zip)) in
+  let zip = Box.(make_page (master.paperWidth, master.paperHeight) (frame_top zip)) in
   inner_frame master zip
 
 let lr_new_page master zip =
-  let (page, zip') as zip = Box.(make_page (master.paperWidth, master.paperHeight) (frame_top zip)) in
+  let (_, zip') as zip = Box.(make_page (master.paperWidth, master.paperHeight) (frame_top zip)) in
   let pagenum = match zip' with
   | (pagenum, _) :: _ -> pagenum
   | _ -> assert false (* After Box.make_page, zip contains at least the new frame *)

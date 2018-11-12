@@ -44,9 +44,9 @@ let centered parameters str tree _=
         let y=orn_x1-.orn_x0 in
         let rec toc env0 path tree=
           match tree with
-              Paragraph p -> []
-            | FigureDef f -> []
-            | Node s when (List.length path) <= 1-> (
+          | Paragraph _ -> []
+          | FigureDef _ -> []
+          | Node s when (List.length path) <= 1-> (
                 let rec flat_children env1=function
                     []->[]
                   | (_,(FigureDef _))::s
@@ -58,7 +58,7 @@ let centered parameters str tree _=
                     )
                 in
                 let chi=if List.mem_assoc "numbered" s.node_tags then flat_children env0 (IntMap.bindings s.children) else [] in
-                let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
+                let _,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
                 let count = List.drop 1 b in
                 let in_toc=List.mem_assoc "intoc" s.node_tags in
                   if in_toc && count<>[] then (
@@ -90,7 +90,7 @@ let centered parameters str tree _=
                     in
                     max_w:=max !max_w (w_name+.w_page+.2.*.spacing);
                     max_name:=max !max_name (w_name+.spacing);
-                    let (a,b,c,d)=RawContent.bounding_box cont in
+                    let (_,b,_,d)=RawContent.bounding_box cont in
                     Drawing {
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;
@@ -137,9 +137,9 @@ let these parameters str tree max_level=
         let rec toc env0 path tree=
           let level=List.length path in
           match tree with
-              Paragraph p -> []
-            | FigureDef f -> []
-            | Node s when level <= max_level && List.mem_assoc "intoc" s.node_tags-> (
+          | Paragraph _ -> []
+          | FigureDef _ -> []
+          | Node s when level <= max_level && List.mem_assoc "intoc" s.node_tags-> (
                 let rec flat_children env1=function
                     []->[]
                   | (_,(FigureDef _))::s
@@ -151,7 +151,7 @@ let these parameters str tree max_level=
                     )
                 in
                 let chi=if List.mem_assoc "numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
-                let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
+                let _,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
                 let count = List.rev (List.drop 1 b) in
                 let spacing=env.size/.phi in
                 let in_toc=List.mem_assoc "intoc" s.node_tags in
@@ -176,7 +176,7 @@ let these parameters str tree max_level=
                       List.map (RawContent.translate (w'+.spacing) 0.)
                       (draw_boxes env (boxify_scoped (envItalic true env') [tT (string_of_int page)]))
                   in
-                  let (a,b,c,d)=RawContent.bounding_box cont in
+                  let (_,b,_,d)=RawContent.bounding_box cont in
                   Marker (BeginLink (Intern labl))::
                     Drawing {
                       drawing_min_width=env.normalMeasure;
@@ -220,9 +220,9 @@ let slides ?(hidden_color=Color.rgb 0.8 0.8 0.8) parameters str tree max_level=
         let rec toc env0 path tree=
           let level=List.length path in
           match tree with
-              Paragraph p -> []
-            | FigureDef f -> []
-            | Node s when level <= max_level->(
+          | Paragraph _ -> []
+          | FigureDef _ -> []
+          | Node s when level <= max_level->(
                 let rec flat_children env1=function
                     []->[]
                   | (_,(FigureDef _))::s
@@ -234,7 +234,7 @@ let slides ?(hidden_color=Color.rgb 0.8 0.8 0.8) parameters str tree max_level=
                     )
                 in
                 let chi=if List.mem_assoc "numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
-                let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
+                let _,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
                 let count = List.rev (List.drop 1 b) in
                 let spacing=env.size in
                 let in_toc=List.mem_assoc "intoc" s.node_tags in
@@ -269,7 +269,7 @@ let slides ?(hidden_color=Color.rgb 0.8 0.8 0.8) parameters str tree max_level=
                      else [])@
                       (List.map (RawContent.translate w0 0.) (draw_boxes env' name))
                   in
-                  let (a,b,c,d)=RawContent.bounding_box cont in
+                  let (_,b,_,d)=RawContent.bounding_box cont in
                   Marker (BeginLink (Intern labl))::
                     Drawing {
                       drawing_min_width=env.normalMeasure;

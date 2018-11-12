@@ -1,5 +1,4 @@
 open Unicodelib
-open FUtil
 open FTypes
 
 type subst =
@@ -53,7 +52,7 @@ let print_subst = function
                      print_int_array x.subst_glyphs;
                      close_box();
                      printf " }\n"
-  | Chain x       -> printf "Chain { ... }\n"
+  | Chain _       -> printf "Chain { ... }\n"
   | Context _     -> printf "Context { ... }\n"
 
 let apply_ligature lig glyphs0 =
@@ -135,6 +134,6 @@ let apply_alternative alt i glyphs0 =
 
 let apply subst glyphs0 = 
   match subst with
-    | Alternative x -> glyphs0
+    | Alternative _ -> glyphs0
     | Subst x       -> apply_subst x glyphs0
     | _             -> glyphs0

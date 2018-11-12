@@ -25,7 +25,6 @@ open Extra
 open Patfonts
 open Unicodelib
 open FTypes
-open Bezier
 
 (** Elementary box in a paragraph *)
 type box =
@@ -249,7 +248,7 @@ let frame_up (t,cxt)=
 let frame_down i (t,cxt)=
   (IntMap.find i t.frame_children, ((i,t)::cxt))
 
-let frame_down_last (t,ctxt as f) =
+let frame_down_last ((t,_) as f) =
   try
     let (i,_) = IntMap.max_binding t.frame_children in
     frame_down i f
@@ -331,8 +330,9 @@ let layout_page l=frame_page l.layout
 
 
 let all_contents frame=
-  let rec collect f c=
-    IntMap.fold (fun k a m->collect a m) (f.frame_children) (f.frame_content@c)
+  let rec collect f c =
+    IntMap.fold (fun _ a m-> collect a m)
+      (f.frame_children) (f.frame_content @ c)
   in
   collect frame []
 
@@ -581,7 +581,7 @@ let vkern_percent_under' gs p envs st =
         | _ -> failwith "vkern on non glyph"
   in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
-  let y,yl,y0,yh = vbox gs in
+  let _,yl,y0,yh = vbox gs in
   let dy = p *. (yh -. yl) -. (y0 -. yl) in
   let center = (yh +. yl) /. 2.0 -. dy in
   center, List.map (function
@@ -610,7 +610,7 @@ let vkern_center gs c envs st =
         | _ -> failwith "vkern on non glyph"
   in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
-  let y,yl,y0,yh = vbox gs in
+  let _,yl,_,yh = vbox gs in
   let dy = (yh +. yl) /. 2.0 -. c in
   List.map (function
       GlyphBox g -> GlyphBox {
@@ -648,8 +648,8 @@ let vkern_as gs gs' envs st =
         | _ -> failwith "vkern on non glyph"
   in
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
-  let y,yl,y0,yh = vbox gs in
-  let y',yl',y0',yh' = vbox gs' in
+  let _,yl,_,yh = vbox gs in
+  let _,yl',y0',yh' = vbox gs' in
   let s = (yh' -. yl') /. (yh -. yl) in
   List.map (function
       GlyphBox g -> GlyphBox {

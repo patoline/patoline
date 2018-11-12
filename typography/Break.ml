@@ -19,10 +19,8 @@
 *)
 
 open Patutil
-open Patfonts
 open Extra
 open Box
-open FTypes
 
 type optim_error =
   | Normal
@@ -82,18 +80,19 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
     let haut = DynArray.make 100 Empty
     let bas  = DynArray.make 100 Empty
 
-    let print_graph file paragraphs graph path=
+    let print_graph file _ graph path=
       let f=open_out file in
       let rec make_path p1 p2=function
           [] | [_]->false
         | (_,h)::(a,h')::s->(p1=h && p2=h') || make_path p1 p2 ((a,h')::s)
       in
       Printf.fprintf f "digraph {\n";
-      LineMap.iter (fun k (b,_,_,_,_,a,_,_)->
-                      Printf.fprintf f "node_%d_%s_%s_%s [label=\"%d : %d, %d, %d\"];\n"
-                        k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x")
-                        (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
-                        (if k.hyphenEnd>=0 then string_of_int k.hyphenEnd else "x")
+      LineMap.iter (fun k (_,_,_,_,_,a,_,_) ->
+        Printf.fprintf f "node_%d_%s_%s_%s [label=\"%d : %d, %d, %d\"];\n"
+          k.paragraph
+          (if k.lineStart>=0 then string_of_int k.lineStart else "x")
+          (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
+          (if k.hyphenEnd>=0 then string_of_int k.hyphenEnd else "x")
 
                         k.paragraph k.lineStart k.lineEnd k.hyphenEnd;
 
@@ -152,7 +151,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
     collide 0 0 infinity
 
     let typeset ?(initial_line=uselessLine) ~completeLine ~figures
-      ~figure_parameters ~parameters ~new_page ~new_line ~badness ~states
+      ~figure_parameters ~parameters ~new_page ~new_line ~badness ~states:_
       (paragraphs : paragraph array) =
       if Array.length paragraphs=0 && Array.length figures=0 then ([],fst (frame_top initial_line.layout),IntMap.empty,MarkerMap.empty) else begin
       let colision_cache=ref ColMap.empty in
@@ -169,7 +168,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
       let rec break allow_impossible todo=
         (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
         if not (LineMap.is_empty todo) then (
-          let _,(Hstruct.Val(node,lastBadness,_,lastParameters,lastPages,comp0,lastNode_opt,lastFigures,lastUser) as cur_node)=LineMap.min_binding todo in
+          let _,(Hstruct.Val(node,lastBadness,_,lastParameters,lastPages,comp0,_,lastFigures,lastUser) as cur_node)=LineMap.min_binding todo in
           (* print_text_line paragraphs node;flush stderr; *)
           (* Printf.fprintf stderr "allow_impossible : %b\n" allow_impossible;flush stderr; *)
           let todo'=ref (LineMap.remove node todo) in
@@ -361,7 +360,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                 if placable then place_figure ();
               );
               let pages=ref lastPages in
-              let layouts0,h0=
+              let _,h0=
                 if snd node.layout=[] then (
                   let zip=new_page.(pi) node.layout in
                   let h0=(fst zip).frame_y1 in
@@ -512,7 +511,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                             if allow_impossible then (
                               try
                                 let Hstruct.Val(_,_,_,_,_,_,prec,_,_)=cur_node in
-                                let Hstruct.Val(pr,a,b,c,d,e,f,g,h)=match prec with None->raise Not_found | Some a->a  in
+                                let Hstruct.Val(pr,a,_,c,d,e,f,g,h)=match prec with None->raise Not_found | Some a->a  in
                                 if node.paragraph=nextNode.paragraph || (lastParameters.not_last_line && not c.not_last_line) then (
                                   extreme_solutions:=(pr,a,(Orphan (text_line paragraphs node)),
                                                       { c with min_page_after=1 },
@@ -529,7 +528,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                             if allow_impossible then (
                               try
                                 let Hstruct.Val(_,_,_,_,_,_,prec,_,_)=cur_node in
-                                let Hstruct.Val(pr,a,b,c,d,e,f,g,h)=match prec with None->raise Not_found | Some a->a  in
+                                let Hstruct.Val(pr,a,_,c,d,e,f,g,h)=match prec with None->raise Not_found | Some a->a  in
                                 if node.paragraph=nextNode.paragraph || (nextParams.not_first_line) && not lastParameters.not_first_line then (
                                   extreme_solutions:=(pr,a,(Widow (text_line paragraphs nextNode)),
                                                       { c with min_page_after=1 },
@@ -633,7 +632,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
               in
               (fix !pages 0 h0 0;
                if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
-                 List.iter (fun (nextNode,bad,log,params,pages,comp,node,figures,user)->
+                 List.iter (fun (nextNode,_,_,_,_,_,_,_,_) ->
                    let b,_,_=LineMap.split nextNode !todo' in
                    todo':=b
                  ) !extreme_solutions;
@@ -643,14 +642,12 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
                  let l0=List.sort (fun (_,b0,_,_,_,_,_,_,_) (_,b1,_,_,_,_,_,_,_)->compare b0 b1) !local_opt in
                  let deg=List.fold_left (fun m (_,_,_,p,_,_,_,_,_)->max m p.local_optimization) 0 l0 in
                  let rec register_list i l=
-                   if i>0 || deg<=0 then (
-                     match l with
-                         []->()
-                       | (nextNode,bad,log,params,pages,comp,node,fig,user)::s->(
-                         register node nextNode bad log params pages comp;
-                         register_list (i-1) s
-                       )
-                   )
+                   if i>0 || deg<=0 then
+                   match l with
+                   | [] -> ()
+                   | (nextNode,bad,log,params,pages,comp,node,_,_)::s ->
+                       register node nextNode bad log params pages comp;
+                       register_list (i-1) s
                  in
                  register_list deg l0
                )
@@ -670,7 +667,7 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
       while not !finished do
         break !allow_impossible !r_todo;
         if !endNode=None then (
-          let Hstruct.Val(b,bad,_,param,pages,comp,node,fig,user)= !last_todo_line in
+          let Hstruct.Val(b,_,_,param,_,_,_,_,_)= !last_todo_line in
           try
             let param0=LineMap.find b !last_failure in
             if param0.min_page_after<>param.min_page_after then raise Not_found;
@@ -686,10 +683,10 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
         ) else finished:=true
       done;
 
-      let Hstruct.Val(n0,_,_,_,layouts,_,_,figs0,user0) as node0=
+      let Hstruct.Val(_,_,_,_,_,_,_,figs0,user0) as node0 =
         match !endNode with
-            None-> !last_todo_line
-          | Some x->x
+        | None   -> !last_todo_line
+        | Some x -> x
       in
       try
         let rec add_content fr0 path cont=

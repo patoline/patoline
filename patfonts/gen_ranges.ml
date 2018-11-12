@@ -64,7 +64,7 @@ let _ =
           let a, b = split (n/2) l in
           match b with
             | []         -> make_program x y a
-            | (_,v,_)::s -> (Printf.fprintf file "if k>=%d then (\n" v;
+            | (_,v,_)::_ -> (Printf.fprintf file "if k>=%d then (\n" v;
                              make_program v y b;
                              Printf.fprintf file ") else (\n";
                              make_program x v a;

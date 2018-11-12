@@ -479,7 +479,7 @@ let string_of_contents l =
   Buffer.contents buf
 
 let raw : (environment -> RawContent.raw list) -> content = fun f ->
-  let contents env =
+  let contents _ =
     let dr env =
       let raw = f env in
       let (x0,y0,x1,y1) = RawContent.bounding_box raw in
@@ -573,7 +573,7 @@ exception Found
 let find_last f tr=
   let result=ref None in
   let rec find_last path tr=match tr with
-    | x when f tr->(
+    | _ when f tr->(
       result:=Some (List.rev path);
       raise Found
     )
@@ -878,11 +878,7 @@ let do_ragged_right parameters a b c d e f g line =
 
 
 
-let badness
-    env
-    paragraphs
-    figures
-    figureStates
+let badness env paragraphs _ _
     node_i line_i max_i params_i comp_i
     node_j line_j max_j params_j comp_j=
 
@@ -1089,8 +1085,7 @@ let label ?labelType name=
         let w=try let (_,_,w)=StrMap.find name (names env) in w with Not_found -> uselessLine in
         let labelType=match labelType with None->env.last_changed_counter | Some t->t in
         { env with names=StrMap.add name (env.counters, labelType, w) (names env) });
-   bB (fun env ->
-     [Marker (Label name)])
+   bB (fun _ -> [Marker (Label name)])
   ]
 
 let pass_number = ref (-1)
@@ -1141,7 +1136,7 @@ let button =
 
 (** {3 Images} *)
 
-let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
+let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile _ =
   let i=RawContent.image imageFile in
   let dr={
     drawing_min_width=i.image_width;
@@ -1381,15 +1376,13 @@ let boxify buf nbuf env0 l=
            IntMap.iter (fun _->List.iter (append buf nbuf)) !l;
            boxify keep_cache env s)
 
-    | Scoped (fenv, p)::s->(
+    | Scoped (fenv, p)::s->
         let env'=fenv env in
         let _=boxify keep_cache env' p in
         boxify keep_cache env s
-      )
-    | N t :: s->(
+    | N _ :: _->
       failwith "boxify: wrong argument (N)";
       (*boxify keep_cache env s*)
-    )
   in
   boxify true env0 l
 
@@ -1445,18 +1438,18 @@ let draw_boxes env l=
     )
     | Marker EndLink::s->(
       (* Printf.fprintf stderr "****EndLink****\n"; *)
-      let rec link_contents u l=match l with
-          []-> assert false
-        | (Link h)::s when not h.link_closed->(
-          let u = List.rev u in
-          h.link_contents<-u;
-          let (_,y0,_,y1)=bounding_box u in
-          h.link_y0<-y0;
-          h.link_y1<-y1;
-          h.link_closed<-true;
-          h.link_x1<-x;
-          l
-        )
+      let rec link_contents u l =
+        match l with
+        | []                                 -> assert false
+        | (Link h)::_ when not h.link_closed ->
+            let u = List.rev u in
+            h.link_contents<-u;
+            let (_,y0,_,y1)=bounding_box u in
+            h.link_y0<-y0;
+            h.link_y1<-y1;
+            h.link_closed<-true;
+            h.link_x1<-x;
+            l
         | h::s->link_contents (h::u) s
       in
       let dr'=link_contents [] dr in
@@ -1502,8 +1495,8 @@ let adjust_width env buf nbuf =
   let beta = env.adjust_optical_beta in
   let char_space = env.normalLead *. env.adjust_min_space in
   let epsilon = env.adjust_epsilon in
-  let dsup,dinf as dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
-  let dsup',dinf' as dir' = (cos(alpha), -.sin(alpha)), (cos(alpha), sin(alpha)) in
+  let dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
+  let dir' = (cos(alpha), -.sin(alpha)), (cos(alpha), sin(alpha)) in
   let profile_left = ref [] in
   let buf = !buf in
   let i0 = ref 0 in
@@ -1525,7 +1518,7 @@ let adjust_width env buf nbuf =
         let left = draw_boxes env [x0] in
         let bezier_left = bezier_of_boxes left in
         let profile_left' = Distance.bezier_profile dir epsilon bezier_left in
-        let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning left in
+        let (x0_l,_,x1_l,_) = bounding_box_kerning left in
 
         if !Distance.debug then
           Printf.fprintf stderr "Drawing(1): i0 = %d (%d,%d)\n" !i0 (List.length !profile_left) (List.length profile_left');
@@ -1578,8 +1571,8 @@ let adjust_width env buf nbuf =
                 r
               in
 
-              let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
-              let (x0_r',y0_r',x1_r',y1_r')=bounding_box_full right in
+              let (x0_r,_,x1_r,_) = bounding_box_kerning right in
+              let (x0_r',_,_,_) = bounding_box_full right in
 
 
                let nominal' = !nominal +. char_space in
@@ -1797,7 +1790,7 @@ let flatten ?(initial_path=[]) env0 str=
                 ) in
           false, env2
         )
-        | FigureDef f as h->(
+        | FigureDef _ as h->(
           let env2=flatten flushes' env1 ((k,tree)::path) h in
           let num=try
               match StrMap.find "_figure" env2.counters with
@@ -1809,7 +1802,7 @@ let flatten ?(initial_path=[]) env0 str=
           flushes':=FlushFigure num::(!flushes');
           is_first,env2
         )
-        | Node h as tr->(
+        | Node _ as tr->(
           (is_first, flatten flushes' env1 ((k,tree)::path) tr)
         )
         in

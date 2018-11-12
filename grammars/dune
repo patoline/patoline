@@ -10,6 +10,7 @@
 (executable
   (name DefaultGrammar_)
   (modules :standard)
+  (flags :standard -warn-error -A -w -33)
   (libraries dynlink typography patoraw DefaultFormat Pdf))
 
 (rule

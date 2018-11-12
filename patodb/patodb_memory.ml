@@ -13,8 +13,8 @@ let disconnect _ =
 let init_db _ _ =
   ()
 
-let create_data total_table (_:string) ?(log=false)
-      ?(visibility=Private) coding name init =
+let create_data total_table (_:string) ?log:(_=false)
+      ?(visibility=Private) _ name init =
   let rec data =
     let table = Hashtbl.create 1001 in
     let sessid () = match !Patodb.sessid with
@@ -43,7 +43,7 @@ let create_data total_table (_:string) ?(log=false)
       with Exit -> ()
     in
     let reset () =
-      let s,g,fs = sessid () in
+      let (s,g,_) = sessid () in
       Patodb.do_record_write data visibility;
       Hashtbl.remove table (s, g);
     in
@@ -51,12 +51,12 @@ let create_data total_table (_:string) ?(log=false)
       Patodb.do_record_read data (if group = None then Public else max Group visibility);
       let total = match group with
         | None ->
-          Hashtbl.fold (fun k l acc -> acc + List.length l) total_table 0
+          Hashtbl.fold (fun _ l acc -> acc + List.length l) total_table 0
         | Some g ->
           try List.length (Hashtbl.find total_table g) with Not_found -> 1
       in
       let res = Hashtbl.create 101 in
-      Hashtbl.iter (fun k v ->
+      Hashtbl.iter (fun _ v ->
         let old = try Hashtbl.find res v with Not_found -> 0 in
         Hashtbl.replace res v (old + 1)) table;
       total, Hashtbl.fold (fun v n acc -> (v,n)::acc) res [];

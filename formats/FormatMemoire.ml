@@ -19,16 +19,8 @@
  *)
 
 open Typography
-open Patfonts
-open Patoraw
-open Patutil
-open Unicodelib
-open Fonts
-open FTypes
 open Typography.Document
-open Extra
 open Typography.Box
-open Printf
 
 module Format(D:DocumentStructure) = struct
 

@@ -48,7 +48,7 @@ let build_font_file file =
 
   let glyphHeight gl = glyph_y1 gl -. glyph_y0 gl in
   let maxsz (mw,mh) gl = (max mw (glyphWidth gl), max mh (glyphHeight gl)) in
-  let (maxw,maxh) = Array.fold_left maxsz (0.0,0.0) glyphs in
+  let (maxw,_) = Array.fold_left maxsz (0.0,0.0) glyphs in
 
   let size = (fst page_format -. 2.0 *. margin) /. float_of_int nb_columns *. 100.0 in
   let hspace = maxw *. size /. 1000.0 in

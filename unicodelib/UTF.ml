@@ -180,8 +180,7 @@ module Make = functor ( ED : EncDec ) ->
      *   s : the string (that is supposed to be valid).
      * Returns the first unicode character index in s.
      *)
-    let first : string -> index = fun s ->
-      0
+    let first : string -> index = fun _ -> 0
 
     (*
      * Compute the index of the last unicode character in a string.
@@ -192,10 +191,8 @@ module Make = functor ( ED : EncDec ) ->
      *)
     let last : string -> index = fun s ->
       let len = String.length s in
-      if len = 0 then
-        raise (invalid_arg "UTF.last")
-      else
-        prev s len
+      if len = 0 then raise (invalid_arg "UTF.last");
+      prev s len
 
     (*
      * Returns a copy of the given string, without leading and trailing

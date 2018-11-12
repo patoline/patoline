@@ -21,10 +21,7 @@
 open Patfonts
 open Patutil
 open Patoraw
-open FTypes
-open Raw
 open RawContent
-open Color
 open Driver
 open Extra
 
@@ -106,7 +103,7 @@ let init_gl () =
     GlFunc.depth_func `lequal;
     GlFBO.init_shader ()
 
-let filename x=""
+let filename _ = ""
 
 let subpixel saa =
   match saa with
@@ -306,8 +303,8 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
   let read_links () =
     links := Array.mapi
-      (fun i page ->
-        Array.mapi (fun j state ->
+      (fun _ page ->
+        Array.mapi (fun _ state ->
           let l = ref [] in
           let rec fn ls = List.iter
             (function
@@ -784,11 +781,8 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
       GlFunc.depth_mask true;
       Gl.disable `blend;
-      Hashtbl.iter (fun name f ->
-        try
-          f win ;
-        with e -> Printf.fprintf stderr "other: exception %s\n" name; flush stderr; ) other_items;
-
+      Hashtbl.iter (fun name f -> try f win with _ ->
+        Printf.fprintf stderr "other: exception %s\n%!" name) other_items
     in
 
 
@@ -827,7 +821,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
    in
 
-    let draw_fbo fbo w h pw ph page state saa =
+    let draw_fbo _ w h pw ph page state saa =
       GlDraw.viewport ~x:0 ~y:0 ~w ~h;
       GlClear.clear [`color;`depth];
       GlMat.load_identity ();
@@ -929,7 +923,8 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
   in
 
-  let rotate_page (i,j) (i',j') = () (*
+  let rotate_page _ _ = ()
+(* let rotate_page (i,j) (i',j') = ()
 (*    Gc.set {(Gc.get ()) with Gc.verbose = 255 };*)
     match !prefs.rotation, i <> i' with
       (None, _) | (Some _, false) -> ()
@@ -988,8 +983,9 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
 
   (* let events = ref [] in *)
 
+  let send_events _ = () in
+  (*
   let send_events ev = () in
-                         (*
     let rec fn acc evs = match ev, evs with
       | _, [] -> ev::(List.rev acc)
       | (n1,EvDrag(x1,y1,false)), ((n2,EvDrag(x2,y2,r2))::evs) when n1 == n2 ->
@@ -1036,14 +1032,12 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     GlLight.light ~num:0 (`specular(0.5,0.5,0.5,1.0));
     let x = float x /. w *. pw and y = ph -. float y /. w *. pw in
     let r = 0.75 in
-    let (x1,y1,z1) as v1 = (x +. (if x > pw /. 2.0 then 1.0 else -1.0) *. pw, y -. 1.0 *. ph, 0.5 *. max pw ph) in
-    let (x0,y0,z0) as v2 = (x, y, r) in
-(*    Printf.fprintf stderr "Drawing: (%f,%f,%f) (%f,%f,%f) with light in (%f,%f,%f)\n" x0 y0 z0 x1 y1 z1 xl yl zl;
-    flush stderr;*)
+    let v1 = (x +. (if x > pw /. 2.0 then 1.0 else -1.0) *. pw, y -. 1.0 *. ph, 0.5 *. max pw ph) in
+    let v2 = (x, y, r) in
     let axe = Vec3.sub v2 v1 in
     let r0 = (0.0,1.0,0.0) in
-    let (ax,ay,az) as r1 = Vec3.normalize (Vec3.vecp axe r0) in
-    let (bx,by,bz) as r2 = Vec3.normalize (Vec3.vecp axe r1) in
+    let r1 = Vec3.normalize (Vec3.vecp axe r0) in
+    let r2 = Vec3.normalize (Vec3.vecp axe r1) in
     let prec = 32 in
     GlLight.material ~face:`both (`specular (0.7,0.7,0.7,1.0));
     GlLight.material ~face:`both (`diffuse (0.5,0.5,0.7,1.0));
@@ -1140,7 +1134,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     redraw_all ()
   in
 
-  let keyboard_cb ~key ~x ~y =
+  let keyboard_cb ~key ~x:_ ~y:_ =
     if key >= 48 && key < 58 then
       dest := !dest * 10 + (key - 48)
     else begin
@@ -1187,7 +1181,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     end
   in
 
-  let special_cb ~key ~x ~y =
+  let special_cb ~key ~x:_ ~y:_ =
     let win = get_win () in
     match key with
     | Glut.KEY_DOWN -> win.dy <- win.dy -. 5.; redraw win;
@@ -1219,7 +1213,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         else (
           motion_ref := Some (x0,y0,x, y,buttons,links);
           let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
-          let fn (bt, name) =
+          let fn (bt, _) =
             match bt with
             | Drag(act) -> send_events (act (x,y) false)
             | _         -> assert false
@@ -1287,10 +1281,10 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let goto_link l0 c0 =
 (*    Printf.printf "Searching position: line <= %d, col <= %d.\n%!" l0 c0;*)
     let res =
-      Array.fold_left(fun (acc, (i,j)) linkss ->
+      Array.fold_left(fun (acc, (i,_)) linkss ->
         Array.fold_left(fun (acc, (i,j)) links ->
           let acc =
-            List.fold_left (fun (bl, bc, res as acc) link ->
+            List.fold_left (fun ((bl, bc, _) as acc) link ->
               match link.link_kind with
                 Extern uri when is_edit uri ->
                   let ls = List.rev (String.split_on_char '@' uri) in
@@ -1342,8 +1336,8 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
            raise Exit
          | addr::rest -> Unix.(
            let str_addr = match addr.ai_addr with
-               ADDR_UNIX s -> s
-             | ADDR_INET(a,p) -> string_of_inet_addr a
+             | ADDR_UNIX s    -> s
+             | ADDR_INET(a,_) -> string_of_inet_addr a
            in
            Printf.fprintf Pervasives.stderr "Trying connect to %s:%d\n%!"
              str_addr port;
@@ -1375,7 +1369,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
   let handle_request sock_info () =
     match !sock_info with
       None -> if Random.int 100 = 0 then reconnect sock_info;
-    | Some (sock,fo,fi) ->
+    | Some (sock,_,fi) ->
       try
         let i,_,_ = Unix.select [sock] [] [] 0.0 in
         match i with
@@ -1409,8 +1403,8 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
       match i with
-        [] -> ()
-      | i ->
+      | [] -> ()
+      | _  ->
         let cmd = input_line stdin in
         Printf.fprintf stderr "cmd recived: %S\n%!" cmd;
         if cmd <> "" then begin
@@ -1442,7 +1436,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     if !to_redraw then redraw_all ();
   in
 
-  let display_cb sock ()=
+  let display_cb _ () =
     draw_gl_scene ();
     Glut.swapBuffers ();
   in
@@ -1468,13 +1462,13 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
     | Glut.LEFT_BUTTON, Glut.UP ->
       let links = match !motion_ref with
           None -> []
-        | Some(x',y',_,_,buttons,links) ->
+        | Some(x',y',_,_,_,links) ->
           let dx = x - x' and dy = y - y' in
           if (dx * dx + dy * dy <= 9) then links else []
       in
       let fn l =
         match l.link_kind with
-        | Intern(label,dest_page,dest_x,dest_y) ->
+        | Intern(_,dest_page,_,_) ->
             begin
               Printf.eprintf "dest_page %d\n%!" dest_page;
               cur_page := dest_page;
@@ -1491,9 +1485,9 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
               Not_found ->
                 Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
           end
-        | Button(Click(act), name) ->
+        | Button(Click(act),_) ->
             send_events (act ())
-        | Button(Edit(current,init,act),name) ->
+        | Button(Edit(current,_,act),name) ->
            let editor = try Sys.getenv "EDITOR" with Not_found -> "emacs" in
            let filename, ch = Filename.open_temp_file "" name in
            output_string ch current;
@@ -1506,11 +1500,11 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
            close_in ch;
            let buf = Bytes.to_string buf in
            send_events (act buf)
-        | Button(Drag(act),name) ->
+        | Button(Drag(act),_) ->
             begin
               match !motion_ref with
               | None -> ()
-              | Some (x0,y0,x', y',buttons,links) ->
+              | Some (_,_,x', y',_,_) ->
                   let dx = x - x' and dy = y - y' in
                   let mx = float dx and my = float dy in
                   let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
@@ -1566,8 +1560,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
           all_win;
 
         Sys.set_signal Sys.sighup
-          (Sys.Signal_handle
-             (fun s ->
+          (Sys.Signal_handle (fun _ ->
                to_revert := true;
                 Array.iter (function None -> () | Some win ->
                  Glut.setWindow ~win:win.winId;

@@ -218,8 +218,8 @@ let adjust_space ?(absolute=false) env target minimum box_left box_right =
 
   let epsilon = env.precise_kerning in
   let alpha = env.optical_alpha in
-  let dsup,dinf as dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
-  let dsup',dinf' as dir' = (cos(alpha), -.sin(alpha)), (cos(alpha), sin(alpha)) in
+  let dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
+  let dir' = (cos(alpha), -.sin(alpha)), (cos(alpha), sin(alpha)) in
   let beta =  env.optical_beta in
 
   let bezier_left = bezier_of_boxes box_left in
@@ -230,12 +230,12 @@ let adjust_space ?(absolute=false) env target minimum box_left box_right =
   if profile_left = [] || profile_right = [] then 0.0 else
 
   (* translation for better precision *)
-  let sm = List.fold_left (fun acc (x, y) -> min acc x) max_float profile_left in
+  let sm = List.fold_left (fun acc (x, _) -> min acc x) max_float profile_left in
   let profile_left = List.map (fun (x, y) -> (x -. sm, y)) profile_left in
   let profile_right = List.map (fun (x, y) -> (x -. sm, y)) profile_right in
 
   let delta =
-    let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning box_left in
+    let (x0_l,_,x1_l,_) = bounding_box_kerning box_left in
     x1_l -. x0_l
   in
 
@@ -284,7 +284,7 @@ type draw_env = {
 let dincr e = { depth = e.depth + 1; prio = 0 }
 
 let rec draw draw_env env_stack mlist =
-  let env=match env_stack with []->assert false | h::s->h in
+  let env = match env_stack with [] -> assert false | h::_ -> h in
   let style = env.mathStyle in
   let mathsEnv=env_style env.mathsEnvironment style in
 
@@ -379,9 +379,9 @@ let rec draw draw_env env_stack mlist =
                 let bezier=Array.map bezier_of_boxes [| a;b;c;d |] in
                 let bb=Array.map (fun l->bounding_box [Path (RawContent.default_path_param, [Array.of_list l])]) bezier in
 
-                let y_place sup sub sup' same_script =
-                  let xa0,ya0,xa1,ya1=bb.(sub) in
-                  let xb0,yb0,xb1,yb1=bb.(sup) in
+                let y_place sup sub _ same_script =
+                  let _,_,_,ya1 = bb.(sub) in
+                  let _,yb0,_,_ = bb.(sup) in
                   let delta = if same_script then -. yb0 else 0. in
                   let u,v= match is_letter with
                       true ->
@@ -416,10 +416,10 @@ let rec draw draw_env env_stack mlist =
                 let off_yb,off_yd = y_place 1 3 b n.super_left_same_script in
 
                 let start =
-                  let xa0,_,xa1,_=bb.(0) in
-                  let xb0,_,xb1,_=bb.(1) in
-                  let xc0,_,xc1,_=bb.(2) in
-                  let xd0,_,xd1,_=bb.(3) in
+                  let xa0,_,_,_ = bb.(0) in
+                  let _,_,xb1,_ = bb.(1) in
+                  let xc0,_,_,_ = bb.(2) in
+                  let _,_,xd1,_ = bb.(3) in
                   [| x1 -. xa0 +. mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
                        -. xb1 +. x0 -. mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
                        x1 -. xc0 +. mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance;
@@ -476,13 +476,13 @@ let rec draw draw_env env_stack mlist =
 
       | Binary b::s->(
 
-          let rec find_priority=function
-              Binary b0->
-                List.fold_left (fun p x->min p (find_priority x))
+          let rec find_priority = function
+              Binary b0  ->
+                List.fold_left (fun p x -> min p (find_priority x))
                   (List.fold_left (fun p x->min p (find_priority x)) b0.bin_priority b0.bin_left)
                   (b0.bin_right)
-            | Operator op->Array.length mathsEnv.priorities - 1
-            | _->Array.length mathsEnv.priorities - 1
+            | Operator _ -> Array.length mathsEnv.priorities - 1
+            | _          -> Array.length mathsEnv.priorities - 1
           in
           let priorities=mathsEnv.priorities in
           let prio=find_priority (Binary b) in
@@ -503,8 +503,8 @@ let rec draw draw_env env_stack mlist =
           let bin_right = draw draw_env env_stack b.bin_right in
           let box_left = draw_boxes env bin_left in
           let box_right = draw_boxes env bin_right in
-          let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning box_right in
-          let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning box_left in
+          let (x0_r,_,x1_r,_)=bounding_box_kerning box_right in
+          let (x0_l,_,x1_l,_)=bounding_box_kerning box_left in
 
             match b.bin_drawing with
                 Invisible ->
@@ -518,7 +518,7 @@ let rec draw draw_env env_stack mlist =
                         { x with
                           drawing_badness=(fun w->100.*.(knuth_h_badness dist w));
                         }
-                    | x->assert false
+                    | _->assert false
                   in
                     bin_left@
                     gl0::
@@ -573,7 +573,7 @@ let rec draw draw_env env_stack mlist =
                           [Box.Drawing { x with
                             drawing_badness=(fun w->100.*.(knuth_h_badness dist0 w))
                            }]
-                      | x->assert false
+                      | _->assert false
                   )
                 in
                 let gl1 =
@@ -585,7 +585,7 @@ let rec draw draw_env env_stack mlist =
                             drawing_badness=(fun w->10.*.(knuth_h_badness dist1 w));
                             drawing_break_badness = env.math_break_badness *. (float draw_env.depth)
                           }]
-                      | x->assert false
+                      | _->assert false
                   )
                 in
 
@@ -607,8 +607,8 @@ let rec draw draw_env env_stack mlist =
         let bb=draw_boxes env (draw (dincr draw_env) (denominatorStyle style env_stack) f.denominator) in
           let x0a,y0a,x1a,y1a=bounding_box ba in
           let x0b,y0b,x1b,y1b=bounding_box bb in
-          let x0a',y0a',x1a',y1a'=bounding_box_full ba in
-          let x0b',y0b',x1b',y1b'=bounding_box_full bb in
+          let x0a',_,x1a',_=bounding_box_full ba in
+          let x0b',_,x1b',_=bounding_box_full bb in
           let wa=x1a-.x0a in
           let wb=x1b-.x0b in
           let wa'=x1a'-.x0a' in
@@ -670,13 +670,13 @@ let rec draw draw_env env_stack mlist =
           let left=draw_boxes env (draw (dincr draw_env) env_stack op.op_left_contents) in
           let right=draw_boxes env (draw (dincr draw_env) env_stack op.op_right_contents) in
           let (x0_r_,y0_r_,x1_r_,y1_r_)=bounding_box right in
-          let (x0_r,y0_r,x1_r,y1_r)=(check_inf x0_r_,
+          let (_,y0_r,x1_r,y1_r)=(check_inf x0_r_,
                                      check_inf y0_r_,
                                      check_inf x1_r_,
                                      check_inf y1_r_)
           in
           let (x0_l_,y0_l_,x1_l_,y1_l_)=bounding_box left in
-          let (x0_l,y0_l,x1_l,y1_l)=(check_inf x0_l_,
+          let (_,y0_l,x1_l,y1_l)=(check_inf x0_l_,
                                      check_inf y0_l_,
                                      check_inf x1_l_,
                                      check_inf y1_l_)
@@ -693,11 +693,12 @@ let rec draw draw_env env_stack mlist =
               left, bounding_box left') ll
             in
             let rec fn = function
-              | [] -> assert false
-              | [c] -> c
-              | (left, (x0,y0,x1,y1)) as c :: l ->
-                if (y1 -. y0) >= factor *. (y1_l -. y0_l) &&  (y1 -. y0) >= factor *. (y1_r -. y0_r) then c        else
-                  fn  l
+              | []                         -> assert false
+              | [c]                        -> c
+              | (_, (_,y0,_,y1)) as c :: l ->
+                  if (y1 -. y0) >= factor *. (y1_l -. y0_l) &&
+                     (y1 -. y0) >= factor *. (y1_r -. y0_r) then c
+                  else fn l
             in
             fst (fn lc)
           in
@@ -861,15 +862,15 @@ let kdraw env_stack mlist =
      | _ -> assert false
    in gl::l@[gl]
 
-let dist_boxes env precise a b=
+let dist_boxes env _ a b =
   let left=draw_boxes env a in
   let bezier_left=bezier_of_boxes left in
   let right=draw_boxes env b in
   let bezier_right=bezier_of_boxes right in
 
   let alpha = env.mathsEnvironment.(0).optical_alpha in
-  let dsup,dinf as dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
-  let dsup',dinf' as dir' = (cos(alpha), -.sin(alpha)), (cos(alpha), sin(alpha)) in
+  let dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
+  let dir' = (cos(alpha), -.sin(alpha)), (cos(alpha), sin(alpha)) in
   let beta =  env.mathsEnvironment.(0).optical_beta in
 
   let epsilon = 5e-2 in
@@ -1000,15 +1001,15 @@ let open_close left right env_ style box=
   let gl0=
     if left = [] then [] else (
       match glue dist0 dist0 dist0 with
-        Box.Glue x-> [Drawing x]
-      | x->assert false
+      | Box.Glue x -> [Drawing x]
+      | _          -> assert false
     )
   in
   let gl1 =
     if right = [] then [] else (
       match glue dist1 dist1 dist1 with
-        Box.Glue x-> [Drawing x]
-      | x->assert false
+      | Box.Glue x -> [Drawing x]
+      | _          -> assert false
     )
   in
 
@@ -1233,7 +1234,7 @@ let mcolor col m =
 let fit x =
   let fn env =
     let bx = draw_boxes env (draw [env] x) in
-    let (x0,y0,x1,y1) = bounding_box bx in
+    let (x0,_,x1,_) = bounding_box bx in
     let mw = x1 -. x0 in
     let pw = env.normalMeasure in
     let sz = env.size in
@@ -1258,7 +1259,7 @@ let ams_font=Lazy.from_fun (fun ()->Fonts.loadFont
 let ams name code = symbol ~name (Lazy.force ams_font) [code]
 
 
-let adjusted_asana_delimiters' name ls =
+let adjusted_asana_delimiters' _ ls =
   match ls with
     [] -> assert false
   | x::ls ->

@@ -108,7 +108,7 @@ let hyphenate tree a0 =
   let rec hyphenate i j t =
     if j <= String.length a then
       match t with
-      | Exce (x,_) when i = 0 && j = String.length a - 1 -> ()
+      | Exce (_,_) when i = 0 && j = String.length a - 1 -> ()
       | Exce (_,t) ->
         (try
            let t' = UMap.find (UTF8.look a j) t in

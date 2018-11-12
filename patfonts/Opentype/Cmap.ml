@@ -349,7 +349,7 @@ let read_cmap file a=
            in
            read_cmap (table+1) (read 0 cmap)
           )
-        | x->read_cmap (table+1) cmap
+        | _->read_cmap (table+1) cmap
       )
     )
   in

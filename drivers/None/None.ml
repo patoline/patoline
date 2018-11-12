@@ -24,8 +24,8 @@ open Driver
 let driver_options = []
 let filter_options argv = argv    
 
-let output  ?(structure : structure = empty_structure) _ _ = ()
-let output' ?(structure : structure = empty_structure) _ _ = ()
+let output  ?structure:(_=empty_structure) _ _ = ()
+let output' ?structure:(_=empty_structure) _ _ = ()
 
 let _ =
   Hashtbl.add DynDriver.drivers "None"

@@ -455,12 +455,10 @@ let sort_raw l =
   let comp a b =
     match (a,b) with
     | (Glyph ga, Glyph gb) ->
-        if ga.glyph_y = gb.glyph_y then
-          compare ga.glyph_x gb.glyph_x
-        else
-          compare gb.glyph_y ga.glyph_y
-    | (Glyph ga, _       ) -> -1
-    | (_       , Glyph gb) -> 1
+        if ga.glyph_y = gb.glyph_y then compare ga.glyph_x gb.glyph_x
+        else compare gb.glyph_y ga.glyph_y
+    | (Glyph _ , _       ) -> -1
+    | (_       , Glyph _ ) -> 1
     | _                    -> 0
   in
   let subsort = function

@@ -162,7 +162,7 @@ let blank_sline buf pos =
     | (`SIn(l,p) , _::_, '|'     ) -> fn (`SCl(l,(l,p))) stack curr next nl
     | (`SIn(_,p) , _::_, '\255'  ) -> unclosed_comment_string p
     | (`SIn(_,_) , _::_, _       ) -> fn state stack curr next nl
-    | (`SCl([],b), _::_, '}'     ) -> fn `Ini stack curr next nl
+    | (`SCl([],_), _::_, '}'     ) -> fn `Ini stack curr next nl
     | (`SCl([],b), _::_, '\255'  ) -> unclosed_comment_string (snd b)
     | (`SCl([],b), _::_, _       ) -> fn (`SIn(b)) stack curr next nl
     | (`SCl(l,b) , _::_, c       ) -> if c = List.hd l then
@@ -468,7 +468,7 @@ let real_name _loc id cs =
   (* FIXME: this is not exactly what we want *)
   List.fold_left (fun acc m -> <:expr<$uid:m$.($acc$)>>) <:expr<$lid:mid$>> mp
 
-let macro_args id cs =
+let macro_args cs =
   let rec find_args : config list -> arg_config list option = function
     | []               -> None
     | Syntax l  :: _   -> Some l
@@ -802,7 +802,7 @@ let macro_char : Charset.t =
 let is_macro_char : char -> bool = Charset.mem macro_char
 
 let tree_to_grammar : ?filter:('a -> bool) -> string -> 'a PMap.tree -> 'a grammar =
-  fun ?(filter=fun x -> true) name t ->
+  fun ?(filter=fun _ -> true) name t ->
     let PMap.Node(_,l) = t in
     let fn buf pos =
       let line = Input.line buf in
@@ -905,8 +905,7 @@ let dollar        = Pa_lexing.single_char '$'
 
 let no_brace =
   Earley.test ~name:"no_brace" Charset.full (fun buf pos ->
-    let c,buf,pos = Input.read buf pos in
-    if c <> '{' then ((), true) else ((), false))
+    if Input.get buf pos <> '{' then ((), true) else ((), false))
 
 (****************************************************************************
  * Parsing of macro arguments.                                              *
@@ -1005,8 +1004,8 @@ let parser macro_arguments_aux l =
   | EMPTY when l = [] -> []
   | arg:(macro_argument (List.hd l)) args:(macro_arguments_aux (List.tl l)) when l <> [] -> arg::args
 
-let macro_arguments id current config =
-  match macro_args id config, current with
+let macro_arguments current config =
+  match macro_args config, current with
   | None, Math   -> (parser simple_math_macro_argument*$)
   | None, Text   -> (parser simple_text_macro_argument*$)
   | None, _      -> assert false
@@ -1157,7 +1156,7 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
   (* Displaying no the document. *)
   if state.verbose then
     let sym = print_ordinary_math_symbol _loc infix_value in
-    let showuname u =
+    let showuname _ =
       sym (* TODO *)
       (*
         let s = <:expr<Maths.glyphs $string:s$>> in
@@ -1536,7 +1535,7 @@ let parser math_aux prio =
 
   | '\\' id:mathlid when prio = AtomM ->>
      let config = try List.assoc id state.math_macros with Not_found -> [] in
-     args:(macro_arguments id Math config) ->
+     args:(macro_arguments Math config) ->
      (fun indices ->
        let m = real_name _loc id config in
        (* TODO special macro properties to be handled. *)
@@ -1739,7 +1738,7 @@ let _ = set_grammar math_toplevel (parser
   let parser macro =
     | id:macro_name ->>
        let config = try List.assoc id state.word_macros with Not_found -> [] in
-       args:(macro_arguments id Text config) ->
+       args:(macro_arguments Text config) ->
        (let fn = fun acc r -> <:expr<$acc$ $r$>> in
         List.fold_left fn <:expr<$lid:id$>> args)
     | m:verbatim_macro -> m
@@ -1857,7 +1856,7 @@ let _ = set_grammar math_toplevel (parser
            >>)
     | "\\begin" '{' idb:lid '}' ->>
         let config = try List.assoc idb state.environment with Not_found -> [] in
-          args:(macro_arguments idb Text config)
+          args:(macro_arguments Text config)
           ps:(change_layout paragraphs blank2)
           "\\end" '{' STR(idb) '}'
       ->
@@ -2114,7 +2113,14 @@ let entry_points =
       in
       structure
   in
-  let parse_mli = parser f:header ->> let _ = () in signature in
+  let parse_mli =
+    parser f:header ->>
+      let _ =
+        try f () with e ->
+          Printf.eprintf "Exception: %s\nTrace:\n%!" (Printexc.to_string e)
+      in
+      signature
+  in
   [ (".txp", Implementation (full_text, blank2))
   ; (".ml" , Implementation (parse_ml , blank2))
   ; (".mli", Interface      (parse_mli, blank2)) ]

@@ -1,4 +1,4 @@
 ; Add project-wide flags here.
 (env
- (dev     (flags :standard -warn-error -A -w -27-33-32))
+ (dev     (flags :standard))
  (release (flags :standard)))

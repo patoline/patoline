@@ -103,18 +103,17 @@ let prev_prio = prev
 open Typography
 open DefaultMacros
 open Maths
-open Document
-open Box
 
 let idvec n ls =
     List.for_all (function Vec l -> List.length l = n | _ -> false) ls
 
 let id x = x
 
-let rec use_times = function
+let rec use_times =
+  function
   | Number _ -> true
-  | Pow(e,f) -> use_times e
-  | _ -> false
+  | Pow(e,_) -> use_times e
+  | _        -> false
 
 let rec gmath lvl e =
   let pp = prev_prio in

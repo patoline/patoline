@@ -21,6 +21,9 @@ type page = {
 (** Creates an empty page of the given size. *)
 val empty_page : (float * float) -> page
 
+(** Build a page with the given size and contents. *)
+val make_page : float * float -> RawContent.raw list -> page
+
 (** Available metadata fields to appear in the structure of the document. *)
 type meta_field =
   | Contributor | Coverage | Creator | Date | Description | Format

@@ -21,7 +21,6 @@
 open Patutil
 open Extra
 open Patfonts
-open Fonts
 open FTypes
 open Patoraw
 open RawContent
@@ -73,7 +72,7 @@ let build_font_cache prefix pages=
       | Link l::s->
          let fonts =
            match l.link_kind with
-           | Button(Menu(items), name) ->
+           | Button(Menu(items), _) ->
               List.fold_left (fun fonts (_,c) -> make_fonts (-2) c fonts) fonts items
            | _ -> fonts
          in
@@ -93,7 +92,7 @@ let build_font_cache prefix pages=
      plus les distinguer par premier caractère *)
   let f=StrMap.map (fun (font,a)->
     (font,
-     IntMap.fold (fun char glyphMap m->
+     IntMap.fold (fun _ glyphMap m ->
        IntMap.fold (fun glyphIdx (gl,subfont) n->
          IntMap.add glyphIdx (gl,subfont) n
        ) glyphMap m) a IntMap.empty)
@@ -116,11 +115,11 @@ let build_font_cache prefix pages=
   let families=ref StrMap.empty in
   let fontBuffers=ref StrMap.empty in
   let classes=ref ClassMap.empty in
-  StrMap.iter (fun name (font,a)->
+  StrMap.iter (fun _ (font,a)->
     (* k : nom de la police
        a : (glyph*int) IntMap.t : map du numéro de glyph vers la sous-police *)
     let sub_fonts=
-      IntMap.fold (fun glyphIdx (gl,subfont) n->
+      IntMap.fold (fun _ (gl,subfont) n->
         let glyphs=try IntMap.find subfont n with Not_found->[] in
         IntMap.add subfont (gl::glyphs) n
       ) a IntMap.empty
@@ -204,7 +203,7 @@ let classStyle cache gl_=
 
   let notFull=Printf.sprintf "%s_%d_%d_" (Fonts.fontName font).postscript_name instance subfont in
   (* let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in *)
-  let full, fam=StrMap.find notFull cache.fontFamilies in
+  let _full, fam=StrMap.find notFull cache.fontFamilies in
   (fam,gl_.glyph_size,gl_.glyph_color)
 
 exception Style of (int * float * Color.color) * int

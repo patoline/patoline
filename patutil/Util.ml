@@ -18,8 +18,6 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Extra
-
 (** [pt_of_mm l] converts [l] from Adobe points to millimeters. *)
 let pt_of_mm : float -> float = fun x -> (72.0 *. x) /. 25.4
 

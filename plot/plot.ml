@@ -25,7 +25,6 @@ open Color
 open RawContent
 open Typography.Box
 open Typography
-open DefaultFormat
 open Extra
 
 module Plot(D:Document.DocumentStructure)=struct
@@ -86,7 +85,7 @@ module Plot(D:Document.DocumentStructure)=struct
                            )))) ])
             )
           in
-          let x0,y0,x1,y1=bounding_box label in
+          let x0,_,x1,y1=bounding_box label in
           tx:=Path(default_path_param,
                    [[|line (scalex*. !x,0.) (scalex*. !x,-.1.)|]])
           ::(List.map (RawContent.translate (scalex*. !x-.(x1-.x0)/.2.) (-.2.-.y1) ) label)
@@ -115,7 +114,7 @@ module Plot(D:Document.DocumentStructure)=struct
                            )))) ])
             )
           in
-          let x0,y0,x1,y1=bounding_box label in
+          let _,y0,x1,y1=bounding_box label in
           ty:=Path(default_path_param,
                    [[|line (0.,scaley*. !y) (-.1.,scaley*. !y)|]])
           ::(List.map (RawContent.translate (-.2.-.x1) (scaley*. !y-.(y1-.y0)/.2.)) label)
@@ -151,7 +150,7 @@ module Plot(D:Document.DocumentStructure)=struct
       [Drawing {dr with drawing_y0=dr.drawing_y0-.env.size;drawing_y1=dr.drawing_y1+.env.size}]
     )]
 
-  module Def=DefaultFormat.Format(D)
+  module Def = DefaultFormat.Format(D)
   open Def
   let legende points=
     [bB (fun env->

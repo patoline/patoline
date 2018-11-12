@@ -26,7 +26,6 @@ open Patutil
 open Extra
 open Box
 open Patfonts
-open Fonts
 open FTypes
 open HtmlFonts
 open Unicodelib
@@ -53,7 +52,7 @@ module Format (D : Document.DocumentStructure) = struct
 
       type output=unit
       let outputParams=()
-      let output out_params structure defaultEnv file=
+      let output _ structure defaultEnv file=
         let structure=Default.postprocess_tree structure in
         let prefix=file in
         let rec unlink_rec dir=
@@ -80,7 +79,7 @@ module Format (D : Document.DocumentStructure) = struct
           else
             (env,pars,figures)
         in
-        let (env,pars,figures)=fix defaultEnv 3 in
+        let (env,pars,_)= fix defaultEnv 3 in
         let typeset_pars=
           (Array.map (fun x->draw_boxes env (Array.to_list x)) pars)
         in
@@ -127,8 +126,8 @@ module Format (D : Document.DocumentStructure) = struct
               )
             | Kerning x->output_contents x.kern_contents
             | Hyphen x->Array.iter output_contents x.hyphen_normal
-            | Glue g->Buffer.add_string buf " "
-            | Drawing d->(
+            | Glue _->Buffer.add_string buf " "
+            | Drawing _->(
               let i = assert false in (* FIXME FIXME FIXME *)
               (*let i = SVG.images_of_boxes ~cache:cache ~css:"" prefix env [|[b]|] in *)
               if Array.length i>0 then

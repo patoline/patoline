@@ -142,7 +142,7 @@ module ProofTree = struct
             | Some name -> sn, draw_boxes env_ name
           in
 
-          let namex0, namey0, namex1, namey1 = bounding_box name_box in
+          let namex0, _, namex1, _ = bounding_box name_box in
           let cx0, cy0, cx1, cy1 = bounding_box conclusion_box in
 
           let extract_y0 l =

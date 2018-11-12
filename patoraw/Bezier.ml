@@ -21,8 +21,9 @@ type curve=(float array)*(float array)
 
 let curve (a,b) i=a.(i),b.(i)
 
-
+(*
 let larger ((a,b),(c,d)) ((e,f),(g,h))= (min a e,min b f), (max c g, max d h)
+*)
 
 let rev (a,b)=
   let a'=Array.make (Array.length a) a.(0) in
@@ -55,6 +56,7 @@ let derivee_approx a =
   let n = Array.length a in
   (a.(n - 1) -. a.(0)) *.  (float_of_int (n-1))
 
+(*
 let sanitize (a,b as orig) =
   Printf.printf "sanitize start\n";
   let la = Array.length a in
@@ -89,6 +91,7 @@ let sanitize (a,b as orig) =
     Array.sub a !new_start (!new_end_a - !new_start + 1),
     Array.sub b !new_start (!new_end_b - !new_start + 1)
   end else orig 
+*)
 
 let casteljau_right f x=
   for t=Array.length f downto 2 do
@@ -277,9 +280,7 @@ let bounding_box (a,b)=
   let (y0,y1)=bernstein_extr b in
     (x0,y0), (x1,y1)
 
-
-
-
+(*
 let mult_matrix a b=
   let result=Array.make_matrix (Array.length a) (Array.length b.(0)) 0. in
     for i=0 to Array.length result-1 do
@@ -294,6 +295,7 @@ let mult_matrix a b=
     result
 
 let t = [[ [|0.0;1.0|], [|0.0;0.0|]; [|1.0;0.0|], [|0.0;1.0|]; [|0.0;0.0|], [|1.0;0.0|] ]]
+*)
 
 let oriente all =
   let horizontal_intercept x y bs =
@@ -410,6 +412,7 @@ let det a=
 (*     done; *)
 (*     a *)
 
+(*
 let print_maple a=
   Printf.printf "[";
   for i=0 to Array.length a-1 do
@@ -420,6 +423,7 @@ let print_maple a=
     Printf.printf "]";
   done;
   Printf.printf "]\n"
+*)
 
 (* let _=print_maple a *)
 
@@ -616,7 +620,9 @@ let elevate2 f ra rb=
 
 
 (* On a des polynomes en u sur la premiere dimension, en v sur la deuxieme *)
+(*
 let eval2 f u v=eval (Array.map (fun g->eval g u) f) v
+*)
 
 let restrict2 f u0 u1 v0 v1 =
   let transpose g=
@@ -1003,9 +1009,11 @@ let intersection ?(epsilon=1e-6) ?(thick=1e-4) (xa, ya as ba) (xb, yb as bb) =
   let db = Array.length xb in
   let epsilon2 = epsilon ** 2.0 in
   let add (x,y as p) acc = 
-      match acc with
-        (x',y')::acc' -> if  (x' -. x) ** 2.0 +. (y' -. y) ** 2.0 < epsilon2 then acc else p::acc
-      | [] -> [p]
+    match acc with
+    | []         -> [p]
+    | (x',y')::_ ->
+        if  (x' -. x) ** 2.0 +. (y' -. y) ** 2.0 < epsilon2 then acc
+        else p::acc
   in
   let rec fn acc alpha_a beta_a xa ya ra ta alpha_b beta_b xb yb rb tb = 
 (*    Printf.printf "alpha_a = %f (%f), alpha_b = %f (%f)\n%!" alpha_a beta_a alpha_b beta_b;*)

@@ -1,5 +1,4 @@
 open Unicodelib
-open FTypes
 module OpT = Opentype
 
 type font =

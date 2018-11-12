@@ -26,8 +26,8 @@ let draw fx fy=
   let fx2=rev fx in
   let fy2=rev fy in
     for i=0 to n do
-      let (x0,y0),(x1,y1)=eval fx fy (float_of_int i/.float_of_int n) in
-      let (x2,y2),(x3,y3)=eval fx2 fy2 (float_of_int i/.float_of_int n) in
+      let (x0,y0),_=eval fx fy (float_of_int i/.float_of_int n) in
+      let (x2,y2),_=eval fx2 fy2 (float_of_int i/.float_of_int n) in
         Graphics.plot (to_point x0) (to_point y0);
         Graphics.plot (to_point x2) (to_point y2)
     done

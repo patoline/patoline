@@ -25,7 +25,7 @@ open Document
     where [last_figures] corresponds to already placed figures, [last_users]
     corresponds to already placed user boxes, and [desperate] is a boolean
     indicating whether this is a desperate try. *)
-let normal env paragraphs figures last_figures last_users line allow_impossible=
+let normal env paragraphs _ _ _ (*figures last_figures last_users*) line allow_impossible=
   let mes0=env.normalMeasure in
   let measure=
     (* let figures_=IntMap.filter (fun _ a->match a with Placed _->true |_->false) last_figures in *)
@@ -59,7 +59,7 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
             }::
               (if only_impossible then [] else result)
 
-          | h::s when
+          | h::_ when
               only_impossible
               &&
                 (((abs_float (measure-.h.min_width)) > (abs_float (sum_min-.measure))

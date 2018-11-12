@@ -213,13 +213,13 @@ let make_kerning pairs=
   bufInt2 buf (8+Buffer.length buf_subtables);   (* offset vers la subtable *)
 
 
-  let valueformat1=List.fold_left (fun k (_,_,k1,_)->
+  let valueformat1=List.fold_left (fun _ (_,_,k1,_)->
     (if k1.kern_x0<>0.        then 1 else 0) lor
     (if k1.kern_y0<>0.        then 2 else 0) lor
     (if k1.advance_width<>0.  then 4 else 0) lor
     (if k1.advance_height<>0. then 8 else 0)
   ) 0 pairs
-  and valueformat2=List.fold_left (fun k (_,_,_,k2)->
+  and valueformat2=List.fold_left (fun _ (_,_,_,k2)->
     (if k2.kern_x0<>0.        then 1 else 0) lor
     (if k2.kern_y0<>0.        then 2 else 0) lor
     (if k2.advance_width<>0.  then 4 else 0) lor
@@ -240,7 +240,7 @@ let make_kerning pairs=
 
   (* Maintenant on écrit la subtable *)
   let ipairs=List.fold_left (fun m k->
-    let (a,b,x,y)=k in
+    let (a,_,_,_) = k in
     let autres=try IntMap.find a m with Not_found->[] in
     IntMap.add a (k::autres) m
   ) IntMap.empty pairs

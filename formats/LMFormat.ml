@@ -20,14 +20,11 @@
 
 open Typography
 open Typography.Document
-open Typography.Complete
 open Patfonts
 open FTypes
-open Fonts
 open Typography.Box
 open DefaultFormat
 open Patutil
-open Unicodelib
 open Extra
 open Patoraw
 
@@ -132,8 +129,8 @@ module LMMath = struct
 end
 
 let lmEnv env=
-  let f,str,subst,pos=selectFont lmroman Regular false in
-  let fsize=3.8 in
+  let (f, _, _, _) = selectFont lmroman Regular false in
+  let fsize = 3.8 in
   let feat= [ Opentype.standardLigatures ] in
   { env with
     fontFamily=lmroman;

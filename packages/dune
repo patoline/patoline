@@ -3,6 +3,7 @@
   (public_name patoline.package.giac)
   (modules Giac)
   (wrapped false)
+  (flags :standard -warn-error -A -w -27)
   (preprocess (action (run pa_patoline --no-default-grammar --grammar
                              grammars/DefaultGrammar.tgy %{input-file})))
   (preprocessor_deps (file ../grammars/DefaultGrammar.tgy))
@@ -13,6 +14,7 @@
   (public_name patoline.package.interactive)
   (modules Interactive)
   (wrapped false)
+  (flags :standard -warn-error -A -w -33)
   (preprocess (action (run pa_patoline --no-default-grammar --grammar
                              grammars/DefaultGrammar.tgy %{input-file})))
   (preprocessor_deps (file ../grammars/DefaultGrammar.tgy))

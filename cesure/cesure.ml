@@ -12,16 +12,16 @@ let parser cesure_file =
   | hy:hyph ps:patt?[[]] -> (ps, hy)
 
 let blank str pos =
-  let rec fn state prev ((str, pos) as cur) =
+  let rec fn state ((str, pos) as cur) =
     let (c, str', pos') = Input.read str pos in 
     let next = (str', pos') in
     match state, c with
-    | `Ini , (' '|'\t'|'\r'|'\n') -> fn `Ini cur next
-    | `Ini , '%'                  -> fn `Com cur next
-    | `Com , '\n'                 -> fn `Ini cur next
-    | `Com , _                    -> fn `Com cur next
+    | `Ini , (' '|'\t'|'\r'|'\n') -> fn `Ini next
+    | `Ini , '%'                  -> fn `Com next
+    | `Com , '\n'                 -> fn `Ini next
+    | `Com , _                    -> fn `Com next
     | _    , _                    -> cur
-  in fn `Ini (str, pos) (str, pos)
+  in fn `Ini (str, pos)
 
 let parse_file fn =
   let parse = Earley.parse_file cesure_file blank in

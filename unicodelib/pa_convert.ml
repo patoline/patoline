@@ -8,19 +8,20 @@ open Pa_ocaml_prelude
 module Ext = functor(In:Extension) -> struct
 include In
 
+(* FIXME use Blanks.line_comments. *)
 (* Blank function *)
 let blank str pos =
-  let rec fn state prev ((str, pos) as cur) =
+  let rec fn state ((str, pos) as cur) =
     let (c, str', pos') = Input.read str pos in
     let next = (str', pos') in
     match state, c with
     | _   , '\255'              -> cur (* EOF reached *)
-    | `Ini, (' ' | '\t' | '\r') -> fn `Ini cur next
-    | `Ini, '#'                 -> fn `Com cur next
+    | `Ini, (' ' | '\t' | '\r') -> fn `Ini next
+    | `Ini, '#'                 -> fn `Com next
     | `Ini, _                   -> cur
-    | `Com, '\n'                -> fn `Ini cur next
-    | `Com, _                   -> fn `Com cur next
-  in fn `Ini (str, pos) (str, pos)
+    | `Com, '\n'                -> fn `Ini next
+    | `Com, _                   -> fn `Com next
+  in fn `Ini (str, pos)
 
 (* Parser for hexadecimal integers *)
 let ex_int = parser i:''0x[0-9a-fA-F]+'' -> int_of_string i

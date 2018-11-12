@@ -114,21 +114,21 @@ let scoreBar ?(vertical=false) (module Diagram:Diagrams.Diagram) height width da
 
 let battonDiagram barHeight barWidth data ?group values =
   dynamic <<0123456789>> (fun () ->
-    let total, results =
+    let _total, results =
       data.distribution ?group:(match group with None -> None | Some g -> Some (g ())) () in
-    let res = List.map (fun (value,color,txt) ->
+    let res = List.map (fun (value,color,_) ->
                   (color, try List.assoc value results with Not_found -> 0)) values in
     let anchors = List.map (fun _ -> `Base) values in
     let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
     let open Diagrams in
     <<\diagram(
-     let m,ms = array  anchors (List.map (List.map DefaultMacros.mathsText) [
-     List.map (fun (color, value as c) ->
+     let _,_ = array  anchors (List.map (List.map DefaultMacros.mathsText) [
+     List.map (fun (_, value as c) ->
      <<\diagram(
           let _ = scoreBar ~vertical:true (module Diagram : Diagram)
                            (barHeight *. float value /. float m) barWidth [c])>>)
           res;
-     List.map (fun (value,color,txt) -> txt) values]))>>)
+     List.map (fun (_,_,txt) -> txt) values]))>>)
 
 let scoreBarProg diagram height width data =
   let data = List.sort (fun (x,_) (x',_) -> compare x x') data in
@@ -252,7 +252,7 @@ module MkRadioButtons(X:sig type t val data : t data end) =
 
 let menuCache = Hashtbl.create 101
 
-let indexedMenus ?(visibility=Private) items0 values datas index  =
+let indexedMenus ?visibility:(_=Private) items0 values datas index  =
   if items0 = [] then failwith "Invalid menu";
   [C (fun env ->
        let key = datas.name ^ string_of_int index in
@@ -272,7 +272,7 @@ let indexedMenus ?(visibility=Private) items0 values datas index  =
        bB (fun _ -> [Marker (BeginLink (Button(btype, bname)))])::
          b @ bB (fun _ -> [Marker EndLink]) :: [])]
 
-let menu ?(visibility=Private) items0 data =
+let menu ?visibility:(_=Private) items0 data =
   if items0 = [] then failwith "Invalid menu";
   [C (fun env ->
        let items, bname =
@@ -294,9 +294,9 @@ let dataMenu ?(visibility=Private) items name =
   let data = db.create_data ~visibility default_coding name 0 in
   menu ~visibility items data
 
-let mathIndexedMenus ?(visibility=Private) items0 values datas index  =
+let mathIndexedMenus ?visibility:(_=Private) items0 values datas index =
   if items0 = [] then failwith "Invalid menu";
-  [Maths.Ordinary (Maths.node (fun env st ->
+  [Maths.Ordinary (Maths.node (fun env _ ->
        let key = datas.name ^ string_of_int index in
        let items, bname =
          try Hashtbl.find menuCache key
@@ -311,15 +311,15 @@ let mathIndexedMenus ?(visibility=Private) items0 values datas index  =
        in
        let btype = Menu(items) in
        boxify_scoped env
-         [C (fun env -> env_accessed := true;
+         [C (fun _ -> env_accessed := true;
                         let b = List.nth items0 !values.(index) in
                         bB (fun _ -> [Marker (BeginLink (Button(btype, bname)))])::
                           << $ \b$ >> @ bB (fun _ -> [Marker EndLink]) :: [])]))]
 
 
-let mathMenu ?(visibility=Private) (items0: Maths.math list list) data =
+let mathMenu ?visibility:(_=Private) (items0: Maths.math list list) data =
   if items0 = [] then failwith "Invalid menu";
-  [Maths.Ordinary (Maths.node (fun env st ->
+  [Maths.Ordinary (Maths.node (fun env _ ->
      let items, bname =
        try Hashtbl.find menuCache data.name
        with Not_found ->
@@ -332,7 +332,7 @@ let mathMenu ?(visibility=Private) (items0: Maths.math list list) data =
      in
      let btype = Menu(items) in
      boxify_scoped env
-       [C (fun env -> env_accessed := true;
+       [C (fun _ -> env_accessed := true;
             let b = List.nth items0 (data.read ()) in
             bB (fun _ -> [Marker (BeginLink (Button(btype, bname)))])::
                << $ \b$ >> @ bB (fun _ -> [Marker EndLink]) :: [])]))]
@@ -346,12 +346,10 @@ let mathMenu ?(visibility=Private) (items0: Maths.math list list) data =
    write programming exercises *)
 let read_splited_file filename =
   let str = read_file filename in
-  match
-    Str.(split (regexp "[ \t]*#==========[^\n]*") str)
-  with
-    [init; test] -> init, test
-  | [init; solution; test] -> init, test
-  | _ -> invalid_arg "read_splited_file"
+  match Str.(split (regexp "[ \t]*#==========[^\n]*") str) with
+  | [init; test]            -> init, test
+  | [init; _solution; test] -> init, test
+  | _                       -> invalid_arg "read_splited_file"
 
 let ascii =
   let str = Bytes.make (2*(128-32)) ' ' in
@@ -399,9 +397,9 @@ let interEnv x =
 
 type eval_fun = string option -> (result -> unit) -> string -> string
 
-let editableText ?(log=true) ?(visibility=Private) ?(empty_case="Type in here")
+let editableText ?(log=true) ?(visibility=Private) ?empty_case:(_="Type in here")
       ?nb_lines ?err_lines ?(init_text="") ?(lang=lang_Default) ?(lang_result=lang_Default)
-      ?(extra:eval_fun option) ?resultData ?data ?filename ?(influence=[]) name =
+      ?(extra:eval_fun option) ?resultData ?data ?filename ?influence:(_=[]) name =
 
     let data =
       match data with
@@ -447,7 +445,7 @@ let editableText ?(log=true) ?(visibility=Private) ?(empty_case="Type in here")
       s, String.split_on_char '\n' s'
     in
 
-    let s, lines = update () in
+    let _, lines = update () in
     let pieces = mk_length lines nb_lines in
     let mk_states pieces f =
       match pieces with
@@ -455,8 +453,7 @@ let editableText ?(log=true) ?(visibility=Private) ?(empty_case="Type in here")
       | _ -> altStates (List.mapi (fun i _ -> [i], f i [i] ) pieces)
     in
 
-    mk_states pieces (fun index states -> dynamic
-      ascii
+    mk_states pieces (fun index _states -> dynamic ascii
       (fun () ->
         let s, lines = update () in
         (button (Edit(s, init_text, fun t ->
@@ -491,7 +488,7 @@ let editableText ?(log=true) ?(visibility=Private) ?(empty_case="Type in here")
                         in up (newChildAfter acc para)) (Node empty, []) (lang codeLines)
                       in
                       let resultLines = match extra with None -> []
-                        | Some f ->
+                        | Some _ ->
                           let str = dataO.read () in
                           List.nth (mk_length (String.split_on_char '\n' str) err_lines) 0
                       in
@@ -608,7 +605,7 @@ let test_ocaml ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") fi
   if err <> "" then err else
   if out <> "" then out else "No error and no output"
 
-let test_python ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") filename writeR prg =
+let test_python ?run:(_=true) ?deps:(_=[]) ?preprocessor:_ ?(prefix="") ?(suffix="") filename writeR prg =
   let namePrefix = match filename with
     | None -> "demo"
     | Some fname -> Filename.chop_extension fname
@@ -634,7 +631,7 @@ let test_python ?(run=true) ?(deps=[]) ?preprocessor ?(prefix="") ?(suffix="") f
   if err <> "" then (writeR FailTest; err) else
   (writeR Ok; if out <> "" then out else "No error and no output")
 
-let score ?group data sample display exo =
+let score ?group data sample display _exo =
   dynamic sample (fun () ->
     let total, scores = data.distribution ?group:(match group with None -> None | Some g -> Some (g ())) () in
     let total = max 1 total in
@@ -691,7 +688,7 @@ let editable_math ?(visibility=Private) ?test ?(sample=[]) name init =
                 $> in
   let caml x = x in
   let sample = << $ \caml(Giac.gmath (Giac.parse_string init) @ gsample @ sample @ default) $ >> in
-  [Maths.Ordinary (Maths.node (fun env st->
+  [Maths.Ordinary (Maths.node (fun env _ ->
     boxify_scoped env
       (dynamic sample (fun () ->
                  let s, m = update () in

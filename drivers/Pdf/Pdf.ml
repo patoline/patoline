@@ -117,7 +117,7 @@ let output ?(structure:structure=empty_structure) pages fname =
       xref:=IntMap.add (n+1) (-1) !xref;
       n+1
   in
-  let endObject pdf=fprintf oc "\nendobj\n" in
+  let endObject _ = fprintf oc "\nendobj\n" in
   let pdf_string_buf=Buffer.create 1000 in
   let pdf_string utf=
     Buffer.clear pdf_string_buf;
@@ -173,16 +173,12 @@ let output ?(structure:structure=empty_structure) pages fname =
         ))
     ) paths;
     match RawContent.(params.fillColor, params.strokingColor) with
-        None, None-> Buffer.add_string pageBuf "n "
-      | None, Some col -> (
-        if params.close then Buffer.add_string pageBuf "s " else
-          Buffer.add_string pageBuf "S "
-      )
-      | Some col, None -> (Buffer.add_string pageBuf "f ")
-      | Some fCol, Some sCol -> (
-        if params.close then Buffer.add_string pageBuf "b " else
-          Buffer.add_string pageBuf "B "
-      )
+    | None  , None                     -> Buffer.add_string pageBuf "n "
+    | None  , Some _ when params.close -> Buffer.add_string pageBuf "s "
+    | None  , Some _                   -> Buffer.add_string pageBuf "S "
+    | Some _, None                     -> Buffer.add_string pageBuf "f "
+    | Some _, Some _ when params.close -> Buffer.add_string pageBuf "b "
+    | Some _, Some _                   -> Buffer.add_string pageBuf "B "
   in
 
   let fonts=ref StrMap.empty in
@@ -445,7 +441,7 @@ let output ?(structure:structure=empty_structure) pages fname =
         );
         xline:= !xline +. size*.Fonts.glyphWidth gl.glyph/.1000.
       )
-      | Path (params,[])->()
+      | Path (_,[])->()
       | Path (params,paths) ->(
         close_text ();
         set_line_join RawContent.(params.lineJoin);
@@ -499,12 +495,14 @@ let output ?(structure:structure=empty_structure) pages fname =
         IntMap.add (drawing_order x) (x::m') m
       ) IntMap.empty c
       in
-      let comp a b=match a,b with
-          Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
+      let comp a b =
+        match a,b with
+        | (Glyph ga, Glyph gb) ->
+            if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
             else compare gb.glyph_y ga.glyph_y
-        | Glyph ga,_-> -1
-        | _,Glyph gb->1
-        | _->0
+        | (Glyph _ , _       ) -> -1
+        | (_       , Glyph _ ) -> 1
+        | (_       , _       ) -> 0
       in
       let subsort a=match a with
           Link l->Link { l with link_contents=sort_contents l.link_contents }
@@ -882,7 +880,7 @@ let output ?(structure:structure=empty_structure) pages fname =
   in
   (* /Type 1C (CFF) *)
 
-  let fn k pdffont =
+  let fn _ pdffont =
     let pdftype =
       if not !pdf_type3_only && is_cff pdffont.font then pdftype1c
       else pdftype3

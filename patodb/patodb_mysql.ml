@@ -67,7 +67,7 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
 
     let init () =
       let sessid, groupid, friends = sessid () in
-      let fn (sessid, grouid) =
+      let fn (sessid, _) =
         let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
                                  table_name sessid name in
         let r = Mysql.exec db.dbd sql in
@@ -104,7 +104,7 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
 
     let read () =
       try
-        let sessid, groupid, _  = init () in
+        let (sessid, _, _)  = init () in
         Patodb.do_record_read data visibility;
         let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';"
           table_name sessid name in
@@ -152,7 +152,7 @@ let create_data db table_name ?(log=false) ?(visibility=Private) coding name vin
 
     let reset () =
       try
-        let sessid, groupid, _ = init () in
+        let (sessid, _, _) = init () in
         Patodb.do_record_write data visibility;
         let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s';"
           table_name name sessid in

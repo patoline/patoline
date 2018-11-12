@@ -59,7 +59,7 @@ let dummyData = {
   read = (fun _ -> raise DummyData) ;
   write = (fun _ -> raise DummyData) ;
   reset = (fun _ -> raise DummyData) ;
-  distribution = (fun ?group _ -> raise DummyData) ;
+  distribution = (fun ?group:_ _ -> raise DummyData) ;
 }
 
 type 'a coding = {

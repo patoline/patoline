@@ -67,12 +67,12 @@ module Make(D : TreeData) =
     let max_index (t, _) =
       D.max_index (D.node_of_tree t)
 
-    let down_first ((t, l) as z) =
+    let down_first ((t, _) as z) =
       try
         down z (D.min_index (D.node_of_tree t))
       with _ -> invalid_arg "Zipper.down_first"
 
-    let down_last ((t, l) as z) =
+    let down_last ((t, _) as z) =
       try
         down z (D.max_index (D.node_of_tree t))
       with _ -> invalid_arg "Zipper.down_last"

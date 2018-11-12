@@ -172,7 +172,7 @@ let rec intercalate a b=match b with
   | h0::h1::s->h0::a::(intercalate a (h1::s))
 
 
-let dbCite db subcitation req=
+let dbCite db _subcitation req=
   let results=ref [] in
   let r=sprintf "SELECT %s FROM bibliography %s" (String.concat ", " (List.map fst fields))
     (if String.length req > 0 then "WHERE "^req else "")
@@ -278,7 +278,7 @@ let bibref name=
   [ C (fun env->
     try
       env_accessed:=true;
-      let counters,refType_=
+      let counters,_refType_=
         let a,t,_=StrMap.find name (names env)
         in a,t 
       in
@@ -297,7 +297,7 @@ let bibnum name env =
   let refType = "bibliography" in
   try
     env_accessed:=true;
-    let counters,refType_=
+    let counters,_refType_=
       let a,t,_=StrMap.find name (names env)
       in a,t 
     in
@@ -376,8 +376,6 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
       None->failwith "Bibi: no bibliographic source defined"
     | Some y->authorFile y x
 
-  open Box
-
   module TheBibliography (D : DocumentStructure) = struct
     let _=
       let l=List.sort (C.compare) (IntMap.bindings !revbib) in
@@ -388,14 +386,15 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
 end
 
 
-let rec default_biblio_format ?separator:(separator=". ")
-                  ?and_last:(and_last=" et ")
-                         ?and_:(and_=" et ")           (* en anglais ca serait " and " *)
-                         ?editeur:(editeur=" (éditeur)")
-                         ?editeurs:(editeurs=" (éditeurs)")
-                              ?inclusion:(inclusion="In: ")
-                              ?follow_crossrefs:(follow_crossrefs=true)
-                              row=
+let rec default_biblio_format
+    ?separator:(separator=". ")
+    ?and_last:(_=" et ")
+    ?and_:(_=" et ")           (* en anglais ca serait " and " *)
+    ?editeur:(_=" (éditeur)")
+    ?editeurs:(_=" (éditeurs)")
+    ?inclusion:(inclusion="In: ")
+    ?follow_crossrefs:(follow_crossrefs=true)
+    row =
   match !bibfile_ with
       None->[]
     | Some bf->(
@@ -617,7 +616,7 @@ module CitationNames(M:sig val longCite:Document.content list list->Document.con
         let i=compare (aut a) (aut b) in
         i
       )
-  let citation_format i row=
+  let citation_format _ row=
     match !bibfile_ with
         None->failwith "Bibi: no bibliographic source defined"
       | Some bf->(

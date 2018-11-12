@@ -23,13 +23,9 @@ open Patutil
 open Patoraw
 open Patfonts
 open Document
-open Complete
-open Break
 open FTypes
 open Extra
-open Fonts
 open Box
-open Patconfig.PatConfig
 
 let findFont = ConfigFindFont.findFont
 
@@ -314,7 +310,7 @@ let oRightArrow a=
                  w+.w_x) 0. boxes)
           in
           let dr=draw_boxes envs boxes in
-          let (x0_,y0_,x1_,y1_)=RawContent.bounding_box_full dr in
+          let (_,y0_,x1_,y1_)=RawContent.bounding_box_full dr in
 
           let env=Maths.env_style envs.mathsEnvironment st in
           let font=Lazy.force (env.Mathematical.mathsFont) in
@@ -354,7 +350,7 @@ let oRightArrow a=
                drawing_break_badness=0.;
                drawing_states=[];
                drawing_contents=
-                 (fun w->
+                 (fun _ ->
                    RawContent.Path ({RawContent.default_path_param with
                                       RawContent.strokingColor=None;
                                       RawContent.fillColor=Some envs.fontColor
@@ -374,7 +370,7 @@ let oLeftArrow a=
                  w+.w_x) 0. boxes)
           in
           let dr=draw_boxes envs boxes in
-          let (x0_,y0_,x1_,y1_)=RawContent.bounding_box_full dr in
+          let (_,y0_,x1_,y1_)=RawContent.bounding_box_full dr in
 
           let env=Maths.env_style envs.mathsEnvironment st in
           let font=Lazy.force (env.Mathematical.mathsFont) in
@@ -407,7 +403,7 @@ let oLeftArrow a=
                drawing_break_badness=0.;
                drawing_states=[];
                drawing_contents=
-                 (fun w->
+                 (fun _ ->
                    RawContent.Path ({RawContent.default_path_param with
                                       RawContent.strokingColor=None;
                                       RawContent.fillColor=Some envs.fontColor

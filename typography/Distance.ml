@@ -73,10 +73,6 @@ let near p q =
 
 let norm v = sqrt (norm2 v)
 
-let normalize (x,y as v) = 
-  let n = norm v in
-  x /. n, y /. n
-
 type lin_obj =
   Line of point * vecteur
 | HalfLine of point * vecteur * bool
@@ -106,9 +102,9 @@ let length2 = function
   | _ -> infinity
 
 let cut' p = function
-  | Line(_,v) -> assert false
-  | HalfLine(q,v,true) -> Segment(q,p)
-  | HalfLine(q,v,false) ->  HalfLine(p,v,false)
+  | Line(_,_)          -> assert false
+  | HalfLine(q,_,true) -> Segment(q,p)
+  | HalfLine(_,v,false) ->  HalfLine(p,v,false)
   | Segment(q,_) -> Segment(q,p)
 
 let cut p = function
@@ -419,21 +415,17 @@ let print_st ch s = match s with
   | LeftBack(p1,o1,o2) -> Printf.fprintf ch "LeftBack(%a,%a,%a)" print_pt p1 print_obj o1 print_obj o2
   | RightBack(o1,o2,p2) -> Printf.fprintf ch "RightBack(%a,%a,%a)" print_obj o1 print_obj o2 print_pt p2
 
-let oleft s = match s with
-  | Bissectrice(o1,o2)
-  | Mediatrice(_,o1,o2,_)
-  | LeftParabola(_,o1,o2)
-  | RightParabola(o1,o2,_)
-  | LeftBack(_,o1,o2)
-  | RightBack(o1,o2,_) -> o1
+let oboth s =
+  match s with
+  | Bissectrice(l,r)
+  | Mediatrice(_,l,r,_)
+  | LeftBack(_,l,r)
+  | RightBack(l,r,_)
+  | LeftParabola(_,l,r)
+  | RightParabola(l,r,_) -> (l, r)
 
-let oright s = match s with
-  | Bissectrice(o1,o2)
-  | Mediatrice(_,o1,o2,_)
-  | LeftParabola(_,o1,o2)
-  | RightParabola(o1,o2,_)
-  | LeftBack(_,o1,o2)
-  | RightBack(o1,o2,_) -> o2
+let oleft  s = fst (oboth s)
+let oright s = snd (oboth s)
 
 let advance_parabola foyer directrice w =
   let (q,v') = carrier directrice in
@@ -554,10 +546,9 @@ let eqdist d p o i1 i2 extras =
   in
   n, comblin 1.0 r s w0
   
-let ortho p1 v1 p2 v2 i = 
-  if near p1 p2 then p1
-  else
-    try inter (Line(p1,v1)) (Line(p2,v2)) with Not_found -> assert false
+let ortho p1 v1 p2 v2 _ = 
+  if near p1 p2 then p1 else
+  try inter (Line(p1,v1)) (Line(p2,v2)) with Not_found -> assert false
 
 let mediatrice_profile (dsup,dinf) profile1 profile2 =
 
@@ -1041,7 +1032,7 @@ let add_allprofile l =
   let d = norm (o2 -- o1) in
   fn (d, add_dprofile d 0. 0.5 []) l
 
-let find_distance beta m l =
+let find_distance beta (*m*) _ l =
 (*  let area = m *. m *. beta in*)
 
   let rec fn curd curh curarea curp l =

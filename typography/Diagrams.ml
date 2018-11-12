@@ -25,8 +25,6 @@ open Unicodelib
 open Document
 module Drivers = RawContent
 open RawContent
-open Proj3d
-open Geometry
 
 let diagram x = x (* to make pa_patoline happy *)
 let swap (x,y) = (y,x)
@@ -38,10 +36,8 @@ let to_rad angle = angle *. pi /. 180.
 let default_line_width = ref 0.1
 let ex env =
   let l = Maths.draw [ env ] ([Maths.Ordinary (Maths.node ((Maths.glyphs "x"))) ]) in
-  let x = List.find
-    (function Box.GlyphBox x -> true | _ -> false)
-    l
-  in (Box.upper_y x -. Box.lower_y x) /. 2.
+  let x = List.find (function Box.GlyphBox _ -> true | _ -> false) l in
+  (Box.upper_y x -. Box.lower_y x) /. 2.
 let scale_env env =
   let mathsEnv = Maths.env_style env.mathsEnvironment env.mathStyle in
   mathsEnv.Mathematical.mathsSize*.env.size
@@ -55,11 +51,11 @@ let rec mem_compare cmp x l = match l with
   | y :: l' -> if cmp x y = 0 then true else mem_compare cmp x l'
 
 let rec list_last = function
-  [] -> assert false
-  | [x] -> x
-  | x :: l -> list_last l
+  | []     -> assert false
+  | [x]    -> x
+  | _ :: l -> list_last l
 
-let only_last l x = [x]
+let only_last _ x = [x]
 
 let array_last xs =
   let n = Array.length xs in
@@ -68,9 +64,8 @@ let array_last xs =
 let array_update_last a x =
   a.(Array.length a - 1) <- x
 let array_update f arr = Array.iteri (fun i x -> arr.(i) <- f x) arr
-let acurve_update f g arr = Array.iteri
-  (fun i (xs,ys) -> (array_update f xs; array_update g ys))
-  arr
+let acurve_update f g arr =
+  Array.iteri (fun _ (xs,ys) -> (array_update f xs; array_update g ys)) arr
 
 let list_split_last_rev l =
   let rec list_split_last_rec res = function
@@ -102,8 +97,8 @@ let max_list_list f z ls =
 module Point = struct
   type t = float * float
   type point = t
-  let proj (x,y) = x
-  let proj' (x,y) = y
+  let proj (x,_) = x
+  let proj' (_,y) = y
   let middle (x0,y0) (x1,y1) = (0.5 *. (x0 +. x1), 0.5 *. (y0 +. y1))
   let distance (x0,y0) (x1,y1) = sqrt ((x1 -. x0)**2. +. (y1 -. y0)**2.)
   let (+) (x0,y0) (x1,y1) = (x0 +. x1), (y0 +. y1)
@@ -149,7 +144,7 @@ module Curve = struct
   type t =  Bezier.curve list
 
   let first = function [] -> (Printf.fprintf stderr "Patofig warning: empty curve.\n" ; (0.,0.))
-    | (xs,ys) :: rest -> (xs.(0),ys.(0))
+    | (xs,ys) :: _ -> (xs.(0),ys.(0))
   let last = function [] -> (Printf.fprintf stderr "Patofig warning: empty curve.\n" ; (0.,0.))
     | l -> let (xs,ys) = list_last l in
            (array_last xs, array_last ys)
@@ -362,8 +357,8 @@ module Curve = struct
     let rec split2_right curve1 res curve (j,t') = match curve with
         [] -> Printf.fprintf stderr ("Warning: attempt to split2 an empty curve.\n") ; [],[],[]
       | (xs,ys) as bezier :: rest -> if j = 0 then
-          let xs1, xs', xs2 = Bezier.split2 xs 0. t' in
-          let ys1, ys', ys2 = Bezier.split2 ys 0. t' in
+          let _, xs', xs2 = Bezier.split2 xs 0. t' in
+          let _, ys', ys2 = Bezier.split2 ys 0. t' in
           (curve1,
            (List.rev ((xs',ys') :: res)),
            (xs2, ys2) :: rest)
@@ -381,8 +376,8 @@ module Curve = struct
           ((xs2,ys2) :: rest)
         else
           (* Aaaaah il faut splitter en deux juste, c'est pas super efficace... *)
-          let xs1, xs', xs2 = Bezier.split2 xs t 1. in
-          let ys1, ys', ys2 = Bezier.split2 ys t 1. in
+          let xs1, xs', _ = Bezier.split2 xs t 1. in
+          let ys1, ys', _ = Bezier.split2 ys t 1. in
           split2_right (List.rev ((xs1,ys1) :: curve1)) [] ((xs',ys') :: rest) (j,t')
       end
         else
@@ -401,8 +396,8 @@ module Curve = struct
     Point.distance s t
 
   let linear_length = List.fold_left
-    (fun res ((xs,ys) as bezier) -> res +. bezier_linear_length bezier)
-    0.
+    (fun res bezier -> res +. bezier_linear_length bezier)
+    0.0
 
   let length n curve =
     let beziers = List.concat
@@ -426,7 +421,7 @@ module Curve = struct
                 Printf.fprintf stderr
                   "Couldn't find curvilinear coordinate. Returning 0.\n"
               in 0.
-      | ((xs', ys') as bezier, length) :: l' ->
+      | (bezier, length) :: l' ->
         let z_restant = z -. z_yet in
         if z_restant > length then
           scan z (t_yet +. time_unit) (z_yet +. length) l'
@@ -510,9 +505,6 @@ module Transfo (X : Set.OrderedType) = struct
           -> string -> (t -> 'a) -> ('a * t)
         module Map : Map.S with type key = t
       end = struct
-
-        open Style
-
         (* module type T = sig type arg val transfo : arg -> transfo end *)
         (* type t = module PT *)
 
@@ -551,7 +543,9 @@ module Transfo (X : Set.OrderedType) = struct
 
         let add_edge node1 node2 = let _ = node1.sons <- node2 :: node1.sons in ()
 
+        (*
         let add_edges = List.iter (fun (node1,node2) -> add_edge node1 node2)
+        *)
 
       (* Here is the ref to list of pets *)
         let pets : t list ref = ref []
@@ -566,7 +560,9 @@ module Transfo (X : Set.OrderedType) = struct
         let pet_map : node PetMap.t ref = ref PetMap.empty
 
         let node_of_pet pet = PetMap.find pet !pet_map
+        (*
         let pet_of_node node = NodeMap.find node !node_map
+        *)
 
         let count = ref 0
         let gensym () =
@@ -616,6 +612,7 @@ module Transfo (X : Set.OrderedType) = struct
           in
           (nodes, node_of_pet_t, pet_of_node_t)
 
+          (*
         let print_pet out pet =
           output_string out (Printf.sprintf "{ id = %d, name = %s }" (pet.uid) (pet.name))
         let string_of_pet pet = Printf.sprintf "{ id = %d, name = %s }" (pet.uid) (pet.name)
@@ -629,13 +626,11 @@ module Transfo (X : Set.OrderedType) = struct
               (List.map (fun node -> string_of_node node) sons)))
             node.sons)
             g
+        *)
 
       let compare =
         let memo = ref [] in
-        let memo_res :
-            (t -> t -> int) ref
-            = ref (fun x y -> 0)
-        in
+        let memo_res : (t -> t -> int) ref = ref (fun _ _ -> 0) in
         fun () ->
           if !memo == !graph then !memo_res
           else
@@ -645,7 +640,7 @@ module Transfo (X : Set.OrderedType) = struct
             let pets = total_order !graph in
             (* Printf.fprintf stdout "Sorting, obtaining:\n" ;   *)
             (* List.iter (fun pet -> print_pet stdout pet ; print_newline ()) pets ; *)
-            let nodes,node_of_pet_t,_ = poset_of_list pets in
+            let _(*nodes*),node_of_pet_t,_ = poset_of_list pets in
             (* Printf.fprintf stdout "Obtaining the poset:\n" ; *)
             (* let _ = print_graph nodes in *)
             (* let _ = flush stdout in *)
@@ -713,7 +708,7 @@ module Transfo (X : Set.OrderedType) = struct
 
         let transfos = make_transfos styles in
         let x' =
-          Pet.Map.fold (fun pet styles x' ->
+          Pet.Map.fold (fun _ styles x' ->
             (List.fold_left (fun  x'' style ->
               style.transfo x'')
                x'
@@ -798,16 +793,16 @@ module Transfo (X : Set.OrderedType) = struct
 
   (* Casting points into gentities *)
   let coord (x : Point.t) =
-    { curve = Curve.of_point_lists [[x]] ;
-      anchor = (fun a -> x) ;
-      contents = [] }
+    { curve = Curve.of_point_lists [[x]]
+    ; anchor = (fun _ -> x)
+    ; contents = [] }
 
   (* Casting points into gentities *)
   let coord3d projection x =
-    let (x,y,z) = Proj3d.project projection x in
-    { curve = Curve.of_point_lists [[(x,y)]] ;
-      anchor = (fun a -> (x,y)) ;
-      contents = [] }
+    let (x,y,_) = Proj3d.project projection x in
+    { curve    = Curve.of_point_lists [[(x,y)]]
+    ; anchor   = (fun _ -> (x,y))
+    ; contents = [] }
 
 
     (* Translate a gentity by v *)
@@ -904,7 +899,7 @@ module Transfo (X : Set.OrderedType) = struct
         bb = (x,y,x,y) ;
         anchor = (fun _ -> p) }
 
-    let rec decoration_to_contents edge_info = function
+    let rec decoration_to_contents _ = function
       | Curve (params, curve) -> Curve.draw ~parameters:params curve
       | Node node -> to_contents node
 
@@ -953,7 +948,7 @@ module Transfo (X : Set.OrderedType) = struct
             strokingColor = Some Color.black ;
             dashPattern = pattern } } ) })
 
-    let draw,draw_pet =
+    let draw,_ =
       Pet.register "node draw" (fun pet ->
         { pet = pet ; transfo = (fun info ->
           { info with params = { info.params with
@@ -1104,7 +1099,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
     let ray_intersect main outer_curve angle =
               let angle = to_rad angle in
               let direction = (cos angle, sin angle) in
-              let (vx,vy) as direction' = Vector.normalise ~norm:300. direction in
+              let direction' = Vector.normalise ~norm:300. direction in
               let rayon = Curve.of_point_lists [[main;Vector.(+) main direction']] in
               let inter =
                 app_default Curve.latest_intersection rayon outer_curve (0,0.)
@@ -1120,7 +1115,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
         (fun pet env ->
         { pet = pet ; transfo = (fun info ->
           (* Printf.fprintf stderr "node shape\n" ; flush stderr ; *)
-          let (x0,y0,x1,y1) as bb_boot = info.bb in
+          let bb_boot = info.bb in
           let rectangle (p1,p2,p3,p4) =
             Curve.of_point_lists [
               [p1;p2] ;        (* The bottom curve *)
@@ -1215,7 +1210,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
         { pet = shape_pet ; transfo = (fun info ->
           let (_,y0,_,_) as bb = info.bb in
           let center = info.center in
-          let circle (p1,p2,p3,p4) =
+          let circle (p1,_,_,_) =
 
             let radius = Point.distance center p1 in
             let anchor_of_angle angle =
@@ -1406,8 +1401,8 @@ Doing a rectangle.\n" ;
               ((droit_final, gauche_final,apex_final),curve)
             in
 
-            let (x0,y0,x1,y1) as bb_boot = info'.bb in
-            let (p1,p2,p3,p4) as outer_bb = BB.outer_points info' bb_boot in
+            let bb_boot = info'.bb in
+            let (p1,p2,p3,p4) as _outer_bb = BB.outer_points info' bb_boot in
             let (p1',p2',p3',p4') = BB.mid_points info' bb_boot in
 
             let ((droit_final, gauche_final,apex_final),outer_curve) = make_triangle p3 p4 p1 p2 in
@@ -1476,7 +1471,7 @@ Doing a rectangle.\n" ;
       Pet.register "node anchor" ~depends:[shape_pet] (fun pet anchor ->
         { pet = pet ; transfo = (fun info ->
           (* Printf.fprintf stderr "anchor\n" ; flush stderr ; *)
-          let (xt,yt) as v = Vector.of_points (info.anchor anchor) (info.anchor info.node_anchor) in
+          let v = Vector.of_points (info.anchor anchor) (info.anchor info.node_anchor) in
           let info' = translate v info in
           { info' with
             node_anchor = anchor })})
@@ -1905,16 +1900,16 @@ Doing a rectangle.\n" ;
       let transmit, transmit_pet =
       Pet.register "make 3d matrix " ~depends:[all_nodes_pet;make_nodes_pet;placement_pet] (fun pet sty ->
         { pet = pet ; transfo = (fun
-          ({ mainNode = main ;
+          ({ mainNode = _ ;
             mainNodes = mains ;
             common = style ;
             planes = planes ;
             placement = placement } as info)
         ->
           let planes' = Array.mapi
-            (fun k matrix_info ->
-              let placement_k node_info i j = let (x,y),_ = placement info i j k in x,y in
-              let z_placement_k node_info i j = let _,z = placement info i j k in z in
+            (fun k _ ->
+              let placement_k _ i j = let (x,y),_ = placement info i j k in x,y in
+              let z_placement_k _ i j = let _,z = placement info i j k in z in
               let open Matrix in
               let m = Matrix.Transfo.transform
                 ([(allNodes style); (placement (placement_k)); makePlacement ;
@@ -2039,7 +2034,7 @@ Doing a rectangle.\n" ;
         let edge_info = Transfo.transform styles (default_edge_info s e underlying_curve)  in
         edge_info
 
-      let outer_curve styles curve = curve
+      let outer_curve _ curve = curve
 
       (* We now define ways of constructing edges *)
 
@@ -2066,7 +2061,7 @@ Doing a rectangle.\n" ;
       let point_lists_of_edge_spec s continues e =
         point_lists_of_edge_spec_rec [] (s.Gentity.anchor `Main) (e.Gentity.anchor `Main) continues
 
-      let decoration_to_contents edge_info = function
+      let decoration_to_contents _ = function
         | Curve (params, curve) -> Curve.draw ~parameters:params curve
         | Node node -> Node.to_contents node
 
@@ -2118,7 +2113,7 @@ Doing a rectangle.\n" ;
         let start = begin
           match node1.curve with
             | []  -> (0,0.)
-            | [xs,ys] when Array.length xs <= 1 -> (0,0.)
+            | [xs,_] when Array.length xs <= 1 -> (0,0.)
             | curve1 ->
               Curve.(app_default earliest_intersection curve curve1 (0,0.))
         (* let _ = Printf.fprintf stderr "Points: \n"  in *)
@@ -2136,10 +2131,10 @@ Doing a rectangle.\n" ;
               (*         end *)
               (*         | Some (i, t1) -> (i, t1) *)
         end in
-        let (j,t') as finish = begin
+        let finish =
           match node2.curve with
-            | [] -> ((Curve.nb_beziers curve) - 1,1.)
-            | [xs,ys] when Array.length xs <= 1 -> ((Curve.nb_beziers curve) - 1,1.)
+            | []                                 -> ((Curve.nb_beziers curve) - 1,1.)
+            | [(xs,_)] when Array.length xs <= 1 -> ((Curve.nb_beziers curve) - 1,1.)
             | curve2 ->
               Curve.(app_default latest_intersection curve curve2 ((Curve.nb_beziers curve) - 1,1.))
               (* match Curve.earliest_intersection curve curve2 with *)
@@ -2149,7 +2144,7 @@ Doing a rectangle.\n" ;
               (*           ((Curve.nb_beziers curve) - 1,1.) *)
               (*         end *)
               (*         | Some (j, t2) -> (j, t2) *)
-        end in
+        in
         if Curve.compare_lt start finish < 0 then
           Curve.internal_restrict curve start finish
         else Curve.restrict curve 0. 0.
@@ -2282,7 +2277,7 @@ Doing a rectangle.\n" ;
         let gl_arr=Fonts.loadGlyph font utf8_arr in
         Fonts.outlines gl_arr, size
 
-      let fontArrowHead (xe,ye) angle env info params arr size  =
+      let fontArrowHead (xe,ye) angle _ info params arr size  =
         (* We start by extracting the arrow head from the whole arrow *)
         (* In passing, we need to do a little surgery to compensate for the missing shaft *)
         (* This is done differently depending on whether we have a "double" arrow or not *)
@@ -2334,7 +2329,7 @@ Doing a rectangle.\n" ;
               (Array.to_list arr)
           else
             let update i j f = (fst (arr.(i))).(j) <- f ((fst (arr.(i))).(j)) in
-            let update_xs i f = Array.iteri (fun j x -> update i j f) (fst (arr.(i))) in
+            let update_xs i f = Array.iteri (fun j _ -> update i j f) (fst (arr.(i))) in
             let scale (i, j) = update i j (fun x -> x +. size *. wdtip -. params.lineWidth) in
             let scale_xs i = update_xs i (fun x -> x +. size *. wdtip -. params.lineWidth) in
             let _ = (List.iter scale_xs  [ 0 ; 5 ; 6 ]) in
@@ -2364,9 +2359,9 @@ let cliptip ?(reverse=false) grad info tip curve0 =
     let curve = Curve.translate normale curve0 in
     let finish = if reverse then ((Curve.nb_beziers curve) - 1,1.) else begin
         match tip with
-        | [] -> ((Curve.nb_beziers curve) - 1,1.)
-        | [xs,ys] when Array.length xs <= 1 -> ((Curve.nb_beziers curve) - 1,1.)
-        | curve2 ->
+        | []                                 -> ((Curve.nb_beziers curve) - 1,1.)
+        | [(xs,_)] when Array.length xs <= 1 -> ((Curve.nb_beziers curve) - 1,1.)
+        | curve2                             ->
            Curve.(app_default
                     (if info.tip_info.is_double then
                       latest_intersection
@@ -2375,9 +2370,9 @@ let cliptip ?(reverse=false) grad info tip curve0 =
       end in
      let beggin = if not reverse then (0,0.) else begin
         match tip with
-        | [] -> (0,0.)
-        | [xs,ys] when Array.length xs <= 1 -> (0,0.)
-        | curve2 ->
+        | []                                 -> (0,0.)
+        | [(xs,_)] when Array.length xs <= 1 -> (0,0.)
+        | curve2                             ->
            Curve.(app_default
                     (if info.tip_info.is_double then
                       earliest_intersection
@@ -2394,20 +2389,18 @@ let cliptip ?(reverse=false) grad info tip curve0 =
         let params = edge_info.params in
         let underlying_curve = edge_info.underlying_curve in
         let time = if head_or_tail then 1. else 0. in
-        let (da,db) as grad = Vector.scal_mul
-                                (if head_or_tail then 1. else -1.)
-                                (Curve.eval (Curve.gradient underlying_curve) time)
-        in
+        let grad = Vector.scal_mul (if head_or_tail then 1. else -1.)
+                     (Curve.eval (Curve.gradient underlying_curve) time) in
         (* Corresponding point on the curve *)
-        let (xe,ye) as e = Curve.eval underlying_curve time in
+        let e = Curve.eval underlying_curve time in
         (* We then extract curves for the standard arrow head from the font; [env] is used to determine the size *)
         let arrowCurves, size = fontArrowHeadCurves env in
         (* We then eliminate some degenerate cases *)
-        begin match edge_info.underlying_curve with
-                [xs,ys] when Array.length xs = 1 ->
-                edge_info
-              | _ when params.lineWidth = 0. -> edge_info
-              | _ ->
+        begin
+          match edge_info.underlying_curve with
+          | [(xs,_)] when Array.length xs = 1   -> edge_info
+          | _        when params.lineWidth = 0. -> edge_info
+          | _ ->
                  (* Now we're in business *)
                  let angle = Vector.angle grad in
                  let tip = fontArrowHead e angle env edge_info.tip_info params arrowCurves size in
@@ -2454,10 +2447,10 @@ let cliptip ?(reverse=false) grad info tip curve0 =
             let underlying_curve = edge_info'.underlying_curve in
             let middle = Curve.eval underlying_curve time in
             let (da,db) = Curve.eval (Curve.gradient underlying_curve) time in
-            let (la,lb) as l = (-. db, da) in
-            let (ra,rb) as r = (db, -. da) in
-            let (la,lb) as l = Vector.normalise ~norm:width l in
-            let (ra,rb) as r = Vector.normalise ~norm:width r in
+            let l = (-. db, da) in
+            let r = (db, -. da) in
+            let l = Vector.normalise ~norm:width l in
+            let r = Vector.normalise ~norm:width r in
             let dash = Curve.of_point_lists [[(Vector.(+) l middle);(Vector.(+) r middle)]] in
             { edge_info' with decorations = edge_info'.decorations @ [Curve (edge_info'.params, dash)] }
           )})
@@ -2614,7 +2607,7 @@ let cliptip ?(reverse=false) grad info tip curve0 =
         raw_edge (clip :: (zs z_curve) :: style) s e underlying_curve
 
 
-      let makes_3d style  ?projection:(projection=Proj3d.cavaliere45bg)
+      let makes_3d style  ?projection:(_=Proj3d.cavaliere45bg)
           edge_list =
         List.map (fun (style',s,controls,controls3d,e) ->
           make_3d (style' @ style) s ~controls:controls ~controls3d:controls3d e) edge_list
@@ -2640,8 +2633,8 @@ let cliptip ?(reverse=false) grad info tip curve0 =
         let gt1 = cut (gt -. epsilon) in
         let gt2 = cut (gt +. epsilon) in
         if epsilon >= 0. then
-          let (i,t) as lt1 = Curve.local_time info.underlying_curve gt1 in
-          let (j,u) as lt2 = Curve.local_time info.underlying_curve gt2 in
+          let lt1 = Curve.local_time info.underlying_curve gt1 in
+          let lt2 = Curve.local_time info.underlying_curve gt2 in
           let info' = restrict info lt1 lt2 in
                 { info' with curves =
                     ({info'.params with
@@ -2826,8 +2819,7 @@ let cliptip ?(reverse=false) grad info tip curve0 =
       let add_intersections f =
         let inters = all_intersections !stack in
         List.iter
-          (fun (e1,e2,((i,t,b),(j,u,c))) ->
-            let open Edge in
+          (fun (e1,e2,((i,t,_),(j,u,_))) ->
             let z1 = Edge.evaluate_z e1 (i,t) in
             let z2 = Edge.evaluate_z e2 (j,u) in
             if abs_float (z1 -. z2) > !epsilon then begin
@@ -3023,7 +3015,7 @@ let cliptip ?(reverse=false) grad info tip curve0 =
                   ?main_node_style:(mstyle=Node.([at (0.,0.);anchor `SouthWest]))
             (* Mettre la valeur par defaut en ex *)
             lines =
-          let style i j = [Node.anchor (List.nth anchors j); Node.at(0.,0.)] in
+          let style _ j = [Node.anchor (List.nth anchors j); Node.at(0.,0.)] in
           let anchors = Array.of_list anchors in
           let lines_contents = List.rev (snd (List.fold_left
                                                 (fun (i, reslines) line ->
@@ -3071,18 +3063,20 @@ let cliptip ?(reverse=false) grad info tip curve0 =
       let point_of_node n = n.Node.anchor `Main in
       Point.middle (point_of_node ms.(0).(0)) (point_of_node ms.(0).(1))
 
-    let default_deco env ms = [], default_where ms
+    let default_deco _ ms = [], default_where ms
 
     let xarrow ?margin:(margin=2.) ?decoration:(deco=default_deco)
         a =
       [Maths.Binary { Maths.bin_priority = 2 ; Maths.bin_drawing = Maths.Normal
           (true,
            (Maths.node
-              (fun env st->
+              (fun env _ ->
                 let dr=Document.draw_boxes env
                   (Maths.draw [{env with mathStyle = Maths.scriptStyle env.mathStyle}] a)
                 in
-                let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> RawContent.bounding_box dr
+                let (x0,_,x1,_) =
+                  if dr = [] then (0.,0.,0.,0.)
+                  else RawContent.bounding_box dr
                 in
                 let scale = 0.2*.(scale_env env) in
                 (* let _ = Printf.fprintf stderr "Bb: %f,%f,%f,%f\n" x0 y0 x1 y1 ; flush stderr in *)
@@ -3098,7 +3092,7 @@ let cliptip ?(reverse=false) grad info tip curve0 =
                      ([innerSep 0.;outerSep 0.], [])
                    ]]))
                 in
-                let m,ms = Matrix.(matrix.mainNode,matrix.nodes) in
+                let _,ms = Matrix.(matrix.mainNode,matrix.nodes) in
                 let e, where = deco env ms in
                 let l = Node.(make_output
                   [outerSep 0.2 ; innerSep 0.; anchor `South;

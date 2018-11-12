@@ -1,7 +1,5 @@
 open Unicodelib
 open Earley_core
-open Earley_ocaml
-open Pa_ocaml_prelude
 open UCharInfo
 
 #define LOCATE locate

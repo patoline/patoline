@@ -96,7 +96,7 @@ let fontBBox f=
       CFF.fontBBox font.cff_font
     | TTF ttf->(
       let file,offset0=open_in_bin_cached ttf.ttf_file,ttf.ttf_offset in
-      let (a,b)=tableLookup "hhea" file offset0 in
+      let (a,_) = tableLookup "hhea" file offset0 in
       seek_in file (a+4);
       let ascender=sreadInt2 file in
       let descender=sreadInt2 file in
@@ -111,17 +111,17 @@ let fontBBox f=
 let cadratin f =
   let res =
     match f with
-    | CFF font-> 1000
+    | CFF _   -> 1000
     | TTF ttf ->
       let file,offset0=open_in_bin_cached ttf.ttf_file,ttf.ttf_offset in
-      let (a,b)=tableLookup "head" file offset0 in
+      let (a,_) = tableLookup "head" file offset0 in
       seek_in file (a+18);
       sreadInt2 file
   in
   Printf.printf "cadratin: %d\n%!" res;
   res
 
-let loadFont ?offset:(off=0) ?size:(size=None) file=
+let loadFont ?offset:(off=0) ?size:(_size=None) file=
   let f = open_in_bin_cached file in
   let typ = Bytes.create 4 in
   seek_in f off;
@@ -147,7 +147,7 @@ let uniqueName font=match font with
 let getNames font off=
   try
     let file=open_in_bin_cached font in
-    let (a,b)=tableLookup "name" file off in
+    let (a,_) = tableLookup "name" file off in
     seek_in file a;
     let format=readInt2 file in
     if format=0 then (
@@ -224,7 +224,7 @@ let cardinal f=
         file,font.cff_offset
     | TTF ttf->open_in_bin_cached ttf.ttf_file,ttf.ttf_offset
   in
-  let (a,b)=tableLookup "maxp" file offset0 in
+  let (a,_) = tableLookup "maxp" file offset0 in
   seek_in file (a+4);
   readInt2 file
 
@@ -235,7 +235,7 @@ let italicAngle f=
         file,font.cff_offset
     | TTF ttf->open_in_bin_cached ttf.ttf_file,ttf.ttf_offset
   in
-  let (a,b)=tableLookup "post" file offset0 in
+  let (a,_) = tableLookup "post" file offset0 in
   seek_in file (a+4);
   (float_of_int (readInt4_int file))/.65536.
 
@@ -246,7 +246,7 @@ let ascender f=
         file,font.cff_offset
     | TTF ttf->open_in_bin_cached ttf.ttf_file,ttf.ttf_offset
   in
-  let (a,b)=tableLookup "OS/2" file offset0 in
+  let (a,_) = tableLookup "OS/2" file offset0 in
   seek_in file (a+68);
   float_of_int (sreadInt2 file)
 
@@ -257,7 +257,7 @@ let descender f=
         file,font.cff_offset
     | TTF ttf->open_in_bin_cached ttf.ttf_file,ttf.ttf_offset
   in
-  let (a,b)=tableLookup "OS/2" file offset0 in
+  let (a,_) = tableLookup "OS/2" file offset0 in
   seek_in file (a+70);
   float_of_int (sreadInt2 file)
 
@@ -269,7 +269,7 @@ let glyph_of_uchar font0 char0=
   in
   let file=open_in_bin_cached file in
   let char=UChar.code char0 in
-  let (a,b)=tableLookup "cmap" file offset0 in
+  let (a,_) = tableLookup "cmap" file offset0 in
   seek_in file (a+2);
   let numTables=readInt2 file in
 
@@ -367,7 +367,7 @@ let read_cmap font=
     | TTF ttf->ttf.ttf_file,ttf.ttf_offset
   in
   let file=open_in_bin_cached file in
-  let (a,b)=tableLookup "cmap" file offset0 in
+  let (a,_) = tableLookup "cmap" file offset0 in
   Cmap.read_cmap file a
 
 
@@ -421,13 +421,13 @@ let outlines ?(orig=true) gl=match gl with
   | TTFGlyph (ttfgl)->(
     let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
     let locformat=
-      let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
+      let (a,_) = tableLookup "head" file ttfgl.ttf_font.ttf_offset in
       seek_in file (a+50);
       readInt2 file
     in
 
-    let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
-    let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
+    let (a,_) = tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+    let (c,_) = tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
 
     let rec fetch_outlines glyph_index=
       if locformat=0 then seek_in file (a+glyph_index*2) else seek_in file (a+glyph_index*4);
@@ -570,8 +570,8 @@ let outlines ?(orig=true) gl=match gl with
 
           let pos=pos_in file in
           let outlines,finalx,finaly=fetch_outlines glyphIndex' in
-          let mx'=IntMap.fold (fun k a m->IntMap.add (IntMap.cardinal m) a m) finalx mx in
-          let my'=IntMap.fold (fun k a m->IntMap.add (IntMap.cardinal m) a m) finaly my in
+          let mx'=IntMap.fold (fun _ a m->IntMap.add (IntMap.cardinal m) a m) finalx mx in
+          let my'=IntMap.fold (fun _ a m->IntMap.add (IntMap.cardinal m) a m) finaly my in
           seek_in file pos;
 
           let a,b,c,d=
@@ -662,18 +662,18 @@ let font_glyph_y0 gl=match gl with
   | TTFGlyph (ttfgl)->(
       let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
       let off_size=
-        let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
+        let (a,_) = tableLookup "head" file ttfgl.ttf_font.ttf_offset in
         seek_in file (a+50);
         if readInt2 file=0 then 2 else 4
       in
 
-      let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+      let (a,_) = tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
       seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
       let off=
         let off=readInt2 file in
         if off_size=2 then 2*off else off
       in
-      let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
+      let (c,_) = tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
       seek_in file (c+off+4);
       float_of_int (sreadInt2 file)
   )
@@ -683,18 +683,18 @@ let font_glyph_y1 gl=match gl with
   | TTFGlyph (ttfgl)->(
       let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
       let off_size=
-        let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
+        let (a,_) = tableLookup "head" file ttfgl.ttf_font.ttf_offset in
         seek_in file (a+50);
         if readInt2 file=0 then 2 else 4
       in
 
-      let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+      let (a,_) = tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
       seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
       let off=
         let off=readInt2 file in
         if off_size=2 then 2*off else off
       in
-      let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
+      let (c,_) = tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
       seek_in file (c+off+8);
       float_of_int (sreadInt2 file)
   )
@@ -704,18 +704,18 @@ let font_glyph_x0 gl=match gl with
   | TTFGlyph (ttfgl)->(
       let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
       let off_size=
-        let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
+        let (a,_) = tableLookup "head" file ttfgl.ttf_font.ttf_offset in
         seek_in file (a+50);
         if readInt2 file=0 then 2 else 4
       in
 
-      let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+      let (a,_) = tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
       seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
       let off=
         let off=readInt2 file in
         if off_size=2 then 2*off else off
       in
-      let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
+      let (c,_) = tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
       seek_in file (c+off+2);
       float_of_int (sreadInt2 file)
   )
@@ -725,18 +725,18 @@ let font_glyph_x1 gl=match gl with
   | TTFGlyph (ttfgl)->(
       let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
       let off_size=
-        let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
+        let (a,_) = tableLookup "head" file ttfgl.ttf_font.ttf_offset in
         seek_in file (a+50);
         if readInt2 file=0 then 2 else 4
       in
 
-      let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+      let (a,_) = tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
       seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
       let off=
         let off=readInt2 file in
         if off_size=2 then 2*off else off
       in
-      let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
+      let (c,_) = tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
       seek_in file (c+off+6);
       float_of_int (sreadInt2 file)
   )
@@ -1175,9 +1175,10 @@ let rec applyLookup file gsubOff i glyphs=
                                 if i=0 then true,l else (
                                   let x=readInt2 file in
                                   match l with
-                                      []->false,[]
-                                    | hg::sg when hg.glyph_index<>x->false,[]
-                                    | _::sg->comp_glyphs sg (i-1)
+                                  | []                             -> false,[]
+                                  | hg::_ when hg.glyph_index <> x -> false,[]
+                                  | _::sg                          ->
+                                      comp_glyphs sg (i-1)
                                 )
                               in
                               let applicable,next=comp_glyphs s (compCount-1) in
@@ -1408,7 +1409,7 @@ let select_features font (feature_tags : string list) =try
 
 
 let apply_features font features glyphs=
-  let (file_,off0)=otype_file font in
+  let (file_,_) = otype_file font in
   let file=open_in_bin_cached file_ in
   List.fold_left (fun gls lookup->applyLookup file features.gsubOff lookup gls) glyphs
     features.lookups

@@ -56,7 +56,7 @@ body{line-height:0;}\n" structure.name;
     Buffer.output_buffer o (make_style cache);
     Printf.fprintf o "</style></head><body>\n";
 
-    let w,h=pages.(i).size in
+    let h = snd pages.(i).size in
     let cur_x=ref 0. in
     let cur_y=ref 0. in
     let cur_class=ref (-1) in
@@ -92,8 +92,6 @@ body{line-height:0;}\n" structure.name;
           (*     (String.sub cont.glyph_utf8 pos (String.length cont.glyph_utf8-pos)) *)
           (* ); *)
         )
-      | Path (args, l)->(
-      )
       | _->()
     ) pages.(i).contents;
 

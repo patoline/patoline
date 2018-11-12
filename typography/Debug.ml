@@ -29,7 +29,7 @@ open RawContent
 open FTypes
 open Box
 
-let print_frame_struct (f,s as p) =
+let print_frame_struct (_,s as p) =
   let path = List.map fst s in
   let f = frame_top p in
   Printf.fprintf stderr "path: ";

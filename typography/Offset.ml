@@ -64,7 +64,6 @@ let (+..) a b=Bezier.plus a b
 let (-..) a b=Bezier.minus a b
 let ( *..) a b=Bezier.times a b
 
-let scale a b=Array.map (fun x->x*.a) b
 let cut fx fy=
   let fx'=Bezier.derivee fx in
   let fy'=Bezier.derivee fy in
@@ -148,7 +147,7 @@ let rec approx_rec fx fy t0 t1=
         dist (t+.step) (d+.(xx-.x)*.(xx-.x)+.(yy-.y)*.(yy-.y)) xd
     )
   in
-  let d,xd=dist step 0. 0. in
+  let d,_=dist step 0. 0. in
     if d<=step*.100. || t1-.t0<0.1 then (
       [ax,ay]
     ) else (
@@ -157,7 +156,6 @@ let rec approx_rec fx fy t0 t1=
         (approx_rec (restrict fx 0. m) (restrict fy 0. m) t0 m')
         @(approx_rec (restrict fx m 1.) (restrict fy m 1.) m' t1)
     )
-let to_point x=int_of_float (x*.50.)
 let approx fx_ fy_=
   let norm'=(derivee (fx_*..fx_ +.. fy_*..fy_)) in
   let norm''=(derivee norm') in
