@@ -1,6 +1,0 @@
-name="rawlib"
-version="1.0"
-description="Interface library between Patoline drivers and Typography."
-requires="unicodelib,patfonts,imagelib,dynlink"
-archive(native)="rawlib.cmxa"
-archive(byte)="rawlib.cma"
