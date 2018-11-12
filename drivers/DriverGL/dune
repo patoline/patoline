@@ -4,5 +4,5 @@
   (modules DriverGL GlFBO Vec3)
   (c_names FrameBuffer)
   (wrapped false)
-  (optional)
+  (optional) ; requires lablgl
   (libraries patodb lablgl patoraw))

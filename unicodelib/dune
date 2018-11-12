@@ -42,8 +42,3 @@
   (deps
     ./pa_convert.exe
     ./encoding_data/LATIN1.TXT))
-
-(rule
-  (targets config.ml)
-  (action (with-stdout-to config.ml
-    (echo "let unicode_data_file = \"FIXME/unicode.data\""))))

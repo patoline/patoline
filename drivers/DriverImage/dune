@@ -3,5 +3,5 @@
   (public_name patoline.driver.image)
   (modules :standard)
   (wrapped false)
-  (optional)
+  (optional) ; requires lablgl
   (libraries patoraw driver_gl))

@@ -2,3 +2,5 @@
 _build
 .merlin
 *.install
+unicodelib/config.ml
+patconfig/patDefault.ml

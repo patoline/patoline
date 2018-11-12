@@ -3,5 +3,5 @@
   (public_name patoline.driver.cairo)
   (modules :standard)
   (wrapped false)
-  (optional)
+  (optional) ; requires cairo2
   (libraries cairo2 patoraw))

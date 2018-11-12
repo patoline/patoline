@@ -2,15 +2,3 @@
   (name patconfig)
   (public_name patoline.patconfig)
   (modules :standard))
-
-(rule
-  (targets patDefault.ml)
-  (action (with-stdout-to patDefault.ml (progn
-    (echo "let fonts_dir          = \"\" (* FIXME *)\n")
-    (echo "let grammars_dir       = \"\" (* FIXME *)\n")
-    (echo "let hyphen_dir         = \"\" (* FIXME *)\n")
-    (echo "let extra_fonts_dir    = []\n")
-    (echo "let extra_grammars_dir = []\n")
-    (echo "let extra_hyphen_dir   = []\n")
-    (echo "let drivers            = [] (* FIXME *)\n")
-    (echo "let formats            = [] (* FIXME *)\n")))))

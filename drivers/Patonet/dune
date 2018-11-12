@@ -3,5 +3,5 @@
   (public_name patoline.driver.patonet)
   (modules :standard)
   (wrapped false)
-  (optional)
+  (optional) ; requires cryptokit
   (libraries cryptokit patodb driver_svg patoraw))
