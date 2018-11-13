@@ -20,6 +20,7 @@
 
 open Patoraw
 open Patutil
+open Extra
 open Patfonts
 open Unicodelib
 open Document
@@ -49,11 +50,6 @@ let drag_hook : (((float * float) -> bool -> unit) ->
 let rec mem_compare cmp x l = match l with
   | [] -> false
   | y :: l' -> if cmp x y = 0 then true else mem_compare cmp x l'
-
-let rec list_last = function
-  | []     -> assert false
-  | [x]    -> x
-  | _ :: l -> list_last l
 
 let only_last _ x = [x]
 
@@ -146,7 +142,7 @@ module Curve = struct
   let first = function [] -> (Printf.fprintf stderr "Patofig warning: empty curve.\n" ; (0.,0.))
     | (xs,ys) :: _ -> (xs.(0),ys.(0))
   let last = function [] -> (Printf.fprintf stderr "Patofig warning: empty curve.\n" ; (0.,0.))
-    | l -> let (xs,ys) = list_last l in
+    | l -> let (xs,ys) = List.last l in
            (array_last xs, array_last ys)
 
   let bezier_of_point_list l =
@@ -2045,7 +2041,7 @@ Doing a rectangle.\n" ;
         let rec point_lists_of_path_spec_rec res s continues =
           match continues with
             | [] -> List.rev res
-            | e :: rest -> point_lists_of_path_spec_rec ((s :: e) :: res) (list_last e) rest
+            | e :: rest -> point_lists_of_path_spec_rec ((s :: e) :: res) (List.last e) rest
         in
         point_lists_of_path_spec_rec [] s continues
 
@@ -2056,7 +2052,7 @@ Doing a rectangle.\n" ;
         match continues with
         | [] -> [[s;e]]
         | [ controls ] -> List.rev (((s :: controls) @ [e]) :: res)
-        | controls :: rest -> point_lists_of_edge_spec_rec ((s :: controls) :: res) (list_last controls) e rest
+        | controls :: rest -> point_lists_of_edge_spec_rec ((s :: controls) :: res) (List.last controls) e rest
 
       let point_lists_of_edge_spec s continues e =
         point_lists_of_edge_spec_rec [] (s.Gentity.anchor `Main) (e.Gentity.anchor `Main) continues

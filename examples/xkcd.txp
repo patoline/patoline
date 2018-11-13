@@ -1,65 +1,51 @@
 (* #FORMAT FormatArticle *)
 (* #PACKAGE netclient *)
 (* #PACKAGE nettls-gnutls *)
-(*
-  Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
-  Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
 
-  This file is part of Patoline.
+===========
+Latest XKCD
+===========
 
-  Patoline is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Patoline is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
-*)
-
-===================================
-
-XKCD
-
-===================================
-
-  This example demonstrate the creation of a document that depends upon the
-  web.
-  It requires ocamlnet and tls opam package can be compiled with
-###
-    patoline xkcd.txp
-###
-
+This example demonstrate the creation of a document that relies on online
+resources. Note that this requires the ##ocamlnet## and ##conf-gnutls##
+//Opam// packages. They can be installed with the command ##opam install
+ocamlnet conf-gnutls##.
 
 \Caml(
 open Nethttp_client.Convenience
-let () = Nettls_gnutls.init()
-let raw_text () = http_get "https://www.xkcd.org"
 
-let trouvesy_regexp = Str.regexp "<img src=\"\\([^\"]*\\)\" title=\"\\([^\"]*\\)\" alt=\"\\([^\"]*\\)\""
+let url = "https://www.xkcd.org"
 
 let _ =
   try
-    let downloaded = Nethtml.decode [Nethtml.Data (raw_text ())] in
-    let decoded = match downloaded with
-	[Nethtml.Data t] -> t
-      | _ -> "What the fuck ???!"
+    (* Initialization of TLS. *)
+    Nettls_gnutls.init ();
+    (* HTTP request and decoding of HTML. *)
+    let data =
+      match Nethtml.decode [Nethtml.Data (http_get url)] with
+      | [Nethtml.Data t] -> t
+      | _                -> failwith "unexpected error"
     in
-    Str.search_forward trouvesy_regexp decoded 0;
-    let gettheimage = http_get ("https:" ^Str.matched_group 1 decoded) in
-    let title = (Str.matched_group 3 decoded) in
-    let alt = (Str.matched_group 2 decoded) in
-    let tmpname, tmpwrite = Filename.open_temp_file "xkcd" ".png" in
-    let _ = Printf.fprintf tmpwrite "%s" gettheimage; close_out tmpwrite in
-    let _ = prerr_string tmpname; prerr_newline () in
-    let drawing env=drawing (draw_boxes env (boxify_scoped env (includeGraphics ~width:100. tmpname))) in
-    figure_here ~caption:[tT title] drawing;
-    newPar D.structure Complete.normal parameters [tT alt]
+    (* Use a regular expression to extract the image URL, title and alt. *)
+    let regexp = Str.regexp
+      "<img src=\"\\([^\"]*\\)\" title=\"\\([^\"]*\\)\" alt=\"\\([^\"]*\\)\""
+    in
+    let _ = Str.search_forward regexp data 0 in
+    let img_url   = "https:" ^ Str.matched_group 1 data in
+    let img_title = Str.matched_group 3 data in
+    let img_alt   = Str.matched_group 2 data in
+    (* Fetch the image. *)
+    let img = http_get img_url in
+    let oc = open_out ".patobuild/latest_xkcd.png" in
+    output_string oc img; close_out oc;
+
+    let drawing env =
+      drawing (draw_boxes env (boxify_scoped env
+        (includeGraphics ~width:100.0 ".patobuild/latest_xkcd.png")))
+    in
+    figure_here ~caption:[tT img_title; tT " – "; tT img_alt] drawing
   with e ->
     Printf.eprintf "%s\n%!" (Printexc.to_string e);
-    newPar D.structure Complete.normal center <<Problème de connexion internet !>>
+    let msg = <<An error occured...>> in
+    D.structure := newPar !(D.structure) Complete.normal center msg
 )
