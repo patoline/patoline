@@ -25,6 +25,15 @@ install: all
 uninstall: all
 	@dune uninstall
 
+# Check that Opam is available.
+OPAM := $(shell which opam 2> /dev/null)
+ifndef OPAM
+
+# FIXME
+$(error "The opam package manager is required...")
+
+else
+
 OPAM_SHARE    = $(shell opam var share)
 UNICODE_DATA  = $(OPAM_SHARE)/patoline/unicode/unicode.data
 FONTS_DIR     = $(OPAM_SHARE)/patoline/fonts
@@ -64,3 +73,5 @@ patconfig/patDefault.ml: GNUmakefile
 	@echo '  let blacklist = List.fold_left2 fn [] with_dep dep_ok in' >> $@
 	@echo '  let driver_ok d = not (List.mem d blacklist) in'          >> $@
 	@echo '  List.filter driver_ok all_drivers'                        >> $@
+
+endif
