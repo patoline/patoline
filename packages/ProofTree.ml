@@ -8,39 +8,39 @@ open FTypes
 open Patoraw
 open RawContent
 
+let debug = false
+
 let spacing right left =
-  let above y l =
+  let above y0 l =
     match l with
-    | []         -> false
-    | (_, y')::_ -> y >= y'
+    | []       -> false
+    | (_,y)::_ -> y0 >= y
   in
-
-  let rec fn right left =
-    match right, left with
-      (x, y)::l, (x', y')::l' ->
-        if above y l' then
-          fn right l'
-        else if above y' l then
-          fn l left
-        else
-          let d = x -. x' in
-          let d' = if y <= y' then fn l left else fn right l' in
-          max d d'
-    | _ -> -. max_float
-
+  let rec fn acc r l =
+    match (r, l) with
+    | ([]        , _         )                 -> acc
+    | (_         , []        )                 -> acc
+    | ((_ ,yr)::_, _      ::l) when above yr l -> fn acc r l
+    | (_      ::r, (_ ,yl)::_) when above yl r -> fn acc r l
+    | ((xr,yr)::r, (xl,yl)::_) when yr <= yl   -> fn (max acc (xr -. xl)) r l
+    | ((xr,_ )::_, (xl,_ )::l)                 -> fn (max acc (xr -. xl)) r l
   in
-  (*Printf.printf "left: ";
-  List.iter (fun (x,y) -> Printf.printf "(%f,%f) " x y) left;
-  print_newline ();
-  Printf.printf "right: ";
-  List.iter (fun (x,y) -> Printf.printf "(%f,%f) " x y) right;
-  print_newline ();*)
-  let r = fn right left in
-  (*Printf.printf " ==> %f\n" r; print_newline ();*)
-  r
+  if debug then
+    let pr (x,y) = Printf.printf " - (%0.2f,%0.2f)\n%!" x y in
+    Printf.printf "left :\n%!"; List.iter pr left;
+    Printf.printf "right:\n%!"; List.iter pr right;
+    let r = fn min_float right left in
+    Printf.printf " ==> %0.2f\n%!" r; r
+  else
+    fn min_float right left
 
 let htr l dx = List.map (fun (x,y) -> (x +. dx, y)) l
 let vtr l dy = List.map (fun (x,y) -> (x, y +. dy)) l
+
+let extract_y0 l =
+  match l with
+  | []       -> 0.0
+  | (_,y)::_ -> y
 
 type 'a proof =
     | Hyp of 'a
@@ -122,54 +122,93 @@ module ProofTree = struct
     let sp = widthM *. param.spaceBetweenProof in
     let er = widthM *. param.extraRule in
 
+    let rec reject y_last l =
+      match l with
+      | (_,y1)::(_,y2)::l when y1 > y_last && y2 > y_last -> l
+      | _     ::_     ::l                                 -> reject y_last l
+      | _                                                 -> []
+    in
+
+    let path_param =
+      let strokingColor = Some env_.fontColor in
+      {default_path_param with strokingColor; lineWidth = ln}
+    in
+
     let rec fn top proof =
       match proof with
-        Hyp hyp ->
+      | Hyp(hyp)                         ->
           let hyp_box = draw_boxes env_ hyp in
-          let cx0, cy0, cx1, cy1 = bounding_box hyp_box in
+          let (cx0, cy0, cx1, cy1) = bounding_box hyp_box in
           let h = cy1 (* -. cy0 *) in
           h, [cx0, cy0; cx0, h], cx0, [cx1, cy0; cx1, h], cx1, hyp
 
-      | Rule(premices, conclusion, name) ->
-          let premices_box = List.map
-            (fun x -> let (a,b,c,d,e,f) = fn false x in
-                      (a,b,c,d,e,draw_boxes env_ f))
-            premices
+      | Rule    (premices, conclusion, name)
+      | SubProof(premices, conclusion, name) ->
+          let is_sub_proof =
+            match proof with SubProof(_,_,_) -> true | _ -> false
+          in
+
+          let premices_box =
+            let fn x =
+              let (a, b, c, d, e, f) = fn false x in
+              (a, b, c, d, e, draw_boxes env_ f)
+            in
+            List.map fn premices
           in
           let conclusion_box = draw_boxes env_ conclusion in
-          let sn, name_box = match name with
-              None -> 0.0, []
-            | Some name -> sn, draw_boxes env_ name
+          let (sn, name_box) =
+            match name with
+            | None       -> (0.0, [])
+            | Some(name) -> (sn , draw_boxes env_ name)
           in
-
-          let namex0, _, namex1, _ = bounding_box name_box in
+          let (namex0, _, namex1, _) = bounding_box name_box in
+          let name_width = namex1 -. namex0 in
           let cx0, cy0, cx1, cy1 = bounding_box conclusion_box in
 
-          let extract_y0 l =
-            match l with
-              [] -> 0.0
-            | (_,y0)::_ -> y0
+          let rec gn y0min dx =
+            function
+            | []        ->
+                (y0min, (0.0, [], max_float, [], min_float, []))
+            | [e]       ->
+                let (h, left, mleft, right, mright, drawing) = e in
+                let y0min' = min y0min (extract_y0 left) in
+                let drawing = List.map (translate dx 0.0) drawing in
+                (y0min', (h, htr left dx, mleft+.dx, htr right dx, mright+.dx,
+                  drawing))
+            | e1::e2::l ->
+                let (h, left, mleft, right, mright, drawing) = e1 in
+                let (_, left', _, _, _, _) = e2 in
+                let sp = sp +. spacing right left' in
+                let y0min' = min y0min (extract_y0 left) in
+                let y0min'', (h', left', mleft', right', mright', drawing') =
+                  gn y0min' (dx +. sp) (e2 :: l)
+                in
+                let combine_left left left' =
+                  if left = [] then left' else
+                  let y_last = snd (List.hd (List.rev left)) in
+                  left @ reject y_last left'
+                in
+                let combine_right right right' =
+                  if right' = [] then right else
+                  let y_last = snd (List.hd (List.rev right')) in
+                  right' @ reject y_last right
+                in
+                let left = htr left dx in
+                let left = combine_left left left' in
+                let right = htr right dx in
+                let right = combine_right right right' in
+                let mleft = min (mleft +. dx) mleft' in
+                let mright = max (mright +. dx) mright' in
+                let drawing = List.map (translate dx 0.0) drawing in
+                (y0min'',
+                  (max h h', left, mleft, right, mright, drawing @ drawing'))
           in
 
-          let rec gn y0min dx = function
-                [] -> y0min, (0.0, [], max_float, [], -. max_float, [])
-            | [h, left, mleft, right, mright, drawing] ->
-              let y0min' = min y0min (extract_y0 left) in
-              (y0min', (
-                h, htr left dx, mleft +. dx, htr right dx, mright +. dx,
-                List.map (translate dx 0.0) drawing))
-            | (h, left, mleft, right, mright, drawing)::((_, left', _, _, _, _)::_ as l) ->
-              let mleft = mleft +. dx and mright = mright +. dx in
-              let sp = spacing right left' +. sp in
-              let y0min' = min y0min (extract_y0 left) in
-              let y0min'',
-                (h', _, mleft', right', mright', drawing') = gn y0min' (dx +. sp) l in
-              (y0min'', (
-              max h h', htr left dx, min mleft mleft', right', max mright mright',
-              (List.map (translate dx 0.0) drawing @ drawing')))
+          let y0min, (h, left, mleft, right, mright, premices) =
+            gn 0.0 0.0 premices_box
           in
 
-          let y0min, (h, left, mleft, right, mright, numerator) = gn 0.0 0.0 premices_box in
+          if not is_sub_proof then begin (* Non-subproof case ***************)
 
           let nx0 = match left with [] -> cx0 | (x,_)::_ -> x in
           let nx1 = match right with [] -> cx1 | (x,_)::_ -> x in
@@ -180,11 +219,7 @@ module ProofTree = struct
           let rx0 = min cx0 nx0 -. er in
           let rx1 = max cx1 nx1 +. er in
 
-          let sa = max (param.minSpaceAboveRule -. y0min) sa
-            (* match left with *)
-            (*   [] -> 0.0 *)
-            (* | (_,y0)::_ -> max (param.minSpaceAboveRule -. y0) sa *)
-          in
+          let sa = max (param.minSpaceAboveRule -. y0min) sa in
           let dy = cy1 +. sb +. ln +. sa in
 
           let dnx = rx1 +. sn in
@@ -192,10 +227,10 @@ module ProofTree = struct
 
 
           let left = (cx0, cy0) :: (rx0, cy1  (* -. cy0*)) :: vtr left dy in
-          let right = match name with
-              None -> (cx1, cy0) :: (rx1, cy1 (* -. cy0*)) :: vtr right dy
-            | Some _ ->
-              (cx1, cy0) :: (dnx +. namex1 -. namex0, dny)  :: vtr right dy
+          let right =
+            match name with
+            | None   -> (cx1, cy0) :: (rx1, cy1 (* -. cy0*))   :: vtr right dy
+            | Some _ -> (cx1, cy0) :: (dnx +. name_width, dny) :: vtr right dy
           in
           let mleft = min rx0 mleft in
           let mright = max (if name = None then rx1 else rx1 +. sn +. namex1) mright in
@@ -203,14 +238,26 @@ module ProofTree = struct
 
           let h = h +. dy in
 
-          let dtop = if top then -. cy1 -. sb -. ln /. 2.0 +. heightx /. 2.0 else 0.0 in
+          let dtop =
+            if top then -. cy1 -. sb -. ln /. 2.0 +. heightx /. 2.0
+            else 0.0
+          in
 
           let contents _ =
             let l =
-              [Path ({default_path_param with strokingColor=Some env_.fontColor; lineWidth=ln}, [ [|line (rx0,cy1 +. sb) (rx1, cy1 +. sb)|] ]) ] @
+              Path(path_param, [[|line (rx0,cy1 +. sb) (rx1, cy1 +. sb)|]]) ::
                 (List.map (translate dx 0.0) conclusion_box) @
-                (List.map (translate 0.0 dy) numerator) @
+                (List.map (translate 0.0 dy) premices) @
                 (List.map (translate dnx dny) name_box)
+            in
+            let l =
+              if not debug then l else
+              let path =
+                match (left, right) with
+                | (l1::l2::_, r1::r2::_) -> [[|line l1 l2|]; [|line r1 r2|]]
+                | _                      -> assert false
+              in
+              Path(default_path_param, path) :: l
             in
             if top then List.map (translate (-.mleft) dtop) l else l
           in
@@ -232,39 +279,8 @@ module ProofTree = struct
 
           (h, left, mleft, right, mright, final)
 
-      | SubProof(premices, conclusion, name) ->
-          let premices_box = List.map
-            (fun x -> let (a,b,c,d,e,f) = fn false x in
-                      (a,b,c,d,e,draw_boxes env_ f))
-            premices
-          in
-          let conclusion_box = draw_boxes env_ conclusion in
+          end else begin (* Subproof case. **********************************)
 
-          let extract_y0 l =
-            match l with
-              [] -> 0.0
-            | (_,y0)::_ -> y0
-          in
-
-          let rec gn y0min dx = function
-                [] -> y0min, (0.0, [], max_float, [], -. max_float, [])
-            | [h, left, mleft, right, mright, drawing] ->
-              let y0min' = min y0min (extract_y0 left) in
-              (y0min', (
-                h, htr left dx, mleft +. dx, htr right dx, mright +. dx,
-                List.map (translate dx 0.0) drawing))
-            | (h, left, mleft, right, mright, drawing)::((_, left', _, _, _, _)::_ as l) ->
-              let mleft = mleft +. dx and mright = mright +. dx in
-              let sp = spacing right left' +. sp in
-              let y0min' = min y0min (extract_y0 left) in
-              let y0min'',
-                (h', _, mleft', right', mright', drawing') = gn y0min' (dx +. sp) l in
-              (y0min'', (
-              max h h', htr left dx, min mleft mleft', right', max mright mright',
-              (List.map (translate dx 0.0) drawing @ drawing')))
-          in
-
-          let y0min, (h, left, mleft, right, mright, premices) = gn 0.0 0.0 premices_box in
           let cx0, cy0, cx1, cy1 = bounding_box conclusion_box in
 
           (* Height of the trapesium *)
@@ -289,15 +305,18 @@ module ProofTree = struct
 
           let dy = cy1 +. sb +. ln +. hsp +. sa in (* 2 x ln/2 *)
 
-          let left = (cx0, cy0) :: (rpx0, cy1) :: vtr left dy in
-          let right = (cx1, cy0) :: (rpx1, cy1) :: vtr right dy in
+          let left = (cx0, cy0) :: (rpx0, cy1+.hsp) :: vtr left dy in
+          let right = (cx1, cy0) :: (rpx1, cy1+.hsp) :: vtr right dy in
           let mleft = min mleft (min rpx0 rcx0) in
           let mright = max mright (max rpx1 rcx1) in
           let h = h +. dy in
 
           let w = mright -. mleft in
 
-          let dtop = if top then -. cy1 -. sb -. ln /. 2.0 +. heightx /. 2.0 else 0.0 in
+          let dtop =
+            if top then -. cy1 -. sb -. ln /. 2.0 +. heightx /. 2.0
+            else 0.0
+          in
 
           (* Name placing *)
           let name = match name with
@@ -316,10 +335,19 @@ module ProofTree = struct
                         ; [|line (rpx0,cy1 +. hsp) (rcx0, cy1 +. sb)|]
                         ; [|line (rcx1,cy1 +. sb) (rpx1, cy1 +. hsp)|] ] in
             let l =
-              [Path ({default_path_param with strokingColor=Some env_.fontColor; lineWidth=ln}, lines)] @
+              Path(path_param, lines) ::
                 (List.map (translate dx 0.0) conclusion_box) @
                 (List.map (translate 0.0 dy) premices) @
                 match name with None -> [] | Some n -> n
+            in
+            let l =
+              if not debug then l else
+              let path =
+                match (left, right) with
+                | (l1::l2::_, r1::r2::_) -> [[|line l1 l2|]; [|line r1 r2|]]
+                | _                      -> assert false
+              in
+              Path(default_path_param, path) :: l
             in
             if top then List.map (translate (-.mleft) dtop) l else l
           in
@@ -340,6 +368,7 @@ module ProofTree = struct
           in
 
           (h, left, mleft, right, mright, final)
+          end
 
     in
     let _, _, _, _, _, r = fn true proof in
@@ -347,9 +376,9 @@ module ProofTree = struct
 
 end
 
-let proofTree ?(param=proofTreeDefault) x =
+let proofTree ?(param=proofTreeDefault) tree =
   let module M = Mk_Custom(ProofTree) in
-  [M.custom (param, x)]
+  [M.custom (param, tree)]
 
 let axiom x = Rule([], x, None)
 let axiomN n x = Rule([], x, Some n)
@@ -371,12 +400,15 @@ let binaryRN n p p' c = proofTree (Rule([hyp p; hyp p'], c, Some n))
 let ternary c p p' p'' = Rule([p;p';p''], c, None)
 let ternaryN n c p p' p'' = Rule([p;p';p''], c, Some n)
 let ternaryR p p' p'' c = proofTree (Rule([hyp p;hyp p';hyp p''], c, None))
-let ternaryRN n p p' p'' c = proofTree (Rule([hyp p;hyp p';hyp p''], c, Some n))
+let ternaryRN n p p' p'' c =
+  proofTree (Rule([hyp p;hyp p';hyp p''], c, Some n))
 
 let quaternary c p p' p'' p''' = Rule([p;p';p'';p'''], c, None)
 let quaternaryN n c p p' p'' p''' = Rule([p;p';p'';p'''], c, Some n)
-let quaternaryR p p' p'' p''' c = proofTree (Rule([hyp p;hyp p';hyp p'';hyp p'''], c, None))
-let quaternaryRN n p p' p'' p''' c = proofTree (Rule([hyp p;hyp p';hyp p'';hyp p'''], c, Some n))
+let quaternaryR p p' p'' p''' c =
+  proofTree (Rule([hyp p;hyp p';hyp p'';hyp p'''], c, None))
+let quaternaryRN n p p' p'' p''' c =
+  proofTree (Rule([hyp p;hyp p';hyp p'';hyp p'''], c, Some n))
 
 let n_ary c l = Rule(l, c, None)
 let n_aryN n c l = Rule(l, c, Some n)
@@ -394,56 +426,53 @@ let ternarySPN n c p p' p'' = SubProof([p;p';p''], c, Some n)
 let n_arySP c l = SubProof(l, c, None)
 let n_arySPN c l n = SubProof(l, c, Some n)
 
-module Env_proofTree =
-  struct
-    module Stack =
-      struct
-        include Stack
+(** Environment similar to “bussproof” or “ebproof” in LaTeX. *)
+module Env_proofTree = struct
+  module Stack =
+    struct
+      include Stack
 
-        let pop s =
-          try Stack.pop s with Empty -> Hyp []
+      let pop s =
+        try Stack.pop s with Empty -> Hyp []
+    end
+
+  let stack = Stack.create ()
+
+  let hyp h =
+    Stack.push (Hyp h) stack
+
+  let ax ?name h =
+    Stack.push (Rule([], h, name)) stack
+
+  let leaf ?name h =
+    Stack.push (SubProof([], h, name)) stack
+
+  let unary ?name h =
+    let p = Stack.pop stack in
+    Stack.push (Rule([p], h, name)) stack
+
+  let binary ?name h =
+    let p2 = Stack.pop stack in
+    let p1 = Stack.pop stack in
+    Stack.push (Rule([p1;p2], h, name)) stack
+
+  let ternary ?name h =
+    let p3 = Stack.pop stack in
+    let p2 = Stack.pop stack in
+    let p1 = Stack.pop stack in
+    Stack.push (Rule([p1;p2;p3], h, name)) stack
+
+  let display_proof () =
+    let p = Stack.pop stack in
+    proofTree p
+
+  let do_begin_env () =
+    Stack.clear stack
+
+  let do_end_env   () =
+    if not (Stack.is_empty stack) then
+      begin
+        Printf.eprintf "The proof stack is not empty...";
+        Stack.clear stack
       end
-
-    let stack = Stack.create ()
-
-
-    let hyp h =
-      Stack.push (Hyp h) stack
-
-    let ax ?name h =
-      Stack.push (Rule([], h, name)) stack
-
-    let leaf ?name h =
-      Stack.push (SubProof([], h, name)) stack
-
-    let unary ?name h =
-      let p = Stack.pop stack in
-      Stack.push (Rule([p], h, name)) stack
-
-    let binary ?name h =
-      let p2 = Stack.pop stack in
-      let p1 = Stack.pop stack in
-      Stack.push (Rule([p1;p2], h, name)) stack
-
-    let ternary ?name h =
-      let p3 = Stack.pop stack in
-      let p2 = Stack.pop stack in
-      let p1 = Stack.pop stack in
-      Stack.push (Rule([p1;p2;p3], h, name)) stack
-
-    let display_proof () =
-      let p = Stack.pop stack in
-      proofTree p
-
-
-    let do_begin_env () =
-      Stack.clear stack
-
-
-    let do_end_env   () =
-      if not (Stack.is_empty stack) then
-        begin
-          Printf.eprintf "The proof stack is not empty...";
-          Stack.clear stack
-        end
-  end
+end
