@@ -2,7 +2,7 @@
   (name unicodelib)
   (public_name patoline.unicodelib)
   (modules :standard \ pa_convert pa_unicode_data)
-  (libraries permap))
+  (libraries permap unix))
 
 (executable
   (name pa_convert)
