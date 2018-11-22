@@ -1232,8 +1232,10 @@ let mcolor col m =
 
 (* Scale down maths to fit the width of the page if necessary. *)
 let fit x =
+  (* FIXME very dirty trick to circumvent cache bug. *)
+  let x' = Marshal.(from_string (to_string x [Closures]) 0) in
   let fn env =
-    let bx = draw_boxes env (draw [env] x) in
+    let bx = draw_boxes env (draw [env] x') in
     let (x0,_,x1,_) = bounding_box bx in
     let mw = x1 -. x0 in
     let pw = env.normalMeasure in
