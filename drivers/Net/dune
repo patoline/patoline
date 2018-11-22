@@ -1,0 +1,6 @@
+(library
+  (name Net)
+  (public_name patoline.driver.Net)
+  (modules :standard)
+  (wrapped false)
+  (libraries patoraw SVG patconfig))

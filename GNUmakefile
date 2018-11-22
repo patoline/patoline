@@ -1,101 +1,77 @@
-# This makefile is the main entry point for building Patoline, yet all
-# the magic happens in Rules.mk.
-#
-# The current file does only sanity checks (GNU Make version, pre-make
-# configuration) before including the main rules.
-#
-#
-# QUIET OUTPUT
-# ============
-# We define $(Q) and $(ECHO) variables to handle pretty printing and
-# quiet output.
-#
-# The makefiles of this project define standard pattern rules to call
-# various OCaml tools.  They suppress make's usual output, and echo
-# instead a short summary of the command being run.
-#
-# $(Q), standing for "Quiet", is used to control this behavior. Its
-# default value is "@" to suppress make default output. If you want to
-# get back the full compilation trace, append "Q=" to make invocation,
-# as in:
-#
-#    make Q=
-#
-# i.e., setting $(Q) to the empty string.
-#
-# Every command in Patoline makefiles should be prefixed by $(Q).
-#
-# The $(ECHO) variable is a regular call to "echo" when quiet output is
-# activated. When normal output is chosen instead, $(ECHO) does nothing.
-Q=@
-ifeq "$(strip $(Q))" "@"
-  ECHO=@echo
+GENERATED_FILES = unicodelib/config.ml patconfig/patDefault.ml
+
+.PHONY: all
+all: $(GENERATED_FILES)
+	@dune build
+
+.PHONY: doc
+doc: $(GENERATED_FILES)
+	@dune build @doc
+
+.PHONY: clean
+clean:
+	@dune clean
+	@rm -f $(GENERATED_FILES)
+
+.PHONY: distclean
+distclean: clean
+	@find . -name "*~" -exec rm {} \;
+
+.PHONY: install
+install: all
+	@dune install
+
+.PHONY: uninstall
+uninstall: all
+	@dune uninstall
+
+# Check that Opam is available.
+OPAM := $(shell which opam 2> /dev/null)
+ifndef OPAM
+
+# FIXME
+$(error "The opam package manager is required...")
+
 else
-  ECHO=@\#
-endif
 
+OPAM_SHARE    = $(shell opam var share)
+UNICODE_DATA  = $(OPAM_SHARE)/patoline/unicode/unicode.data
+FONTS_DIR     = $(OPAM_SHARE)/patoline/fonts
+GRAMMARS_DIR  = $(OPAM_SHARE)/patoline/grammars
+HYPHEN_DIR    = $(OPAM_SHARE)/patoline/hyphen
+FORMAT_FILES  = $(wildcard formats/*.ml)
+DRIVER_DIRS   = $(wildcard drivers/*)
+AVAIL_DRIVERS = $(foreach d, $(DRIVER_DIRS),"$(basename $(notdir $(d)))";)
+AVAIL_FORMATS = $(foreach f, $(FORMAT_FILES),"$(basename $(notdir $(f)))";)
+DRIVER_DEPS   = $(shell grep optional drivers/*/dune | \
+	sed 's/drivers\/\(\w*\)\/dune: *(optional) *; *requires* \(\w*\)/\1:\2/g')
 
+DRIVERS_WITH_DEP = $(shell grep optional drivers/*/dune | \
+	sed 's/drivers\/\(\w*\)\/dune: *(optional) *; *requires* \(\w*\)/"\1";/g')
+DRIVERS_DEP      = $(shell grep optional drivers/*/dune | \
+	sed 's/drivers\/\(\w*\)\/dune: *(optional) *; *requires* \(\w*\)/\2/g')
+DRIVERS_DEP_OK   = $(foreach d, $(DRIVERS_DEP),\
+	$(shell (ocamlfind query -qo -qe $(d) && echo true) || echo false);)
 
-# Check that we have at least GNU Make 3.81. This works as long as
-# lexicographic order on strings coincides with the order of gmake
-# versions.
-need_gmake := 3.81
-ifeq "$(strip $(filter $(need_gmake),$(firstword $(sort $(MAKE_VERSION) $(need_gmake)))))" ""
-  $(error This Makefile requires at least GNU Make version $(need_gmake))
-endif
+unicodelib/config.ml: GNUmakefile
+	@echo 'let unicode_data_file = "$(UNICODE_DATA)"' > $@
 
-# We will soon require GNU Make 4.
-soon_gmake := 4.0
-define soon_gmake_message
+patconfig/patDefault.ml: GNUmakefile
+	@echo 'let fonts_dir          = "$(FONTS_DIR)"'                     > $@
+	@echo 'let grammars_dir       = "$(GRAMMARS_DIR)"'                 >> $@
+	@echo 'let hyphen_dir         = "$(HYPHEN_DIR)"'                   >> $@
+	@echo 'let extra_fonts_dir    = []'                                >> $@
+	@echo 'let extra_grammars_dir = []'                                >> $@
+	@echo 'let extra_hyphen_dir   = []'                                >> $@
+	@echo 'let formats            = [$(AVAIL_FORMATS)]'                >> $@
+	@echo 'let drivers            ='                                   >> $@
+	@echo '  let all_drivers = [$(AVAIL_DRIVERS)] in'                  >> $@
+	@echo '  (* Dependencies: $(DRIVER_DEPS) *)'                       >> $@
+	@echo '  let with_dep = [$(DRIVERS_WITH_DEP)] in'                  >> $@
+	@echo '  let dep_ok   = [$(DRIVERS_DEP_OK)] in'                    >> $@
+	@echo '  let fn acc d ok = if ok then acc else d::acc in'          >> $@
+	@echo '  let blacklist = List.fold_left2 fn [] with_dep dep_ok in' >> $@
+	@echo '  let driver_ok d = not (List.mem d blacklist) in'          >> $@
+	@echo '  List.filter driver_ok all_drivers'                        >> $@
 
-****************************************************************************
-****************************************************************************
-**** This Makefile will soon require GNU Make version $(soon_gmake),
-**** but you only have $(MAKE_VERSION).
-**** Please upgrade your GNU Make installation.
-****************************************************************************
-****************************************************************************
-endef
-ifeq "$(strip $(filter $(soon_gmake),$(firstword $(sort $(MAKE_VERSION) $(soon_gmake)))))" ""
-  $(warning $(soon_gmake_message))
-endif
-
-# Declare common phony targets
-.PHONY: all clean distclean install doc test check
-
-# Many targets are created by redirecting stdout. Yet, when the command
-# fails, the target is nevertheless created as a zero-length file. On
-# subsequent calls to make, the target is not considered anymore. The
-# following ensures that targets are always removed when their rules
-# fail.
-.DELETE_ON_ERROR:
-
-# Main rule prerequisites are expected to be extended by each Rules.mk
-# We just declare it here to make it the (phony) default target.
-all: configure testconfig
-
-configure: configure.ml
-	$(ECHO) "[OPT] -> $@"
-	$(Q)rm -f src/Makefile.config
-	$(Q)ocamlfind ocamlopt -package bytes,unix,str,findlib unix.cmxa str.cmxa \
-		findlib.cmxa configure.ml -o configure
-
-.PHONY: packages
-
-.PHONY: testconfig
-testconfig:
-	@ if [ ! -f "src/Makefile.config" ]; then echo Run './configure [options]' before make; exit 1; fi
-
-distclean: distclean-configure
-
-.PHONY: distclean-configure
-distclean-configure:
-	rm -f configure configure.cmi configure.cmx configure.o
-	find -type f -name "*~" -exec rm {} \;
-
-# When configure is ok, include the main make rules.
-ifneq "$(wildcard ./configure)" ""
-ifneq "$(wildcard src/Makefile.config)" ""
-  include Rules.mk
-endif
 endif

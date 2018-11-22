@@ -1,0 +1,15 @@
+(rule
+  (targets hyph-en-us.hdict)
+  (action (run cesure hyph-en-us.tex))
+  (deps ./hyph-en-us.tex))
+
+(rule
+  (targets hyph-fr.hdict)
+  (action (run cesure hyph-fr.tex))
+  (deps ./hyph-fr.tex))
+
+(install
+  (section share)
+  (files
+    (hyph-en-us.hdict as hyphen/hyph-en-us.hdict)
+    (hyph-fr.hdict as hyphen/hyph-fr.hdict)))

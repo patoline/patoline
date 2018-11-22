@@ -1,0 +1,7 @@
+(install
+  (section share)
+  (files
+    (minimal.txp as examples/minimal.txp)
+    (hello_world.txp as examples/hello_world.txp)
+    (xkcd.txp as examples/xkcd.txp)
+    (genealogy.txp as examples/genealogy.txp)))

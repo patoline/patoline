@@ -6,14 +6,16 @@ at https://patoline.github.io.
 
 ### Dependencies
 
-Dependencies include:
+The minimal dependencies are
  - OCaml (version 4.03.0 or higher)
- - OCamlFind
- - Earley version 2.0.0 (available on opam)
- - Camlzip (available on opam)
- - Imagelib (available on opam)
- - other libraries (listed in "configure" step)
- - GNU make (version 4.0 or higher)
+ - Opam
+ - Dune
+ - Ocamlfind
+ - Earley (version 2.0.0 or higher)
+ - Camlzip
+ - Sqlite3
+ - Imagelib
+ - GNU make
 
 To setup a suitable OCaml environment, the simplest possible solution is to
 use the Opam package manager. It can be installed by following instructions
@@ -22,14 +24,14 @@ compiler and the required libraries as follows.
 
 ```bash
 opam switch 4.05.0
-eval `opam config env`
-opam install ocamlfind ocamlbuild earley.2.0.0 camlzip imagelib sqlite3
+eval $(opam env)
+opam install dune earley.2.0.0 camlzip sqlite3 imagelib
 ```
 
 You can optionally install more Opam packages (OCaml libraries) depending
 on the Patoline drivers that you want to use. For instance, you will need
-to install ``lablgl`` for our OpenGL driver, or ``cairo`` for our Cairo
-driver.
+to install ``lablgl`` for our OpenGL driver, ``cairo2`` for our Cairo
+driver, ``kryptokit`` for our ``Patonet`` driver.
 
 ### Compilation from source
 
@@ -39,16 +41,14 @@ Patoline can be compiled from source as follows:
 wget https://github.com/patoline/patoline/archive/master.zip
 unzip master.zip
 cd patoline-master
-make configure
-./configure
 make
-make packages
 make install
 ```
 
 ### First Patoline document
 
-Here is a hello world patoline document.
+Here is a hello world patoline document (other examples can be found in the
+`examples` folder).
 
 ```
 ======================
@@ -69,7 +69,6 @@ Did you known that $(a + b)² = a² + 2ab + b²$?
 
 -<
 ```
-
 If you copy-paste it in a file ``hello_world.txp``, then you can compile it
 with the command ``patoline hello_world.txp``. This will produce a PDF file
 called ``hello_world.pdf``. Note that you can compile to other format drivers

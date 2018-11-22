@@ -1,0 +1,6 @@
+(executable
+  (name proof)
+  (public_name proof)
+  (package patoline)
+  (modules proof)
+  (libraries dynlink patutil patfonts typography patoraw Pdf))

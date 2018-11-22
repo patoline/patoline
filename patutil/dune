@@ -1,0 +1,4 @@
+(library
+  (name patutil)
+  (public_name patoline.patutil)
+  (modules :standard))

@@ -1,0 +1,4 @@
+(library
+  (name patconfig)
+  (public_name patoline.patconfig)
+  (modules :standard))

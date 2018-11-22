@@ -1,0 +1,14 @@
+(library
+  (name hyphen)
+  (public_name patoline.hyphen)
+  (modules hyphen)
+  (wrapped false)
+  (libraries unicodelib))
+
+(executable
+  (name cesure)
+  (public_name cesure)
+  (package patoline)
+  (modules cesure)
+  (preprocess (action (run pa_ocaml %{input-file})))
+  (libraries earley.core earley.str hyphen))

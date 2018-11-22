@@ -1,0 +1,137 @@
+(* #FORMAT FormatArticle *)
+(* #PACKAGE netclient *)
+(* #PACKAGE nettls-gnutls *)
+(* #PACKAGE patoline.package.prooftree *)
+
+======================
+ Academic Family Tree
+======================
+
+This example demonstrate the construction of an (academic) family tree,
+using the data of the //Mathematics Genealogy Project//. Note that this
+requires the ##ocamlnet## and ##conf-gnutls## //Opam// packages. They
+can be installed with ##opam install ocamlnet conf-gnutls##.
+
+\Caml(
+open Nethttp_client.Convenience
+
+(* Initialization of TLS. *)
+let _ = Nettls_gnutls.init ();
+
+(** Representation of an entry in the online database. *)
+type entry =
+  { researcher_id       : int      (** Unique identifier of researcher. *)
+  ; researcher_name     : string   (** Full name of the researcher.     *)
+  ; researcher_advisors : int list (** Identifiers of the advisors.     *) }
+
+(** [url id] is the URL where entry [id] can be fetched. *)
+let url : int -> string =
+  Printf.sprintf "http://www.genealogy.ams.org/id.php?id=%i"
+
+(** [get_entry id] returns the entry corresponding to [id]. *)
+let get_entry : int -> entry = fun researcher_id ->
+  (* HTTP request and decoding of HTML. *)
+  let data = http_get (url researcher_id) in
+  (* Get the researcher name. *)
+  let researcher_name =
+    let re = Str.regexp
+      "<title>\\(.*\\) - The Mathematics Genealogy Project</title>"
+    in
+    let _ = Str.search_forward re data 0 in
+    String.trim (Str.matched_group 1 data)
+  in
+  let researcher_advisors =
+    let re = Str.regexp
+      "Advisor\\( [0-9]+\\)?: <a href=\"id.php\\?id=\\([0-9]+\\)\">"
+    in
+    let res = ref [] in
+    let pos = ref 0 in
+    try
+      while true do
+        pos := 1 + Str.search_forward re data !pos;
+        res := Str.matched_group 2 data :: !res
+      done;
+      assert false
+    with Not_found ->
+      List.rev_map (fun s -> int_of_string (String.trim s)) !res
+  in
+  Printf.printf "Found entry %i (%s)\n%!" researcher_id researcher_name;
+  { researcher_id ; researcher_name ; researcher_advisors }
+
+(** Cache file used to avoid querying the same entry several times. *)
+let cache_file = Filename.concat ".patobuild" "cache.bin"
+
+(** The actual cache. *)
+let cache : (int * entry) list ref =
+  if not (Sys.file_exists cache_file) then ref [] else
+  let ic = open_in cache_file in
+  let assoc = input_value ic in
+  Printf.printf "Loaded cache with %i entries.\n%!" (List.length assoc);
+  close_in ic; ref assoc
+
+(** [write_cache ()] saves the cache for the current run. *)
+let write_cache () =
+  let oc = open_out cache_file in
+  output_value oc !cache; close_out oc;
+  Printf.printf "Wrote cache with %i entries.\n%!" (List.length !cache)
+
+(** [get_entry_cached id] is the same as [get_entry id], but it uses the cache
+    if [id] was already queried. *)
+let get_entry_cached id =
+  try List.assoc id !cache with Not_found ->
+  let entry = get_entry id in
+  cache := (id, entry) :: !cache; entry
+
+(** Representation of a (pruned) family tree. *)
+type family_tree =
+  | Tree of entry * family_tree list option (** Root and optional parents. *)
+
+(** [family_tree depth id] builds a family tree of maximum depth [depth] (or
+    with no limit when [None]) for the entry with key [id]. The cache is
+    written automatically at the end of the function. *)
+let family_tree : int option -> int -> family_tree = fun depth id ->
+  let rec family_tree depth id =
+    let entry = get_entry_cached id in
+    let name = entry.researcher_name in
+    let parents = entry.researcher_advisors in
+    (* Printf.printf "%i parents for %S\n%!" (List.length parents) name; *)
+    match depth with
+    | None    -> Tree(entry, Some(List.map (family_tree None) parents))
+    | Some(0) -> Tree(entry, None)
+    | Some(i) -> Tree(entry, Some(List.map (family_tree (Some(i-1))) parents))
+  in
+  let tree = family_tree depth id in
+  write_cache (); tree
+  
+(** [to_proof_tree tree] converts the family tree [tree] into a proof tree
+    (i.e., maths). Pruned branches are marked with an ellipsis, and ancestors
+    with no known parents are identified with a question mark. *)
+let to_proof_tree tree =
+  let open ProofTree in
+  let rec to_proof_tree (Tree(entry, parents)) =
+    let name = entry.researcher_name in
+    let name = <$\mathsText([tT name])$> in
+    match parents with
+    | None     -> Rule([Hyp <$⋯$>], name, None)
+    (*| None     -> SubProof([], name, Some(<$⋯$>))*)
+    | Some([]) -> SubProof([], name, Some(<$\mathsText{?}$>))
+    | Some(ps) -> Rule(List.map to_proof_tree ps, name, None)
+  in
+  proofTree (to_proof_tree tree)
+
+(** [make_family_tree ?depth id] produces maths representing the family tree
+    of [if] with an optional [depth] (no limit by default). *)
+let make_family_tree ?depth id =
+  to_proof_tree (family_tree depth id)
+)
+
+\linesBefore(10)
+$$\fit(make_family_tree ~depth:7 226990)$$
+
+(*
+$$\fit(make_family_tree ~depth:10 226990)$$
+$$\fit(make_family_tree ~depth:12 226990)$$
+$$\fit(make_family_tree 226990)$$
+$$\fit(make_family_tree ~depth:3 17865)$$
+$$\fit(make_family_tree 17865)$$
+*)

@@ -1,0 +1,21 @@
+(copy_files# CFF/*.{ml,mli})
+(copy_files# Opentype/*.{ml,mli})
+
+(library
+  (name patfonts)
+  (public_name patoline.patfonts)
+  (modules :standard \ gen_ranges)
+  (preprocess (action (run cpp -C -ffreestanding -w %{input-file})))
+  (libraries patutil unicodelib))
+
+(executable
+  (name gen_ranges)
+  (modules gen_ranges)
+  (libraries str))
+
+(rule
+  (targets unicode_ranges.ml)
+  (action (run ./gen_ranges.exe ./data/unicode_ranges.txt unicode_ranges.ml))
+  (deps
+    ./gen_ranges.exe
+    ./data/unicode_ranges.txt))

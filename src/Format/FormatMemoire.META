@@ -1,5 +1,0 @@
-package "FormatMemoire" (
-requires="rawlib,Typography,Typography.FormatThese"
-archive(native)="FormatMemoire.cmxa"
-archive(byte)="FormatMemoire.cma"
-)

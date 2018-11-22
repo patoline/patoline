@@ -1,5 +1,5 @@
 (* #FORMAT FormatThese *)
-(* #PACKAGE bibi *)
+(* #PACKAGE patoline.bibi *)
 
 \Caml(
   open Bibi

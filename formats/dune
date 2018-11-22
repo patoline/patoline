@@ -1,0 +1,69 @@
+(library
+  (name DefaultFormat)
+  (public_name patoline.format.DefaultFormat)
+  (modules DefaultFormat)
+  (wrapped false)
+  (libraries typography patconfig patoraw unicodelib hyphen))
+
+(library
+  (name FormatArticle)
+  (public_name patoline.format.FormatArticle)
+  (modules FormatArticle)
+  (wrapped false)
+  (libraries typography DefaultFormat hyphen))
+
+(library
+  (name FormatLetter)
+  (public_name patoline.format.FormatLetter)
+  (modules FormatLetter)
+  (wrapped false)
+  (libraries typography DefaultFormat hyphen))
+
+(library
+  (name FormatLivre)
+  (public_name patoline.format.FormatLivre)
+  (modules FormatLivre)
+  (wrapped false)
+  (libraries typography DefaultFormat hyphen))
+
+(library
+  (name FormatThese)
+  (public_name patoline.format.FormatThese)
+  (modules FormatThese)
+  (wrapped false)
+  (libraries str typography DefaultFormat hyphen))
+
+(library
+  (name FormatMemoire)
+  (public_name patoline.format.FormatMemoire)
+  (modules FormatMemoire)
+  (wrapped false)
+  (libraries typography DefaultFormat FormatThese hyphen))
+
+(library
+  (name FormatSlides)
+  (public_name patoline.format.FormatSlides)
+  (modules FormatSlides)
+  (wrapped false)
+  (libraries typography DefaultFormat FormatThese hyphen))
+
+(library
+  (name SimpleSlides)
+  (public_name patoline.format.SimpleSlides)
+  (modules SimpleSlides)
+  (wrapped false)
+  (libraries typography DefaultFormat FormatThese hyphen))
+
+(library
+  (name LMFormat)
+  (public_name patoline.format.LMFormat)
+  (modules LMFormat)
+  (wrapped false)
+  (libraries typography DefaultFormat hyphen))
+
+(library
+  (name FormatWeb)
+  (public_name patoline.format.FormatWeb)
+  (modules FormatWeb)
+  (wrapped false)
+  (libraries typography DefaultFormat SVG))

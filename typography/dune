@@ -1,0 +1,9 @@
+(library
+  (name typography)
+  (public_name patoline.typography)
+  (modules :standard \ ConfigFindFontFontconfig ConfigFindFontLegacy)
+  (libraries
+    patoraw patutil patconfig patfonts
+    (select ConfigFindFont.ml from
+      (fontconfig -> ConfigFindFontFontconfig.ml)
+      (           -> ConfigFindFontLegacy.ml))))

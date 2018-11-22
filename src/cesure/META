@@ -1,6 +1,0 @@
-name="cesure"
-version="1.0"
-description="An hyphenation library (part of Patoline)"
-requires="unicodelib"
-archive(native)="cesure.cmxa"
-archive(byte)="cesure.cma"

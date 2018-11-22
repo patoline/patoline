@@ -1,0 +1,7 @@
+(library
+  (name DriverCairo)
+  (public_name patoline.driver.DriverCairo)
+  (modules :standard)
+  (wrapped false)
+  (optional) ; requires cairo2
+  (libraries cairo2 patoraw))

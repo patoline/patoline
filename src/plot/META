@@ -1,5 +1,0 @@
-package "patoplot" (
-archive(byte)="plot.cma"
-archive(native)="plot.cmxa"
-requires="Typography"
-)

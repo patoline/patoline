@@ -1,0 +1,6 @@
+(library
+ (name permap)
+ (public_name patoline.permap)
+ (modules permap)
+ (wrapped false)
+ (libraries sqlite3))

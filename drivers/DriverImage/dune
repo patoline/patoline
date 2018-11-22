@@ -1,0 +1,7 @@
+(library
+  (name DriverImage)
+  (public_name patoline.driver.DriverImage)
+  (modules :standard)
+  (wrapped false)
+  (optional) ; requires lablgl
+  (libraries patoraw DriverGL))

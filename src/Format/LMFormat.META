@@ -1,8 +1,0 @@
-package "LMFormat" (
-requires="Typography"
-archive(byte)="LMFormat.cma"
-archive(native)="LMFormat.cmxa"
-package "LMArticle" (
-requires="Typography,Typography.FormatArticle,Typography.LMFormat"
-)
-)
