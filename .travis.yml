@@ -36,6 +36,7 @@ before_install:
   - opam install dune earley.2.0.0 camlzip imagelib sqlite3 cairo2 cryptokit lablgl
 
 install:
+  - ./configure
   - make
   - make install
 
