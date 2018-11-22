@@ -1,9 +1,9 @@
 " Vim syntax file
 " Language:        Patoline
-" Maintainer:      Rodolphe Lepigre <rodolphe.lepigre@univ-savoie.fr>
-" Last Change:     26/04/2013
+" Maintainer:      Rodolphe Lepigre <rodolphe.lepigre@inria.fr>
+" Last Change:     22/11/2018
 " Version:         1.0
-" Original Author: Rodolphe Lepigre <rodolphe.lepigre@univ-savoie.fr>
+" Original Author: Rodolphe Lepigre <rodolphe.lepigre@inria.fr>
 "
 " Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
 " Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier,
@@ -29,42 +29,48 @@ if exists("b:current_syntax")
   finish
 endif
 
-syntax spell toplevel
+syn spell toplevel
+
+syn match newstring "{\([a-z_]*\)|.*|\1}"
+hi link newstring String
 
 " Comments
-syn region  patoComment start="(\*" end="\*)" contains=patoComment,patoCommentTags,patoPreproc,string
-syn match   patoComment "\*\*(.*$" contains=patoCommentTags
-" syn match   patoComment "^.*)\*" contains=patoCommentTags
-" syn match   patoComment start="^[^^]*" end=")\*" contains=patoCommentTags
+syn region  patoComment start="(\*" end="\*)" contains=patoComment,patoCommentTags,string,newstring
 syn keyword patoCommentTags contained TODO FIXME NOTE
 syn region string start=+"+ skip=+\\\\\|\\"+ end=+"+ oneline
-syn match   patoPreproc contained "\v#\w*\s\w*"
 hi link patoComment     Comment
 hi link patoCommentTags Todo
+
+" Preproc
+syn match   patoPreproc "#\w*\s\w*"
 hi link patoPreproc     SpecialComment
 
-" Call to macros
+" Call to macros and environments
 syn match patoEnv "\\\w*"
+syn match patoEnv "\\\w*{\_[^}]*}"
+syn match patoEnv "\\\w*{\_[^}]*}{\_[^}]*}"
 
 " OCaml
 syn include @ocaml syntax/ocaml.vim
-
 syn region ocamlCode matchgroup=camlEnv start="^\s*\\Caml(" end=")\s*$" contains=@ocaml
-
 syn region ocamlCode matchgroup=camlEnv start="\\\w*(" end=")" contains=@ocaml
-
 hi link camlEnv         SpecialComment
 
-" Other environments
-syn match patoEnv "^\s*\\begin{\w*}\s*$"
-syn match patoEnv "^\s*\\end{\w*}\s*$"
-syn match patoEnv "\\\w*{\_[^}]*}"
-syn match patoEnv "\\\w*{\_[^}]*}{\_[^}]*}"
 syn region ocamlCode matchgroup=patoEnv start="\\\w*{\_[^}]*}(" end=")" contains=@ocaml
 
+syn region environment matchgroup=patoEnv start="^\s*\\begin{\w*}\s*$" end="^\s*\\end{\w*}\s*$" contains=ALL
+
+syn region italicText start="//" end="//"
+syn region boldText   start="\*\*" end="\*\*"
+syn region patoEnv    start="||" end="||"
+syn region patoEnv    start="__" end="__"
+syn region patoEnv    start="--" end="--"
+
+hi italicText  gui=underline cterm=underline
+hi boldText    gui=italic    cterm=italic
 hi link patoEnv Type
 
-" Document title, sections
+" Document title, sections, itemize
 syn match patoTitle "=\{10}=*\s*$"
 syn match patoTitle "-\{10}-*\s*$"
 
@@ -102,16 +108,17 @@ syn match patoTitle "^\s*\\item\s"
 hi link patoTitle Constant
 
 " Math environment
-syn region patoMathEnv start="\$"   end="\$"   contains=patoComment,@NoSpell
-syn region patoMathEnv start="\$\$" end="\$\$" contains=patoComment,@NoSpell
-hi link patoMathEnv Identifier
+syn region patoMathEnv start="\$"   end="\$"   contains=patoComment
+syn region patoMathEnv start="\$\$" end="\$\$" contains=patoComment
+"hi link patoMathEnv Identifier
+hi patoMathEnv ctermfg=Cyan
 
-" Verbatim environment
-syn region patoVerb start="###" end="###"   contains=@NoSpell
-syn region patoVerb start="\\verb{" end="}" contains=@NoSpell
-syn match patoVerb "\\\$"
-syn match patoVerb "\\\\"
-
+" Verbatim environment (monospaced)
+" syn region patoVerb start="``"  end="``"
+syn match patoVerb "##.*##"
+syn region patoVerb start="^###" end="^###"
+syn region patoVerb start="\\verb{" end="}"
+syn match patoVerb "\\[\$\\\*&|/\"]"
 hi link patoVerb Keyword
 
 let b:current_syntax = "patoline"
