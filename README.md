@@ -10,6 +10,7 @@ The minimal dependencies are
  - OCaml (version 4.03.0 or higher)
  - Opam
  - Dune
+ - Ocamlfind
  - Earley (version 2.0.0 or higher)
  - Camlzip
  - Sqlite3

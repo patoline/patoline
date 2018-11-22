@@ -1,6 +1,14 @@
-synopsis: "Patoline typesetting software and libraries."
+synopsis: "Patoline typesetting system and libraries."
 description:
 """
+Patoline is a collection of typesetting libraries designed to be combined into
+a variety of possible applications. Its primary goal is not to offer the
+definitive answer to all typesetting problems, but rather to write the painful
+and boring parts of the job, so that interesting tools could be written
+easily. Obviously, a related (but much smaller) project is the Patoline
+compiler, which compiles a mixed Wiki/LaTeX/Ocaml syntax into a variety of
+output formats, including traditional PDF files, but also web servers that
+deliver dynamic contents.
 """
 
 opam-version: "2.0"
@@ -14,12 +22,23 @@ authors: [
   "Rodolphe Lepigre <rodolphe.lepigre@inria.fr>"
   "Tom Hirschowitz" ]
 license: "GPLv2"
-doc: ""
+doc: "https://patoline.github.io/patoline/"
 
 depends: [
-  "ocaml"   { >= "4.03.0" & <= "4.07.1" }
+  "ocaml" { >= "4.03.0" }
+  "opam" { build & >= "2.0" }
+  "dune" { build & >= "1.2.0" }
+  "ocamlfind"
+  "earley"  { >= "2.0.0"  }
+  "camlzip"
   "sqlite3"
-  "dune"    { >= "1.2.0" }
+  "imagelib"
+]
+
+depopts: [
+  "lablgl"
+  "cairo2"
+  "kryptokit"
 ]
 
 build: [ [ "dune" "build" "-p" name "-j" jobs ] ]
