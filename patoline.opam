@@ -42,7 +42,5 @@ depopts: [
 ]
 
 build: [
-  [ make "unicodelib/config.ml" ]
-  [ make "patconfig/patDefault.ml" ]
-  [ "dune" "build" "-p" name "-j" jobs ]
+  [ make "all" ]
 ]
