@@ -264,8 +264,9 @@ let uchar =
       (List.fold_left Charset.add Charset.empty non_special) false
       (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
 
+(* FIXME maybe remove the double quote? *)
 let special_char =
-  [ ' ' ; '"' ; '\t' ; '\r' ; '\n' ; '\\' ; '#' ; '*' ; '/' ; '|' ; '_'
+  [ ' ' ; '"'; '\t' ; '\r' ; '\n' ; '\\' ; '#' ; '*' ; '/' ; '|' ; '_'
   ; '$' ; '<'; '>' ; '{'; '}'; '-'; '='; '&' ]
 
 let no_spe =
@@ -859,9 +860,11 @@ let add_grammar g =
     begin
       let g =
         try Filename.find_file (g ^ ".tgy") path with Not_found ->
+          (*
           Printf.eprintf "Cannot find [%s.tgy] in the folders:\n%!" g;
           List.iter (Printf.eprintf " - [%s]\n%!") path;
           Printf.eprintf "(in directory [%s])\n" (Sys.getcwd ());
+          *)
           raise Not_found
       in
       let ch = open_in_bin g in
@@ -1762,6 +1765,7 @@ let _ = set_grammar math_toplevel (parser
     | v:verbatim_bquote -> <:expr<$v$>>
     | v:verbatim_sharp  -> <:expr<$v$>>
 
+(* FIXME maybe remove? *)
     | '"' p:(paragraph_basic_text (addTag Quote tags)) '"' when allowed Quote tags ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
