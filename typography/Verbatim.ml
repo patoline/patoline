@@ -46,7 +46,7 @@ let lines_to_file : string list -> string option -> unit = fun lines fn ->
        with Not_found ->
          (open_out fn, 1)
      in
-     List.iter (Printf.fprintf oc "%s\n") lines;
+     List.iter (output_string oc) lines; output_string oc "\n";
      Hashtbl.replace file_cache fn (oc, nbl + nb_lines);
      flush oc
 
