@@ -74,8 +74,8 @@ with the command ``patoline hello_world.txp``. This will produce a PDF file
 called ``hello_world.pdf``. Note that you can compile to other format drivers
 such as a webpage using SVG format or an OpenGL window. To do that, select
 a driver with the command ``patoline --driver DRIVER hello_world.txp``. You
-can obtain the list of available drivers for your installation with the
-command ``patoline drivers``.
+can obtain the list of the existing drivers with ``patoline drivers`` (they
+may not all be installed).
 
 ### List of developpers and contributors
 
