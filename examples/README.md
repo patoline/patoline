@@ -8,6 +8,7 @@ following.
 
 ```bash
 patoline minimal.txp
-patoline --driver DriverCairo newbie.txp
+patoline --driver DriverCairo hello_world.txp
 patoline --driver DriverGL xkcd.txp
+patoline genealogy.txp
 ```
