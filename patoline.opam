@@ -1,4 +1,4 @@
-synopsis: "Patoline typesetting system and libraries."
+synopsis: "Patoline typesetting system and libraries"
 description:
 """
 Patoline is a collection of typesetting libraries designed to be combined into
@@ -41,5 +41,8 @@ depopts: [
   "kryptokit"
 ]
 
-build: [ [ "dune" "build" "-p" name "-j" jobs ] ]
-run-test: [ [ "dune" "runtest" "-p" name "-j" jobs ] ]
+build: [
+  [ make "unicodelib/config.ml" ]
+  [ make "patconfig/patDefault.ml" ]
+  [ "dune" "build" "-p" name "-j" jobs ]
+]
