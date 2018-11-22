@@ -26,5 +26,5 @@ uninstall: all
 	@dune uninstall
 
 $(GENERATED_FILES): configure
-	@echo 'You should run "./configure".'
+	@echo 'You should run "ocaml unix.cma configure.ml".'
 	@exit 1
