@@ -1,5 +1,3 @@
-GENERATED_FILES = unicodelib/config.ml patconfig/patDefault.ml
-
 .PHONY: all
 all: $(GENERATED_FILES)
 	@dune build
@@ -11,7 +9,6 @@ doc: $(GENERATED_FILES)
 .PHONY: clean
 clean:
 	@dune clean
-	@rm -f $(GENERATED_FILES)
 
 .PHONY: distclean
 distclean: clean
@@ -24,10 +21,6 @@ install: all
 .PHONY: uninstall
 uninstall: all
 	@dune uninstall
-
-$(GENERATED_FILES): configure.ml
-	@printf "\e[33mYou should run \"ocaml unix.cma configure.ml\".\e[39m\n"
-	@exit 1
 
 VIMDIR   = $(HOME)/.vim
 
