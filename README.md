@@ -41,6 +41,7 @@ Patoline can be compiled from source as follows:
 wget https://github.com/patoline/patoline/archive/master.zip
 unzip master.zip
 cd patoline-master
+./configure
 make
 make install
 ```
