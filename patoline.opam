@@ -41,6 +41,5 @@ depopts: [
 ]
 
 build: [
-  [ ocaml "unix.cma" "configure.ml" ]
   [ make "all" ]
 ]
