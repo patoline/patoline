@@ -8,8 +8,8 @@ at https://patoline.github.io.
 
 The minimal dependencies are
  - OCaml (version 4.03.0 or higher)
- - Opam
- - Dune
+ - Opam (version 2.0.0 or higher)
+ - Dune (version 1.2.0  or higher)
  - Ocamlfind
  - Earley (version 2.0.0 or higher)
  - Camlzip
