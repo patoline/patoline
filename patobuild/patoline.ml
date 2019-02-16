@@ -79,7 +79,6 @@ let add_file f =
     end;
   file := Some f
 
-
 let add_local_path p = local_path := !local_path @ [p]
 
 let add_package p =
@@ -155,7 +154,12 @@ let _ =
 
 (* The data after parsing the command-line arguments. *)
 let cfg =
-  let path = "." :: !local_path in (* FIXME remove duplicates *)
+  let path =
+    (* FIXME remove duplicates? *)
+    match !file with
+    | Some fn -> Filename.dirname fn :: !local_path
+    | None    -> !local_path
+  in
   let driver_packages =
     match !pat_driver with
     | None                                      -> ["patoline.driver.Pdf"]
