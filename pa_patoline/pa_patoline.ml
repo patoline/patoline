@@ -10,13 +10,13 @@ open Pa_ocaml_prelude
 let _ = Printexc.record_backtrace true; Sys.catch_break true
 
 (*
- * The patoline language is implemented as a DeCaP OCaml syntax extension. It
- * contains:
+ * The patoline language is implemented as an Earley OCaml syntax
+ * extension. It contains:
  *   - new OCaml expressions to allow Patoline into OCaml code,
  *   - a new entry point for plain Patoline files.
  *)
 
-(* State information + Comand line arguments extension **********************)
+(* State information + Command line arguments extension **********************)
 
 let patoline_format   = ref "DefaultFormat"
 let patoline_driver   = ref "Pdf"
@@ -96,8 +96,8 @@ let extra_spec =
 #define LOCATE locate
 
 (*
- * Everything is wrapped into the functor, this is standard procedur to write
- * syntax extensions using DeCaP. The argument of the functor is included
+ * Everything is wrapped into the functor, this is standard procedure to write
+ * syntax extensions using Earley. The argument of the functor is included
  * straight away, so that extensions can be composed.
  *)
 module Ext(In : Extension) = struct
@@ -211,21 +211,21 @@ let freshUid () =
   incr counter;
   "MOD" ^ (string_of_int current)
 
-  let caml_structure    = change_layout structure blank2
-  let parser wrapped_caml_structure = '(' {caml_structure | EMPTY -> <:struct<>>} ')'
+let caml_structure    = change_layout structure blank2
+let parser wrapped_caml_structure = '(' {caml_structure | EMPTY -> <:struct<>>} ')'
 
-  (* Parse a caml "expr" wrapped with parentheses *)
-  let caml_expr         = change_layout expression blank2
-  let parser wrapped_caml_expr = '(' {caml_expr  | EMPTY -> <:expr<()>>} ')'
+(* Parse a caml "expr" wrapped with parentheses *)
+let caml_expr         = change_layout expression blank2
+let parser wrapped_caml_expr = '(' {caml_expr  | EMPTY -> <:expr<()>>} ')'
 
-  (* Parse a list of caml "expr" *)
-  let parser wrapped_caml_list =
-    '[' {e:expression l:{ ';' e:expression }* ';'? -> e::l}?[[]] ']'
+(* Parse a list of caml "expr" *)
+let parser wrapped_caml_list =
+  '[' {e:expression l:{ ';' e:expression }* ';'? -> e::l}?[[]] ']'
 
-  (* Parse an array of caml "expr" *)
-  let wrapped_caml_array =
-    parser
-    | "[|" l:{e:expression l:{ ';' e:expression }* ';'? -> e::l}?[[]] "|]" -> l
+(* Parse an array of caml "expr" *)
+let wrapped_caml_array =
+  parser
+  | "[|" l:{e:expression l:{ ';' e:expression }* ';'? -> e::l}?[[]] "|]" -> l
 
 (****************************************************************************
  * Words.                                                                   *
@@ -247,22 +247,22 @@ let uchar =
   | c0:hd3 - c1:tl - c2:tl         -> Printf.sprintf "%c%c%c" c0 c1 c2
   | c0:hd4 - c1:tl - c2:tl - c3:tl -> Printf.sprintf "%c%c%c%c" c0 c1 c2 c3
 
-  let char_re    = "[^ \"\t\r\n\\#*/|_$>{}-]"
-  let escaped_re =     "\\\\[\\#*/|_$&>{}-]"
+let char_re    = "[^ \"\t\r\n\\#*/|_$>{}-]"
+let escaped_re =     "\\\\[\\#*/|_$&>{}-]"
 
-  let non_special = ['>';'*';'/';'|';'-';'_';'<';'=']
-  let char_alone =
-    black_box
-      (fun str pos ->
-       let c,str',pos' = Input.read str pos in
-       if List.mem c non_special then
-         let c',_,_ = Input.read str' pos' in
-         if c = c' || ((c = '-' || c = '=') && (c' = '>' || c' = '<')) then give_up ()
-         else c, str', pos'
-       else
-         give_up ())
-      (List.fold_left Charset.add Charset.empty non_special) false
-      (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
+let non_special = ['>';'*';'/';'|';'-';'_';'<';'=']
+let char_alone =
+  black_box
+    (fun str pos ->
+     let c,str',pos' = Input.read str pos in
+     if List.mem c non_special then
+       let c',_,_ = Input.read str' pos' in
+       if c = c' || ((c = '-' || c = '=') && (c' = '>' || c' = '<')) then give_up ()
+       else c, str', pos'
+     else
+       give_up ())
+    (List.fold_left Charset.add Charset.empty non_special) false
+    (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
 
 (* FIXME maybe remove the double quote? *)
 let special_char =
@@ -284,14 +284,14 @@ let parser character =
 let word =
   change_layout (parser cs:character+ -> String.concat "" cs) no_blank
 
-  let rec rem_hyphen = function
-    | []        -> []
-    | w::[]     -> w::[]
-    | w1::w2::l -> let l1 = String.length w1 in
-                   if w1.[l1 - 1] = '-'
-                   then let w = String.sub w1 0 (l1 - 1) ^ w2
-                        in rem_hyphen (w :: l)
-                   else w1 :: rem_hyphen (w2::l)
+let rec rem_hyphen = function
+  | []        -> []
+  | w::[]     -> w::[]
+  | w1::w2::l -> let l1 = String.length w1 in
+                 if w1.[l1 - 1] = '-'
+                 then let w = String.sub w1 0 (l1 - 1) ^ w2
+                      in rem_hyphen (w :: l)
+                 else w1 :: rem_hyphen (w2::l)
 
 (****************************************************************************
  * Verbatim environment / macro                                             *
@@ -366,18 +366,18 @@ let verbatim_bquote = verbatim_generic "``" "`" "``"
 (*************************************************************
  *   Type to control which t2t like tags are forbidden       *
  *************************************************************)
-  type tag_syntax =
-    Italic | Bold | SmallCap | Underline | Strike | Quote
+type tag_syntax =
+  Italic | Bold | SmallCap | Underline | Strike | Quote
 
-  module Tag_syntax = struct
-    type t = tag_syntax
-    let compare = compare
-  end
+module Tag_syntax = struct
+  type t = tag_syntax
+  let compare = compare
+end
 
-  module TagSet = Set.Make(Tag_syntax)
+module TagSet = Set.Make(Tag_syntax)
 
-  let addTag = TagSet.add
-  let allowed t f = not (TagSet.mem t f)
+let addTag = TagSet.add
+let allowed t f = not (TagSet.mem t f)
 
 (****************************************************************************
  * Symbol definitions.                                                      *
