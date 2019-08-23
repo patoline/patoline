@@ -129,7 +129,7 @@ module LMMath = struct
 end
 
 let lmEnv env=
-  let (f, _, _, _) = selectFont lmroman Regular false in
+  let (f, _, _) = selectFont lmroman Regular false in
   let fsize = 3.8 in
   let feat= [ Opentype.standardLigatures ] in
   { env with

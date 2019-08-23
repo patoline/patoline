@@ -49,8 +49,8 @@ open Box
 
 type fontAlternative = Regular | Bold | Caps | Demi
 
-let simpleFamilyMember:(unit->font)->(font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t =
-  fun a->Lazy.from_fun (fun ()->(a (),(fun x->x),(fun x->x),(fun x->x)))
+let simpleFamilyMember:(unit->font)->(font*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t =
+  fun a->Lazy.from_fun (fun ()->(a (),(fun x->x),(fun x->x)))
 
 let make_ligature l gl x=
   let rec match_lig l x=match (l,x) with
@@ -73,8 +73,8 @@ let make_ligature l gl x=
 (* Italic is second *)
 type fontFamily =
   fontAlternative *
-    ((font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t *
-     (font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)
+    ((font*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t *
+     (font*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)
 
 
 module TS = Break.Make(
@@ -181,7 +181,6 @@ type environment={
   normalPageFormat:float*float;
   par_indent:box list;
   hyphenate:string->(string*string) array;
-  word_substitutions:string->string;
   substitutions:glyph_id list -> glyph_id list;
   positioning:glyph_ids list -> glyph_ids list;
   counters:(int*int list) StrMap.t;     (** Niveau du compteur, état.  *)
@@ -651,15 +650,14 @@ let selectFont fam alt it =
     Lazy.force (if it then i else r)
   with Not_found -> raise Not_found_in_family
 
-let updateFont env font str subst pos=
+let updateFont env font subst pos=
   let feat=Fonts.select_features font env.fontFeatures in
     { env with
         font=font;
-        word_substitutions=str;
         substitutions=(fun glyphs -> Fonts.apply_features font feat (subst glyphs));
         positioning=(fun x->pos (positioning font x)) }
 
-let change_font f env = updateFont env f (fun x->x) (fun x->x) (fun x->x)
+let change_font f env = updateFont env f (fun x->x) (fun x->x)
 
 (* Changer de font dans un scope, ignore la famille, attention, à éviter en direct *)
 let font f t=
@@ -677,9 +675,9 @@ let add_features features env=
 
 
 let envItalic b env =
-  let font, str, subst, pos= selectFont env.fontFamily env.fontAlternative b in
+  let font, subst, pos= selectFont env.fontFamily env.fontAlternative b in
   let env = { env with fontItalic = b } in
-    updateFont env font str subst pos
+    updateFont env font subst pos
 
 let italic t = [ Scoped(envItalic true, t) ]
 
@@ -702,16 +700,16 @@ let envAlternative ?(features:'a option) alt env =
       None -> env.fontFeatures
     | Some f -> f
   in
-  let font,str,subs,pos = selectFont env.fontFamily alt env.fontItalic in
+  let font,subs,pos = selectFont env.fontFamily alt env.fontItalic in
   let env = { env with fontAlternative = alt } in
-  add_features features (updateFont env font str subs pos)
+  add_features features (updateFont env font subs pos)
 
 let alternative ?(features:'a option) alt t =
   [Scoped ((fun env -> envAlternative ?features alt env), t)]
 
 let font_size_ratio font1 font2 =
   let x_h f =
-    let f,_,_,_ = Lazy.force (fst (List.assoc Regular f)) in
+    let f,_,_ = Lazy.force (fst (List.assoc Regular f)) in
     let x=Fonts.loadGlyph f
       ({empty_glyph with glyph_index=Fonts.glyph_of_char f 'o'}) in
     Fonts.glyph_y1 x -.  Fonts.glyph_y0 x
@@ -719,9 +717,9 @@ let font_size_ratio font1 font2 =
   x_h font1 /. x_h font2
 
 let envFamily fam env =
-  let font,str,subs,pos = selectFont fam env.fontAlternative env.fontItalic in
+  let font,subs,pos = selectFont fam env.fontAlternative env.fontItalic in
   let env = { env with fontFamily = fam; size = font_size_ratio env.fontFamily fam *. env.size } in
-  updateFont env font str subs pos
+  updateFont env font subs pos
 
 let family fam t =
   [Scoped ((fun env -> envFamily fam env), t)]
@@ -1358,7 +1356,7 @@ let boxify buf nbuf env0 l=
            boxify keep_cache env s
         | _                      ->
            let l = ref IntMap.empty in
-           let t = env.word_substitutions (nfkc t) in
+           let t = nfkc t in
            let rec cut_str i0 i =
              if i >= String.length t then
                let sub = String.sub t i0 (i-i0) in

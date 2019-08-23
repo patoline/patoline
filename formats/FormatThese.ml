@@ -297,7 +297,6 @@ end
             (Fonts.loadFont
               (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Regular}))
             ),
-            (fun x->x),
             (fun x->List.fold_left (fun a f->f a) x
                [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
                 make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
@@ -310,7 +309,6 @@ end
             (Fonts.loadFont
               (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Regular}))
             ),
-            (fun x->x),
             (fun x->List.fold_left (fun a f->f a) x
                [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
                 make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
@@ -324,7 +322,6 @@ end
             (Fonts.loadFont
               (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Bold}))
             ),
-            (fun x->x),
             (fun x->List.fold_left (fun a f->f a) x
                [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
                 make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
@@ -337,7 +334,6 @@ end
             (Fonts.loadFont
               (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Bold}))
             ),
-            (fun x->x),
             (fun x->List.fold_left (fun a f->f a) x
                [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
                 make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
@@ -377,9 +373,6 @@ end
       );
     ]
 
-  let replace_utf8 x y z=
-    Str.global_replace x
-      (UTF8.init 1 (fun _->UChar.chr y)) z
   let defaultEnv=
     let size=3.8 in
     let env=(envFamily alegreya Default.defaultEnv) in
@@ -390,13 +383,6 @@ end
          mathsEnvironment=
         (* Array.map (fun x->{x with Mathematical.kerning=false }) *)
           env.mathsEnvironment;
-         word_substitutions=
-        (fun x->List.fold_left (fun y f->f y) x
-           [
-             replace_utf8 (Str.regexp_string "``") 8220;
-             replace_utf8 (Str.regexp_string "''") 8221
-           ]
-        );
          counters=StrMap.add "figure" (2,[]) StrMap.empty
     }
   let title=Default.title

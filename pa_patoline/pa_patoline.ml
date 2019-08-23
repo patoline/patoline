@@ -1767,8 +1767,13 @@ let _ = set_grammar math_toplevel (parser
 
 (* FIXME maybe remove? *)
     | '"' p:(paragraph_basic_text (addTag Quote tags)) '"' when allowed Quote tags ->
-        (let opening = "``" in (* TODO addapt with the current language*)
-         let closing = "''" in (* TODO addapt with the current language*)
+        (let opening = "“" in (* TODO adapt with the current language*)
+         let closing = "”" in (* TODO adapt with the current language*)
+         <:expr<tT $string:opening$ :: $p$ @ [tT $string:closing$]>>)
+
+    | "``" p:(paragraph_basic_text (addTag Quote tags)) "''" when allowed Quote tags ->
+        (let opening = "“" in (* TODO adapt with the current language*)
+         let closing = "”" in (* TODO adapt with the current language*)
          <:expr<tT $string:opening$ :: $p$ @ [tT $string:closing$]>>)
 
     | dollar m:math_toplevel dollar ->

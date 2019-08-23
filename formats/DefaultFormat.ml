@@ -28,7 +28,6 @@ open Fonts
 open Box
 open Patconfig.PatConfig
 open Patoraw
-open Unicodelib
 
 let _=Random.self_init ()
 
@@ -59,41 +58,6 @@ let spec =
 ("--driver",Arg.String (fun x->Driver.driver := Some x),
  "specify a driver to dynlink");
 ]
-
-let replace_utf8 x y z=if String.length x>0 then (
-  let buf=Buffer.create (String.length x) in
-  let repl=UTF8.init 1 (fun _->UChar.chr y) in
-  let rec add_it i=
-    if not (UTF8.out_of_range z i) then (
-      try
-        let rec comp j=
-          if UTF8.out_of_range x j then j else
-            if UTF8.out_of_range z (i+j) then raise Not_found else
-              if UTF8.look z (i+j) <> UTF8.look x j then raise Not_found else
-                comp (UTF8.next x j)
-        in
-        let j=comp 0 in
-        Buffer.add_string buf repl;
-        add_it (i+j)
-      with
-          Not_found->(
-            Buffer.add_string buf (String.sub z i (UTF8.next z i-i));
-            add_it (UTF8.next z i)
-          )
-    )
-  in
-  add_it 0;
-  Buffer.contents buf
-) else z
-
-let word_subst=
-  (fun x->List.fold_left (fun y f->f y) x
-    [
-      replace_utf8 ("``") 8220;
-      replace_utf8 ("''") 8221
-    ]
-  )
-
 
 module type Output=
   sig
@@ -128,7 +92,6 @@ let alegreya=
           (Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Regular}))
           ),
-          (fun x->x),
           (fun x->List.fold_left (fun a f->f a) x
              [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
               make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
@@ -141,7 +104,6 @@ let alegreya=
           (Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Regular}))
           ),
-          (fun x->x),
           (fun x->List.fold_left (fun a f->f a) x
              [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
               make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
@@ -155,7 +117,6 @@ let alegreya=
           (Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Bold}))
           ),
-          (fun x->x),
           (fun x->List.fold_left (fun a f->f a) x
              [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
               make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
@@ -168,7 +129,6 @@ let alegreya=
           (Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Bold}))
           ),
-          (fun x->x),
           (fun x->List.fold_left (fun a f->f a) x
              [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
               make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
@@ -263,7 +223,7 @@ let stackCont drs=
   bB (fun env->[stackDrawings (List.map (fun x->drawing (draw env x)) drs)])
 
 let defaultEnv:environment=
-  let f,_,subst,pos=selectFont alegreya Regular false in
+  let f,subst,pos=selectFont alegreya Regular false in
   let fsize=3.7 in
   let feat= [ Opentype.standardLigatures ] in
   let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
@@ -278,7 +238,6 @@ let defaultEnv:environment=
     font=f;
     mathsEnvironment=Euler.default;
     mathStyle=Document.Mathematical.Text;
-    word_substitutions=word_subst;
     substitutions=(fun glyphs->Fonts.apply_features f loaded_feat (subst glyphs));
     positioning=(fun x->pos (positioning f x));
     footnote_y=10.;
@@ -534,7 +493,7 @@ let defaultEnv:environment=
 
     let glue_space n =
       bB(fun env ->
-        let font,_,_,_=selectFont env.fontFamily Regular false in
+        let font,_,_=selectFont env.fontFamily Regular false in
         let x= Fonts.loadGlyph font
           ({empty_glyph with glyph_index=Fonts.glyph_of_char font ' '})
         in

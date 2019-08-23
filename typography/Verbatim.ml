@@ -53,7 +53,7 @@ let lines_to_file : string list -> string option -> unit = fun lines fn ->
 (** [glue_space n] corresponds to [n] spaces from the font. *)
 let glue_space : int -> content = fun n ->
   let f env =
-          let font,_,_,_ = selectFont env.fontFamily Regular false in
+          let font,_,_ = selectFont env.fontFamily Regular false in
     let glyph_index = Fonts.glyph_of_char font ' ' in
     let sp = Fonts.loadGlyph font {empty_glyph with glyph_index} in
     let spw = Fonts.glyphWidth sp in
