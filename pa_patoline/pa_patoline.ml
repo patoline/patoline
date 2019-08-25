@@ -250,7 +250,7 @@ let uchar =
 let char_re    = "[^ \"\t\r\n\\#*/|_$>{}-]"
 let escaped_re =     "\\\\[\\#*/|_$&>{}-]"
 
-let non_special = ['>';'*';'/';'|';'-';'_';'<';'=']
+let non_special = ['>';'*';'/';'|';'-';'_';'<';'=';'`';'\'']
 let char_alone =
   black_box
     (fun str pos ->
@@ -267,7 +267,7 @@ let char_alone =
 (* FIXME maybe remove the double quote? *)
 let special_char =
   [ ' ' ; '"'; '\t' ; '\r' ; '\n' ; '\\' ; '#' ; '*' ; '/' ; '|' ; '_'
-  ; '$' ; '<'; '>' ; '{'; '}'; '-'; '='; '&' ]
+  ; '$' ; '<'; '>' ; '{'; '}'; '-'; '='; '&' ; '`' ; '\'']
 
 let no_spe =
   let f buf pos =
@@ -1762,9 +1762,6 @@ let _ = set_grammar math_toplevel (parser
     | "--" - p:(paragraph_basic_text (addTag Strike tags)) - "--" when allowed Strike tags ->
       <:expr@_loc_p<strike $p$>>*)
 
-    | v:verbatim_bquote -> <:expr<$v$>>
-    | v:verbatim_sharp  -> <:expr<$v$>>
-
 (* FIXME maybe remove? *)
     | '"' p:(paragraph_basic_text (addTag Quote tags)) '"' when allowed Quote tags ->
         (let opening = "“" in (* TODO adapt with the current language*)
@@ -1775,6 +1772,9 @@ let _ = set_grammar math_toplevel (parser
         (let opening = "“" in (* TODO adapt with the current language*)
          let closing = "”" in (* TODO adapt with the current language*)
          <:expr<tT $string:opening$ :: $p$ @ [tT $string:closing$]>>)
+
+    | v:verbatim_sharp  -> <:expr<$v$>>
+    | v:verbatim_bquote  -> <:expr<$v$>>
 
     | dollar m:math_toplevel dollar ->
         <:expr<[bB (fun env0 -> Maths.kdraw
