@@ -17,7 +17,6 @@ env:
   global:
   - OPAMJOBS="2"
   - OPAMYES="true"
-  - OPAMVERBOSE="true"
   matrix:
   - OCAML_VERSION=4.03.0
   - OCAML_VERSION=4.04.0
@@ -31,7 +30,10 @@ env:
 
 before_install:
   # Install lablgl dependencies
-  - sudo apt-get install -y freeglut3-dev libglu1-mesa-dev mesa-common-dev
+  - if [ "$TRAVIS_OS_NAME" = "osx"   ]; then brew update ; fi 
+  - if [ "$TRAVIS_OS_NAME" = "osx"   ]; then brew install freeglut mesa mesalib-glw ; fi 
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update ; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get install -y freeglut3-dev libglu1-mesa-dev mesa-common-dev ; fi
   # Install opam
   - sudo wget https://github.com/ocaml/opam/releases/download/2.0.5/opam-2.0.5-x86_64-linux -O /usr/bin/opam
   - sudo chmod 755 /usr/bin/opam
