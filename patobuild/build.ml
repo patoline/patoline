@@ -1,5 +1,5 @@
 open Parallel
-open Patconfig.PatConfig
+open Patconfig.Config
 open Patutil.Extra
 
 (* Time representation as a float. *)

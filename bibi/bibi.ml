@@ -210,7 +210,7 @@ let revbib:((string option array) IntMap.t) ref=ref IntMap.empty
 let citeCounter:unit IntMap.t ref=ref IntMap.empty
 
 let bibfile_ =
-  let open Patconfig.PatConfig in
+  let open Patconfig.Config in
   ref (Some (Filename.concat patoconfig.user_dir "bibi.sqlite3"))
 
 let bibfile x=bibfile_:=Some x

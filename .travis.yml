@@ -1,6 +1,14 @@
 dist: trusty
 language: c
 
+os:
+  - linux
+  - osx
+
+cache:
+  directories:
+  - $HOME/.opam
+
 cache:
   directories:
   - $HOME/.opam
@@ -24,16 +32,17 @@ env:
 before_install:
   # Install lablgl dependencies
   - sudo apt-get install -y freeglut3-dev libglu1-mesa-dev mesa-common-dev
-  # Obtain and install opam locally.
-  - sudo wget https://github.com/ocaml/opam/releases/download/2.0.0/opam-2.0.0-x86_64-linux -O /usr/bin/opam
+  # Install opam
+  - sudo wget https://github.com/ocaml/opam/releases/download/2.0.5/opam-2.0.5-x86_64-linux -O /usr/bin/opam
   - sudo chmod 755 /usr/bin/opam
   # Initialize the switch.
   - opam init -a --disable-sandboxing --compiler="$OCAML_VERSION"
   - opam update
   - opam switch "$OCAML_VERSION"
   - eval $(opam env)
-  # Install deps
-  - opam install dune earley.2.0.0 camlzip imagelib sqlite3 cairo2 cryptokit lablgl
+  - opam pin add -n -k path patoline .
+  - opam install --deps-only -d -t patoline
+  - opam pin remove patoline
 
 install:
   - make
@@ -46,4 +55,4 @@ script:
 
 notifications:
   email:
-    - rodolphe.lepigre@inria.fr
+    - lepigre@mpi-sws.org

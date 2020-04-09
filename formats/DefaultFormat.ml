@@ -26,7 +26,7 @@ open Patutil
 open Extra
 open Fonts
 open Box
-open Patconfig.PatConfig
+open Patconfig.Config
 open Patoraw
 
 let _=Random.self_init ()

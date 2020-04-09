@@ -853,7 +853,7 @@ let build_grammar () =
 
 (* add grammar now, but not build yet *)
 let add_grammar g =
-  let open PatConfig in
+  let open Config in
   let (gpath, gpaths) = patoconfig.grammars_dir in
   let path = "." :: ".patobuild" :: gpath :: gpaths in
   if !no_default_grammar && g = "DefaultGrammar" then () else
