@@ -36,8 +36,9 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get install -y freeglut3-dev libglu1-mesa-dev mesa-common-dev ; fi
   # Install opam
   - mkdir $HOME/local_bin
-  - wget https://github.com/ocaml/opam/releases/download/2.0.5/opam-2.0.5-x86_64-linux -O $HOME/local_bin/opam
-  - sudo chmod 755 $HOME/local_bin/opam
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then wget https://github.com/ocaml/opam/releases/download/2.0.5/opam-2.0.5-x86_64-linux -O $HOME/local_bin/opam ; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx"   ]; then wget https://github.com/ocaml/opam/releases/download/2.0.5/opam-2.0.5-x86_64-macos -O $HOME/local_bin/opam ; fi
+  - chmod 755 $HOME/local_bin/opam
   - export PATH=$HOME/local_bin:$PATH
   # Initialize the switch.
   - opam init -a --disable-sandboxing --compiler="$OCAML_VERSION"
