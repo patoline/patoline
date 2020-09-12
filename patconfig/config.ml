@@ -9,11 +9,17 @@ module Spec = struct
     try Sys.getenv "XDG_DATA_HOME"
     with Not_found -> Sys.getenv "HOME"
 
+  let unicode_data_file =
+    try Sys.getenv "UNICODE_DATA_FILE"
+    with Not_found -> default_unicode_data_file
+
   (* Default Patoline configuration. *)
   let spec =
     [ ("fonts_dir"          , of_string fonts_dir   )
     ; ("grammars_dir"       , of_string grammars_dir)
     ; ("hyphen_dir"         , of_string hyphen_dir  )
+
+    ; ("unicode_data_file"  , of_string unicode_data_file )
 
     ; ("extra_fonts_dirs"   , of_list String extra_fonts_dir   )
     ; ("extra_grammars_dirs", of_list String extra_grammars_dir)
@@ -34,6 +40,7 @@ type patoconfig =
   { mutable fonts_dir      : string * string list
   ; mutable grammars_dir   : string * string list
   ; mutable hyphen_dir     : string * string list
+  ; mutable unicode_data_file : string
   ; mutable drivers        : string list
   ; mutable formats        : string list
   ; mutable max_iter       : int
@@ -51,6 +58,7 @@ let patoconfig : patoconfig =
   { fonts_dir      = (get_s "fonts_dir"   , get_l "extra_fonts_dirs"   )
   ; grammars_dir   = (get_s "grammars_dir", get_l "extra_grammars_dirs")
   ; hyphen_dir     = (get_s "hyphen_dir"  , get_l "extra_hyphen_dirs"  )
+  ; unicode_data_file = get_s "unicode_data_file"
   ; drivers        = get_l "drivers"
   ; formats        = get_l "formats"
   ; max_iter       = get_i "max_iter"

@@ -2,6 +2,7 @@ type patoconfig =
   { mutable fonts_dir      : string * string list
   ; mutable grammars_dir   : string * string list
   ; mutable hyphen_dir     : string * string list
+  ; mutable unicode_data_file : string
   ; mutable drivers        : string list
   ; mutable formats        : string list
   ; mutable max_iter       : int

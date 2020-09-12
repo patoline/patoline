@@ -96,12 +96,8 @@ type char_description =
   ; titlecase             : UChar.t option
   }
 
-let datafile_name () =
-  try Sys.getenv "UNICODE_DATA_FILE"
-  with Not_found -> Config.unicode_data_file
-
 let get_char_descr_from_file : UChar.t -> char_description = fun u ->
-  let m = Permap.open_map (datafile_name ()) in
+  let m = Permap.open_map (Patconfig.Config.patoconfig.unicode_data_file) in
   let d = Permap.get m u in
   Permap.close_map m; d
 
