@@ -1,17 +1,11 @@
-let share =
-  try
-    let (ic, _, _) as cs =
-      let env = Unix.environment () in
-      Unix.open_process_full "opam var share" env
-    in
-    let res = input_line ic in
-    ignore (Unix.close_process_full cs);
-    res
-  with _ -> "/usr/local/share"
+let datadir = Filename.concat BuildInfo.share "patoline"
+let dataSubdir dir = Filename.concat datadir dir
 
-let fonts_dir    = Filename.concat share "patoline/fonts"
-let grammars_dir = Filename.concat share "patoline/grammars"
-let hyphen_dir   = Filename.concat share "patoline/hyphen"
+let fonts_dir    = dataSubdir "fonts"
+let grammars_dir = dataSubdir "grammars"
+let hyphen_dir   = dataSubdir "hyphen"
+
+let default_unicode_data_file = dataSubdir "unicode/unicode.data"
 
 let extra_fonts_dir    = []
 let extra_grammars_dir = []

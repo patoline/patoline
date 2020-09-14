@@ -16,7 +16,7 @@ distclean: clean
 
 .PHONY: install
 install: all
-	@dune install
+	@dune install $${PREFIX:+--prefix $$PREFIX}
 
 .PHONY: uninstall
 uninstall: all

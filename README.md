@@ -45,6 +45,16 @@ make
 make install
 ```
 
+You can rely on the automatic detection of the install prefix (see the
+[dune manual](https://dune.readthedocs.io/en/stable/usage.html#destination-directory))
+or set
+
+```
+export PREFIX=/foo/bar
+```
+
+before running `make`.
+
 ### First Patoline document
 
 Here is a hello world patoline document (other examples can be found in the
