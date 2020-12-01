@@ -11,7 +11,7 @@ The minimal dependencies are
  - Opam (version 2.0.0 or higher)
  - Dune (version 1.2.0  or higher)
  - Ocamlfind
- - Earley (version 2.0.0 or higher)
+ - Earley (version 2.0.0)
  - Camlzip
  - Sqlite3
  - Imagelib
