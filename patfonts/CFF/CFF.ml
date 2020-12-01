@@ -782,7 +782,7 @@ let subset font info cmap gls=
     buf
     with
         Not_found->(
-          Printf.fprintf stderr "Please report the following to patolist@lists.patoline.org: empty charstrings dict\n";
+          Printf.fprintf stderr "Please report the following to https://github.com/patoline/patoline/issues: empty charstrings dict\n";
           flush stderr;
           Buffer.create 0
         )

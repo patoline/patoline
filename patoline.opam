@@ -14,7 +14,7 @@ deliver dynamic contents.
 opam-version: "2.0"
 maintainer: "Rodolphe Lepigre <rodolphe.lepigre@inria.fr>"
 bug-reports: "https://github.com/patoline/patoline/issues"
-homepage: "http://patoline.org"
+homepage: "https://patoline.github.io"
 dev-repo: "git+https://github.com/patoline/patoline.git"
 authors: [
   "Pierre-Étienne Meunier"
