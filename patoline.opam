@@ -28,7 +28,7 @@ depends: [
   "ocaml" { >= "4.03.0" }
   "dune" { build & >= "1.2.0" }
   "ocamlfind"
-  "earley"  { >= "2.0.0"  }
+  "earley"  { = "2.0.0"  }
   "camlzip"
   "sqlite3"
   "imagelib" { = "20180522" }
