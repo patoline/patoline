@@ -2,4 +2,4 @@
   (name patoraw)
   (public_name patoline.patoraw)
   (modules :standard)
-  (libraries dynlink imagelib patutil patfonts))
+  (libraries dynlink imagelib-unix patutil patfonts))

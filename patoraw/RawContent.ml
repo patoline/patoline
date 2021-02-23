@@ -48,7 +48,7 @@ type image =
   ; image_pixel_height : int }
 
 let image filename =
-  let (w,h) = ImageLib.size filename in
+  let (w,h) = ImageLib_unix.size filename in
   { image_file   = filename
   ; image_x      = 0.0
   ; image_y      = 0.0

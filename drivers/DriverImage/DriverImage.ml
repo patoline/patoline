@@ -85,7 +85,7 @@ let output ?(structure:structure=empty_structure) pages fileName=
         done;
         let fname = Filename.concat dirname (filename' fileName page state) in
         Printf.fprintf stderr "Writing %s\n" fname;
-        ImageLib.writefile fname image) states) pages;
+        ImageLib_unix.writefile fname image) states) pages;
     ()
   in
 
