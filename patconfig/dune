@@ -3,3 +3,8 @@
   (public_name patoline.patconfig)
   (modules :standard)
   (libraries unix))
+
+(rule
+  (targets buildInfo.ml)
+  (action (with-stdout-to %{targets} (run ./gen_buildInfo)))
+  (deps ./gen_buildInfo))

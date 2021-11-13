@@ -1,11 +1,12 @@
 type patoconfig =
-  { mutable fonts_dir      : string * string list
-  ; mutable grammars_dir   : string * string list
-  ; mutable hyphen_dir     : string * string list
-  ; mutable drivers        : string list
-  ; mutable formats        : string list
-  ; mutable max_iter       : int
-  ; mutable user_dir       : string }
+  { mutable fonts_dir         : string * string list
+  ; mutable grammars_dir      : string * string list
+  ; mutable hyphen_dir        : string * string list
+  ; mutable unicode_data_file : string
+  ; mutable drivers           : string list
+  ; mutable formats           : string list
+  ; mutable max_iter          : int
+  ; mutable user_dir          : string }
 
 val patoconfig : patoconfig
 
