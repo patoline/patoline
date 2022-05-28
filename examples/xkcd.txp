@@ -14,18 +14,15 @@ ocamlnet conf-gnutls##.
 \Caml(
 open Nethttp_client.Convenience
 
-let url = "https://www.xkcd.org"
+let url = "https://xkcd.com"
 
 let _ =
   try
     (* Initialization of TLS. *)
     Nettls_gnutls.init ();
     (* HTTP request and decoding of HTML. *)
-    let data =
-      match Nethtml.decode [Nethtml.Data (http_get url)] with
-      | [Nethtml.Data t] -> t
-      | _                -> failwith "unexpected error"
-    in
+    Printf.eprintf "Fetching HTML...\n%!";
+    let data = http_get url in
     (* Use a regular expression to extract the image URL, title and alt. *)
     let regexp = Str.regexp
       "<img src=\"\\([^\"]*\\)\" title=\"\\([^\"]*\\)\" alt=\"\\([^\"]*\\)\""
@@ -34,6 +31,9 @@ let _ =
     let img_url   = "https:" ^ Str.matched_group 1 data in
     let img_title = Str.matched_group 3 data in
     let img_alt   = Str.matched_group 2 data in
+    Printf.eprintf "Found image at URL %s\n" img_url;
+    Printf.eprintf "Title: %s\n%!" img_title;
+    Printf.eprintf "Alt-text: %s\n%!" img_alt;
     (* Fetch the image. *)
     let img = http_get img_url in
     let oc = open_out ".patobuild/latest_xkcd.png" in

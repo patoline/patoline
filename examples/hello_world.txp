@@ -15,3 +15,9 @@ This is my //first// document! That's so **cool**!
 Did you known that $(a + b)² = a² + 2ab + b²$?
 
 -<
+
+-> Verbatim
+
+You can also use ##verbatim text## (and also with ``this syntax``).
+
+-<
