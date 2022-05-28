@@ -9,7 +9,7 @@ at https://patoline.github.io.
 The minimal dependencies are
  - OCaml (version between 4.03.0 and 4.07.1)
  - Opam (version 2.0.0 or higher)
- - Dune (version 1.2.0  or higher)
+ - Dune (version 2.7.0  or higher)
  - Ocamlfind
  - Earley (version 2.0.0)
  - Camlzip
@@ -23,7 +23,7 @@ at http://opam.ocaml.org/doc/Install.html. You can then install an OCaml
 compiler and the required libraries as follows.
 
 ```bash
-opam switch 4.05.0
+opam switch 4.07.1
 eval $(opam env)
 opam install dune earley.2.0.0 camlzip sqlite3 imagelib
 ```
@@ -31,7 +31,7 @@ opam install dune earley.2.0.0 camlzip sqlite3 imagelib
 You can optionally install more Opam packages (OCaml libraries) depending
 on the Patoline drivers that you want to use. For instance, you will need
 to install ``lablgl`` for our OpenGL driver, ``cairo2`` for our Cairo
-driver, ``kryptokit`` for our ``Patonet`` driver.
+driver, ``cryptokit`` for our ``Patonet`` driver.
 
 ### Compilation from source
 
