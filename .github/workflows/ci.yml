@@ -1,0 +1,34 @@
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        ocaml-version: [
+          4.07.0, 4.07.1, 4.08.0, 4.08.1, 4.09.0, 4.09.1, 4.10.0, 4.10.1,
+          4.10.2, 4.11.0, 4.11.1, 4.11.2, 4.12.0, 4.13.0, 4.13.1, 4.14.0
+        ]
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Checking out the repo..."
+        uses: actions/checkout@v2
+      - name: "Recovering cached opam files..."
+        uses: actions/cache@v2
+        with:
+          path: ~/.opam
+          key: ${{ runner.os }}-ocaml-${{ matrix.ocaml-version }}
+      - name: "Setting up opam..."
+        uses: avsm/setup-ocaml@v1
+        with:
+          ocaml-version: ${{ matrix.ocaml-version }}
+      - name: "Installing patoline..."
+        run: |
+          eval $(opam env)
+          opam update
+          opam upgrade
+          opam pin add -n -k path patoline .
+          opam install --deps-only -d -t patoline
+          opam install patoline
