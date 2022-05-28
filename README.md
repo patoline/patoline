@@ -7,7 +7,7 @@ at https://patoline.github.io.
 ### Dependencies
 
 The minimal dependencies are
- - OCaml (version 4.03.0 or higher)
+ - OCaml (version between 4.03.0 and 4.07.1)
  - Opam (version 2.0.0 or higher)
  - Dune (version 1.2.0  or higher)
  - Ocamlfind
