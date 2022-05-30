@@ -22,8 +22,8 @@ license: "GPL-2.0"
 homepage: "https://patoline.github.io"
 bug-reports: "https://github.com/patoline/patoline/issues"
 depends: [
+  "dune" {>= "2.7"}
   "ocaml" {>= "4.03.0"}
-  "dune" {>= "2.7" & build}
   "ocamlfind"
   "earley" {= "2.0.0"}
   "camlzip"

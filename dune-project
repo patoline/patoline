@@ -12,7 +12,7 @@
  "Rodolphe Lepigre <lepigre@mpi-sws.org>")
 (source (github patoline/patoline))
 (homepage "https://patoline.github.io")
-(license "GPL-2.0")
+(license "GPL-2.0") ; TODO also add GPL-3.0 when we have dune 3.2
 
 (package
  (name patoline)
@@ -28,7 +28,6 @@
    servers that deliver dynamic contents.")
  (depends
   (ocaml (>= 4.03.0))
-  (dune :build)
   ocamlfind
   (earley (= 2.0.0))
   camlzip
