@@ -601,7 +601,7 @@ let output ?(structure:structure=empty_structure) pages fname =
 
             if !pageImages<>[] then (
               List.iter Image.(fun (obj,_,i)->
-                let image=ImageLib.openfile i.image_file in
+                let image = ImageLib_unix.openfile i.image_file in
                 let w=image.width and h=image.height in
                 let bits_per_component =
                   if image.max_val <= 255 then 8 else 16 in

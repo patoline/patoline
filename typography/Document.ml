@@ -1167,7 +1167,7 @@ let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
       let _=Sys.command (Printf.sprintf "ffmpeg -i %s -t 1 -r 1 %s-%%d.png" imageFile tmp) in
       ()
     );
-  let w,h = ImageLib.size (tmp^"-1.png") in
+  let w,h = ImageLib_unix.size (tmp^"-1.png") in
   let fw,fh=
     if width=0. then
       if height=0. then

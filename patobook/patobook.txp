@@ -43,7 +43,7 @@ Pierre-Etienne Meunier
     bB (fun env0->
       let w4,h4=Util.a4 in
       let img="titlepato.png" in
-      let wesci,hesci = ImageLib.size img in
+      let wesci, hesci = ImageLib_unix.size img in
       let wesc = float_of_int wesci and hesc = float_of_int hesci in
       let alpha=0.2 in
 
