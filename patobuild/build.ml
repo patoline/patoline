@@ -86,6 +86,86 @@ let command : ?cleanup:(unit -> unit) -> string -> string -> string -> unit =
              eprintf "\027[31m%s failed on %S...\027[39m\n%!" n fn;
              exit 1);
           if (!verbose) > 2 then printf "[%s] DONE (%s)\n%!" n fn
+
+(** P1-8: Hash-based incremental cache. The historical cache relied
+    on file mtimes (see [Time.more_recent]), which meant any change
+    to a directory (e.g. a touch on a parent) would invalidate the
+    cache and force a full rebuild. Here we record a SHA-1 digest of
+    each input file plus the binary timestamp and the build
+    configuration. A target whose stored hash matches the current
+    one can be skipped outright. *)
+module Hash = struct
+  let file fn =
+    if not (Sys.file_exists fn) then
+      Digest.string ("missing:" ^ fn)
+    else
+      Digest.file fn
+
+  let string s = Digest.string s
+
+  let list l =
+    Digest.string (String.concat "\000" (List.sort String.compare l))
+end
+
+(** The on-disk cache lives at [\<build_dir\>/cache.bin]. We store a
+    mapping from absolute target filename to the digest of its inputs
+    plus the patobuild binary timestamp. *)
+type cache_entry = string  (* hex digest *)
+
+let cache_file build_dir =
+  Filename.concat (to_build_dir build_dir) "cache.bin"
+
+let read_cache build_dir : (string, cache_entry) Hashtbl.t =
+  let tbl = Hashtbl.create 37 in
+  let fn = cache_file build_dir in
+  if Sys.file_exists fn then
+    (try
+       let ic = open_in_bin fn in
+       let size = input_binary_int ic in
+       for _ = 1 to size do
+         let k = input_line ic in
+         let v = input_line ic in
+         Hashtbl.add tbl k v
+       done;
+       close_in ic
+     with _ -> ());
+  tbl
+
+let write_cache build_dir (tbl : (string, cache_entry) Hashtbl.t) =
+  let fn = cache_file build_dir in
+  (try
+     let ch = open_out_bin fn in
+     output_binary_int ch (Hashtbl.length tbl);
+     Hashtbl.iter (fun k v ->
+         output_string ch (k ^ "\n");
+         output_string ch (v ^ "\n")) tbl;
+     close_out ch
+   with _ ->
+     eprintf "[CACHE] could not write %S\n%!" fn)
+
+(** Decide whether [target] can be skipped. Returns [true] when the
+    stored digest matches the current one AND the build binary has
+    not changed since the cache entry was written. *)
+let up_to_date cache_tbl target deps =
+  let cur =
+    Digest.to_hex (Hash.list
+      (Printf.sprintf "%f" Time.binary_time ::
+       List.map (fun d -> Hash.file d) deps))
+  in
+  match Hashtbl.find_opt cache_tbl target with
+  | Some stored when stored = cur -> true
+  | _ -> false
+
+(** Mark [target] as up-to-date with the digest of its current
+    inputs. *)
+let mark_built cache_tbl target deps =
+  let cur =
+    Digest.to_hex (Hash.list
+      (Printf.sprintf "%f" Time.binary_time ::
+       List.map (fun d -> Hash.file d) deps))
+  in
+  Hashtbl.replace cache_tbl target cur
+
 let clean_build_dirs config =
   let clean_build_dir path =
     let d = to_build_dir path in
@@ -211,17 +291,25 @@ let compile_targets config deps target =
   let m_deps = Mutex.create () in
   TaskBag.post tasks [target];
   (let optcmd = opt_command config in
+   (* The first path in [config.path] is where [.patobuild/] lives; the
+      cache file [cache.bin] is stored there. *)
+   let cache_tbl = read_cache (List.hd config.path) in
    let do_compile deps t =
      let base = Filename.chop_extension t in
      let source_ext =
        if Filename.check_suffix t ".cmi" then ".mli" else ".ml" in
      let source = base ^ source_ext in
-     let dep_changed = List.exists (fun d -> more_recent d t) deps in
-     if dep_changed || (more_recent source t)
+     let needs_rebuild =
+       not (up_to_date cache_tbl t deps) ||
+       more_recent source t
+     in
+     if needs_rebuild
      then
-       let args = ["-c"] @ (config.opt_args @ ["-o"; t; source]) in
-       let cmd = optcmd ^ (String.concat " " args) in
-       command "OPT" source cmd in
+       (let args = ["-c"] @ (config.opt_args @ ["-o"; t; source]) in
+        let cmd = optcmd ^ (String.concat " " args) in
+        command "OPT" source cmd);
+     if Sys.file_exists t then mark_built cache_tbl t deps
+   in
    let files = ref [] in
    let m_files = Mutex.create () in
    let unsafe_exists fn =
@@ -278,7 +366,7 @@ let compile_targets config deps target =
         eprintf "[BUG] Tasks: %s\n%!" msg);
      (let t = TaskBag.wait tasks in
       if (!verbose) > 2 then eprintf "[%3i] got task %S\n%!" i t;
-      if t = done_signal then Thread.exit ();
+      if t = done_signal then raise Thread.Exit;
       (let source_ready =
          let src_build = build_source t in
          match lock_file src_build with
@@ -322,7 +410,9 @@ let compile_targets config deps target =
           thread_fun i))) in
    let fn i = Thread.create thread_fun i in
    let ths = Array.init (!Parallel.nb_threads) fn in
-   Array.iter Thread.join ths)
+   Array.iter Thread.join ths;
+   (* Persist the cache for next invocation. *)
+   write_cache (List.hd config.path) cache_tbl)
 let produce_binary config deps main =
   let target = Filename.set_extension main ".opt" in
   let deps_ref = ref [] in
