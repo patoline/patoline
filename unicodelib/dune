@@ -1,18 +1,18 @@
 (library
-  (name unicodelib)
-  (public_name patoline.unicodelib)
-  (modules :standard \ pa_convert pa_unicode_data)
-  (libraries permap unix))
+ (name unicodelib)
+ (public_name patoline.unicodelib)
+ (modules :standard \ pa_convert pa_unicode_data)
+ (libraries permap unix uucp uunf uunf.string uutf))
 
 (executable
   (name pa_convert)
   (modules pa_convert)
-  (libraries earley.core earley.str patoline_ocaml))
+  (libraries earley.core earley.str pa_ocaml_lib))
 
 (executable
   (name pa_unicode_data)
   (modules pa_unicode_data)
-  (libraries earley.core earley.str patoline_ocaml unicodelib))
+  (libraries earley.core earley.str pa_ocaml_lib unicodelib))
 
 (rule
   (targets unicode.data)

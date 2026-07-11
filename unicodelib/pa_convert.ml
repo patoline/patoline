@@ -2,6 +2,20 @@ open Earley_core
 open Earley
 open Pa_ocaml_prelude
 open Ast_helper
+let fun_ = Pa_parser.fun_
+(* OCaml 5.2+ makes Ldot/Lapply take `t loc`/`string loc` for parts.
+   Wrap each inner sub-ident and the trailing label into with_loc records.
+   The outer { loc; txt = ... } stays as is, since its `txt` field still has
+   type Longident.t. *)
+module Longident_loc : sig
+  val part : Longident.t -> Longident.t Asttypes.loc
+  val str : string -> string Asttypes.loc
+end = struct
+  let part t = { Location.loc = Location.none; txt = t }
+  let str s = { Location.loc = Location.none; txt = s }
+end
+let loc_part = Longident_loc.part
+let loc_str = Longident_loc.str
 module Ext(In:Extension) =
   struct
     include In
@@ -37,7 +51,7 @@ module Ext(In:Extension) =
       let combine (i, j) e =
         Exp.sequence ~loc
           (Exp.apply ~loc
-             (Exp.ident ~loc { loc; txt = (Ldot ((Lident "Array"), "set")) })
+             (Exp.ident ~loc { loc; txt = (Ldot (loc_part (Lident "Array"), loc_str "set")) })
              [(Nolabel, (Exp.ident ~loc { loc; txt = (Lident "arr") }));
              (Nolabel, (Exp.constant ~loc (Const.int i)));
              (Nolabel, (Exp.constant ~loc (Const.int j)))]) e in
@@ -49,7 +63,7 @@ module Ext(In:Extension) =
           [Vb.mk (Pat.var ~loc { loc; txt = "arr" })
              (Exp.apply ~loc
                 (Exp.ident ~loc
-                   { loc; txt = (Ldot ((Lident "Array"), "make")) })
+                   { loc; txt = (Ldot (loc_part (Lident "Array"), loc_str "make")) })
                 [(Nolabel, (Exp.constant ~loc (Const.int 256)));
                 (Nolabel, (Exp.constant ~loc (Const.int (-1))))])] arr_fill in
       let raise_undef =
@@ -61,7 +75,7 @@ module Ext(In:Extension) =
         Typ.constr ~loc { loc; txt = (Lident "array") } [ty_int] in
       let ty_char = Typ.constr ~loc { loc; txt = (Lident "char") } [] in
       let ty_uchar =
-        Typ.constr ~loc { loc; txt = (Ldot ((Lident "UChar"), "uchar")) } [] in
+        Typ.constr ~loc { loc; txt = (Ldot (loc_part (Lident "UChar"), loc_str "uchar")) } [] in
       let e_i = Exp.ident ~loc { loc; txt = (Lident "i") } in
       let e_c = Exp.ident ~loc { loc; txt = (Lident "c") } in
       let e_s = Exp.ident ~loc { loc; txt = (Lident "s") } in
@@ -78,7 +92,7 @@ module Ext(In:Extension) =
           [Vb.mk (Pat.var ~loc { loc; txt = "i" })
              (Exp.apply ~loc
                 (Exp.ident ~loc
-                   { loc; txt = (Ldot ((Lident "Char"), "code")) })
+                   { loc; txt = (Ldot (loc_part (Lident "Char"), loc_str "code")) })
                 [(Nolabel, e_c)])]
           (Exp.ifthenelse ~loc (cmp_lt e_i (Exp.constant ~loc (Const.int 0)))
              raise_undef
@@ -93,27 +107,27 @@ module Ext(In:Extension) =
                                (Exp.ident ~loc
                                   {
                                     loc;
-                                    txt = (Ldot ((Lident "Array"), "get"))
+                                    txt = (Ldot (loc_part (Lident "Array"), loc_str "get"))
                                   }) [(Nolabel, e_arr); (Nolabel, e_i)])]
                          (Exp.ifthenelse ~loc
                             (cmp_lt e_u (Exp.constant ~loc (Const.int 0)))
                             raise_undef (Some e_u))))))) in
       let utf8_body =
         Exp.apply ~loc
-          (Exp.ident ~loc { loc; txt = (Ldot ((Lident "UTF8"), "init")) })
+          (Exp.ident ~loc { loc; txt = (Ldot (loc_part (Lident "UTF8"), loc_str "init")) })
           [(Nolabel,
              (Exp.apply ~loc
                 (Exp.ident ~loc
-                   { loc; txt = (Ldot ((Lident "String"), "length")) })
+                   { loc; txt = (Ldot (loc_part (Lident "String"), loc_str "length")) })
                 [(Nolabel, e_s)]));
           (Nolabel,
-            (Exp.fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "i" })
+            (fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "i" })
                (Exp.apply ~loc
                   (Exp.ident ~loc { loc; txt = (Lident "to_uchar") })
                   [(Nolabel,
                      (Exp.apply ~loc
                         (Exp.ident ~loc
-                           { loc; txt = (Ldot ((Lident "String"), "get")) })
+                           { loc; txt = (Ldot (loc_part (Lident "String"), loc_str "get")) })
                         [(Nolabel, e_s);
                         (Nolabel,
                           (Exp.apply ~loc
@@ -123,20 +137,20 @@ module Ext(In:Extension) =
                              (Nolabel, (Exp.constant ~loc (Const.int 1)))]))]))])))] in
       let utf16_body =
         Exp.apply ~loc
-          (Exp.ident ~loc { loc; txt = (Ldot ((Lident "UTF16"), "init")) })
+          (Exp.ident ~loc { loc; txt = (Ldot (loc_part (Lident "UTF16"), loc_str "init")) })
           [(Nolabel,
              (Exp.apply ~loc
                 (Exp.ident ~loc
-                   { loc; txt = (Ldot ((Lident "String"), "length")) })
+                   { loc; txt = (Ldot (loc_part (Lident "String"), loc_str "length")) })
                 [(Nolabel, e_s)]));
           (Nolabel,
-            (Exp.fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "i" })
+            (fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "i" })
                (Exp.apply ~loc
                   (Exp.ident ~loc { loc; txt = (Lident "to_uchar") })
                   [(Nolabel,
                      (Exp.apply ~loc
                         (Exp.ident ~loc
-                           { loc; txt = (Ldot ((Lident "String"), "get")) })
+                           { loc; txt = (Ldot (loc_part (Lident "String"), loc_str "get")) })
                         [(Nolabel, e_s);
                         (Nolabel,
                           (Exp.apply ~loc
@@ -146,20 +160,20 @@ module Ext(In:Extension) =
                              (Nolabel, (Exp.constant ~loc (Const.int 1)))]))]))])))] in
       let utf32_body =
         Exp.apply ~loc
-          (Exp.ident ~loc { loc; txt = (Ldot ((Lident "UTF32"), "init")) })
+          (Exp.ident ~loc { loc; txt = (Ldot (loc_part (Lident "UTF32"), loc_str "init")) })
           [(Nolabel,
              (Exp.apply ~loc
                 (Exp.ident ~loc
-                   { loc; txt = (Ldot ((Lident "String"), "length")) })
+                   { loc; txt = (Ldot (loc_part (Lident "String"), loc_str "length")) })
                 [(Nolabel, e_s)]));
           (Nolabel,
-            (Exp.fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "i" })
+            (fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "i" })
                (Exp.apply ~loc
                   (Exp.ident ~loc { loc; txt = (Lident "to_uchar") })
                   [(Nolabel,
                      (Exp.apply ~loc
                         (Exp.ident ~loc
-                           { loc; txt = (Ldot ((Lident "String"), "get")) })
+                           { loc; txt = (Ldot (loc_part (Lident "String"), loc_str "get")) })
                         [(Nolabel, e_s);
                         (Nolabel,
                           (Exp.apply ~loc
@@ -178,19 +192,19 @@ module Ext(In:Extension) =
         [Vb.mk
            (Pat.constraint_ ~loc (Pat.var ~loc { loc; txt = "to_uchar" })
               (Typ.arrow ~loc Nolabel ty_char ty_uchar))
-           (Exp.fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "c" })
+           (fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "c" })
               to_uchar_body)];
       Str.value ~loc Nonrecursive
         [Vb.mk (Pat.var ~loc { loc; txt = "to_utf8" })
-           (Exp.fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "s" })
+           (fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "s" })
               utf8_body)];
       Str.value ~loc Nonrecursive
         [Vb.mk (Pat.var ~loc { loc; txt = "to_utf16" })
-           (Exp.fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "s" })
+           (fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "s" })
               utf16_body)];
       Str.value ~loc Nonrecursive
         [Vb.mk (Pat.var ~loc { loc; txt = "to_utf32" })
-           (Exp.fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "s" })
+           (fun_ ~loc Nolabel None (Pat.var ~loc { loc; txt = "s" })
               utf32_body)]]
     let mappings =
       Earley_core.Earley.fsequence
