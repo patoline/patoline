@@ -10,6 +10,40 @@ open Pa_ast
 open Pa_lexing
 open Ast_helper
 include Pa_ocaml_prelude
+[@@@ocaml.warning "-9-27-34-39"]
+(* OCaml 5.4 wrapped [Longident.Ldot] and [Lapply] so their components carry
+   locations. To stay portable we rebuild the same shape with [unflatten]. *)
+let ghost_loc = { Location.loc_start = Lexing.dummy_pos;
+                  Location.loc_end = Lexing.dummy_pos;
+                  loc_ghost = true }
+let wrap_lid (l : Longident.t) : Longident.t Asttypes.loc =
+  { txt = l; loc = ghost_loc }
+let ldot_longident (parts : string list) =
+  match Longident.unflatten parts with
+  | Some li -> li
+  | None -> invalid_arg "Pa_ocaml.ldot_longident"
+let ldot_append (acc : Longident.t) (x : string) : Longident.t =
+  let rec parts_of = function
+    | Lident s -> [s]
+    | Ldot (l, s) -> parts_of l.txt @ [s.txt]
+    | Lapply _ -> invalid_arg "Pa_ocaml.ldot_append: Lapply" in
+  ldot_longident (parts_of acc @ [x])
+let lapply_append (acc : Longident.t) (x : Longident.t) : Longident.t =
+  Lapply (wrap_lid acc, wrap_lid x)
+(* Safe variant of [ldot_append]: used by call sites in generated code
+   that may forward an [Lapply].  Preserves the [Lapply] shape by
+   extending the outer path with [Ldot].
+   [(M X).A] is semantically [Ldot(Lapply(M, X), "A")], not
+   [Lapply(M, Ldot(X, "A"))]. *)
+let ldot_append_safe (acc : Longident.t) (x : string) : Longident.t =
+  match acc with
+  | Lapply (l, r) ->
+    (* Wrap the entire [Lapply] in an outer [Ldot] so we get [Lapply.A]. *)
+    let apply_loc = { txt = acc; loc = ghost_loc } in
+    Ldot (apply_loc, { txt = x; loc = ghost_loc })
+  | _ -> ldot_append acc x
+let tuple_pat ~loc ps =
+  loc_pat loc (Ppat_tuple (List.map (fun p -> (None, p)) ps, Closed))
 module Make(Initial:Extension) =
   struct
     include Initial
@@ -24,12 +58,12 @@ module Make(Initial:Extension) =
     let _ = Earley_core.Earley.set_grammar ident oident
     let mk_unary_op loc name loc_name arg =
       match (name, (arg.pexp_desc)) with
-      | ("-", Pexp_constant (Pconst_integer (n, o))) ->
+      | ("-", Pexp_constant { pconst_desc = Pconst_integer (n, o); _ }) ->
           Exp.constant ~loc (Const.integer ?suffix:o ("-" ^ n))
-      | (("-"|"-."), Pexp_constant (Pconst_float (f, o))) ->
+      | (("-"|"-."), Pexp_constant { pconst_desc = Pconst_float (f, o); _ }) ->
           Exp.constant ~loc (Const.float ?suffix:o ("-" ^ f))
-      | ("+", Pexp_constant (Pconst_integer _))
-        |(("+"|"+."), Pexp_constant (Pconst_float _)) ->
+      | ("+", Pexp_constant { pconst_desc = Pconst_integer _; _ })
+        |(("+"|"+."), Pexp_constant { pconst_desc = Pconst_float _; _ }) ->
           Exp.mk ~loc arg.pexp_desc
       | (("-"|"-."|"+"|"+."), _) ->
           let lid = id_loc (Lident ("~" ^ name)) loc_name in
@@ -43,7 +77,7 @@ module Make(Initial:Extension) =
       if op = "::"
       then
         let lid = id_loc (Lident "::") loc_op in
-        Exp.construct ~loc lid (Some (Exp.tuple ~loc:(ghost loc) [e'; e]))
+        Exp.construct ~loc lid (Some (Exp.tuple ~loc:(ghost loc) [(None, e'); (None, e)]))
       else
         (let id = Exp.ident ~loc:loc_op (id_loc (Lident op) loc_op) in
          Exp.apply ~loc id [(nolabel, e'); (nolabel, e)])
@@ -183,7 +217,7 @@ module Make(Initial:Extension) =
                    (Earley_core.Earley.string "." ".")
                    (Earley_core.Earley.fsequence smodule_name
                       (Earley_core.Earley.empty
-                         (fun m -> fun acc -> Ldot (acc, m)))))
+                         (fun m -> fun acc -> ldot_append_safe acc m))))
                 (List.append
                    (if allow_app
                     then
@@ -195,7 +229,7 @@ module Make(Initial:Extension) =
                               (Earley_core.Earley.fsequence_ignore
                                  (Earley_core.Earley.string ")" ")")
                                  (Earley_core.Earley.empty
-                                    (fun m' -> fun a -> Lapply (a, m'))))))
+                                    (fun m' -> fun a -> lapply_append a m')))))
                         []
                     else []) [])))
     let _ =
@@ -236,7 +270,7 @@ module Make(Initial:Extension) =
                     fun mp ->
                       match mp with
                       | None -> Lident vn
-                      | Some p -> Ldot (p, vn)))))
+                      | Some p -> ldot_append p vn))))
     let constr = Earley_core.Earley.declare_grammar "constr"
     let _ =
       Earley_core.Earley.set_grammar constr
@@ -253,7 +287,7 @@ module Make(Initial:Extension) =
                     fun mp ->
                       match mp with
                       | None -> Lident cn
-                      | Some p -> Ldot (p, cn)))))
+                      | Some p -> ldot_append p cn))))
     let typeconstr = Earley_core.Earley.declare_grammar "typeconstr"
     let _ =
       Earley_core.Earley.set_grammar typeconstr
@@ -270,7 +304,7 @@ module Make(Initial:Extension) =
                     fun mp ->
                       match mp with
                       | None -> Lident tcn
-                      | Some p -> Ldot (p, tcn)))))
+                      | Some p -> ldot_append p tcn))))
     let field = Earley_core.Earley.declare_grammar "field"
     let _ =
       Earley_core.Earley.set_grammar field
@@ -287,7 +321,7 @@ module Make(Initial:Extension) =
                     fun mp ->
                       match mp with
                       | None -> Lident fn
-                      | Some p -> Ldot (p, fn)))))
+                      | Some p -> ldot_append p fn))))
     let class_path = Earley_core.Earley.declare_grammar "class_path"
     let _ =
       Earley_core.Earley.set_grammar class_path
@@ -304,7 +338,7 @@ module Make(Initial:Extension) =
                     fun mp ->
                       match mp with
                       | None -> Lident cn
-                      | Some p -> Ldot (p, cn)))))
+                      | Some p -> ldot_append p cn))))
     let modtype_path = Earley_core.Earley.declare_grammar "modtype_path"
     let _ =
       Earley_core.Earley.set_grammar modtype_path
@@ -321,7 +355,7 @@ module Make(Initial:Extension) =
                     fun mp ->
                       match mp with
                       | None -> Lident mtn
-                      | Some p -> Ldot (p, mtn)))))
+                      | Some p -> ldot_append p mtn))))
     let classtype_path = Earley_core.Earley.declare_grammar "classtype_path"
     let _ =
       Earley_core.Earley.set_grammar classtype_path
@@ -338,7 +372,7 @@ module Make(Initial:Extension) =
                     fun mp ->
                       match mp with
                       | None -> Lident cn
-                      | Some p -> Ldot (p, cn)))))
+                      | Some p -> ldot_append p cn))))
     let opt_variance = Earley_core.Earley.declare_grammar "opt_variance"
     let _ =
       Earley_core.Earley.set_grammar opt_variance
@@ -1014,7 +1048,7 @@ module Make(Initial:Extension) =
                                       let _loc_mtp =
                                         locate str1 pos1 str2 pos2 in
                                       Typ.package ~loc:_loc
-                                        (id_loc mtp _loc_mtp) cs))))
+                                        (Typ.package_type ~loc:_loc (id_loc mtp _loc_mtp) cs)))))
     let opt_present = Earley_core.Earley.declare_grammar "opt_present"
     let _ =
       Earley_core.Earley.set_grammar opt_present
@@ -1035,7 +1069,7 @@ module Make(Initial:Extension) =
                           (Earley_core.Earley.empty (fun l -> l))))) [])))
     let mkoption loc d =
       let loc = ghost loc in
-      Typ.constr ~loc (id_loc (Ldot ((Lident "*predef*"), "option")) loc) [d]
+      Typ.constr ~loc (id_loc (ldot_append (Lident "*predef*") "option") loc) [d]
     let extra_types_grammar lvl =
       alternatives (List.map (fun g -> g lvl) extra_types)
     let op_cl =
@@ -1067,7 +1101,7 @@ module Make(Initial:Extension) =
                                           __loc__end__pos in
                                       fun id ->
                                         fun _default_0 ->
-                                          fun te -> Typ.alias ~loc:_loc te id)))))))
+                                          fun te -> Typ.alias ~loc:_loc te {txt = id; loc = _loc})))))))
             (List.cons
                ((fun _ -> true),
                  (Earley_core.Earley.fsequence_ignore
@@ -1688,7 +1722,7 @@ module Make(Initial:Extension) =
                                                                     ->
                                                                     Typ.tuple
                                                                     ~loc:_loc
-                                                                    tes))))
+                                                                    (List.map (fun t -> (None, t)) tes)))))
                                                                [])))))))))))))))))),
           (fun (allow_par, lvl) -> List.cons (extra_types_grammar lvl) []))
     let type_param = Earley_core.Earley.declare_grammar "type_param"
@@ -1882,7 +1916,7 @@ module Make(Initial:Extension) =
                                        | Some
                                            ({ ptyp_desc = Ptyp_tuple tes },
                                             false)
-                                           -> tes
+                                           -> List.map snd tes
                                        | Some (t, _) -> [t] in
                                      ((Pcstr_tuple tes), None))))
                             (List.cons
@@ -2978,7 +3012,7 @@ module Make(Initial:Extension) =
                                                      _loc_c in
                                                  let args =
                                                    loc_pat (ghost _loc)
-                                                     (Ppat_tuple [p; p']) in
+                                                     (Ppat_tuple ([(None, p); (None, p')], Closed)) in
                                                  Pat.construct ~loc:_loc cons
                                                    (Some ([], args))))))))
             (List.cons
@@ -3921,7 +3955,7 @@ module Make(Initial:Extension) =
                                                                     __loc__end__pos in
                                                                     fun p ->
                                                                     fun ps ->
-                                                                    Pat.tuple
+                                                                    tuple_pat
                                                                     ~loc:_loc
                                                                     (ps @ [p]))))))
                                                                     []))))))))))))))))))))))),
@@ -4001,12 +4035,14 @@ module Make(Initial:Extension) =
       then Opp
       else Prefix
     let array_function loc str name =
-      loc_expr loc (Pexp_ident (id_loc (Ldot ((Lident str), name)) loc))
+      loc_expr loc (Pexp_ident (id_loc (ldot_append (Lident str) name) loc))
     let bigarray_function loc str name =
-      let lid = Ldot ((Ldot ((Lident "Bigarray"), str)), name) in
+      let lid = ldot_append (ldot_append (Lident "Bigarray") str) name in
       loc_expr loc (Pexp_ident (id_loc lid loc))
     let untuplify exp =
-      match exp.pexp_desc with | Pexp_tuple es -> es | _ -> [exp]
+      match exp.pexp_desc with
+      | Pexp_tuple es -> List.map snd es
+      | _ -> [exp]
     let bigarray_get loc arr arg =
       let apply fn args =
         let fn = Exp.ident (Location.mknoloc (longident_of_string fn)) in
@@ -4043,7 +4079,7 @@ module Make(Initial:Extension) =
                     fun m ->
                       match m with
                       | None -> Lident id
-                      | Some m -> Ldot (m, id)))))
+                      | Some m -> ldot_append m id))))
     let argument = Earley_core.Earley.declare_grammar "argument"
     let _ =
       Earley_core.Earley.set_grammar argument
@@ -6180,7 +6216,7 @@ module Make(Initial:Extension) =
                 loc_expr _loc
                   (pexp_construct
                      ((id_loc (Lident "::") (ghost _loc)),
-                       (Some (loc_expr _loc (Pexp_tuple [x; acc])))))) l
+                       (Some (loc_expr _loc (Pexp_tuple [(None, x); (None, acc)])))))) l
            (loc_expr loc_cl
               (pexp_construct ((id_loc (Lident "[]") loc_cl), None))))
     let apply_lbl _loc (lbl, e) =
@@ -6761,7 +6797,7 @@ module Make(Initial:Extension) =
                                                  (fun e' ->
                                                     fun (_l, _) ->
                                                       Exp.tuple ~loc:_l
-                                                        (l @ [e'])))))))
+                                                        (List.map (fun x -> (None, x)) (l @ [e']))))))))
                                     (List.cons
                                        ((fun (alm, lvl) -> lvl <= App),
                                          (Earley_core.Earley.fsequence
@@ -6875,7 +6911,7 @@ module Make(Initial:Extension) =
                                        __loc__end__pos in
                                    fun l ->
                                      fun _default_0 ->
-                                       Exp.function_ ~loc:_loc l))))
+                                       Exp.function_ ~loc:_loc [] None (Pfunction_cases (l, _loc, []))))))
                  (List.cons
                     (Earley_core.Earley.fsequence match_kw
                        (Earley_core.Earley.fsequence expression
@@ -7862,9 +7898,7 @@ module Make(Initial:Extension) =
                                                                     match pt
                                                                     with
                                                                     | 
-                                                                    None ->
-                                                                    Pexp_pack
-                                                                    me
+                                                                    None -> Pexp_pack (me, None)
                                                                     | 
                                                                     Some pt
                                                                     ->
@@ -7873,7 +7907,7 @@ module Make(Initial:Extension) =
                                                                     (ghost
                                                                     _loc)
                                                                     (Pexp_pack
-                                                                    me) in
+                                                                    (me, None)) in
                                                                     let pt =
                                                                     loc_typ
                                                                     (ghost

@@ -1,3 +1,13 @@
+(* OCaml 5.2 .. 5.4 baseline.  Every record field referenced below
+   is present in the Parsetree exposed by [compiler-libs.common] for
+   5.2 / 5.3 / 5.4.  The pragma below is kept defensively to silence
+   spurious noise on newer OCaml versions.
+
+   Newer versions may require a compatibility patch under
+   [../../patches/ocaml_5_<X>.ml]; see the P2-5 notes there for how
+   to add one. *)
+[@@@ocaml.warning "-9-27-34"]
+
 open Asttypes
 open Parsetree
 open Longident

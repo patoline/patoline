@@ -6,6 +6,17 @@ open Location
 open Pa_ocaml_prelude
 open Pa_lexing
 open Ast_helper
+
+(* Compat helpers — `Ast_helper.Exp.fun_` was removed in OCaml 5.2 in favour of
+   the 3-argument `Exp.function_`. Route every `fun pat -> body` site through
+   this shim so the source stays readable. *)
+let fun_ ?loc lbl default pat body =
+  let loc = Option.value loc ~default:Location.none in
+  Exp.function_ ~loc
+    [{ pparam_loc = loc; pparam_desc = Pparam_val (lbl, default, pat) }]
+    None
+    (Pfunction_body body)
+
 type action =
   | Default 
   | Normal of expression 
@@ -34,7 +45,7 @@ let mkpatt loc (id, p) =
   match p with | None -> Pat.var ~loc id | Some p -> Pat.alias ~loc p id
 let mk_fun loc args e =
   let args = List.map (fun s -> Pat.var (mknoloc s)) args in
-  List.fold_right (Exp.fun_ ~loc Nolabel None) args e
+  List.fold_right (fun_ ~loc Nolabel None) args e
 let mk_app loc e args =
   Exp.apply ~loc e (List.map (fun e -> (Nolabel, e)) args)
 let mk_lid s = mknoloc (Pa_ast.longident_of_string s)
@@ -65,7 +76,7 @@ let rec build_action loc occur_loc ids e =
       | (Some f, true) ->
           let args = ["str1"; "pos1"; "str2"; "pos2"] in
           mk_fun loc args
-            (Exp.fun_ ~loc Nolabel None (mkpatt loc (id, x))
+            (fun_ ~loc Nolabel None (mkpatt loc (id, x))
                (let vb =
                   Vb.mk (Pat.var (mknoloc ("_loc_" ^ id)))
                     (mk_appv loc f ["str1"; "pos1"; "str2"; "pos2"]) in
@@ -73,7 +84,7 @@ let rec build_action loc occur_loc ids e =
       | (_, _) ->
           if (id = "_") && (x = None)
           then e
-          else Exp.fun_ ~loc Nolabel None (mkpatt loc (id, x)) e in
+          else fun_ ~loc Nolabel None (mkpatt loc (id, x)) e in
     List.fold_left fn e (List.rev ids) in
   match ((find_locate ()), occur_loc) with
   | (Some locate, true) ->
@@ -126,7 +137,7 @@ let default_action loc l =
   match List.map f (List.filter p l) with
   | [] -> mk_constr loc "()" None
   | e::[] -> e
-  | l -> Exp.tuple ~loc l
+  | l -> Exp.tuple ~loc (List.map (fun e -> (None, e)) l)
 let from_opt ov d = match ov with | None -> d | Some v -> v
 let dash =
   let fn str pos =
@@ -211,12 +222,11 @@ module Ext(In:Extension) =
       | None ->
           def
             (mk_cons loc
-               (Exp.tuple
-                  [Exp.fun_ Nolabel None (Pat.any ())
-                     (mk_constr loc "true" None);
-                  e]) acc)
+               (Exp.tuple [(None, fun_ Nolabel None (Pat.any ())
+                          (mk_constr loc "true" None));
+                       (None, e)]) acc)
       | Some c ->
-          def (mk_cons loc (Exp.tuple [Exp.fun_ Nolabel None arg c; e]) acc)
+          def (mk_cons loc (Exp.tuple [(None, fun_ Nolabel None arg c); (None, e)]) acc)
     let build_alternatives loc ls =
       let ls = List.map snd ls in
       match ls with
@@ -237,7 +247,7 @@ module Ext(In:Extension) =
       let l0 =
         List.fold_right (apply_def_cond_list loc) l0
           (mk_constr loc "[]" None) in
-      Exp.tuple ~loc [l1; Exp.fun_ Nolabel None arg l0]
+      Exp.tuple ~loc [(None, l1); (None, fun_ Nolabel None arg l0)]
     let build_str_item _loc l =
       let rec fn =
         function
@@ -255,7 +265,7 @@ module Ext(In:Extension) =
               match args with
               | [] -> Pat.construct ~loc:_loc (mk_lid "()") None
               | p::[] -> p
-              | _ -> Pat.tuple ~loc:_loc args in
+              | _ -> Pat.tuple ~loc:_loc (List.map (fun p -> (None, p)) args) Closed in
             let (str1, str2) =
               match (args, prio) with
               | ([], None) ->
@@ -276,14 +286,14 @@ module Ext(In:Extension) =
                   let s1 =
                     Str.value ~loc:_loc Nonrecursive
                       [Vb.mk ~loc:_loc
-                         (Pat.tuple [pname; Pat.var (mknoloc set_name)])
+                         (Pat.tuple [(None, pname); (None, Pat.var (mknoloc set_name))] Closed)
                          (core_apply _loc "grammar_family"
                             [Exp.constant (Const.string name)])] in
                   let s2 =
                     Str.value ~loc:_loc Nonrecursive
                       [Vb.mk ~loc:_loc (Pat.any ~loc:_loc ())
                          (mk_app _loc (mk_id set_name)
-                            [Exp.fun_ ~loc:_loc Nolabel None args_pat r])] in
+                            [fun_ ~loc:_loc Nolabel None args_pat r])] in
                   ((s1 :: str1), (s2 :: str2))
               | ([], Some prio) ->
                   let r = coer (build_prio_alternatives _loc_r prio r) in
@@ -291,7 +301,7 @@ module Ext(In:Extension) =
                   let s1 =
                     Str.value ~loc:_loc Nonrecursive
                       [Vb.mk ~loc:_loc
-                         (Pat.tuple [pname; Pat.var (mknoloc set_name)])
+                         (Pat.tuple [(None, pname); (None, Pat.var (mknoloc set_name))] Closed)
                          (core_apply _loc "grammar_prio"
                             [Exp.constant (Const.string name)])] in
                   let s2 =
@@ -305,14 +315,14 @@ module Ext(In:Extension) =
                   let s1 =
                     Str.value ~loc:_loc Nonrecursive
                       [Vb.mk ~loc:_loc
-                         (Pat.tuple [pname; Pat.var (mknoloc set_name)])
+                         (Pat.tuple [(None, pname); (None, Pat.var (mknoloc set_name))] Closed)
                          (core_apply _loc "grammar_prio_family"
                             [Exp.constant (Const.string name)])] in
                   let s2 =
                     Str.value ~loc:_loc Nonrecursive
                       [Vb.mk ~loc:_loc (Pat.any ~loc:_loc ())
                          (mk_app _loc (mk_id set_name)
-                            [Exp.fun_ ~loc:_loc Nolabel None args_pat r])] in
+                            [fun_ ~loc:_loc Nolabel None args_pat r])] in
                   ((s1 :: str1), (s2 :: str2)) in
             let str2 =
               match (args, prio) with
@@ -323,11 +333,15 @@ module Ext(In:Extension) =
                     | [] ->
                         let acc = List.rev acc in
                         (match prio with
-                         | None -> mk_app _loc (mk_id name) [Exp.tuple acc]
+                         | None ->
+                             mk_app _loc (mk_id name)
+                               [Exp.tuple (List.map (fun e -> (None, e)) acc)]
                          | Some _ ->
                              mk_fun _loc ["__curry__prio"]
                                (mk_app _loc (mk_id name)
-                                  [Exp.tuple acc; mk_id "__curry__prio"]))
+                                  [Exp.tuple
+                                     ((List.map (fun e -> (None, e)) acc)
+                                      @ [(None, mk_id "__curry__prio")])]))
                     | a::l ->
                         let v = "__curry__varx" ^ (string_of_int n) in
                         let acc = (mk_id v) :: acc in
@@ -573,7 +587,7 @@ module Ext(In:Extension) =
                                                                     _loc
                                                                     "error_message"
                                                                     [
-                                                                    Exp.fun_
+                                                                    fun_
                                                                     Nolabel
                                                                     None
                                                                     (Pat.any
@@ -1353,7 +1367,7 @@ module Ext(In:Extension) =
                                            build_prio_alternatives _loc_r
                                              prio r in
                                      List.fold_right
-                                       (Exp.fun_ ~loc:_loc Nolabel None) args
+                                       (fun_ ~loc:_loc Nolabel None) args
                                        r))) in
       p :: extra_prefix_expressions
     let _ = add_reserved_id "parser"
