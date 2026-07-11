@@ -1,6 +1,9 @@
+; Latin Modern fonts (lmodern/) are intentionally NOT vendored.
+; Calls into "Latin Modern Roman/Mono/Math" fall back to DejaVu and
+; Asana-Math via typography/ConfigFindFont.legacy.ml (lmodern_fallback).
 (install
-  (section share)
-  (files
+ (section share)
+ (files
     (DejaVu-2.34/DejaVuSerifCondensed.ttf as fonts/DejaVu-2.34/DejaVuSerifCondensed.ttf)
     (DejaVu-2.34/DejaVuSansMono-BoldOblique.ttf as fonts/DejaVu-2.34/DejaVuSansMono-BoldOblique.ttf)
     (DejaVu-2.34/DejaVuSerif-Italic.ttf as fonts/DejaVu-2.34/DejaVuSerif-Italic.ttf)
