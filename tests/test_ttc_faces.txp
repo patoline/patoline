@@ -1,0 +1,7 @@
+Bold text should be picked from a TTC face.
+
+This is **bold** in basic Markdown style.
+
+Italic *italic* should map to italic face.
+
+EOF
