@@ -1,30 +1,99 @@
 (* #FORMAT FormatThese *)
-(* #PACKAGES patoline.bibi *)
-
-\Caml(
-  open Bibi
-  let _=
-    let _=Sys.command "bibi biblio.bib" in
-    bibfile "biblio.bibi"
-module Bib=BiblioNames
-open Bib
-)
 
 => Extending Patoline
 
+Patoline is designed to be extended.  There are three layers at which a
+user can add functionality:
+
+  1. **The parser.**  The default parser recognises the mixed Wiki /
+     LaTeX / OCaml syntax that you have seen throughout this book.
+     A custom parser can recognise a different input language and
+     lower it to the same OCaml AST.
+
+  2. **The format.**  A format is a set of macros that define how each
+     kind of document object (heading, paragraph, list, maths
+     environment, ...) is rendered.  Formats are themselves written in
+     Patoline and live in the [formats/] subdirectory.
+
+  3. **The output driver.**  A driver consumes the low-level raw
+     commands emitted by the format and writes them to a particular
+     output (PDF, SVG, HTML, Cairo, ...).
+
 => The default parser
 
-=<
+The default parser is itself an OCaml program built with the Earley
+parser combinator library.  It is split into one file per syntactic
+construct, all under [pa_patoline/].  Each module exposes an OCaml
+value that accepts a stream of tokens and returns an AST.
+
+To add a new construct, the typical workflow is:
+
+  - Identify the grammar rule that catches it.  The simplest cases
+    are usually handled in [pa_patoline/pa_parser.ml].
+
+  - Add a lowering function that produces a Parsetree node.  The
+    helper module [pa_patoline_ast_helpers.ml] is the single place
+    where AST construction lives; please add new helpers there and
+    call them from the parser.
+
+  - Rebuild with `dune build` and re-run a sample document to make
+    sure the new construct renders.
 
 => Writing parsers
 
-=<
+A custom parser implements the same interface as the default parser:
+an OCaml module with type [Pa_main.t].  You can drop it into a
+directory and load it via [pa_patoline --package myparser].
+
+A practical example is in [pa_patoline/pa_main.ml], which boots the
+default parser and exposes the resulting OCaml entry point to dune.
+A complete standalone parser is in the [pa_patoline.ml] executable,
+which can be invoked with `pa_patoline file.txp`.
+
+To experiment with new grammars, start with [pa_patoline/pa_lexer.ml]
+(the lexer used to feed Earley) and a copy of [pa_patoline/pa_parser.ml].
 
 => Writing formats
 
-=<
+A format is a Patoline program that:
 
-=> Writing output drivers\label("extending drivers")
+  - Defines macros for all the "block" commands (chapter, section,
+    paragraph, item, ...).
 
-=<
-=<
+  - Sets up the environment (default font, page geometry, ...) at
+    the top of the document.
+
+  - Implements the [FormatThese] module signature so it can be
+    instantiated by [pa_patoline].
+
+The simplest format is [formats/SimpleSlides.ml], which only does
+titles and bullets.  The canonical article-like format is
+[formats/FormatArticle.ml].  To write your own, copy [SimpleSlides.ml]
+and edit it; every macro is just an OCaml function.
+
+When you write a new format, give it a public name in the [formats/]
+dune stanza so it can be loaded as an opam package, and run it
+against the existing examples to make sure nothing has regressed.
+
+=> Writing output drivers
+
+An output driver implements the [Patoraw.Driver.OutputDriver]
+signature: an [output] and [output'] function that consume a
+[page array] and write a file.
+
+  - Look at [drivers/Pdf/Pdf.ml] for the canonical implementation.
+  - Look at [drivers/SVG/SVG.ml] for an SVG driver.
+  - Look at [drivers/Html/] for the HTML output.
+
+For a new target (for example, PDFium or Harfbuzz), the path is:
+
+  - Add a new directory under [drivers/] with a [dune] file.
+  - Register the driver name in [patconfig/patDefault.ml].
+  - Build and ship it as an opam package.
+
+Both [DriverPdfium] and [DriverHarfbuzz] already exist as stubs in
+[drivers/] and forward to [Pdf] when the underlying C library is not
+installed.  See the comment header in each of those modules for
+instructions on how to enable the real implementation.
+
+=>
