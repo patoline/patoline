@@ -143,8 +143,24 @@ let pat_to_name pat =
 
   | _ -> raise Not_found
 
+(** Latin Modern is not vendored (no [lmodern/] directory under [fonts/]).
+    Fall back to DejaVu for text and Asana-Math for math so the article
+    formats do not raise [Not_found] when they reach for LM. *)
+let lmodern_fallback pat =
+  match pat.family with
+  | "Latin Modern Math" -> { pat with family = "Asana Math" }
+  | "Latin Modern Mono" | "Latin Modern Mono Caps" ->
+      { pat with family = "Bitstream Vera Sans Mono" }
+  | "Latin Modern Roman" | "Latin Modern Roman Caps" ->
+      { pat with family = "DejaVu Serif" }
+  | _ -> pat
+
 let findFont pat =
   let open Patconfig.Config in
-  let name = pat_to_name pat in
-  if String.length name > 0 && name.[0] = '/' && Sys.file_exists name then name
-  else findFont name
+  let lookup pat =
+    let name = pat_to_name pat in
+    if String.length name > 0 && name.[0] = '/' && Sys.file_exists name then name
+    else findFont name
+  in
+  try lookup pat
+  with Not_found -> lookup (lmodern_fallback pat)
