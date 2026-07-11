@@ -71,6 +71,11 @@ let packages =
 let pat_format = ref None
 let pat_driver = ref None
 let do_clean = ref false
+let do_clean_cache = ref false
+let do_rebuild = ref false
+let do_serve = ref false
+let serve_port = ref 8080
+let serve_root = ref None
 let file = ref None
 let run_bin = ref true
 let add_bin_args l = bin_args := ((!bin_args) @ l)
@@ -94,11 +99,18 @@ let spec =
     ("--extra-hyph-dir",
       (Arg.String ((fun d -> add_bin_args ["--extra-hyph-dir"; d]))),
       "dir Add an hyphenation dictionary directory to the search path.");
+    ("--hyphen-lang",
+      (Arg.String ((fun l -> add_bin_args ["--hyphen-lang"; l]))),
+      "lang Hyphenation language (en-us, fr, de, de-1901, es, it, nl, pl, pt, ru, cs, sv, fi, hu).");
     ("--font-filter",
       (Arg.String ((fun c -> add_bin_args ["--font-filter"; c]))),
       "cmd Add a font filter command for the SVG or Patonet drivers.");
     ("--bin-args", (Arg.String ((fun s -> add_bin_args (parse_args s)))),
       "args Forward the given arguments to the binary.");
+    ("-o", (Arg.String ((fun d -> add_bin_args ["-o"; d]))),
+      "<file> Output file path (forwarded to the binary).");
+    ("--output", (Arg.String ((fun d -> add_bin_args ["-o"; d]))),
+      "<file> Output file path (forwarded to the binary).");
     ("-I", (Arg.String add_local_path),
       "dir Add the given path to the source directories.");
     ("--package", (Arg.String add_packages),
@@ -114,6 +126,21 @@ let spec =
     ("--verbose", (Arg.Int ((fun l -> Build.verbose := l))),
       "i Set the verbosity level.");
     ("--clean", (Arg.Set do_clean), " Cleanup the build directories.");
+    ("--clean-cache",
+      (Arg.Set do_clean_cache),
+      " Remove the hash-based incremental cache (cache.bin).");
+    ("--rebuild",
+      (Arg.Set do_rebuild),
+      " Force a full rebuild (ignore the hash-based cache).");
+    ("--serve",
+      (Arg.Set do_serve),
+      " Start an HTTP server for the generated document.");
+    ("--port",
+      (Arg.Set_int serve_port),
+      "i Set the HTTP server port (default 8080).");
+    ("--root",
+      (Arg.String ((fun d -> serve_root := Some d))),
+      "dir Set the HTTP server root directory.");
     ("--bin", (Arg.Clear run_bin),
       " Does not run the produced binary, only produces it.");
     ("--ascii", (Arg.Unit ((fun _ -> add_pp_args ["--ascii"]))),
@@ -164,6 +191,37 @@ let cfg =
     }
 let _ = if !do_clean then Build.clean_build_dirs cfg
 let _ =
+  (* Handle cache maintenance flags before [Build.compile] runs. *)
+  if !do_clean_cache then
+    let cache_fn = Build.cache_file (List.hd cfg.path) in
+    if Sys.file_exists cache_fn then
+      (Unix.unlink cache_fn;
+       if (!Build.verbose) > 0 then
+         Printf.printf "[CACHE] removed %S\n%!" cache_fn);
+  let cfg =
+    if !do_rebuild then
+      (* Force every input to look "changed" by appending a marker
+         to [opt_args]. The hash cache compares binary mtime + file
+         digests, so changing the arg list alone is not enough; the
+         simplest portable way is to remove cache.bin (the user
+         would normally pair [--rebuild] with [--clean-cache], but we
+         do it automatically here). *)
+      let cache_fn = Build.cache_file (List.hd cfg.path) in
+      (if Sys.file_exists cache_fn then Unix.unlink cache_fn;
+       if (!Build.verbose) > 0 then
+         Printf.printf "[CACHE] removed %S (--rebuild)\n%!" cache_fn;
+       cfg)
+    else cfg
+  in
   match !file with
-  | None -> if (!Build.verbose) > 1 then Printf.eprintf "Nothing to do.\n%!"
-  | Some fn -> Build.compile cfg fn
+  | None ->
+      if (!Build.verbose) > 1 then Printf.eprintf "Nothing to do.\n%!";
+      if !do_serve then
+        (Printf.eprintf "[serve] No input file given, serving current directory.\n%!";
+         Serve.serve ~port:!serve_port ~root:(Serve.pdf_root_from_arg None) ())
+      else ()
+  | Some fn ->
+      if !do_serve then
+        (Printf.eprintf "[serve] --serve is not yet supported with file input.\n%!";
+         exit 1)
+      else Build.compile cfg fn
