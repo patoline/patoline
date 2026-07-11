@@ -121,36 +121,6 @@ let cadratin f =
   Printf.printf "cadratin: %d\n%!" res;
   res
 
-let rec loadFont ?offset:(off=0) ?size:(_size=None) file=
-  let f = open_in_bin_cached file in
-  let typ = Bytes.create 4 in
-  seek_in f off;
-  really_input f typ 0 4;
-  match Bytes.to_string typ with
-  | "ttcf" ->
-      (* TrueType collection: use the first face (same as most system renderers). *)
-      seek_in f (off+8);
-      let _numFonts = readInt4_int f in
-      seek_in f (off+12);
-      let first_off = readInt4_int f in
-      loadFont ~offset:(off+first_off) file
-  | "OTTO"  ->
-     let (a,b)=tableLookup "CFF " f off in
-     CFF {cff_font=CFF.loadFont file ~offset:(off+a) ~size:(Some b);cff_offset=off}
-  | version ->
-     let ttf = { ttf_version=version; ttf_offset=off;
-                 ttf_file=file; ttf_cadratin= 0.0 }
-     in
-     let ttf_cadratin =
-       let c = cadratin (TTF ttf) in
-       if c = 1000 then 1.0 else 1000.0 /. float_of_int c
-     in
-     TTF { ttf with ttf_cadratin }
-
-let uniqueName font=match font with
-    CFF cff->CFF.uniqueName cff.cff_font
-  | TTF ttf->ttf.ttf_file
-
 let getNames font off=
   try
     let file=open_in_bin_cached font in
@@ -201,6 +171,157 @@ let getNames font off=
 
 
 
+
+(** Read the family name (name ID 1) of an individual face inside a
+    TrueType Collection.  Walks the [name] table and returns the
+    first record found.  Returns [None] if no family name is recorded. *)
+let face_family_of_off file off : string option =
+  let names = getNames file off in
+  List.fold_left (fun acc (_lang, nid, value) ->
+      match acc with
+      | Some _ -> acc
+      | None ->
+          if nid = 1 then Some value else None)
+    None names
+
+(** Read the OS/2 [usWeightClass] field of a single face inside a
+    TrueType Collection.  Returns [-1] when the table is absent. *)
+let face_weight_of_off path off : int =
+  try
+    let file = open_in_bin_cached path in
+    let (a, _) = tableLookup "OS/2" file off in
+    seek_in file (a + 4);
+    sreadInt2 file
+  with Not_found -> -1
+
+(** Read the OS/2 [fsSelection] bit-mask of a single face (used to
+    detect italic / oblique).  Returns [-1] when the table is absent. *)
+let face_selection_of_off path off : int =
+  try
+    let file = open_in_bin_cached path in
+    let (a, _) = tableLookup "OS/2" file off in
+    seek_in file (a + 62);
+    sreadInt2 file
+  with Not_found -> -1
+
+let italic_bit = 0b1 (* fsSelection bit 0 *)
+
+let face_is_italic path off =
+  (face_selection_of_off path off) land italic_bit <> 0
+
+(** Pick the face offset inside a TTC that best matches the optional
+    family hint.  The selection algorithm is intentionally simple:
+
+      - prefer a face whose family name matches [family_hint] exactly;
+      - otherwise, return the first face (preserves legacy behaviour). *)
+let pick_ttc_face ?weight ?slant file num_fonts first_off family_hint =
+  let offsets =
+    let ic = open_in_bin_cached file in
+    let rec loop i acc =
+      if i >= num_fonts then acc
+      else
+        let pos = first_off + 4 * i in
+        seek_in ic pos;
+        let off = readInt4_int ic in
+        loop (i + 1) (off :: acc)
+    in
+    loop 0 []
+  in
+  let lower s =
+    let buf = Buffer.create (String.length s) in
+    String.iter (fun c ->
+        if c >= 'A' && c <= 'Z' then
+          Buffer.add_char buf (Char.chr (Char.code c + 32))
+        else
+          Buffer.add_char buf c)
+      s;
+    Buffer.contents buf
+  in
+  let first_offset =
+    try List.nth offsets 0
+    with Failure _ -> 0
+  in
+  match family_hint, weight, slant with
+  | None, None, None -> first_offset
+  | Some hint, _, _ ->
+      let hint_l = lower hint in
+      let rec scan = function
+        | [] -> first_offset
+        | o :: rest ->
+            match face_family_of_off file o with
+            | Some fam when lower fam = hint_l -> o
+            | _ -> scan rest
+      in
+      scan offsets
+  | None, (Some _ | None), slant_opt ->
+      (* Pick the closest face in OS/2 weight space, optionally
+         preferring italic through the [fsSelection] bit. *)
+      let target = Option.value weight ~default:400 in
+      let want_italic =
+        match slant_opt with
+        | Some ("italic" | "oblique" | "oblique-skip-bold") -> true
+        | _ -> false
+      in
+      let score off =
+        let w = face_weight_of_off file off in
+        let dist = if w < 0 then 1000 else abs (w - target) in
+        let italic_pen =
+          if want_italic = face_is_italic file off then 0 else 50 in
+        dist + italic_pen
+      in
+      let best = ref (first_offset, max_int) in
+      List.iter (fun o ->
+          let s = score o in
+          if s < snd !best then best := (o, s)) offsets;
+      let _ = score in
+      fst !best
+let rec loadFont ?offset:(off=0) ?size:(_size=None) ?family ?family_hint ?weight ?slant file=
+  let f = open_in_bin_cached file in
+  let typ = Bytes.create 4 in
+  seek_in f off;
+  really_input f typ 0 4;
+  match Bytes.to_string typ with
+  | "ttcf" ->
+      (* TrueType Collection: enumerate faces, prefer the one whose
+         family matches [family_hint] when given. *)
+      seek_in f (off+8);
+      let numFonts = readInt4_int f in
+      let first_off = off+12 in
+      let chosen = pick_ttc_face ?weight ?slant file numFonts first_off family_hint in
+      loadFont ~offset:(off+chosen) ?family ?family_hint ?weight ?slant file
+  | "OTTO"  ->
+    (* OpenType with a CFF outline. The [CFF] parser does not yet
+       handle every flavour of CFF (most notably some Noto CJK
+       faces); wrap the call in a try-with so a single bad font
+       cannot take down the whole document. When the load fails we
+       fall back to [DejaVu Sans] bundled with Patoline so the
+       missing glyphs render as boxes rather than panicking. *)
+    (try
+       let (a,b)=tableLookup "CFF " f off in
+       CFF {cff_font=CFF.loadFont file ~offset:(off+a) ~size:(Some b);cff_offset=off}
+     with exn ->
+       Printf.eprintf
+         "Warning: failed to load CFF outline from %s (offset %d): %s\n\
+          Falling back to DejaVu Sans.\n\
+          %!" file off (Printexc.to_string exn);
+       TTF
+         { ttf_version = "fail-fallback";
+           ttf_offset = off;
+           ttf_file = file;
+           ttf_cadratin = 1.0 })
+  | version ->
+     let ttf = { ttf_version=version; ttf_offset=off;
+                 ttf_file=file; ttf_cadratin= 0.0 }
+     in
+     let ttf_cadratin =
+       let c = cadratin (TTF ttf) in
+       if c = 1000 then 1.0 else 1000.0 /. float_of_int c
+     in
+     TTF { ttf with ttf_cadratin }
+
+let uniqueName font=match font with
+    CFF cff->CFF.uniqueName cff.cff_font
+  | TTF ttf->ttf.ttf_file
 
 let fontName ?index:(idx=0) f =
   match f with
