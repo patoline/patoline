@@ -362,9 +362,10 @@ let empty_zipper = DocZipper.empty empty
 (** Function that takes a tree zipper [(t,cxt)] pointing to some node
    [t] and returns a zipper pointing to the father node of [t]. If this
    function is called on a zipper that points to the root of the tree, a
-   new empty node is created to have [t] as its only child. *)
+   new empty node is created to have [t] as its only child.
+
+   @deprecated Use DocZipper.up instead. *)
 let up = DocZipper.up
-  [@@ocaml.deprecated "Use DocZipper.up instead"]
 
 (** Function that applies {!val:up} n times on a zipper, effectively moving the
    zipper to the n-th ancestor of the currently pointed node. *)
@@ -895,16 +896,17 @@ let badness env paragraphs _ _
     +. v_bad
     (* Page pas assez remplie *)
     +. (if layout_page node_i<>layout_page node_j &&
-        node_i.height>=(fst node_i.layout).frame_y0+.env.lead then 10000. else 0.)
+        node_i.height>=(fst node_i.layout).frame_y0+.env.lead
+        then Badness.Demerit.page_underfull else 0.)
       (* Cesures *)
     +. (if node_j.hyphenEnd >=0 then
         (if node_j.hyphenStart >=0 then
-            1e10
+            Badness.Demerit.consecutive_hyphen
          else
-            1e8)
+            Badness.Demerit.hyphen)
       else
         (if node_j.hyphenStart >=0 then
-            1e8
+            Badness.Demerit.hyphen
          else
             0.)
     )
@@ -917,7 +919,7 @@ let badness env paragraphs _ _
       else 0.0
     )
     (* Différence de compression entre deux lignes consécutives *)
-    +. (1000.*.(abs_float (comp_i-.comp_j)))
+    +. (Badness.Demerit.compression_jitter *. (abs_float (comp_i-.comp_j)))
   )
 
 (** {3 Figures} *)
@@ -1276,16 +1278,29 @@ let makeGlue env x0=
         | 0xfeff->(glue 0. 0. 0.)
         | _->stdGlue
 
-(** Converts a [string] to a list of glyphs, according to the environment. *)
+(** P1-7: Convert a string into a list of glyphs using the current
+    font, falling back to the next family in [env.fontFamily] when a
+    glyph is missing. The list semantics of [fontFamily] already
+    support a fallback chain; we just had to honour it here. *)
 let gl_of_str env str =
-  try
-    let res = hyphenate env.hyphenate env.substitutions env.positioning env.font
-                        env.size env.fontColor str
-    in
-    res
-  with Glyph_not_found _ ->
-    Printf.eprintf "glyph not found in: %s (%S)\n%!" str str;
-    []
+  let rec try_with fam =
+    match fam with
+    | [] ->
+        Printf.eprintf "glyph not found in: %s (%S)\n%!" str str;
+        []
+    | (alt, (reg_lazy, _ital_lazy)) :: rest ->
+        let matched = alt = env.fontAlternative in
+        if not matched then
+          try_with rest
+        else
+          let f, _subst, _pos = Lazy.force reg_lazy in
+          try
+            hyphenate env.hyphenate env.substitutions env.positioning
+              f env.size env.fontColor str
+          with Glyph_not_found _ ->
+            try_with rest
+  in
+  try_with env.fontFamily
 
 (**/**)
 let append buf nbuf x=
@@ -1308,8 +1323,10 @@ let mappend m x=
   IntMap.add (a+1) x m
 
 
-(* let nfkc = UNF8.nfkc *)
-let nfkc x = x
+(* Normalize a UTF-8 string to NFKC before parsing. The previous
+   identity stub lost the [UNF8.nfkc] behavior; we now delegate to
+   [UChar.nfkc_string] which is backed by the [uucp] opam package. *)
+let nfkc x = UChar.nfkc_string x
 (**/**)
 
 
@@ -1357,8 +1374,9 @@ let boxify buf nbuf env0 l=
         | _                      ->
            let l = ref IntMap.empty in
            let t = nfkc t in
-           let rec cut_str i0 i =
-             if i >= String.length t then
+           let rec cut_str i0 i prev_cp =
+             let len = String.length t in
+             if i >= len then
                let sub = String.sub t i0 (i-i0) in
                l := mappend !l (gl_of_str env sub)
              else if UChar.is_space (UTF8.look t i) then
@@ -1366,10 +1384,17 @@ let boxify buf nbuf env0 l=
                l := mappend !l (gl_of_str env (nfkc sub));
                if i <> i0 || i = 0 then
                  l:=mappend !l [makeGlue env (UChar.code (UTF8.look t i))];
-               cut_str (UTF8.next t i) (UTF8.next t i)
-             else
-               cut_str i0 (UTF8.next t i)
-           in cut_str 0 0;
+               cut_str (UTF8.next t i) (UTF8.next t i) 0
+             else if prev_cp >= 0 &&
+                     UChar.is_break_opportunity prev_cp
+                       (UChar.code (UTF8.look t i)) then (
+               let sub = String.sub t i0 (i-i0) in
+               l := mappend !l (gl_of_str env (nfkc sub));
+               l := mappend !l [makeGlue env prev_cp];
+               cut_str (UTF8.next t i) (UTF8.next t i) 0
+             ) else
+               cut_str i0 (UTF8.next t i) (UChar.code (UTF8.look t i))
+           in cut_str 0 0 (-1);
            if keep_cache then cache := Some !l;
            IntMap.iter (fun _->List.iter (append buf nbuf)) !l;
            boxify keep_cache env s)
