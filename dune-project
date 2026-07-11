@@ -1,7 +1,8 @@
-(lang dune 2.7)
+(lang dune 3.0)
 (generate_opam_files true)
 
 (name patoline)
+(version 853d82f-dirty)
 (authors
  "Pierre-Étienne Meunier"
  "Christophe Raffalli <christophe@raffalli.eu>"
@@ -12,7 +13,7 @@
  "Rodolphe Lepigre <lepigre@mpi-sws.org>")
 (source (github patoline/patoline))
 (homepage "https://patoline.github.io")
-(license "GPL-2.0") ; TODO also add GPL-3.0 when we have dune 3.2
+(license "GPL-2.0")
 
 (package
  (name patoline)
@@ -26,15 +27,20 @@
    Patoline compiler, which compiles a mixed Wiki/LaTeX/Ocaml syntax into a
    variety of output formats, including traditional PDF files, but also web
    servers that deliver dynamic contents.")
+ (tags ("latex" "typesetting" "documentation" "typography"))
  (depends
-  (ocaml (>= 4.14.2))
+  (ocaml
+   (and
+    (>= 5.0.0)
+    (< 5.5.0)))
   ocamlfind
   (earley (= 3.0.0))
   (stdlib-shims (>= 0.1.0))
-  camlzip
-  sqlite3
-  (imagelib (= 20180522)))
+  (camlzip (>= 1.0))
+  (sqlite3 (>= 5.0))
+  (imagelib (>= 20180522))
+  uucp
+  uunf)
  (depopts
-  lablgl
   cairo2
   cryptokit))
