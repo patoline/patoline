@@ -1260,7 +1260,6 @@ let ams_font=Lazy.from_fun (fun ()->Fonts.loadFont
                                             (findFont FontPattern.({family = "Euler"; slant = Roman; weight = Regular})))
 let ams name code = symbol ~name (Lazy.force ams_font) [code]
 
-
 let adjusted_asana_delimiters' _ ls =
   match ls with
     [] -> assert false
@@ -1271,6 +1270,48 @@ let adjusted_asana_delimiters' _ ls =
 
 let adjusted_asana_delimiters name ls =
   adjusted_asana_delimiters' name (List.map (asana name) ls)
+
+(** P2-3: Math font fallback chain. We try the requested family first
+    (e.g. ["Asana Math"]) and walk the list until we find a font that
+    can be loaded. The last entry is always the bundled [DejaVu
+    Sans] which is guaranteed to exist. *)
+let math_fallback_chain =
+  ["Asana Math";
+   "STIX Two Math";
+   "Latin Modern Math";
+   "DejaVu Sans Math";
+   "DejaVu Sans"]
+
+let math_font family =
+  Lazy.from_fun (fun () ->
+      let try_family fam =
+        try Some (Fonts.loadFont
+                    (findFont FontPattern.({family = fam; slant = Roman; weight = Regular})))
+        with _ -> None
+      in
+      let rec loop = function
+        | [] -> failwith "No math font available (even DejaVu Sans is missing)"
+        | h :: _ when h = family ->
+            (match try_family h with
+             | Some f -> f
+             | None ->
+                 Printf.eprintf
+                   "Warning: %S not found, falling back to default math font chain.\n\
+                    %!" family;
+                 loop (List.filter ((<>) h) math_fallback_chain))
+        | _ :: rest -> loop rest
+      in
+      loop math_fallback_chain)
+
+(** P2-3: Re-build [adjusted_asana_delimiters] against the configured
+    math font. We keep the historical Asana Math glyph IDs as the
+    default and accept an optional override for callers that want
+    to use a different math font. *)
+let adjusted_delimiters_with_font ~font_family name ls =
+  let f = Lazy.force (math_font font_family) in
+  let map_glyph gid = symbol ~name f [gid] in
+  adjusted_asana_delimiters' name (List.map map_glyph ls)
+
 
 (* This function is for asana delimiters that are not compatible with other
      Asana delimiters !!! *)
