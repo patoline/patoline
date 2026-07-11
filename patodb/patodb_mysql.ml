@@ -1,3 +1,9 @@
+(* MIGRATION_NOTE: ocaml-mysql is unmaintained and unsafe on OCaml 5.
+   The library is wired as `(optional)` in `patodb/dune` and only
+   compiles when `ocaml-mysql` (community fork for OCaml 5) is
+   installed. See `README.md` ("Optional drivers and backends") and
+   the future migration paths to `ocaml-mariadb` (preferred) or
+   `mysql_protocol`. Source below is preserved verbatim for that port. *)
 open Patutil
 open Util
 

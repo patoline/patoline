@@ -36,6 +36,8 @@ let drivers =
   ; "DriverCairo"
   ; "DriverGL"
   ; "DriverImage"
+  ; "DriverHarfbuzz"
+  ; "DriverPdfium"
   ; "Html"
   ; "Net"
   ; "None"

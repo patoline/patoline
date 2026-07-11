@@ -7,18 +7,18 @@
   (preprocess (action (run pa_patoline --no-default-grammar --grammar
                              grammars/DefaultGrammar.tgy %{input-file})))
   (preprocessor_deps (file ../grammars/DefaultGrammar.tgy))
-  (libraries earley.core earley.str patoraw typography))
+  (libraries str earley.core earley.str patoraw typography))
 
 (library
-  (name Interactive)
-  (public_name patoline.package.interactive)
-  (modules Interactive)
-  (wrapped false)
-  (flags :standard -warn-error -A -w -33)
-  (preprocess (action (run pa_patoline --no-default-grammar --grammar
-                             grammars/DefaultGrammar.tgy %{input-file})))
-  (preprocessor_deps (file ../grammars/DefaultGrammar.tgy))
-  (libraries patodb patoraw typography Giac DefaultFormat))
+ (name Interactive)
+ (public_name patoline.package.interactive)
+ (modules Interactive)
+ (wrapped false)
+ (flags :standard -warn-error -A -w -33)
+ (preprocess (action (run pa_patoline --no-default-grammar --grammar
+                            grammars/DefaultGrammar.tgy %{input-file})))
+ (preprocessor_deps (file ../grammars/DefaultGrammar.tgy))
+ (libraries str patodb patoraw typography Giac DefaultFormat))
 
 (library
   (name ProofTree)

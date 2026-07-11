@@ -3,4 +3,4 @@
   (public_name patoline.bibi)
   (modules bibi)
   (wrapped false)
-  (libraries sqlite3 patutil typography unicodelib patconfig))
+  (libraries str sqlite3 patutil typography unicodelib patconfig))

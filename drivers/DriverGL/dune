@@ -1,8 +1,8 @@
 (library
-  (name DriverGL)
-  (public_name patoline.driver.DriverGL)
-  (modules DriverGL GlFBO Vec3)
-  (foreign_stubs (language c) (names FrameBuffer))
-  (wrapped false)
-  (optional) ; requires lablgl
-  (libraries patodb lablgl lablgl.glut patoraw))
+ (name DriverGL)
+ (public_name patoline.driver.DriverGL)
+ (modules DriverGL GlFBO Vec3)
+ (foreign_stubs (language c) (names FrameBuffer))
+ (wrapped false)
+ (optional) ; requires lablgl + lablgl.glut; see README.md
+ (libraries str patodb patoraw lablgl lablgl.glut))
