@@ -6,13 +6,73 @@ open Asttypes
 open Longident
 open Parsetree
 open Location
+(* Compat shim for OCaml 5.2+: [Ast_helper.fun_] was removed.
+   Route every `fun pat -> body` site through [Pa_parser.fun_]. *)
+let fun_ = Pa_parser.fun_
 
-let idl _loc txt = id_loc (Lident txt) _loc
-let iddot _loc m f = id_loc (Ldot (Lident m, f)) _loc
+let idl _loc txt = id_loc_longident (Lident txt) _loc
+(* Build a [Longident.t with_loc] for a 2-part dotted path.  Plain
+   [Ldot (Lident m, f)] no longer type-checks in OCaml 5.2+ because
+   [Ldot] now takes per-part locations. *)
+let dot2 _loc m f =
+  let mk t = { loc = _loc; txt = t } in
+  { loc = _loc;
+    txt = Longident.Ldot (mk (Longident.Lident m), mk f) }
+
+(* Build a plain [Longident.t] (not with_loc) with proper per-part locs.
+   Use this when callers expect [Longident.t] but construct [Ldot] which
+   now requires its parts to be [loc]'d. *)
+let longident_dot2 _loc m f =
+  let mk_loc t = { loc = _loc; txt = t } in
+  Longident.Ldot (mk_loc (Longident.Lident m), { loc = _loc; txt = f })
+
+(* Back-compat: returns a [Longident.t with_loc] of the same shape as
+   [dot2].  Kept under the original name so existing call sites can move
+   over gradually. *)
+let iddot _loc m f = dot2 _loc m f
+
+(* Wrap an arbitrary [Longident.t] into a [Longident.t with_loc] suitable for
+   OCaml 5.2+ AST payloads.  Each inner part of [Ldot]/[Lapply] receives the
+   supplied [_loc]. *)
+let lid_wrap _loc (li : Longident.t) : Longident.t Location.loc =
+  let loc = _loc in
+  let mk_loc t = { loc; txt = t } in
+  let rec loop = function
+    | Longident.Lident _ as l -> l
+    | Longident.Ldot ({ txt = l; _ }, { txt = s; _ }) ->
+      Longident.Ldot (mk_loc (loop l), mk_loc s)
+    | Longident.Lapply ({ txt = a; _ }, { txt = b; _ }) ->
+      Longident.Lapply (mk_loc (loop a), mk_loc (loop b))
+  in
+  { loc; txt = loop li }
+
+(* Same as [exp_lident] but takes an already-wrapped [Longident.t with_loc]. *)
+let exp_lident_l _loc li =
+  loc_expr _loc (Pexp_ident li)
+
+(* Build a 2-part [Longident.t with_loc] from string components.  Used for
+   dotted paths whose parts are variables rather than literals. *)
+let lid_loc_dot _loc m f =
+  let mk_loc t = { loc = _loc; txt = t } in
+  { Location.loc = _loc;
+    txt = Longident.Ldot (mk_loc (Longident.Lident m), { loc = _loc; txt = f }) }
+
+(* Build a [Longident.t with_loc] for a 3-part dotted path (X.Y.Z). *)
+let dot3 _loc m f g =
+  let mk t = { loc = _loc; txt = t } in
+  let inner = (dot2 _loc m f).txt in
+  { Location.loc = _loc;
+    txt = Longident.Ldot (mk inner, mk g) }
+
 
 let str_let_any _loc e =
   Str.value ~loc:_loc Nonrecursive [
     Vb.mk (Pat.any ~loc:_loc ()) e
+  ]
+
+let str_let_pat _loc pat e =
+  Str.value ~loc:_loc Nonrecursive [
+    Vb.mk pat e
   ]
 
 let exp_bang _loc e =
@@ -22,8 +82,8 @@ let exp_infix _loc op e1 e2 =
   Exp.apply ~loc:_loc (Exp.ident ~loc:_loc (idl _loc op))
     [ (Nolabel, e1); (Nolabel, e2) ]
 
-let str_open_lid _loc lid =
-  Str.open_ ~loc:_loc (Opn.mk ~loc:_loc (Mod.ident ~loc:_loc (id_loc lid _loc)))
+let str_open_lid _loc (lid : Longident.t) =
+  Str.open_ ~loc:_loc (Opn.mk ~loc:_loc (Mod.ident ~loc:_loc (lid_wrap _loc lid)))
 
 let exp_mod_open _loc m e =
   Exp.open_ ~loc:_loc
@@ -34,51 +94,51 @@ let real_name_fold _loc mid mp =
   List.fold_left (fun acc m -> exp_mod_open _loc m acc) (exp_ident _loc mid) mp
 
 let maths_glyphs_str _loc s =
-  exp_apply1 _loc (exp_lident _loc (Ldot (Lident "Maths", "glyphs"))) (exp_string _loc s)
+  exp_apply1 _loc (exp_ident_longident _loc (dot2 _loc "Maths" "glyphs")) (exp_string _loc s)
 
 let ordinary_list_node _loc node_e =
   exp_list _loc [
-    exp_const _loc (Ldot (Lident "Maths", "Ordinary")) (Some node_e)
+    exp_const_longident _loc (dot2 _loc "Maths" "Ordinary") (Some node_e)
   ]
 
 (** [Maths.Ordinary (Maths.node (fun x y -> List.flatten (Maths.multi_glyphs dv x y)))] as list expr *)
 let ordinary_multi_glyphs_node _loc dv =
   let fun_xy =
-    Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "x" })
-      (Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "y" })
-         (exp_apply1 _loc (exp_lident _loc (Ldot (Lident "List", "flatten")))
-            (exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "multi_glyphs")))
+    fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "x" })
+      (fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "y" })
+         (exp_apply1 _loc (exp_ident_longident _loc (dot2 _loc "List" "flatten"))
+            (exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "multi_glyphs"))
                [ dv; exp_ident _loc "x"; exp_ident _loc "y" ])))
   in
   ordinary_list_node _loc
-    (exp_apply1 _loc (exp_lident _loc (Ldot (Lident "Maths", "node"))) fun_xy)
+    (exp_apply1 _loc (exp_ident_longident _loc (dot2 _loc "Maths" "node")) fun_xy)
 
 let ordinary_hd_glyphs_node _loc dv =
   let fun_xy =
-    Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "x" })
-      (Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "y" })
-         (exp_apply1 _loc (exp_lident _loc (Ldot (Lident "List", "hd")))
-            (exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "multi_glyphs")))
+    fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "x" })
+      (fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "y" })
+         (exp_apply1 _loc (exp_ident_longident _loc (dot2 _loc "List" "hd"))
+            (exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "multi_glyphs"))
                [ dv; exp_ident _loc "x"; exp_ident _loc "y" ])))
   in
   ordinary_list_node _loc
-    (exp_apply1 _loc (exp_lident _loc (Ldot (Lident "Maths", "node"))) fun_xy)
+    (exp_apply1 _loc (exp_ident_longident _loc (dot2 _loc "Maths" "node")) fun_xy)
 
 let maths_normal _loc nsl md nsr =
-  exp_const _loc (Ldot (Lident "Maths", "Normal"))
+  exp_const_longident _loc (dot2 _loc "Maths" "Normal")
     (Some (exp_tuple _loc [ exp_bool _loc nsl; md; exp_bool _loc nsr ]))
 
 (** Spacing cell between quantifier arguments / invisible infix (cf. [print_math_symbol Invisible]). *)
 let maths_invisible _loc =
   let glyph_node =
     exp_apply1 _loc
-      (exp_lident _loc (Ldot (Lident "Maths", "node")))
+      (exp_ident_longident _loc (dot2 _loc "Maths" "node"))
       (maths_glyphs_str _loc "invisible")
   in
   maths_normal _loc true glyph_node true
 
 let maths_bin _loc prio nd left right =
-  exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "bin"))) [
+  exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "bin")) [
     exp_int _loc prio;
     nd;
     left;
@@ -87,7 +147,7 @@ let maths_bin _loc prio nd left right =
 
 let maths_ordinary_cell _loc md =
   exp_list _loc [
-    exp_const _loc (Ldot (Lident "Maths", "Ordinary")) (Some md)
+    exp_const_longident _loc (dot2 _loc "Maths" "Ordinary") (Some md)
   ]
 
 let quantifier_nested_bin _loc md inter d_expr m_expr =
@@ -99,7 +159,7 @@ let quantifier_nested_bin _loc md inter d_expr m_expr =
 
 let maths_op_limits _loc deco m_expr =
   exp_list _loc [
-    exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "op_limits"))) [
+    exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "op_limits")) [
       exp_list _loc [];
       deco;
       m_expr;
@@ -108,7 +168,7 @@ let maths_op_limits _loc deco m_expr =
 
 let maths_op_nolimits _loc deco m_expr =
   exp_list _loc [
-    exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "op_nolimits"))) [
+    exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "op_nolimits")) [
       exp_list _loc [];
       deco;
       m_expr;
@@ -117,7 +177,7 @@ let maths_op_nolimits _loc deco m_expr =
 
 let maths_fraction _loc l r =
   exp_list _loc [
-    exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "fraction"))) [ l; r ]
+    exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "fraction")) [ l; r ]
   ]
 
 let maths_binary_record _loc sp inter l r =
@@ -136,43 +196,43 @@ let maths_binary_record _loc sp inter l r =
 
 let maths_decoration _loc l r m =
   exp_list _loc [
-    exp_const _loc (Ldot (Lident "Maths", "Decoration"))
+    exp_const_longident _loc (dot2 _loc "Maths" "Decoration")
       (Some
-         (Exp.tuple ~loc:_loc [
-            exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "open_close"))) [ l; r ];
+         (exp_tuple _loc [
+            exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "open_close")) [ l; r ];
             m;
           ]))
   ]
 
 let inline_math_kdraw_bb _loc m =
   let kbody =
-    exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "kdraw"))) [
+    exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "kdraw")) [
       exp_list _loc [ exp_ident _loc "env0" ];
       m;
     ]
   in
   exp_list _loc [
     exp_apply1 _loc (exp_ident _loc "bB")
-      (Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env0" }) kbody);
+      (fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env0" }) kbody);
   ]
 
 let display_math_kdraw_bb _loc m =
   let inner = exp_apply1 _loc (exp_ident _loc "displayStyle") m in
   let kbody =
-    exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "kdraw"))) [
+    exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "kdraw")) [
       exp_list _loc [ exp_ident _loc "env0" ];
       inner;
     ]
   in
   exp_list _loc [
     exp_apply1 _loc (exp_ident _loc "bB")
-      (Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env0" }) kbody);
+      (fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env0" }) kbody);
   ]
 
 let paragraph_newpar_struct _loc p ~indented =
   let d_struct = Exp.ident ~loc:_loc (iddot _loc "D" "structure") in
   let env =
-    Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "x" })
+    fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "x" })
       (Exp.record ~loc:_loc
          [ (idl _loc "par_indent", exp_Nil _loc) ]
          (Some (Exp.ident ~loc:_loc (idl _loc "x"))))
@@ -198,7 +258,7 @@ let paragraph_newpar_struct _loc p ~indented =
   [ str_let_any _loc (exp_infix _loc ":=" d_struct rhs) ]
 
 let array_get_lid _loc nom idx =
-  exp_apply2 _loc (exp_lident _loc (Ldot (Lident "Array", "get")))
+  exp_apply2 _loc (exp_ident_longident _loc (dot2 _loc "Array" "get"))
     (exp_ident _loc nom) (exp_int _loc idx)
 
 let struct_filter_default_expr _loc (s : structure) =
@@ -215,7 +275,7 @@ let struct_filter_default_expr _loc (s : structure) =
   let body =
     Exp.letmodule ~loc:_loc { loc = _loc; txt = Some "Res" } me list_inner
   in
-  let f = Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env" }) body in
+  let f = fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env" }) body in
   exp_list _loc [ exp_apply1 _loc (exp_ident _loc "bB") f ]
 
 let struct_filter_diagram_expr _loc (s : structure) =
@@ -245,8 +305,7 @@ let struct_filter_diagram_expr _loc (s : structure) =
   in
   let make_drawing =
     Exp.apply ~loc:_loc
-      (Exp.ident ~loc:_loc
-         (id_loc (Ldot (Ldot (Lident "Res", "Diagram"), "make")) _loc))
+      (Exp.ident ~loc:_loc (dot3 _loc "Res" "Diagram" "make"))
       [ (Nolabel, Exp.construct ~loc:_loc (idl _loc "()") None) ]
   in
   let list_inner =
@@ -256,7 +315,7 @@ let struct_filter_diagram_expr _loc (s : structure) =
   let body =
     Exp.letmodule ~loc:_loc { loc = _loc; txt = Some "Res" } res_mod list_inner
   in
-  let f = Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env" }) body in
+  let f = fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env" }) body in
   exp_list _loc [ exp_apply1 _loc (exp_ident _loc "bB") f ]
 
 (** Record fields for [Maths] superscripts (with [r] accumulator in caller). *)
@@ -286,16 +345,16 @@ let print_math_deco_finish _loc (fields : (Longident.t Location.loc * expression
   let draw_inner =
     Exp.apply ~loc:_loc
       (Exp.apply ~loc:_loc
-         (exp_lident _loc (Ldot (Lident "Maths", "draw")))
+         (exp_ident_longident _loc (dot2 _loc "Maths" "draw"))
          [ (Nolabel, exp_list _loc [ exp_ident _loc "env" ]) ])
       [ (Nolabel, elt) ]
   in
   let node_fun =
-    Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env" })
-      (Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "st" })
+    fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env" })
+      (fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "st" })
          draw_inner)
   in
-  let node_inner = exp_apply1 _loc (exp_lident _loc (Ldot (Lident "Maths", "node"))) node_fun in
+  let node_inner = exp_apply1 _loc (exp_ident_longident _loc (dot2 _loc "Maths" "node")) node_fun in
   let rec_e = loc_expr _loc (Pexp_record (fields, Some node_inner)) in
   exp_list _loc [ Exp.construct ~loc:_loc (iddot _loc "Maths" "Ordinary") (Some rec_e) ]
 
@@ -303,26 +362,26 @@ let print_math_deco_finish _loc (fields : (Longident.t Location.loc * expression
 let symbol_paragraph_structure _loc ~syms ~names : structure =
   let d_struct = Exp.ident ~loc:_loc (iddot _loc "D" "structure") in
   let env_fun =
-    Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "x" })
+    fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "x" })
       (Exp.record ~loc:_loc
          [ (idl _loc "par_indent", exp_Nil _loc) ]
          (Some (Exp.ident ~loc:_loc (idl _loc "x"))))
   in
   let left_arrow =
-    exp_apply1 _loc (exp_lident _loc (Ldot (Lident "Maths", "glyphs")))
+    exp_apply1 _loc (exp_ident_longident _loc (dot2 _loc "Maths" "glyphs"))
       (exp_string _loc "\226\135\144")
   in
   let normal_inner =
     Exp.construct ~loc:_loc (iddot _loc "Maths" "Normal")
       (Some
-         (Exp.tuple ~loc:_loc [
+         (exp_tuple _loc [
             exp_bool _loc false;
-            exp_apply1 _loc (exp_lident _loc (Ldot (Lident "Maths", "node"))) left_arrow;
+            exp_apply1 _loc (exp_ident_longident _loc (dot2 _loc "Maths" "node")) left_arrow;
             exp_bool _loc false;
           ]))
   in
   let bin_expr =
-    exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "bin"))) [
+    exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "bin")) [
       exp_int _loc 0;
       normal_inner;
       syms;
@@ -333,21 +392,21 @@ let symbol_paragraph_structure _loc ~syms ~names : structure =
     Exp.record ~loc:_loc
       [ (idl _loc "mathStyle",
          Exp.construct ~loc:_loc
-           (id_loc (Ldot (Lident "Mathematical", "Display")) _loc)
+           (dot2 _loc "Mathematical" "Display")
            None) ]
       (Some (Exp.ident ~loc:_loc (idl _loc "env0")))
   in
   let kdraw_env_list = exp_list _loc [ env0_record ] in
   let inner_list = exp_list _loc [ bin_expr ] in
   let kdraw_app =
-    exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "kdraw"))) [
+    exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "kdraw")) [
       kdraw_env_list;
       inner_list;
     ]
   in
   let bb =
     exp_apply1 _loc (exp_ident _loc "bB")
-      (Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env0" })
+      (fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env0" })
          kdraw_app)
   in
   let par_list = exp_list _loc [ bb ] in
@@ -370,8 +429,8 @@ let write_main_structure _loc ~dcache ~driver ~form ~m ~full : structure =
     List.map (str_open_lid _loc) [
       Lident "Patoraw";
       Lident "Typography";
-      Ldot (Lident "Typography", "Box");
-      Ldot (Lident "Typography", "Document");
+      longident_dot2 _loc "Typography" "Box";
+      longident_dot2 _loc "Typography" "Document";
       Lident "RawContent";
       Lident "Color";
     ]
@@ -379,12 +438,12 @@ let write_main_structure _loc ~dcache ~driver ~form ~m ~full : structure =
   let read_cache =
     str_let_any _loc
       (exp_apply1 _loc
-         (exp_lident _loc (Ldot (Lident "Distance", "read_cache")))
+         (exp_ident_longident _loc (dot2 _loc "Distance" "read_cache"))
          (exp_string _loc dcache))
   in
   let node_tags =
     exp_list _loc [
-      Exp.tuple ~loc:_loc [ exp_string _loc "intoc"; exp_string _loc "" ]
+      exp_tuple _loc [ exp_string _loc "intoc"; exp_string _loc "" ]
     ]
   in
   let record_node =
@@ -396,7 +455,7 @@ let write_main_structure _loc ~dcache ~driver ~form ~m ~full : structure =
     Exp.construct ~loc:_loc (idl _loc "Node") (Some record_node)
   in
   let tuple_state =
-    Exp.tuple ~loc:_loc [ node_tree; exp_Nil _loc ]
+    exp_tuple _loc [ node_tree; exp_Nil _loc ]
   in
   let ref_expr =
     exp_apply1 _loc (Exp.ident ~loc:_loc (idl _loc "ref")) tuple_state
@@ -419,17 +478,59 @@ let write_main_structure _loc ~dcache ~driver ~form ~m ~full : structure =
   let driver_mod =
     Str.module_ ~loc:_loc
       (Mb.mk ~loc:_loc { loc = _loc; txt = Some "Driver" }
-         (Mod.ident ~loc:_loc (id_loc (Lident driver) _loc)))
+         (Mod.ident ~loc:_loc (id_loc_longident (Lident driver) _loc)))
+  in
+  (* Synthesize an [Arg.align]-wrapped list of options that override
+     [output_path] when the user passes [-o] / [--output]. The ref
+     [output_path] is initialized to [~full] in [output_ref_init]
+     below. We splice this list into the generated [Arg.parse_argv]
+     call so the override is handled at the top level (driver-agnostic). *)
+  let assign_output_path s =
+    exp_apply2 _loc (exp_ident _loc ":=")
+      (Exp.ident ~loc:_loc (idl _loc "output_path"))
+      (Exp.ident ~loc:_loc (idl _loc s))
+  in
+  let arg_string_setter =
+    Exp.construct ~loc:_loc (iddot _loc "Arg" "String") (Some
+      (fun_ ~loc:_loc Nolabel None
+         (Pat.var ~loc:_loc { loc = _loc; txt = "s" })
+         (assign_output_path "s")))
+  in
+  let entry name doc =
+    Exp.tuple ~loc:_loc
+    (List.map (fun e -> (None, e))
+       [ exp_string _loc name; arg_string_setter; exp_string _loc doc ])
+  in
+  let output_spec =
+    exp_apply _loc
+      (exp_ident_longident _loc (dot2 _loc "Arg" "align"))
+      [
+        exp_list _loc [
+          entry "-o" "<file> Output path";
+          entry "--output" "<file> Output path";
+        ]
+      ]
   in
   let driver_opts_app =
     exp_infix _loc "@"
-      (Exp.ident ~loc:_loc (iddot _loc "Driver" "driver_options"))
-      (Exp.ident ~loc:_loc (iddot _loc "DefaultFormat" "spec"))
+      (exp_infix _loc "@"
+         (exp_infix _loc "@"
+            output_spec
+            (Exp.ident ~loc:_loc (iddot _loc "Driver" "driver_options")))
+         (Exp.ident ~loc:_loc (iddot _loc "DefaultFormat" "spec")))
+      (exp_list _loc [])
+  in
+  let output_ref_init =
+    str_let_pat _loc
+      (Pat.var ~loc:_loc { loc = _loc; txt = "output_path" })
+      (exp_apply1 _loc
+         (exp_ident_longident _loc (dot2 _loc "Stdlib" "ref"))
+         (exp_string _loc full))
   in
   let parse_argv_e =
-    exp_apply _loc (exp_lident _loc (Ldot (Lident "Arg", "parse_argv"))) [
+    exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Arg" "parse_argv")) [
       exp_apply1 _loc
-        (exp_lident _loc (Ldot (Lident "Driver", "filter_options")))
+        (exp_ident_longident _loc (dot2 _loc "Driver" "filter_options"))
         (Exp.ident ~loc:_loc (iddot _loc "Sys" "argv"));
       driver_opts_app;
       Exp.ident ~loc:_loc (idl _loc "ignore");
@@ -440,7 +541,7 @@ let write_main_structure _loc ~dcache ~driver ~form ~m ~full : structure =
   let pf0_me =
     Mod.apply ~loc:_loc
       (Mod.ident ~loc:_loc
-         (id_loc (Ldot (Lident form, "Format")) _loc))
+         ((lid_loc_dot _loc form "Format")))
       (Mod.ident ~loc:_loc (idl _loc "D"))
   in
   let pf0 = Str.module_ ~loc:_loc (Mb.mk ~loc:_loc { loc = _loc; txt = Some "Patoline_Format0" } pf0_me) in
@@ -453,7 +554,7 @@ let write_main_structure _loc ~dcache ~driver ~form ~m ~full : structure =
   let out_me =
     Mod.apply ~loc:_loc
       (Mod.ident ~loc:_loc
-         (id_loc (Ldot (Lident "Patoline_Format0", "Output")) _loc))
+         (dot2 _loc "Patoline_Format0" "Output"))
       (Mod.ident ~loc:_loc (idl _loc "Driver"))
   in
   let out_mod =
@@ -464,7 +565,7 @@ let write_main_structure _loc ~dcache ~driver ~form ~m ~full : structure =
     Mod.apply ~loc:_loc
       (Mod.apply ~loc:_loc
          (Mod.ident ~loc:_loc
-            (id_loc (Ldot (Lident m, "Document")) _loc))
+            ((lid_loc_dot _loc m "Document")))
          (Mod.ident ~loc:_loc (idl _loc "Patoline_Output")))
       (Mod.ident ~loc:_loc (idl _loc "D"))
   in
@@ -473,13 +574,13 @@ let write_main_structure _loc ~dcache ~driver ~form ~m ~full : structure =
   in
   let open_tmp = str_open_lid _loc (Lident "TMP") in
   let fold_fun =
-    Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "acc" })
-      (Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "f" })
+    fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "acc" })
+      (fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "f" })
          (exp_apply1 _loc (exp_ident _loc "f") (exp_ident _loc "acc")))
   in
   let output_call =
     Exp.apply ~loc:_loc
-      (exp_lident _loc (Ldot (Lident "Patoline_Output", "output")))
+      (exp_ident_longident _loc (dot2 _loc "Patoline_Output" "output"))
       [
         (Nolabel,
          Exp.ident ~loc:_loc (iddot _loc "Patoline_Output" "outputParams"));
@@ -488,25 +589,28 @@ let write_main_structure _loc ~dcache ~driver ~form ~m ~full : structure =
            (exp_apply1 _loc (exp_ident _loc "top")
               (exp_bang _loc (Exp.ident ~loc:_loc (iddot _loc "D" "structure")))));
         (Nolabel,
-         exp_apply _loc (exp_lident _loc (Ldot (Lident "List", "fold_left"))) [
+         exp_apply _loc (exp_ident_longident _loc (dot2 _loc "List" "fold_left")) [
            fold_fun;
            Exp.ident ~loc:_loc (iddot _loc "Patoline_Format" "defaultEnv");
            exp_bang _loc (Exp.ident ~loc:_loc (idl _loc "init_env_hook"));
          ]);
-        (Nolabel, exp_string _loc full);
+        (Nolabel,
+         exp_apply1 _loc (exp_ident _loc "!")
+           (Exp.ident ~loc:_loc (idl _loc "output_path")));
       ]
   in
   let output_stmt = str_let_any _loc output_call in
   let write_cache =
     str_let_any _loc
       (exp_apply1 _loc
-         (exp_lident _loc (Ldot (Lident "Distance", "write_cache")))
+         (exp_ident_longident _loc (dot2 _loc "Distance" "write_cache"))
          (exp_string _loc dcache))
   in
   opens @ [
     read_cache;
     d_binding;
     driver_mod;
+    output_ref_init;
     parse_argv;
     pf0;
     open_pf0;
@@ -524,9 +628,9 @@ let wrap_document_structure _loc ~basename ~patoline_format ~cache_arr ~mcache_a
     List.map (str_open_lid _loc) [
       Lident "Patoraw";
       Lident "Typography";
-      Ldot (Lident "Typography", "Box");
-      Ldot (Lident "Typography", "Document");
-      Ldot (Lident "Typography", "Maths");
+      longident_dot2 _loc "Typography" "Box";
+      longident_dot2 _loc "Typography" "Document";
+      longident_dot2 _loc "Typography" "Maths";
       Lident "RawContent";
       Lident "Color";
       Lident "Driver";
@@ -552,7 +656,7 @@ let wrap_document_structure _loc ~basename ~patoline_format ~cache_arr ~mcache_a
   let pf_me =
     Mod.apply ~loc:_loc
       (Mod.ident ~loc:_loc
-         (id_loc (Ldot (Lident patoline_format, "Format")) _loc))
+         ((lid_loc_dot _loc patoline_format "Format")))
       (Mod.ident ~loc:_loc (idl _loc "D"))
   in
   let pf_mod =
@@ -565,7 +669,7 @@ let wrap_document_structure _loc ~basename ~patoline_format ~cache_arr ~mcache_a
     Str.value ~loc:_loc Nonrecursive [
       Vb.mk
         (Pat.var ~loc:_loc { loc = _loc; txt = "temp1" })
-        (exp_apply _loc (exp_lident _loc (Ldot (Lident "List", "map"))) [
+        (exp_apply _loc (exp_ident_longident _loc (dot2 _loc "List" "map")) [
            exp_ident _loc "fst";
            exp_apply1 _loc (exp_ident _loc "snd")
              (exp_bang _loc (Exp.ident ~loc:_loc (iddot _loc "D" "structure")));
@@ -579,7 +683,7 @@ let wrap_document_structure _loc ~basename ~patoline_format ~cache_arr ~mcache_a
          (exp_apply _loc (exp_ident _loc "follow") [
             exp_apply1 _loc (exp_ident _loc "top")
               (exp_bang _loc (Exp.ident ~loc:_loc (iddot _loc "D" "structure")));
-            exp_apply1 _loc (exp_lident _loc (Ldot (Lident "List", "rev")))
+            exp_apply1 _loc (exp_ident_longident _loc (dot2 _loc "List" "rev"))
               (exp_ident _loc "temp1");
           ]))
   in
@@ -587,7 +691,7 @@ let wrap_document_structure _loc ~basename ~patoline_format ~cache_arr ~mcache_a
     Named
       ( { loc = _loc; txt = Some "Patoline_Output" },
         Mty.ident ~loc:_loc
-          (id_loc (Ldot (Lident "DefaultFormat", "Output")) _loc) )
+          (dot2 _loc "DefaultFormat" "Output") )
   in
   let fp_d =
     Named
@@ -614,14 +718,14 @@ let exp_unit _loc =
   Exp.construct ~loc:_loc (idl _loc "()") None
 
 let exp_ident_ldot _loc m field =
-  Exp.ident ~loc:_loc (id_loc (Ldot (Lident m, field)) _loc)
+  Exp.ident ~loc:_loc (lid_loc_dot _loc m field)
 
 let include_document_structure _loc ~temp_id ~id : structure =
   let doc_me =
     Mod.apply ~loc:_loc
       (Mod.apply ~loc:_loc
          (Mod.ident ~loc:_loc
-            (id_loc (Ldot (Lident id, "Document")) _loc))
+            ((lid_loc_dot _loc id "Document")))
          (Mod.ident ~loc:_loc (idl _loc "Patoline_Output")))
       (Mod.ident ~loc:_loc (idl _loc "D"))
   in
@@ -715,7 +819,7 @@ let begin_env_paragraph_structure _loc ~m1 ~m2 ~idb
 let display_math_paragraph_structure _loc (m : expression) : structure =
   let d_struct = Exp.ident ~loc:_loc (iddot _loc "D" "structure") in
   let env_fun =
-    Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "x" })
+    fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "x" })
       (Exp.record ~loc:_loc
          [ (idl _loc "par_indent", exp_Nil _loc) ]
          (Some (Exp.ident ~loc:_loc (idl _loc "x"))))
@@ -725,21 +829,21 @@ let display_math_paragraph_structure _loc (m : expression) : structure =
       [
         ( idl _loc "mathStyle",
           Exp.construct ~loc:_loc
-            (id_loc (Ldot (Lident "Mathematical", "Display")) _loc)
+            (dot2 _loc "Mathematical" "Display")
             None );
       ]
       (Some (Exp.ident ~loc:_loc (idl _loc "env0")))
   in
   let kdraw_env_list = exp_list _loc [ env0_record ] in
   let kdraw_app =
-    exp_apply _loc (exp_lident _loc (Ldot (Lident "Maths", "kdraw"))) [
+    exp_apply _loc (exp_ident_longident _loc (dot2 _loc "Maths" "kdraw")) [
       kdraw_env_list;
       m;
     ]
   in
   let bb =
     exp_apply1 _loc (exp_ident _loc "bB")
-      (Exp.fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env0" })
+      (fun_ ~loc:_loc Nolabel None (Pat.var ~loc:_loc { loc = _loc; txt = "env0" })
          kdraw_app)
   in
   let par_list = exp_list _loc [ bb ] in

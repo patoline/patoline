@@ -1319,10 +1319,10 @@ module Ext(In:Extension) =
       let merge x y =
         let comma =
           Pa_ast.exp_apply1 _loc
-            (Pa_ast.exp_lident _loc (Ldot ((Lident "Maths"), "node")))
+            (Pa_ast.exp_ident_longident _loc ({ Location.loc = _loc; txt = Longident.Ldot ({ Location.loc = _loc; txt = Longident.Lident "Maths" }, { Location.loc = _loc; txt = "node" }) }))
             (maths_glyphs_str _loc ",") in
         let normal =
-          Pa_ast.exp_const _loc (Ldot ((Lident "Maths"), "Normal"))
+          Pa_ast.exp_const_longident _loc ({ Location.loc = _loc; txt = Longident.Ldot ({ Location.loc = _loc; txt = Longident.Lident "Maths" }, { Location.loc = _loc; txt = "Normal" }) })
             (Some
                (Pa_ast.exp_tuple _loc
                   [Pa_ast.exp_bool _loc false;
@@ -1330,7 +1330,7 @@ module Ext(In:Extension) =
                   Pa_ast.exp_bool _loc false])) in
         Pa_ast.exp_list _loc
           [Pa_ast.exp_apply _loc
-             (Pa_ast.exp_lident _loc (Ldot ((Lident "Maths"), "bin")))
+             (Pa_ast.exp_ident_longident _loc ({ Location.loc = _loc; txt = Longident.Ldot ({ Location.loc = _loc; txt = Longident.Lident "Maths" }, { Location.loc = _loc; txt = "bin" }) }))
              [Pa_ast.exp_int _loc 0; normal; x; y]] in
       List.fold_left merge (List.hd l) (List.tl l)
     let dollar = Pa_lexing.single_char '$'
@@ -2148,16 +2148,16 @@ module Ext(In:Extension) =
                  let _ = incr count_sym in res)))
     let print_ordinary_math_symbol _loc sym =
       Pa_ast.exp_list _loc
-        [Pa_ast.exp_const _loc (Ldot ((Lident "Maths"), "Ordinary"))
+        [Pa_ast.exp_const_longident _loc ({ Location.loc = _loc; txt = Longident.Ldot ({ Location.loc = _loc; txt = Longident.Lident "Maths" }, { Location.loc = _loc; txt = "Ordinary" }) })
            (Some
               (Pa_ast.exp_apply1 _loc
-                 (Pa_ast.exp_lident _loc (Ldot ((Lident "Maths"), "node")))
+                 (Pa_ast.exp_ident_longident _loc ({ Location.loc = _loc; txt = Longident.Ldot ({ Location.loc = _loc; txt = Longident.Lident "Maths" }, { Location.loc = _loc; txt = "node" }) }))
                  (print_math_symbol _loc sym)))]
     let print_math_deco_sym _loc elt ind =
       if ind = no_ind
       then
         Pa_ast.exp_apply1 _loc
-          (Pa_ast.exp_lident _loc (Ldot ((Lident "Maths"), "node")))
+          (Pa_ast.exp_ident_longident _loc ({ Location.loc = _loc; txt = Longident.Ldot ({ Location.loc = _loc; txt = Longident.Lident "Maths" }, { Location.loc = _loc; txt = "node" }) }))
           (print_math_symbol _loc elt)
       else
         (let r : (Longident.t Location.loc * Parsetree.expression) list ref =
@@ -2182,7 +2182,7 @@ module Ext(In:Extension) =
           | _ -> ());
          (let node_e =
             Pa_ast.exp_apply1 _loc
-              (Pa_ast.exp_lident _loc (Ldot ((Lident "Maths"), "node")))
+              (Pa_ast.exp_ident_longident _loc ({ Location.loc = _loc; txt = Longident.Ldot ({ Location.loc = _loc; txt = Longident.Lident "Maths" }, { Location.loc = _loc; txt = "node" }) }))
               (print_math_symbol _loc elt) in
           Pa_ast.loc_expr _loc (Parsetree.Pexp_record ((!r), (Some node_e)))))
     let print_math_deco _loc elt ind =
@@ -2487,7 +2487,7 @@ module Ext(In:Extension) =
             symbol_value =
               (CamlSym
                  (Pa_ast.exp_apply1 _loc
-                    (Pa_ast.exp_lident _loc (Ldot ((Lident "List"), "hd")))
+                    (Pa_ast.exp_ident_longident _loc ({ Location.loc = _loc; txt = Longident.Ldot ({ Location.loc = _loc; txt = Longident.Lident "List" }, { Location.loc = _loc; txt = "hd" }) }))
                     operator_values))
           } in
         let insert map name = PrefixTree.add name asym map in
@@ -2519,13 +2519,13 @@ module Ext(In:Extension) =
         (let sym =
            ordinary_list_node _loc
              (Pa_ast.exp_apply1 _loc
-                (Pa_ast.exp_lident _loc (Ldot ((Lident "Maths"), "node")))
+                (Pa_ast.exp_ident_longident _loc ({ Location.loc = _loc; txt = Longident.Ldot ({ Location.loc = _loc; txt = Longident.Lident "Maths" }, { Location.loc = _loc; txt = "node" }) }))
                 (maths_glyphs_str _loc uchr)) in
          let macro = "\\" ^ macro in
          let macro =
            ordinary_list_node _loc
              (Pa_ast.exp_apply1 _loc
-                (Pa_ast.exp_lident _loc (Ldot ((Lident "Maths"), "node")))
+                (Pa_ast.exp_ident_longident _loc ({ Location.loc = _loc; txt = Longident.Ldot ({ Location.loc = _loc; txt = Longident.Lident "Maths" }, { Location.loc = _loc; txt = "node" }) }))
                 (maths_glyphs_str _loc macro)) in
          symbol_paragraph _loc sym macro)
       else []
@@ -3736,23 +3736,17 @@ module Ext(In:Extension) =
                                                                     "env"
                                                                     (Pa_ast.exp_apply2
                                                                     _loc_name
-                                                                    (Pa_ast.exp_lident
+                                                                    (Pa_ast.exp_ident_longident
                                                                     _loc_name
-                                                                    (Ldot
-                                                                    ((Lident
-                                                                    "Maths"),
-                                                                    "glyphs")))
+                                                                    { Location.loc = _loc_name; txt = Longident.Ldot ({ Location.loc = _loc_name; txt = Longident.Lident "Maths" }, { Location.loc = _loc_name; txt = "glyphs" }) })
                                                                     (Pa_ast.exp_string
                                                                     _loc_name
                                                                     name)
                                                                     (Pa_ast.exp_apply2
                                                                     _loc_name
-                                                                    (Pa_ast.exp_lident
+                                                                    (Pa_ast.exp_ident_longident
                                                                     _loc_name
-                                                                    (Ldot
-                                                                    ((Lident
-                                                                    "Maths"),
-                                                                    "change_fonts")))
+                                                                    { Location.loc = _loc_name; txt = Longident.Ldot ({ Location.loc = _loc_name; txt = Longident.Lident "Maths" }, { Location.loc = _loc_name; txt = "change_fonts" }) })
                                                                     (Pa_ast.exp_ident
                                                                     _loc_name
                                                                     "env")
@@ -5891,9 +5885,9 @@ module Ext(In:Extension) =
                                               Pa_ast.exp_list _loc
                                                 [Ast_helper.Exp.tuple
                                                    ~loc:_loc
-                                                   [Pa_ast.exp_string _loc
+                                                   [None, Pa_ast.exp_string _loc
                                                       "Date";
-                                                   Pa_ast.exp_apply1 _loc
+                                                   None, Pa_ast.exp_apply1 _loc
                                                      (Pa_ast.exp_ident _loc
                                                         "string_of_contents")
                                                      t]] in
@@ -5904,9 +5898,9 @@ module Ext(In:Extension) =
                                               Pa_ast.exp_list _loc
                                                 [Ast_helper.Exp.tuple
                                                    ~loc:_loc
-                                                   [Pa_ast.exp_string _loc
+                                                   [None, Pa_ast.exp_string _loc
                                                       "Institute";
-                                                   Pa_ast.exp_apply1 _loc
+                                                   None, Pa_ast.exp_apply1 _loc
                                                      (Pa_ast.exp_ident _loc
                                                         "string_of_contents")
                                                      t]] in
@@ -5917,9 +5911,9 @@ module Ext(In:Extension) =
                                               Pa_ast.exp_list _loc
                                                 [Ast_helper.Exp.tuple
                                                    ~loc:_loc
-                                                   [Pa_ast.exp_string _loc
+                                                   [None, Pa_ast.exp_string _loc
                                                       "Author";
-                                                   Pa_ast.exp_apply1 _loc
+                                                   None, Pa_ast.exp_apply1 _loc
                                                      (Pa_ast.exp_ident _loc
                                                         "string_of_contents")
                                                      t]] in
@@ -5931,12 +5925,12 @@ module Ext(In:Extension) =
                                             (Ast_helper.Exp.ident ~loc:_loc
                                                (iddot _loc "Patoline_Format"
                                                   "title"))
-                                            [(Nolabel,
+                                            [(Asttypes.Nolabel,
                                                (Ast_helper.Exp.ident
                                                   ~loc:_loc
                                                   (iddot _loc "D" "structure")));
                                             ((Labelled "extra_tags"), tags);
-                                            (Nolabel, title)] in
+                                            (Asttypes.Nolabel, title)] in
                                         [str_let_any _loc title_call]))))))
     let wrap basename _loc ast =
       wrap_document_structure _loc ~basename
@@ -6072,8 +6066,11 @@ module Ext(In:Extension) =
       (".ml", (Implementation (parse_ml, blank2)));
       (".mli", (Interface (parse_mli, blank2)))]
   end
-let write_main_file driver form build_dir dir name =
-  let full = Filename.concat dir name in
+let write_main_file ?(output_file : string option = None) driver form build_dir dir name =
+  let full = match output_file with
+    | Some f -> f
+    | None -> Filename.concat dir name
+  in
   let fullb = Filename.concat build_dir name in
   let file = fullb ^ "_.ml" in
   let oc = open_out file in
