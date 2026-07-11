@@ -66,20 +66,20 @@ module Make(Initial:Extension) =
         |(("+"|"+."), Pexp_constant { pconst_desc = Pconst_float _; _ }) ->
           Exp.mk ~loc arg.pexp_desc
       | (("-"|"-."|"+"|"+."), _) ->
-          let lid = id_loc (Lident ("~" ^ name)) loc_name in
+          let lid = id_loc_longident (Lident ("~" ^ name)) loc_name in
           let fn = Exp.ident ~loc:loc_name lid in
           Exp.apply ~loc fn [(nolabel, arg)]
       | _ ->
-          let lid = id_loc (Lident name) loc_name in
+          let lid = id_loc_longident (Lident name) loc_name in
           let fn = Exp.ident ~loc:loc_name lid in
           Exp.apply ~loc fn [(nolabel, arg)]
     let mk_binary_op loc e' op loc_op e =
       if op = "::"
       then
-        let lid = id_loc (Lident "::") loc_op in
+        let lid = id_loc_longident (Lident "::") loc_op in
         Exp.construct ~loc lid (Some (Exp.tuple ~loc:(ghost loc) [(None, e'); (None, e)]))
       else
-        (let id = Exp.ident ~loc:loc_op (id_loc (Lident op) loc_op) in
+        (let id = Exp.ident ~loc:loc_op (id_loc_longident (Lident op) loc_op) in
          Exp.apply ~loc id [(nolabel, e'); (nolabel, e)])
     let wrap_type_annotation loc types core_type body =
       let exp = Exp.constraint_ ~loc body core_type in
@@ -174,7 +174,7 @@ module Make(Initial:Extension) =
                              let _loc =
                                locate __loc__start__buf __loc__start__pos
                                  __loc__end__buf __loc__end__pos in
-                             fun _default_0 -> id_loc None _loc)))
+                             fun _default_0 -> id_loc_string_opt None _loc)))
               (List.cons
                  (Earley_core.Earley.fsequence uident
                     (Earley_core.Earley.empty_pos
@@ -185,7 +185,7 @@ module Make(Initial:Extension) =
                                 let _loc =
                                   locate __loc__start__buf __loc__start__pos
                                     __loc__end__buf __loc__end__pos in
-                                fun u -> id_loc (Some u) _loc))) [])))
+                                fun u -> id_loc_string_opt (Some u) _loc))) [])))
     let modtype_name = ident
     let class_name = lident
     let inst_var_name = lident
@@ -1010,7 +1010,7 @@ module Make(Initial:Extension) =
                                   fun tc ->
                                     let _loc_tc = locate str1 pos1 str2 pos2 in
                                     fun _default_0 ->
-                                      let tc = id_loc tc _loc_tc in (tc, te)))))))
+                                      let tc = id_loc_longident tc _loc_tc in (tc, te)))))))
     let package_type = Earley_core.Earley.declare_grammar "package_type"
     let _ =
       Earley_core.Earley.set_grammar package_type
@@ -1069,7 +1069,7 @@ module Make(Initial:Extension) =
                           (Earley_core.Earley.empty (fun l -> l))))) [])))
     let mkoption loc d =
       let loc = ghost loc in
-      Typ.constr ~loc (id_loc (ldot_append (Lident "*predef*") "option") loc) [d]
+      Typ.constr ~loc (id_loc_longident (ldot_append (Lident "*predef*") "option") loc) [d]
     let extra_types_grammar lvl =
       alternatives (List.map (fun g -> g lvl) extra_types)
     let op_cl =
@@ -1280,7 +1280,7 @@ module Make(Initial:Extension) =
                                                                    pos2 in
                                                                Typ.constr
                                                                  ~loc:_loc
-                                                                 (id_loc tc
+                                                                 (id_loc_longident tc
                                                                     _loc_tc)
                                                                  []))))
                                     (List.cons
@@ -1353,7 +1353,7 @@ module Make(Initial:Extension) =
                                                                     fun te ->
                                                                     Typ.constr
                                                                     ~loc:_loc
-                                                                    (id_loc
+                                                                    (id_loc_longident
                                                                     tc
                                                                     _loc_tc)
                                                                     (te ::
@@ -1395,7 +1395,7 @@ module Make(Initial:Extension) =
                                                                     fun t ->
                                                                     Typ.constr
                                                                     ~loc:_loc
-                                                                    (id_loc
+                                                                    (id_loc_longident
                                                                     tc
                                                                     _loc_tc)
                                                                     [t])))))
@@ -1757,7 +1757,7 @@ module Make(Initial:Extension) =
                                    fun id ->
                                      let _loc_id = locate str1 pos1 str2 pos2 in
                                      fun var ->
-                                       ((Name (id_loc id _loc_id)), var)))))
+                                       ((Name (loc_id _loc_id id)), var)))))
                  [])))
     let type_params = Earley_core.Earley.declare_grammar "type_params"
     let _ =
@@ -2331,7 +2331,7 @@ module Make(Initial:Extension) =
                                                  fun params ->
                                                    fun _default_0 ->
                                                      let tcn =
-                                                       id_loc tcn _loc_tcn in
+                                                       id_loc_longident tcn _loc_tcn in
                                                      let params =
                                                        params_map params in
                                                      Te.mk ~attrs ~params
@@ -2657,7 +2657,7 @@ module Make(Initial:Extension) =
                                           let _loc_ctp =
                                             locate str1 pos1 str2 pos2 in
                                           fun tes ->
-                                            let ctp = id_loc ctp _loc_ctp in
+                                            let ctp = id_loc_longident ctp _loc_ctp in
                                             pcty_loc _loc
                                               (Pcty_constr (ctp, tes))))))
               (List.cons
@@ -3008,7 +3008,7 @@ module Make(Initial:Extension) =
                                                  locate str1 pos1 str2 pos2 in
                                                fun p ->
                                                  let cons =
-                                                   id_loc (Lident "::")
+                                                   id_loc_longident (Lident "::")
                                                      _loc_c in
                                                  let args =
                                                    loc_pat (ghost _loc)
@@ -3830,19 +3830,23 @@ module Make(Initial:Extension) =
                                                                     __loc__end__pos in
                                                                     fun pt ->
                                                                     fun mn ->
+                                                                    let mn_str =
+                                                                      longident_loc_to_string mn in
+                                                                    let mn_opt =
+                                                                      { Asttypes.txt = Some mn_str.Asttypes.txt; loc = mn_str.Asttypes.loc } in
                                                                     fun
                                                                     _default_0
                                                                     ->
                                                                     let pat =
                                                                     Pat.unpack
                                                                     ~loc:_loc
-                                                                    mn in
+                                                                    mn_opt in
                                                                     match pt
                                                                     with
-                                                                    | 
+                                                                    |
                                                                     None ->
                                                                     pat
-                                                                    | 
+                                                                    |
                                                                     Some pt
                                                                     ->
                                                                     let pt =
@@ -4105,7 +4109,7 @@ module Make(Initial:Extension) =
                                           ((labelled id),
                                             (loc_expr _loc_id
                                                (Pexp_ident
-                                                  (id_loc (Lident id) _loc_id)))))))))
+                                                  (id_loc_longident (Lident id) _loc_id)))))))))
                  (List.cons
                     (Earley_core.Earley.fsequence ty_label
                        (Earley_core.Earley.fsequence
@@ -4126,7 +4130,7 @@ module Make(Initial:Extension) =
                                              locate str1 pos1 str2 pos2 in
                                            ((optional id),
                                              (Exp.ident ~loc:_loc_id
-                                                (id_loc (Lident id) _loc_id)))))))
+                                                (id_loc_longident (Lident id) _loc_id)))))))
                        (List.cons
                           (Earley_core.Earley.fsequence ty_opt_label
                              (Earley_core.Earley.fsequence
@@ -4158,7 +4162,7 @@ module Make(Initial:Extension) =
                                                  locate str1 pos1 str2 pos2 in
                                                fun _default_0 ->
                                                  let name =
-                                                   id_loc name _loc_name in
+                                                   id_loc_longident name _loc_name in
                                                  `Type name)))))) []
                  else [])
                 (List.cons
@@ -4957,7 +4961,7 @@ module Make(Initial:Extension) =
                            fun pos2 ->
                              fun f ->
                                let _loc_f = locate str1 pos1 str2 pos2 in
-                               let id = id_loc (Lident f) _loc_f in
+                               let id = id_loc_longident (Lident f) _loc_f in
                                (id, (loc_expr _loc_f (Pexp_ident id))))))
               (List.cons
                  (Earley_core.Earley.fsequence_position field
@@ -4989,7 +4993,7 @@ module Make(Initial:Extension) =
                            fun pos2 ->
                              fun f ->
                                let _loc_f = locate str1 pos1 str2 pos2 in
-                               let id = id_loc (Lident f) _loc_f in
+                               let id = id_loc_longident (Lident f) _loc_f in
                                (id, (loc_expr _loc_f (Pexp_ident id))))))
               (List.cons
                  (Earley_core.Earley.fsequence_position field
@@ -5086,7 +5090,7 @@ module Make(Initial:Extension) =
                                         fun cp ->
                                           let _loc_cp =
                                             locate str1 pos1 str2 pos2 in
-                                          let cp = id_loc cp _loc_cp in
+                                          let cp = id_loc_longident cp _loc_cp in
                                           loc_pcl _loc (Pcl_constr (cp, [])))))
                  (List.cons
                     (Earley_core.Earley.fsequence_ignore
@@ -6205,7 +6209,7 @@ module Make(Initial:Extension) =
                                              cbs)))))
     let pexp_list _loc ?loc_cl  l =
       if l = []
-      then loc_expr _loc (pexp_construct ((id_loc (Lident "[]") _loc), None))
+      then loc_expr _loc (pexp_construct ((id_loc_longident (Lident "[]") _loc), None))
       else
         (let loc_cl =
            ghost (match loc_cl with | None -> _loc | Some pos -> pos) in
@@ -6215,14 +6219,14 @@ module Make(Initial:Extension) =
                 let _loc = ghost (merge2 pos loc_cl) in
                 loc_expr _loc
                   (pexp_construct
-                     ((id_loc (Lident "::") (ghost _loc)),
+                     ((id_loc_longident (Lident "::") (ghost _loc)),
                        (Some (loc_expr _loc (Pexp_tuple [(None, x); (None, acc)])))))) l
            (loc_expr loc_cl
-              (pexp_construct ((id_loc (Lident "[]") loc_cl), None))))
+              (pexp_construct ((id_loc_longident (Lident "[]") loc_cl), None))))
     let apply_lbl _loc (lbl, e) =
       let e =
         match e with
-        | None -> loc_expr _loc (Pexp_ident (id_loc (Lident lbl) _loc))
+        | None -> loc_expr _loc (Pexp_ident (id_loc_longident (Lident lbl) _loc))
         | Some e -> e in
       (lbl, e)
     let rec mk_seq loc_c final =
@@ -6261,7 +6265,10 @@ module Make(Initial:Extension) =
                                              __loc__start__pos
                                              __loc__end__buf __loc__end__pos in
                                          fun mt ->
-                                           fun mn -> (_loc, (Named (mn, mt))))))))))
+                                           fun mn ->
+                                             let mn_str = longident_loc_to_string mn in
+                                             let mn_opt = { Asttypes.txt = Some mn_str.Asttypes.txt; loc = mn_str.Asttypes.loc } in
+                                             (_loc, (Named (mn_opt, mt))))))))))
               (List.cons
                  (Earley_core.Earley.fsequence_ignore
                     (Earley_core.Earley.char '(' '(')
@@ -6496,6 +6503,10 @@ module Make(Initial:Extension) =
                                                                     str2 pos2 in
                                                                     fun l ->
                                                                     fun mn ->
+                                                                    let mn_str =
+                                                                      longident_loc_to_string mn in
+                                                                    let mn_opt =
+                                                                      { Asttypes.txt = Some mn_str.Asttypes.txt; loc = mn_str.Asttypes.loc } in
                                                                     fun
                                                                     _default_0
                                                                     ->
@@ -6506,10 +6517,10 @@ module Make(Initial:Extension) =
                                                                     let me =
                                                                     match mt
                                                                     with
-                                                                    | 
+                                                                    |
                                                                     None ->
                                                                     me
-                                                                    | 
+                                                                    |
                                                                     Some mt
                                                                     ->
                                                                     let loc =
@@ -6536,7 +6547,7 @@ module Make(Initial:Extension) =
                                                                     (List.rev
                                                                     l) in
                                                                     Exp.letmodule
-                                                                    ~loc mn
+                                                                    ~loc mn_opt
                                                                     me e))))))))
                                       []))))
                           (Earley_core.Earley.fsequence_ignore in_kw
@@ -8201,7 +8212,7 @@ module Make(Initial:Extension) =
                                   locate __loc__start__buf __loc__start__pos
                                     __loc__end__buf __loc__end__pos in
                                 fun mp ->
-                                  let mid = id_loc mp _loc in
+                                  let mid = id_loc_longident mp _loc in
                                   mexpr_loc _loc (Pmod_ident mid))))
                  (List.cons
                     (Earley_core.Earley.fsequence
@@ -8890,6 +8901,10 @@ module Make(Initial:Extension) =
                                                                     str1 pos1
                                                                     str2 pos2 in
                                                                     fun mn ->
+                                                                    let mn_str =
+                                                                      longident_loc_to_string mn in
+                                                                    let mn_opt =
+                                                                      { Asttypes.txt = Some mn_str.Asttypes.txt; loc = mn_str.Asttypes.loc } in
                                                                     fun
                                                                     _default_0
                                                                     ->
@@ -8897,7 +8912,7 @@ module Make(Initial:Extension) =
                                                                     (merge2
                                                                     _loc_mt
                                                                     _loc_me)
-                                                                    mn mt me)))))))
+                                                                    mn_opt mt me)))))))
                                                                     (fun x ->
                                                                     fun f ->
                                                                     fun l ->
@@ -8955,6 +8970,10 @@ module Make(Initial:Extension) =
                                                                     str1 pos1
                                                                     str2 pos2 in
                                                                     fun mn ->
+                                                                    let mn_str =
+                                                                      longident_loc_to_string mn in
+                                                                    let mn_opt =
+                                                                      { Asttypes.txt = Some mn_str.Asttypes.txt; loc = mn_str.Asttypes.loc } in
                                                                     fun
                                                                     _default_0
                                                                     ->
@@ -8963,7 +8982,7 @@ module Make(Initial:Extension) =
                                                                     (merge2
                                                                     _loc_mt
                                                                     _loc_me)
-                                                                    mn mt me in
+                                                                    mn_opt mt me in
                                                                     Str.rec_module
                                                                     ~loc:_loc
                                                                     (m :: ms)))))))))
@@ -9054,6 +9073,10 @@ module Make(Initial:Extension) =
                                                                     str2 pos2 in
                                                                     fun l ->
                                                                     fun mn ->
+                                                                    let mn_str =
+                                                                      longident_loc_to_string mn in
+                                                                    let mn_opt =
+                                                                      { Asttypes.txt = Some mn_str.Asttypes.txt; loc = mn_str.Asttypes.loc } in
                                                                     let me =
                                                                     let loc =
                                                                     merge2
@@ -9089,7 +9112,7 @@ module Make(Initial:Extension) =
                                                                     Str.module_
                                                                     ~loc:_loc
                                                                     (module_binding
-                                                                    _loc mn
+                                                                    _loc mn_opt
                                                                     None me))))))))
                                                   []))))
                                       (Earley_core.Earley.empty (fun r -> r))))
@@ -9559,6 +9582,10 @@ module Make(Initial:Extension) =
                                                                     fun a ->
                                                                     fun mt ->
                                                                     fun mn ->
+                                                                    let mn_str =
+                                                                      longident_loc_to_string mn in
+                                                                    let mn_opt =
+                                                                      { Asttypes.txt = Some mn_str.Asttypes.txt; loc = mn_str.Asttypes.loc } in
                                                                     fun
                                                                     _default_0
                                                                     ->
@@ -9566,7 +9593,7 @@ module Make(Initial:Extension) =
                                                                     ~attributes:(
                                                                     attach_attrib
                                                                     _loc a)
-                                                                    _loc mn
+                                                                    _loc mn_opt
                                                                     mt)))))))
                                                            (fun x ->
                                                               fun f ->
@@ -9619,8 +9646,11 @@ module Make(Initial:Extension) =
                                                                     fun pos2
                                                                     ->
                                                                     fun mn ->
-                                                                    let _loc_mn
-                                                                    =
+                                                                    let mn_str =
+                                                                      longident_loc_to_string mn in
+                                                                    let mn_opt =
+                                                                      { Asttypes.txt = Some mn_str.Asttypes.txt; loc = mn_str.Asttypes.loc } in
+                                                                    let _loc_mn =
                                                                     locate
                                                                     str1 pos1
                                                                     str2 pos2 in
@@ -9642,7 +9672,7 @@ module Make(Initial:Extension) =
                                                                     loc_first
                                                                     a)
                                                                     loc_first
-                                                                    mn mt in
+                                                                    mn_opt mt in
                                                                     Sig.rec_module
                                                                     ~loc:_loc
                                                                     (m :: ms))))))))))
@@ -9785,6 +9815,10 @@ module Make(Initial:Extension) =
                                                                     str2 pos2 in
                                                                     fun l ->
                                                                     fun mn ->
+                                                                    let mn_str =
+                                                                      longident_loc_to_string mn in
+                                                                    let mn_opt =
+                                                                      { Asttypes.txt = Some mn_str.Asttypes.txt; loc = mn_str.Asttypes.loc } in
                                                                     let fn
                                                                     acc
                                                                     (loc, p)
@@ -9809,7 +9843,7 @@ module Make(Initial:Extension) =
                                                                     ~loc:_loc
                                                                     (Md.mk
                                                                     ~loc:_loc
-                                                                    ~attrs mn
+                                                                    ~attrs mn_opt
                                                                     mt))))))))
                                                   [])))
                                          (Earley_core.Earley.empty
