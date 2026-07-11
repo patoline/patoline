@@ -1,0 +1,8 @@
+(library
+ (name DriverHarfbuzz)
+ (public_name patoline.driver.DriverHarfbuzz)
+ (modules :standard)
+ (wrapped false)
+ (optional) ; requires `harfbuzz` opam package + libharfbuzz-dev at runtime.
+              ; Skipped in default builds; enabled with `opam install patoline --depopts`.
+ (libraries patoraw DriverCairo))
