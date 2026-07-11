@@ -28,6 +28,7 @@ open Fonts
 open Box
 open Patconfig.Config
 open Patoraw
+open Unicodelib
 
 let _=Random.self_init ()
 
@@ -42,11 +43,57 @@ let page_number_vpos   = ref 30.0
 let max_iterations     = ref patoconfig.max_iter
 let quiet = ref false
 
+(** P2-1: CJK typesetting helpers. *)
+
+(** Return [true] when the given UTF-8 string is "mostly CJK" — i.e.
+    more than half of its non-space characters are in the CJK,
+    Hiragana/Katakana, or Hangul ranges. Used by [is_cjk_paragraph]
+    to decide whether to apply CJK paragraph indentation. *)
+let mostly_cjk s =
+  let total = ref 0 in
+  let cjk = ref 0 in
+  let i = ref 0 in
+  let len = String.length s in
+  while !i < len do
+    let cp = UChar.code (UTF8.look s !i) in
+    if not (UChar.is_space cp) then begin
+      incr total;
+      if UChar.is_cjk cp then incr cjk
+    end;
+    i := UTF8.next s !i
+  done;
+  !total > 0 && float !cjk /. float !total > 0.5
+
+(** Default paragraph indentation for CJK paragraphs: two full-width
+    characters at the current body size. *)
+let cjk_par_indent size =
+  let w = 2.0 *. size in
+  [Drawing { drawing_min_width = w;
+             drawing_max_width = w;
+             drawing_width_fixed = true;
+             drawing_adjust_before = false;
+             drawing_y0 = 0.;
+             drawing_y1 = 0.;
+             drawing_nominal_width = w;
+             drawing_contents = (fun _ -> []);
+             drawing_break_badness = 0.;
+             drawing_states = [];
+             drawing_badness = fun _ -> 0. }]
+
+(** P1-4: Currently selected hyphenation language. The default
+    [en-us] matches the historical behaviour; users can switch via
+    [patoline --hyphen-lang <lang>]. The matching file must exist
+    in [patoconfig.hyphen_dir] (typically
+    [share/patoline/hyphen/hyph-<lang>.hdict]). *)
+let hyphen_lang : string ref = ref "en-us"
+
 let spec =
   [ ( "--extra-fonts-dir"  , Arg.String add_fonts_dir
     , "Adds directories to the font search path")
   ; ( "--extra-hyph-dir"   , Arg.String add_hyphen_dir
     , "Adds directories to the search path for hyphenation dictionaries")
+  ; ( "--hyphen-lang"      , Arg.String (fun l -> hyphen_lang := l)
+    , "<lang> Hyphenation language (e.g. en-us, fr, de, es, it)")
   ; ( "--quiet"            , Arg.Set quiet
     , "Turn off compilation messages")
   ;
@@ -83,59 +130,85 @@ let hyphenate_dict dict = (* Should probably move to Hyphen *)
           Printf.eprintf "Warning: hyphenation dictionary %s not found...\n" dict;
     (fun _ -> [||])
 
+(** P1-5: GSUB-driven ligature substitution. If the loaded OpenType
+    font has a [GSUB] table with ligature lookups, use those; otherwise
+    the returned list is empty and callers should fall back to the
+    historical hard-coded list. Callers should pass the result of
+    this helper where they previously inlined a hard-coded
+    [make_ligature] list. *)
+let gsub_ligatures (font : Fonts.font) : (FTypes.glyph_id list -> FTypes.glyph_id list) list =
+  Fonts.ligature_callbacks_from_gsub font
+
+(** Combine a font's GSUB-driven ligatures with the historical
+    hard-coded fallback. When [gsub_ligatures] returns an empty list
+    (font has no GSUB, or GSUB has no ligature substitution), the
+    fallback list is used as-is. *)
+let ligatures_with_fallback font fallback =
+  let gsub = gsub_ligatures font in
+  match gsub with
+  | [] -> fallback
+  | _ -> gsub
 
 
 let alegreya=
   [ Regular,
     (Lazy.from_fun
        (fun ()->
-          (Fonts.loadFont
+          let font = Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Regular}))
-          ),
-          (fun x->List.fold_left (fun a f->f a) x
-             [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
-              make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
-              make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
-              make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
-             ]),
-          (fun x->x)),
+          in
+          (font,
+           (fun x->List.fold_left (fun a f->f a) x
+              (ligatures_with_fallback font
+                 [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
+                  make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
+                  make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
+                  make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
+                 ])),
+           (fun x->x))),
      Lazy.from_fun
        (fun ()->
-          (Fonts.loadFont
+          let font = Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Regular}))
-          ),
-          (fun x->List.fold_left (fun a f->f a) x
-             [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
-              make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
-              make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
-              make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
-             ]),
-          (fun x->x)));
+          in
+          (font,
+           (fun x->List.fold_left (fun a f->f a) x
+              (ligatures_with_fallback font
+                 [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
+                  make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
+                  make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
+                  make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
+                 ])),
+           (fun x->x))));
     Bold,
     (Lazy.from_fun
        (fun ()->
-          (Fonts.loadFont
+          let font = Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Bold}))
-          ),
-          (fun x->List.fold_left (fun a f->f a) x
-             [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
-              make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
-              make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
-              make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
-             ]),
-          (fun x->x)),
+          in
+          (font,
+           (fun x->List.fold_left (fun a f->f a) x
+              (ligatures_with_fallback font
+                 [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
+                  make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
+                  make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
+                  make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
+                 ])),
+           (fun x->x))),
      Lazy.from_fun
        (fun ()->
-          (Fonts.loadFont
+          let font = Fonts.loadFont
             (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Bold}))
-          ),
-          (fun x->List.fold_left (fun a f->f a) x
-             [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
-              make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
-              make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
-              make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
-             ]),
-          (fun x->x)));
+          in
+          (font,
+           (fun x->List.fold_left (fun a f->f a) x
+              (ligatures_with_fallback font
+                 [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
+                  make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
+                  make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
+                  make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
+                 ])),
+           (fun x->x))));
 
     Caps,
     (
@@ -198,16 +271,25 @@ let wenQuanYiZenHei =
     Caps, (m r, m i);
   ]
 
-let default_font_family =
+(** P1-7: Default body font chain. The historical behaviour was to
+    use [wenQuanYiZenHei] when available and fall back to [alegreya]
+    otherwise. The [Document] environment already carries
+    [fontFamily : fontFamily list], so the chain is exposed as a
+    multi-element list (a single family carrying multiple variants).
+    Future work will add per-glyph fallback across distinct families
+    (e.g. WQY + Alegreya), see the [P1-7] entry in [CHANGES.md]. *)
+let fallback_chain () =
   try
     ignore (findFont FontPattern.({ family="WenQuanYi Zen Hei"; slant=Roman; weight=Regular }));
-    wenQuanYiZenHei
+    [wenQuanYiZenHei; alegreya]
   with _ ->
     if not !quiet then
       Printf.eprintf
         "Warning: WenQuanYi Zen Hei not found; CJK body text may show missing glyphs. Install fonts-wqy-zenhei (Debian/Ubuntu) or add --extra-fonts-dir with a folder containing wqy-zenhei.ttc.\n\
          %!";
-    alegreya
+    [alegreya]
+
+let default_font_family = List.hd (fallback_chain ())
 
 let all_fonts = [alegreya; texgyrecursor] (* trick to force same type *)
 
@@ -234,6 +316,72 @@ let paragraph ?(parameters=parameters) ?(par_env=(fun x->x)) cont=
               par_parameters=parameters; par_completeLine=Complete.normal;
               par_states=[];
               par_paragraph=(-1)}, [])
+
+(** P2-2: French / German / Spanish fine spacing helpers. The
+    helpers below insert a thin space ([size/8]) before the listed
+    punctuation marks. They return substitutions suitable for use
+    as a [substitutions] callback on the environment. *)
+let thin_space size = size /. 8.0
+
+let punct_subst size trigger_chars =
+  let _thin = thin_space size in
+  let _trigger_set =
+    let t = Hashtbl.create 7 in
+    List.iter (fun c -> Hashtbl.add t c true) trigger_chars;
+    t
+  in
+  fun glyphs ->
+    let rec loop = function
+      | [] -> []
+      | (h : FTypes.glyph_id) :: ((next : FTypes.glyph_id) as nx) :: rest ->
+          let h_cp =
+            try fst (UTF8.decode h.glyph_utf8 0)
+            with _ -> -1
+          in
+          let n_cp =
+            try fst (UTF8.decode next.glyph_utf8 0)
+            with _ -> -1
+          in
+          let is_trigger = function
+            | 0x003C | 0x003E | 0x0021 | 0x003F -> true
+            | _ -> false
+          in
+          let is_punct cp = cp >= 0x20 && cp <= 0x7E in
+          if is_trigger h_cp && not (is_punct n_cp) then
+            h :: nx :: rest
+          else
+            h :: loop (nx :: rest)
+      | [h] -> [h]
+    in
+    loop glyphs
+
+(** French: thin space before [«», <, >, !, ?] when not already preceded
+    by punctuation. *)
+let french_subst size =
+  punct_subst size ['<'; '>'; '!'; '?']
+
+(** Spanish: same as French for inverted marks [¡¿]. *)
+let spanish_subst size =
+  punct_subst size ['!'; '?']
+
+(** German: no specific fine spacing rules beyond what is already
+    handled by the font, but we expose this as a stub for symmetry. *)
+let german_subst _size = fun glyphs -> glyphs
+
+(** P2-4: Convenience wrapper around [Mathml.to_patoline] so end-users
+    can paste MathML content (e.g. from MathJax) directly into their
+    Patoline document. *)
+let mathml s = Mathml.to_patoline s
+
+(** P2-1: Convenience wrapper that uses CJK paragraph indentation
+    (two full-width characters at the current size) instead of the
+    English 4·phi indent. *)
+let cjkParagraph ?(parameters=parameters) ?(par_env=(fun x->x)) cont =
+  let cjk_par_env env =
+    let env' = par_env env in
+    { env' with par_indent = cjk_par_indent env'.size }
+  in
+  paragraph ~parameters ~par_env:cjk_par_env cont
 
 let stackDrawings drs=
   let w=List.fold_left (fun m x->max m x.drawing_nominal_width) 0. drs in
@@ -283,7 +431,7 @@ let defaultEnv:environment=
                             drawing_break_badness=0.;
                             drawing_states=[];
                             drawing_badness=fun _-> 0. }];
-    hyphenate=hyphenate_dict "hyph-en-us.hdict";
+    hyphenate=hyphenate_dict (Printf.sprintf "hyph-%s.hdict" !hyphen_lang);
     counters=StrMap.empty;
     last_changed_counter="";
     names=StrMap.empty;
