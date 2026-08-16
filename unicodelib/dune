@@ -8,7 +8,7 @@
   (name pa_convert)
   (modules pa_convert)
   (preprocess (action (run pa_ocaml %{input-file})))
-  (libraries earley.core earley.str earley.ocaml))
+  (libraries earley.core earley.str earley.ocaml_ast))
 
 (executable
   (name pa_unicode_data)

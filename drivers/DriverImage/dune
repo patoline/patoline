@@ -4,4 +4,4 @@
   (modules :standard)
   (wrapped false)
   (optional) ; requires lablgl
-  (libraries patoraw DriverGL))
+  (libraries patoraw DriverGL imagelib.unix))

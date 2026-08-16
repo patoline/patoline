@@ -1,9 +1,9 @@
 (library
   (name typography)
   (public_name patoline.typography)
-  (modules :standard)
+  (modules :standard \ test_offset)
   (libraries
-    patoraw patutil patconfig patfonts
+    patoraw patutil patconfig patfonts imagelib.unix
     (select ConfigFindFont.ml from
       (fontconfig -> ConfigFindFont.fontconfig.ml)
       (           -> ConfigFindFont.legacy.ml))))

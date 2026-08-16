@@ -5,4 +5,4 @@
   (foreign_stubs (language c) (names FrameBuffer))
   (wrapped false)
   (optional) ; requires lablgl
-  (libraries patodb lablgl lablgl.glut patoraw))
+  (libraries patodb lablgl lablgl.glut patoraw imagelib.unix))

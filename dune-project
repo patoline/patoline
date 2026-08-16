@@ -27,12 +27,12 @@
    variety of output formats, including traditional PDF files, but also web
    servers that deliver dynamic contents.")
  (depends
-  (ocaml (>= 4.03.0))
+  (ocaml (>= 5.2.0))
   ocamlfind
-  (earley (= 2.0.0))
+  (earley (>= 3.0.0))
   camlzip
   sqlite3
-  (imagelib (= 20180522)))
+  (imagelib (>= 20200929)))
  (depopts
   lablgl
   cairo2

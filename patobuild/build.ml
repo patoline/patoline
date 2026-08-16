@@ -361,7 +361,7 @@ let compile_targets config deps target =
     let t = TaskBag.wait tasks in
     if !verbose > 2 then eprintf "[%3i] got task %S\n%!" i t;
     (* Exit if this is the dummy end task. *)
-    if t = done_signal then Thread.exit ();
+    if t = done_signal then raise Thread.Exit;
     (* Preprocess and compute dependencies if necessary. *)
     let source_ready =
       let src_build = build_source t in

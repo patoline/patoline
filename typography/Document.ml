@@ -1167,7 +1167,7 @@ let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
       let _=Sys.command (Printf.sprintf "ffmpeg -i %s -t 1 -r 1 %s-%%d.png" imageFile tmp) in
       ()
     );
-  let w,h = ImageLib.size (tmp^"-1.png") in
+  let w,h = ImageLib_unix.size (tmp^"-1.png") in
   let fw,fh=
     if width=0. then
       if height=0. then
@@ -1574,8 +1574,8 @@ let adjust_width env buf nbuf =
 
 
                let nominal' = !nominal +. char_space in
-              let min' = Pervasives.min  (Pervasives.max (x0_r -. x1_r) (x0_l -. x1_l))  (!min -. nominal') in
-              let max' = Pervasives.max (2. *. char_space) (!max -. nominal') in
+              let min' = Stdlib.min  (Stdlib.max (x0_r -. x1_r) (x0_l -. x1_l))  (!min -. nominal') in
+              let max' = Stdlib.max (2. *. char_space) (!max -. nominal') in
               let da = d min' in
               let db = d max' in
               let target = nominal' in

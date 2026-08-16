@@ -1,11 +1,19 @@
 open Earley_core
-open Earley_ocaml
 open Unicodelib
 open Patconfig
 open Patutil.Extra
 
 open Earley
 open Pa_ocaml_prelude
+
+(* Force Pa_ocaml to be linked — it registers the OCaml grammar rules
+   (expression, structure, etc.) via set_expression_lvl at module init time. *)
+let () = ignore (Pa_ocaml.ghost)
+open Pa_ast
+open Ast_helper
+open Parsetree
+open Asttypes
+open Longident
 
 let _ = Printexc.record_backtrace true; Sys.catch_break true
 
@@ -42,6 +50,8 @@ let no_default_grammar = ref false
 let add_patoline_grammar g =
   let g = try Filename.chop_extension g with _ -> g in
   patoline_grammar := g :: !patoline_grammar
+
+let file = ref (None : string option)
 
 let in_ocamldep = ref false
 
@@ -96,14 +106,12 @@ let extra_spec =
 #define LOCATE locate
 
 (*
- * Everything is wrapped into the functor, this is standard procedure to write
- * syntax extensions using Earley. The argument of the functor is included
- * straight away, so that extensions can be composed.
+ * Everything is defined at the module level, accessing grammars directly
+ * from Pa_ocaml_prelude. The Extension functor mechanism from earley 2.x
+ * was removed in earley 3.x.
  *)
-module Ext(In : Extension) = struct
-include In
 
-let spec = extra_spec @ spec
+let spec = extra_spec
 
 (* Blank functions for Patoline *********************************************)
 let blank_sline buf pos =
@@ -212,11 +220,11 @@ let freshUid () =
   "MOD" ^ (string_of_int current)
 
 let caml_structure    = change_layout structure blank2
-let parser wrapped_caml_structure = '(' {caml_structure | EMPTY -> <:struct<>>} ')'
+let parser wrapped_caml_structure = '(' {caml_structure | EMPTY -> []} ')'
 
 (* Parse a caml "expr" wrapped with parentheses *)
 let caml_expr         = change_layout expression blank2
-let parser wrapped_caml_expr = '(' {caml_expr  | EMPTY -> <:expr<()>>} ')'
+let parser wrapped_caml_expr = '(' {caml_expr  | EMPTY -> exp_unit _loc} ')'
 
 (* Parse a list of caml "expr" *)
 let parser wrapped_caml_list =
@@ -329,18 +337,16 @@ let parser verbatim_environment =
       else String.sub l minhsp (len - minhsp)
     in
     let lines =
-      let f s tl = <:expr<$string:s$ :: $tl$>> in
-      List.fold_right f (List.map remhsp lines) <:expr<[]>>
+      let f s tl = exp_cons _loc (exp_string _loc s) tl in
+      List.fold_right f (List.map remhsp lines) (exp_nil _loc)
     in
     let mode = "verbs_" ^ match mode with None -> "default" | Some m -> m in
     let file =
       match file with
-      | None -> <:expr<None>>
-      | Some f -> <:expr<Some $string:f$>>
+      | None -> exp_none _loc
+      | Some f -> exp_some _loc (exp_string _loc f)
     in
-    <:struct<
-      let _ = $lid:mode$ $file$ $lines$
-    >>
+    str_let_wild _loc (exp_apply2 _loc (exp_lid _loc mode) file lines)
 
 let verbatim_environment = change_layout verbatim_environment no_blank
 
@@ -355,8 +361,7 @@ let verbatim_generic st forbid nd =
           let lines = ls @ [l] in
           let lines = rem_hyphen lines in
           let txt = String.concat " " lines in
-          <:expr< ($lid:"verbatim"$)
-                   $string:txt$ >>
+          exp_apply1 _loc (exp_lid _loc "verbatim") (exp_string _loc txt)
     ) no_blank
 
 let verbatim_macro = verbatim_generic "\\verb{" "{}" "}"
@@ -467,7 +472,7 @@ let real_name _loc id cs =
   in
   let (mp, mid) = try find_name cs with Not_found -> ([], id) in
   (* FIXME: this is not exactly what we want *)
-  List.fold_left (fun acc m -> <:expr<$uid:m$.($acc$)>>) <:expr<$lid:mid$>> mp
+  List.fold_left (fun acc m -> exp_open _loc m acc) (exp_lid _loc mid) mp
 
 let macro_args cs =
   let rec find_args : config list -> arg_config list option = function
@@ -526,24 +531,31 @@ let apply_struct_filter config s _loc =
       config.filter_name Pa_ocaml_prelude.print_location _loc; exit 1
 
 let _ =
-  Hashtbl.add string_filter "" (fun s _loc -> <:expr<$string:s$ >>)
+  Hashtbl.add string_filter "" (fun s _loc -> exp_string _loc s)
 
 let _ =
   Hashtbl.add expr_filter "" (fun e _loc -> e)
 
 let _ =
   Hashtbl.add struct_filter "" (fun s _loc ->
-    <:expr<
-          [bB (fun env ->
-            let module Res =
-              struct
-                $struct:s$ ;;
-              end
-             in [ Drawing (Res.drawing ()) ])]>>)
+    exp_list _loc [exp_apply1 _loc (exp_lid _loc "bB")
+      (exp_fun_s _loc "env"
+        (exp_let_mod _loc "Res"
+          (mod_structure _loc s)
+          (exp_list _loc [exp_apply1 _loc (exp_lid _loc "Drawing")
+            (exp_apply _loc (exp_dot _loc "Res" "drawing") [exp_unit _loc])])))])
 
 let _ =
   Hashtbl.add string_filter "genumerate" (fun s _loc ->
-      let pos = Str.search_forward (Str.regexp "&\\([1iIaA]\\)") s 0 in
+      let pos =
+        let len = String.length s in
+        let rec find i =
+          if i >= len - 1 then raise Not_found
+          else if s.[i] = '&' && (let c = s.[i+1] in c = '1' || c = 'i' || c = 'I' || c = 'a' || c = 'A')
+          then i
+          else find (i+1)
+        in find 0
+      in
     (* let c = String.make 1 s.[pos+1] in *)
       let c = s.[pos+1] in
     let prefix = String.sub s 0 pos in
@@ -563,15 +575,19 @@ let _ =
 
 let _ =
   Hashtbl.add struct_filter "diagram" (fun s _loc ->
-    <:expr<
-          [bB (fun env ->
-            let module Res =
-              struct
-                module Diagram = MakeDiagram (struct let env = env end) ;;
-                open Diagram ;;
-                $struct:s$ ;;
-              end
-     in [ Drawing (Res.Diagram.make ()) ])]>>)
+    let diagram_mod =
+      str_module _loc "Diagram"
+        (mod_apply _loc (mod_ident _loc (Lident "MakeDiagram"))
+          (mod_structure _loc
+            (str_let _loc "env" (exp_lid _loc "env")))) in
+    let open_diagram = str_open _loc "Diagram" in
+    let body_struct = diagram_mod @ open_diagram @ s in
+    exp_list _loc [exp_apply1 _loc (exp_lid _loc "bB")
+      (exp_fun_s _loc "env"
+        (exp_let_mod _loc "Res"
+          (mod_structure _loc body_struct)
+          (exp_list _loc [exp_apply1 _loc (exp_lid _loc "Drawing")
+            (exp_apply _loc (exp_dot2 _loc "Res" "Diagram" "make") [exp_unit _loc])])))])
 
 
 let parser config =
@@ -669,7 +685,7 @@ type delimiter =
 let invisible_delimiter = {
   delimiter_utf8_names  = [];
   delimiter_macro_names = [];
-  delimiter_values      = let _loc = Location.none in <:expr< [] >>;
+  delimiter_values      = let _loc = Location.none in exp_nil _loc;
 }
 
 module PMap = PrefixTree
@@ -884,23 +900,33 @@ let parser all_right_delimiter =
   | "\\right." -> invisible_delimiter
 
 let symbol_paragraph _loc syms names =
-  <:struct<
-    let _ = D.structure := newPar !D.structure
-      ~environment:(fun x -> {x with par_indent = []})
-
-      Complete.normal Patoline_Format.parameters
-      [bB (fun env0 -> Maths.kdraw
-        [ { env0 with mathStyle = Mathematical.Display } ] [
-        Maths.bin 0 (Maths.Normal(false,Maths.node (Maths.glyphs "⇐"),false))
-        $syms$ $names$
-      ])]
-  >>
+  (* let _ = D.structure := newPar !D.structure ~environment:(...) Complete.normal Patoline_Format.parameters [bB ...] *)
+  let env_fun = exp_fun_s _loc "x"
+    (exp_record _loc
+      [(mkloc (Lident "par_indent") _loc, exp_nil _loc)]
+      (Some (exp_lid _loc "x"))) in
+  let kdraw_arg = exp_list _loc [
+    exp_record _loc
+      [(mkloc (Lident "mathStyle") _loc, exp_dot _loc "Mathematical" "Display")]
+      (Some (exp_lid _loc "env0"))] in
+  let bin_node = exp_apply _loc (maths_lid _loc "bin")
+    [exp_int _loc 0;
+     maths_normal _loc false (maths_node _loc (maths_glyphs _loc "⇐")) false;
+     syms; names] in
+  let kdraw_body = exp_apply _loc (exp_dot _loc "Maths" "kdraw") [kdraw_arg; exp_list _loc [bin_node]] in
+  let bb_expr = exp_list _loc [exp_apply1 _loc (exp_lid _loc "bB") (exp_fun_s _loc "env0" kdraw_body)] in
+  let newpar = Exp.apply ~loc:_loc (exp_lid _loc "newPar")
+    [(Labelled "environment", env_fun);
+     (Nolabel, exp_deref _loc (exp_dot _loc "D" "structure"));
+     (Nolabel, exp_dot _loc "Complete" "normal");
+     (Nolabel, exp_dot _loc "Patoline_Format" "parameters");
+     (Nolabel, bb_expr)] in
+  let assign = exp_ref_assign _loc (exp_dot _loc "D" "structure") newpar in
+  str_let_wild _loc assign
 
 let math_list _loc l =
   let merge x y =
-    <:expr<[Maths.bin 0
-      (Maths.Normal(false,Maths.node (Maths.glyphs ","),false))
-      $x$ $y$]>>
+    maths_bin _loc 0 (maths_normal _loc false (maths_node _loc (maths_glyphs _loc ",")) false) x y
   in
   List.fold_left merge (List.hd l) (List.tl l)
 
@@ -924,24 +950,24 @@ let parser br_string =
 let paragraph_basic_text, set_paragraph_basic_text = grammar_family "paragraph_basic_text"
 let math_toplevel = declare_grammar "math_toplevel"
 
-let nil = let _loc = Location.none in <:expr<[]>>
+let nil = let _loc = Location.none in exp_nil _loc
 let math_line = parser
   | m:math_toplevel?[nil] ls:{ _:'&' l:math_toplevel?[nil]}*
-      -> <:expr< $m$ :: $list:ls$ >>
+      -> exp_cons _loc m (exp_list _loc ls)
 
 let math_matrix = parser
-  | EMPTY -> <:expr< [] >>
-  | l:math_line ls:{ "\\\\" m:math_line }* -> <:expr< $l$ :: $list:ls$ >>
+  | EMPTY -> exp_nil _loc
+  | l:math_line ls:{ "\\\\" m:math_line }* -> exp_cons _loc l (exp_list _loc ls)
 
 let simple_text = change_layout (paragraph_basic_text TagSet.empty) ~new_blank_after:false blank1
 
 let text_line = parser
   | m:simple_text?[nil] ls:{ _:'&' l:simple_text?[nil]}*
-      -> <:expr< $m$ :: $list:ls$ >>
+      -> exp_cons _loc m (exp_list _loc ls)
 
 let text_matrix = parser
-  | EMPTY -> <:expr< [] >>
-  | l:text_line ls:{ "\\\\" m:text_line }* -> <:expr< $l$ :: $list:ls$ >>
+  | EMPTY -> exp_nil _loc
+  | l:text_line ls:{ "\\\\" m:text_line }* -> exp_cons _loc l (exp_list _loc ls)
 
 let parser macro_argument config =
   | '{' m:math_toplevel '}'
@@ -964,19 +990,19 @@ let parser macro_argument config =
       -> apply_expr_filter config e _loc
   | '{' e:int '}'
       when config.entry = Int
-      -> apply_expr_filter config <:expr<$int:e$>> _loc
+      -> apply_expr_filter config (exp_int _loc e) _loc
   | '{' e:float '}'
       when config.entry = Float
-      -> apply_expr_filter config <:expr<$float:e$>> _loc
+      -> apply_expr_filter config (exp_float _loc e) _loc
   | e:wrapped_caml_expr
       when config.entry <> CamlStruct
       -> apply_expr_filter config e _loc
   | e:wrapped_caml_array
       when config.entry <> CamlStruct
-      -> apply_expr_filter config <:expr<$array:e$>> _loc
+      -> apply_expr_filter config (exp_array _loc e) _loc
   | e:wrapped_caml_list
       when config.entry <> CamlStruct
-      -> apply_expr_filter config <:expr<$list:e$>> _loc
+      -> apply_expr_filter config (exp_list _loc e) _loc
   | s:wrapped_caml_structure
       when config.entry = CamlStruct
       -> apply_struct_filter config s _loc
@@ -992,16 +1018,16 @@ let parser macro_argument config =
 
 let parser simple_text_macro_argument =
   | '{' l:simple_text?$ '}' ->
-      (match l with Some l -> l | None -> <:expr<[]>>)
+      (match l with Some l -> l | None -> exp_nil _loc)
   | e:wrapped_caml_expr  -> e
-  | e:wrapped_caml_array -> <:expr<$array:e$>>
-  | e:wrapped_caml_list  -> <:expr<$list:e$>>
+  | e:wrapped_caml_array -> exp_array _loc e
+  | e:wrapped_caml_list  -> exp_list _loc e
 
 let parser simple_math_macro_argument =
   | '{' m:(change_layout math_toplevel blank2) '}' -> m
   | e:wrapped_caml_expr  -> e
-  | e:wrapped_caml_array -> <:expr<$array:e$>>
-  | e:wrapped_caml_list  -> <:expr<$list:e$>>
+  | e:wrapped_caml_array -> exp_array _loc e
+  | e:wrapped_caml_list  -> exp_list _loc e
 
 let parser macro_arguments_aux l =
   | EMPTY when l = [] -> []
@@ -1029,65 +1055,65 @@ let cache_buf = ref []
 let print_math_symbol _loc sym=
   let s,b =
     match sym with
-      SimpleSym s -> <:expr<Maths.glyphs $string:s$>>, false
+      SimpleSym s -> maths_glyphs _loc s, false
     | CamlSym s   -> s, false
     | MultiSym s  -> s, true
-    | Invisible   -> <:expr<Maths.glyphs "invisible">>, false
+    | Invisible   -> maths_glyphs _loc "invisible", false
   in
   if b then
     if !cache = "" then s else (* FIXME: not very clean *)
     try
       let nom = "m" ^ (!cache) in
       let index = Hashtbl.find hash_msym s in
-      <:expr< $lid:nom$.($int:index$) >>
+      exp_array_get _loc (exp_lid _loc nom) (exp_int _loc index)
     with Not_found ->
       Hashtbl.add  hash_msym s !count_msym;
       mcache_buf := s::!mcache_buf;
-      let res = <:expr< $lid:("m" ^ !cache)$.($int:(!count_msym)$) >> in
+      let res = exp_array_get _loc (exp_lid _loc ("m" ^ !cache)) (exp_int _loc !count_msym) in
       let _ = incr count_msym in
       res
   else
     if !cache = "" then s else (* FIXME: not very clean *)
     try
       let r = Hashtbl.find hash_sym s in
-      <:expr< $lid:(!cache)$.($int:r$) >>
+      exp_array_get _loc (exp_lid _loc !cache) (exp_int _loc r)
     with Not_found ->
       Hashtbl.add  hash_sym s !count_sym;
       cache_buf := s::!cache_buf;
-      let res = <:expr< $lid:(!cache)$.($int:(!count_sym)$) >> in
+      let res = exp_array_get _loc (exp_lid _loc !cache) (exp_int _loc !count_sym) in
       let _ = incr count_sym in
       res
 
 let print_ordinary_math_symbol _loc sym =
-  <:expr< [Maths.Ordinary (Maths.node $print_math_symbol _loc sym$)] >>
+  maths_ordinary_node _loc (print_math_symbol _loc sym)
 
 let print_math_deco_sym _loc elt ind =
   if ind = no_ind then (
-    <:expr< Maths.node $print_math_symbol _loc elt$ >>
+    maths_node _loc (print_math_symbol _loc elt)
   ) else
     begin
       let r = ref [] in
       (match ind.up_right with
         Some i ->
                if ind.up_right_same_script then
-            r:= <:record<Maths.super_right_same_script = true>> @ !r;
-          r:= <:record<Maths.superscript_right = $i$ >> @ !r
+            r:= [maths_record_field _loc "super_right_same_script" (exp_bool _loc true)] @ !r;
+          r:= [maths_record_field _loc "superscript_right" i] @ !r
       | _ -> ());
       (match ind.down_right with
         Some i ->
-          r:= <:record<Maths.subscript_right = $i$ >> @ !r
+          r:= [maths_record_field _loc "subscript_right" i] @ !r
       | _ -> ());
       (match ind.up_left with
         Some i ->
                if ind.up_left_same_script then
-            r:= <:record<Maths.super_left_same_script = true>> @ !r;
-          r:= <:record<Maths.superscript_left = $i$ >> @ !r
+            r:= [maths_record_field _loc "super_left_same_script" (exp_bool _loc true)] @ !r;
+          r:= [maths_record_field _loc "superscript_left" i] @ !r
       | _ -> ());
       (match ind.down_left with
         Some i ->
-          r:= <:record<Maths.subscript_left = $i$ >> @ !r
+          r:= [maths_record_field _loc "subscript_left" i] @ !r
       | _ -> ());
-      Pa_ast.loc_expr _loc (Parsetree.Pexp_record (!r, Some <:expr<Maths.node $print_math_symbol _loc elt$>>))
+      loc_expr _loc (Pexp_record (!r, Some (maths_node _loc (print_math_symbol _loc elt))))
     end
 
 let print_math_deco _loc elt ind =
@@ -1099,24 +1125,28 @@ let print_math_deco _loc elt ind =
       (match ind.up_right with
        | Some i ->
                   if ind.up_right_same_script then
-                   r:= <:record<Maths.super_right_same_script = true>> @ !r;
-                 r := <:record<Maths.superscript_right = $i$ >> @ !r
+                   r:= [maths_record_field _loc "super_right_same_script" (exp_bool _loc true)] @ !r;
+                 r := [maths_record_field _loc "superscript_right" i] @ !r
        | _ -> ());
       (match ind.down_right with
        | Some i ->
-           r:= <:record<Maths.subscript_right = $i$ >> @ !r
+           r:= [maths_record_field _loc "subscript_right" i] @ !r
        | _ -> ());
       (match ind.up_left with
        | Some i ->
            if ind.up_left_same_script then
-                   r:= <:record<Maths.super_left_same_script = true>> @ !r;
-           r:= <:record<Maths.superscript_left = $i$ >> @ !r
+                   r:= [maths_record_field _loc "super_left_same_script" (exp_bool _loc true)] @ !r;
+           r:= [maths_record_field _loc "superscript_left" i] @ !r
        | _ -> ());
       (match ind.down_left with
-       | Some i -> r:= <:record<Maths.subscript_left = $i$ >> @ !r
+       | Some i -> r:= [maths_record_field _loc "subscript_left" i] @ !r
        | _ -> ());
-      <:expr<
-       [Maths.Ordinary $Pa_ast.loc_expr _loc (Parsetree.Pexp_record (!r, Some <:expr< Maths.node (fun env st -> Maths.draw [env] $elt$)>>))$]>>
+      let draw_fun = exp_fun_s _loc "env" (exp_fun_s _loc "st"
+        (exp_apply2 _loc (exp_dot _loc "Maths" "draw")
+          (exp_list _loc [exp_lid _loc "env"]) elt)) in
+      let node_expr = exp_apply1 _loc (maths_lid _loc "node") draw_fun in
+      let record_expr = loc_expr _loc (Pexp_record (!r, Some node_expr)) in
+      exp_list _loc [maths_construct _loc "Ordinary" (Some record_expr)]
     end
 
 let add_reserved sym_names =
@@ -1162,7 +1192,7 @@ let new_infix_symbol _loc infix_prio sym_names infix_value =
     let showuname _ =
       sym (* TODO *)
       (*
-        let s = <:expr<Maths.glyphs $string:s$>> in
+        let s = maths_glyphs _loc s in
         print_ordinary_math_symbol _loc (CamlSym s)
        *)
     in
@@ -1186,7 +1216,7 @@ let new_symbol _loc sym_names symbol_value =
   if state.verbose then
     let sym_val = print_ordinary_math_symbol _loc symbol_value in
     let sym s =
-      print_ordinary_math_symbol _loc (CamlSym <:expr<Maths.glyphs $string:s$>>)
+      print_ordinary_math_symbol _loc (CamlSym (maths_glyphs _loc s))
     in
     let names = List.map sym symbol_macro_names @ List.map (fun _ -> sym_val) symbol_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
@@ -1204,7 +1234,7 @@ let new_accent_symbol _loc sym_names symbol_value =
   if state.verbose then
     let sym_val = print_ordinary_math_symbol _loc symbol_value in
     let sym s =
-      print_ordinary_math_symbol _loc (CamlSym <:expr<Maths.glyphs $string:s$>>)
+      print_ordinary_math_symbol _loc (CamlSym (maths_glyphs _loc s))
     in
     let names = List.map sym symbol_macro_names @ List.map (fun _ -> sym_val) symbol_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
@@ -1230,7 +1260,7 @@ let new_prefix_symbol _loc sym_names prefix_value =
   if state.verbose then
     let sym_val = print_ordinary_math_symbol _loc prefix_value in
     let sym s =
-      print_ordinary_math_symbol _loc (CamlSym <:expr<Maths.glyphs $string:s$>>)
+      print_ordinary_math_symbol _loc (CamlSym (maths_glyphs _loc s))
     in
     let names = List.map sym prefix_macro_names @ List.map (fun _ -> sym_val) prefix_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
@@ -1254,7 +1284,7 @@ let new_postfix_symbol _loc sym_names postfix_value =
   if state.verbose then
     let sym_val = print_ordinary_math_symbol _loc postfix_value in
     let sym s =
-      print_ordinary_math_symbol _loc (CamlSym <:expr<Maths.glyphs $string:s$>>)
+      print_ordinary_math_symbol _loc (CamlSym (maths_glyphs _loc s))
     in
     let names = List.map sym postfix_macro_names @ List.map (fun _ -> sym_val) postfix_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
@@ -1274,7 +1304,7 @@ let new_quantifier_symbol _loc sym_names symbol_value =
   if state.verbose then
     let sym_val = print_ordinary_math_symbol _loc symbol_value in
     let sym s =
-      print_ordinary_math_symbol _loc (CamlSym <:expr<Maths.glyphs $string:s$>>)
+      print_ordinary_math_symbol _loc (CamlSym (maths_glyphs _loc s))
     in
     let names = List.map sym symbol_macro_names @ List.map (fun _ -> sym_val) symbol_utf8_names in
     symbol_paragraph _loc sym_val (math_list _loc names)
@@ -1291,15 +1321,13 @@ let new_left_delimiter _loc sym_names delimiter_values =
   (* Displaying no the document. *)
   if state.verbose then
     let syms =
-      <:expr<[Maths.Ordinary (Maths.node
-        (fun x y -> List.flatten (Maths.multi_glyphs $delimiter_values$ x y)))]>>
+      exp_list _loc [maths_construct _loc "Ordinary" (Some (exp_apply1 _loc (maths_lid _loc "node") (exp_fun_s _loc "x" (exp_fun_s _loc "y" (exp_apply1 _loc (exp_dot _loc "List" "flatten") (exp_apply3 _loc (exp_dot _loc "Maths" "multi_glyphs") delimiter_values (exp_lid _loc "x") (exp_lid _loc "y")))))))]
     in
     let sym_val =
-      <:expr<[Maths.Ordinary (Maths.node
-        (fun x y -> List.hd $delimiter_values$ x y))]>>
+      exp_list _loc [maths_construct _loc "Ordinary" (Some (exp_apply1 _loc (maths_lid _loc "node") (exp_fun_s _loc "x" (exp_fun_s _loc "y" (exp_apply _loc (exp_apply1 _loc (exp_dot _loc "List" "hd") delimiter_values) [exp_lid _loc "x"; exp_lid _loc "y"])))))]
     in
     let sym s =
-      print_ordinary_math_symbol _loc (CamlSym <:expr<Maths.glyphs $string:s$>>)
+      print_ordinary_math_symbol _loc (CamlSym (maths_glyphs _loc s))
     in
     let names = List.map sym delimiter_macro_names @ List.map (fun _ -> sym_val) delimiter_utf8_names in
     symbol_paragraph _loc syms (math_list _loc names)
@@ -1316,15 +1344,13 @@ let new_right_delimiter _loc sym_names delimiter_values =
   (* Displaying no the document. *)
   if state.verbose then
     let syms =
-      <:expr<[Maths.Ordinary (Maths.node
-        (fun x y -> List.flatten (Maths.multi_glyphs $delimiter_values$ x y)))]>>
+      exp_list _loc [maths_construct _loc "Ordinary" (Some (exp_apply1 _loc (maths_lid _loc "node") (exp_fun_s _loc "x" (exp_fun_s _loc "y" (exp_apply1 _loc (exp_dot _loc "List" "flatten") (exp_apply3 _loc (exp_dot _loc "Maths" "multi_glyphs") delimiter_values (exp_lid _loc "x") (exp_lid _loc "y")))))))]
     in
     let sym_val =
-      <:expr<[Maths.Ordinary (Maths.node
-        (fun x y -> List.hd $delimiter_values$ x y))]>>
+      exp_list _loc [maths_construct _loc "Ordinary" (Some (exp_apply1 _loc (maths_lid _loc "node") (exp_fun_s _loc "x" (exp_fun_s _loc "y" (exp_apply _loc (exp_apply1 _loc (exp_dot _loc "List" "hd") delimiter_values) [exp_lid _loc "x"; exp_lid _loc "y"])))))]
     in
     let sym s =
-      print_ordinary_math_symbol _loc (CamlSym <:expr<Maths.glyphs $string:s$>>)
+      print_ordinary_math_symbol _loc (CamlSym (maths_glyphs _loc s))
     in
     let names = List.map sym delimiter_macro_names @ List.map (fun _ -> sym_val) delimiter_utf8_names in
     symbol_paragraph _loc syms (math_list _loc names)
@@ -1340,7 +1366,7 @@ let new_operator_symbol _loc operator_kind sym_names operator_values =
   local_state.operator_symbols <- List.fold_left insert local_state.operator_symbols sym_names;
   let asym = { symbol_macro_names = operator_macro_names;
                symbol_utf8_names = operator_utf8_names;
-               symbol_value = CamlSym <:expr<List.hd $operator_values$>> } in
+               symbol_value = CamlSym (exp_apply1 _loc (exp_dot _loc "List" "hd") operator_values) } in
   let insert map name = PrefixTree.add name asym map in
   state.any_symbols <- List.fold_left insert state.any_symbols sym_names;
   local_state.any_symbols <- List.fold_left insert local_state.any_symbols sym_names;
@@ -1348,15 +1374,13 @@ let new_operator_symbol _loc operator_kind sym_names operator_values =
   (* Displaying no the document. *)
   if state.verbose then
     let syms =
-      <:expr<[Maths.Ordinary (Maths.node
-        (fun x y -> List.flatten (Maths.multi_glyphs $operator_values$ x y)))]>>
+      exp_list _loc [maths_construct _loc "Ordinary" (Some (exp_apply1 _loc (maths_lid _loc "node") (exp_fun_s _loc "x" (exp_fun_s _loc "y" (exp_apply1 _loc (exp_dot _loc "List" "flatten") (exp_apply3 _loc (exp_dot _loc "Maths" "multi_glyphs") operator_values (exp_lid _loc "x") (exp_lid _loc "y")))))))]
     in
     let sym_val =
-      <:expr<[Maths.Ordinary (Maths.node
-        (fun x y -> List.hd $operator_values$ x y))]>>
+      exp_list _loc [maths_construct _loc "Ordinary" (Some (exp_apply1 _loc (maths_lid _loc "node") (exp_fun_s _loc "x" (exp_fun_s _loc "y" (exp_apply _loc (exp_apply1 _loc (exp_dot _loc "List" "hd") operator_values) [exp_lid _loc "x"; exp_lid _loc "y"])))))]
     in
     let sym s =
-      print_ordinary_math_symbol _loc (CamlSym <:expr<Maths.glyphs $string:s$>>)
+      print_ordinary_math_symbol _loc (CamlSym (maths_glyphs _loc s))
     in
     let names = List.map sym operator_macro_names @ List.map (fun _ -> sym_val) operator_utf8_names in
     symbol_paragraph _loc syms (math_list _loc names)
@@ -1371,11 +1395,11 @@ let new_combining_symbol _loc uchr macro =
   (* Displaying no the document. *)
   if state.verbose then
     let sym =
-      <:expr<[Maths.Ordinary (Maths.node (Maths.glyphs $string:uchr$))]>>
+      maths_ordinary_node _loc (maths_glyphs _loc uchr)
     in
     let macro = "\\" ^ macro in
     let macro =
-      <:expr<[Maths.Ordinary (Maths.node (Maths.glyphs $string:macro$))]>>
+      maths_ordinary_node _loc (maths_glyphs _loc macro)
     in
     symbol_paragraph _loc sym macro
   else []
@@ -1457,25 +1481,27 @@ let parser math_aux prio =
       let indices = merge_indices indices ind in
       let inter =
         match p with
-        | None   -> <:expr<Maths.Invisible>>
+        | None   -> maths_invisible _loc
         | Some s ->
             let nsl = s.infix_no_left_space in
             let nsr = s.infix_no_right_space in
             let md  = print_math_deco_sym _loc_p s.infix_value no_ind in
-            <:expr<Maths.Normal($bool:nsl$, $md$, $bool:nsr$)>>
+            maths_normal _loc nsl md nsr
       in
       let md = print_math_deco_sym _loc_sym sym.symbol_value indices in
-      <:expr<[Maths.bin 3 (Maths.Normal(true,$md$,true)) []
-                    [Maths.bin 1 $inter$ $d$ $m no_ind$]]>>)
+      exp_list _loc [exp_apply _loc (maths_lid _loc "bin")
+        [exp_int _loc 3; maths_normal _loc true md true; exp_nil _loc;
+         exp_list _loc [exp_apply _loc (maths_lid _loc "bin")
+           [exp_int _loc 1; inter; d; m no_ind]]]])
 
   | op:(math_operator prio) ind:with_indices m:(math_aux prio) ->
      (fun indices ->
        let ind = merge_indices indices ind in
       match op.operator_kind with
         Limits ->
-          <:expr<[Maths.op_limits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>
+          exp_list _loc [exp_apply _loc (maths_lid _loc "op_limits") [exp_nil _loc; print_math_deco_sym _loc_op (MultiSym op.operator_values) ind; m no_ind]]
       | NoLimits ->
-         <:expr<[Maths.op_nolimits [] $print_math_deco_sym _loc_op (MultiSym op.operator_values) ind$ $m no_ind$]>>)
+         exp_list _loc [exp_apply _loc (maths_lid _loc "op_nolimits") [exp_nil _loc; print_math_deco_sym _loc_op (MultiSym op.operator_values) ind; m no_ind]])
 
   | l:(math_aux prio) st:{ s:(math_infix_symbol prio) i:with_indices -> (s,i)
                          | BLANK when prio = IProd  -> (invisible_product, no_ind)
@@ -1490,17 +1516,20 @@ let parser math_aux prio =
        let l = l no_ind and r = r (if s.infix_value = Invisible then indices else no_ind) in
        if s.infix_value = SimpleSym "over" then begin
          if indices <> no_ind then give_up ();
-         <:expr< [Maths.fraction $l$ $r$] >>
+         maths_fraction _loc l r
        end else begin
          let inter =
            if s.infix_value = Invisible then
-             <:expr<Maths.Invisible>>
+             maths_invisible _loc
            else
              let v = print_math_deco_sym _loc_st s.infix_value indices in
-             <:expr<Maths.Normal ($bool:nsl$, $v$, $bool:nsr$)>>
+             maths_normal _loc nsl v nsr
          in
-         <:expr<[Maths.Binary { bin_priority= $int:sp$ ; bin_drawing = $inter$
-                          ; bin_left = $l$ ; bin_right= $r$ }]>>
+         exp_list _loc [maths_construct _loc "Binary" (Some (exp_record _loc
+           [exp_field _loc "Maths" "bin_priority" (exp_int _loc sp);
+            exp_field _loc "Maths" "bin_drawing" inter;
+            exp_field _loc "Maths" "bin_left" l;
+            exp_field _loc "Maths" "bin_right" r] None))]
        end)
 
   (* Les règles commençant avec un { forment un conflict avec les arguments
@@ -1511,30 +1540,30 @@ let parser math_aux prio =
       let f indices =
         let indices = merge_indices indices ind in
         let md = print_math_deco_sym _loc_s s indices in
-        <:expr<[Maths.Ordinary $md$]>>
+        exp_list _loc [maths_construct _loc "Ordinary" (Some md)]
       in f
 
   | l:all_left_delimiter m:(math_aux Punc) r:all_right_delimiter  when prio = AtomM ->
      (fun indices ->
        let l = print_math_symbol _loc_l (MultiSym l.delimiter_values) in
        let r = print_math_symbol _loc_r (MultiSym r.delimiter_values) in
-       print_math_deco _loc (<:expr<[Maths.Decoration ((Maths.open_close $l$ $r$), $m no_ind$)]>>) indices)
+       print_math_deco _loc (exp_list _loc [maths_construct _loc "Decoration" (Some (exp_tuple _loc [exp_apply2 _loc (maths_lid _loc "open_close") l r; m no_ind]))]) indices)
 
   | name:''[a-zA-Z][a-zA-Z0-9]*'' when prio = AtomM ->
      (fun indices ->
        if String.length name > 1 then
-         let elt = <:expr<fun env -> Maths.glyphs $string:name$ (Maths.change_fonts env env.font)>> in
-         <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (CamlSym elt) indices$] >>
+         let elt = exp_fun_s _loc "env" (exp_apply2 _loc (maths_lid _loc "glyphs") (exp_string _loc name) (exp_apply2 _loc (maths_lid _loc "change_fonts") (exp_lid _loc "env") (exp_field_access _loc (exp_lid _loc "env") (Lident "font")))) in
+         exp_list _loc [maths_construct _loc "Ordinary" (Some (print_math_deco_sym _loc_name (CamlSym elt) indices))]
        else
-         <:expr<[Maths.Ordinary $print_math_deco_sym _loc_name (SimpleSym name) indices$] >>)
+         exp_list _loc [maths_construct _loc "Ordinary" (Some (print_math_deco_sym _loc_name (SimpleSym name) indices))])
 
   | sym:math_atom_symbol  when prio = AtomM ->
       (fun indices ->
-        <:expr<[Maths.Ordinary $print_math_deco_sym _loc_sym sym.symbol_value indices$] >>)
+        exp_list _loc [maths_construct _loc "Ordinary" (Some (print_math_deco_sym _loc_sym sym.symbol_value indices))])
 
   | num:''[0-9]+\([.][0-9]+\)?''  when prio = AtomM ->
      (fun indices ->
-       <:expr<[Maths.Ordinary $print_math_deco_sym _loc_num (SimpleSym num) indices$] >>)
+       exp_list _loc [maths_construct _loc "Ordinary" (Some (print_math_deco_sym _loc_num (SimpleSym num) indices))])
 
   | '\\' id:mathlid when prio = AtomM ->>
      let config = try List.assoc id state.math_macros with Not_found -> [] in
@@ -1542,15 +1571,15 @@ let parser math_aux prio =
      (fun indices ->
        let m = real_name _loc id config in
        (* TODO special macro properties to be handled. *)
-       let apply acc arg = <:expr<$acc$ $arg$ >> in
-       let e = List.fold_left apply <:expr<$m$ >> args in
+       let apply acc arg = exp_apply1 _loc acc arg in
+       let e = List.fold_left apply m args in
        print_math_deco _loc_id e indices
      )
   | m:(math_aux Accent) sym:math_combining_symbol when prio = Accent ->
-     print_math_deco _loc <:expr<$lid:sym$ $m no_ind$>>
+     (fun indices -> print_math_deco _loc (exp_apply1 _loc (exp_lid _loc sym) (m no_ind)) indices)
 
   | m:(math_aux Accent) s:math_accent_symbol when prio = Accent ->
-    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s.symbol_value no_ind$] >> in
+    let s = exp_list _loc [maths_construct _loc "Ordinary" (Some (print_math_deco_sym _loc_s s.symbol_value no_ind))] in
     let rd indices =
       if indices.up_right <> None then give_up ();
       { indices with up_right = Some s; up_right_same_script = true }
@@ -1558,7 +1587,7 @@ let parser math_aux prio =
     (fun indices -> m (rd indices))
 
   | m:(math_aux Ind) s:Subsup.subscript when prio = Ind ->
-    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+    let s = exp_list _loc [maths_construct _loc "Ordinary" (Some (print_math_deco_sym _loc_s (SimpleSym s) no_ind))] in
     let rd indices =
       if indices.down_right <> None then give_up ();
       { indices with down_right = Some s }
@@ -1566,7 +1595,7 @@ let parser math_aux prio =
     (fun indices -> m (rd indices))
 
   | m:(math_aux Ind) s:Subsup.superscript when prio = Ind ->
-    let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+    let s = exp_list _loc [maths_construct _loc "Ordinary" (Some (print_math_deco_sym _loc_s (SimpleSym s) no_ind))] in
     let rd indices =
       if indices.up_right <> None then give_up ();
       { indices with up_right = Some s }
@@ -1624,7 +1653,7 @@ and parser math_prefix prio =
        let psp = sym.prefix_space in
        let pnsp = sym.prefix_no_space in
        let md = print_math_deco_sym _loc_sym sym.prefix_value indices in
-       <:expr<[Maths.bin $int:psp$ (Maths.Normal(true,$md$,$bool:pnsp$)) [] $m no_ind$]>>
+       maths_bin _loc psp (maths_normal _loc true md pnsp) (exp_nil _loc) (m no_ind)
      )
 
 and parser math_postfix prio =
@@ -1636,7 +1665,7 @@ and parser math_postfix prio =
         let nsp = sym.postfix_no_space in
         let md  = print_math_deco_sym _loc_sym sym.postfix_value indices in
         let m = m no_ind in
-        <:expr<[Maths.bin $int:psp$ (Maths.Normal($bool:nsp$,$md$,true)) $m$ []] >>)
+        maths_bin _loc psp (maths_normal _loc nsp md true) m (exp_nil _loc))
 
 and parser with_indices =
   | EMPTY -> no_ind
@@ -1651,12 +1680,12 @@ and parser with_indices =
      end
 
   | i:with_indices s:Subsup.superscript ->
-      let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+      let s = exp_list _loc [maths_construct _loc "Ordinary" (Some (print_math_deco_sym _loc_s (SimpleSym s) no_ind))] in
       if i.up_right <> None then give_up ();
       { i with up_right = Some s }
 
   | i:with_indices s:Subsup.subscript ->
-      let s = <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s (SimpleSym s) no_ind$] >> in
+      let s = exp_list _loc [maths_construct _loc "Ordinary" (Some (print_math_deco_sym _loc_s (SimpleSym s) no_ind))] in
       if i.down_right <> None then give_up ();
       { i with down_right = Some s }
 
@@ -1682,12 +1711,9 @@ and parser math_punc_list =
     let nsr = s.infix_no_right_space in
     let r = m no_ind in
     let inter =
-      <:expr<
-                         Maths.Normal( $bool:nsl$,
-                           $print_math_deco_sym _loc_s s.infix_value no_ind$,
-                           $bool:nsr$) >>
+      maths_normal _loc nsl (print_math_deco_sym _loc_s s.infix_value no_ind) nsr
     in
-    <:expr<[Maths.bin 3 $inter$ $l$ $r$]>>
+    maths_bin _loc 3 inter l r
 
 and parser long_math_declaration =
   | m:math_punc_list -> m
@@ -1695,11 +1721,9 @@ and parser long_math_declaration =
     let nsl = s.infix_no_left_space in
     let nsr = s.infix_no_right_space in
     let inter =
-      <:expr<Maths.Normal( $bool:nsl$,
-                           $print_math_deco_sym _loc_s s.infix_value ind$,
-                           $bool:nsr$) >>
+      maths_normal _loc nsl (print_math_deco_sym _loc_s s.infix_value ind) nsr
     in
-    <:expr<[Maths.bin 2 $inter$ $l$ $r$] >>
+    maths_bin _loc 2 inter l r
 
 and parser math_declaration =
     | '{' m:long_math_declaration '}' -> m
@@ -1708,18 +1732,16 @@ and parser math_declaration =
        let nsl = s.infix_no_left_space in
        let nsr = s.infix_no_right_space in
        let inter =
-         <:expr<Maths.Normal( $bool:nsl$,
-                              $print_math_deco_sym _loc_s s.infix_value ind$,
-                              $bool:nsr$) >>
+         maths_normal _loc nsl (print_math_deco_sym _loc_s s.infix_value ind) nsr
        in
-       <:expr<[Maths.bin 2 $inter$ $m no_ind$ $r no_ind$] >>
+       maths_bin _loc 2 inter (m no_ind) (r no_ind)
 
 
 let _ = set_grammar math_toplevel (parser
   | m:(math_aux Punc) -> m no_ind
   | s:any_symbol i:with_indices ->
       if s = Invisible then give_up ();
-      <:expr<[Maths.Ordinary $print_math_deco_sym _loc_s s i$]>>)
+      exp_list _loc [maths_construct _loc "Ordinary" (Some (print_math_deco_sym _loc_s s i))])
 
 
 (****************************************************************************
@@ -1742,8 +1764,8 @@ let _ = set_grammar math_toplevel (parser
     | id:macro_name ->>
        let config = try List.assoc id state.word_macros with Not_found -> [] in
        args:(macro_arguments Text config) ->
-       (let fn = fun acc r -> <:expr<$acc$ $r$>> in
-        List.fold_left fn <:expr<$lid:id$>> args)
+       (let fn = fun acc r -> exp_apply1 _loc acc r in
+        List.fold_left fn (exp_lid _loc id) args)
     | m:verbatim_macro -> m
 
 (****************************)
@@ -1752,11 +1774,11 @@ let _ = set_grammar math_toplevel (parser
     | m:macro -> m
 
     | "//" - p:(paragraph_basic_text (addTag Italic tags)) - "//" when allowed Italic tags ->
-         <:expr<toggleItalic $p$>>
+         exp_apply1 _loc (exp_lid _loc "toggleItalic") p
     | "**" - p:(paragraph_basic_text (addTag Bold tags)) - "**" when allowed Bold tags ->
-         <:expr<bold $p$>>
+         exp_apply1 _loc (exp_lid _loc "bold") p
     | "||" - p:(paragraph_basic_text (addTag SmallCap tags)) - "||" when allowed SmallCap tags ->
-         <:expr<sc $p$>>
+         exp_apply1 _loc (exp_lid _loc "sc") p
 (*    | "__" - p:(paragraph_basic_text (addTag Underline tags)) - "__" when allowed Underline tags ->
          <:expr@_loc_p<underline $p$>>
     | "--" - p:(paragraph_basic_text (addTag Strike tags)) - "--" when allowed Strike tags ->
@@ -1766,37 +1788,37 @@ let _ = set_grammar math_toplevel (parser
     | '"' p:(paragraph_basic_text (addTag Quote tags)) '"' when allowed Quote tags ->
         (let opening = "“" in (* TODO adapt with the current language*)
          let closing = "”" in (* TODO adapt with the current language*)
-         <:expr<tT $string:opening$ :: $p$ @ [tT $string:closing$]>>)
+         exp_infix _loc "@" (exp_cons _loc (exp_apply1 _loc (exp_lid _loc "tT") (exp_string _loc opening)) p) (exp_list _loc [exp_apply1 _loc (exp_lid _loc "tT") (exp_string _loc closing)]))
 
     | "``" p:(paragraph_basic_text (addTag Quote tags)) "''" when allowed Quote tags ->
         (let opening = "“" in (* TODO adapt with the current language*)
          let closing = "”" in (* TODO adapt with the current language*)
-         <:expr<tT $string:opening$ :: $p$ @ [tT $string:closing$]>>)
+         exp_infix _loc "@" (exp_cons _loc (exp_apply1 _loc (exp_lid _loc "tT") (exp_string _loc opening)) p) (exp_list _loc [exp_apply1 _loc (exp_lid _loc "tT") (exp_string _loc closing)]))
 
-    | v:verbatim_sharp  -> <:expr<$v$>>
-    | v:verbatim_bquote  -> <:expr<$v$>>
+    | v:verbatim_sharp  -> v
+    | v:verbatim_bquote  -> v
 
     | dollar m:math_toplevel dollar ->
-        <:expr<[bB (fun env0 -> Maths.kdraw
-                        [ { env0 with mathStyle = env0.mathStyle } ]
-                          $m$)]>>
+        let style_rec = exp_record _loc [(mkloc (Lident "mathStyle") _loc, exp_field_access _loc (exp_lid _loc "env0") (Lident "mathStyle"))] (Some (exp_lid _loc "env0")) in
+        let kdraw_body = exp_apply2 _loc (exp_dot _loc "Maths" "kdraw") (exp_list _loc [style_rec]) m in
+        exp_list _loc [exp_apply1 _loc (exp_lid _loc "bB") (exp_fun_s _loc "env0" kdraw_body)]
     | "\\(" m:math_toplevel "\\)" ->
-        <:expr<[bB (fun env0 -> Maths.kdraw
-                        [ { env0 with mathStyle = env0.mathStyle } ]
-                        (displayStyle $m$))]>>
+        let style_rec = exp_record _loc [(mkloc (Lident "mathStyle") _loc, exp_field_access _loc (exp_lid _loc "env0") (Lident "mathStyle"))] (Some (exp_lid _loc "env0")) in
+        let kdraw_body = exp_apply2 _loc (exp_dot _loc "Maths" "kdraw") (exp_list _loc [style_rec]) (exp_apply1 _loc (exp_lid _loc "displayStyle") m) in
+        exp_list _loc [exp_apply1 _loc (exp_lid _loc "bB") (exp_fun_s _loc "env0" kdraw_body)]
 
     | ws:word+$ ->
-       <:expr<[tT $string:String.concat " " ws$]>>
+       exp_list _loc [exp_apply1 _loc (exp_lid _loc "tT") (exp_string _loc (String.concat " " ws))]
 
     | '{' p:(paragraph_basic_text TagSet.empty) '}' -> p
 
   let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
-    let x,y = Lexing.((end_pos _loc_p1).pos_cnum, (start_pos _loc_p2).pos_cnum) in
+    let x,y = Lexing.((_loc_p1.Location.loc_end).pos_cnum, (_loc_p2.Location.loc_start).pos_cnum) in
     (*Printf.fprintf stderr "x: %d, y: %d\n%!" x y;*)
     let _loc = _loc_p2 in
-    let bl e = if y - x >= 1 then <:expr<tT" "::$e$>> else e in
+    let bl e = if y - x >= 1 then exp_cons _loc (exp_apply1 _loc (exp_lid _loc "tT") (exp_string _loc " ")) e else e in
     let _loc = Pa_ast.merge2 _loc_p1 _loc_p2 in
-    <:expr<$p1$ @ $bl p2$>>
+    exp_infix _loc "@" p1 (bl p2)
 
   let _ = set_paragraph_basic_text (fun tags ->
              parser
@@ -1814,14 +1836,20 @@ let _ = set_grammar math_toplevel (parser
       p:(oparagraph_basic_text TagSet.empty) ->
     (fun indented ->
          if indented then
-           <:struct<
-             let _ = D.structure := newPar !D.structure
-                            Complete.normal Patoline_Format.parameters $p$ >>
+           str_let_wild _loc (exp_ref_assign _loc (exp_dot _loc "D" "structure")
+             (exp_apply _loc (exp_lid _loc "newPar")
+               [exp_deref _loc (exp_dot _loc "D" "structure");
+                exp_dot _loc "Complete" "normal";
+                exp_dot _loc "Patoline_Format" "parameters"; p]))
          else
-           <:struct<
-             let _ = D.structure := newPar !D.structure
-                            ~environment:(fun x -> { x with par_indent = [] })
-                            Complete.normal Patoline_Format.parameters $p$>>
+           let env_fun = exp_fun_s _loc "x" (exp_record _loc [(mkloc (Lident "par_indent") _loc, exp_nil _loc)] (Some (exp_lid _loc "x"))) in
+           str_let_wild _loc (exp_ref_assign _loc (exp_dot _loc "D" "structure")
+             (Exp.apply ~loc:_loc (exp_lid _loc "newPar")
+               [(Labelled "environment", env_fun);
+                (Nolabel, exp_deref _loc (exp_dot _loc "D" "structure"));
+                (Nolabel, exp_dot _loc "Complete" "normal");
+                (Nolabel, exp_dot _loc "Patoline_Format" "parameters");
+                (Nolabel, p)]))
         )
 
 (****************************************************************************
@@ -1841,28 +1869,21 @@ let _ = set_grammar math_toplevel (parser
          incr nb_includes;
          (try add_grammar id; build_grammar () with Not_found -> ());
          let temp_id = Printf.sprintf "TEMP%d" !nb_includes in
-         <:struct< module $uid:temp_id$ =$uid:id$.Document(Patoline_Output )(D)
-                   open $uid:temp_id$>>)
+         str_module _loc temp_id (mod_apply _loc (mod_apply _loc (mod_ident _loc (Ldot (Lident id, "Document"))) (mod_ident _loc (Lident "Patoline_Output"))) (mod_ident _loc (Lident "D")))
+         @ str_open _loc temp_id)
     | "\\" id:macrouid ts:simple_text_macro_argument*$ -> (fun _ ->
          let m1 = freshUid () in
          if ts <> [] then
            let m2 = freshUid () in
-           let str = List.flatten (List.map (fun t -> <:struct< let arg1 = $t$ >>) ts) in
-           <:struct<
-             module $uid:m2$ =
-               struct
-                 $struct:str$
-               end
-             module $uid:m1$ = $uid:id$($uid:m2$)
-             let _ = $uid:m1$.do_begin_env ()
-             let _ = $uid:m1$.do_end_env ()
-           >>
+           let str = List.flatten (List.map (fun t -> str_let _loc "arg1" t) ts) in
+           str_module _loc m2 (mod_structure _loc str)
+           @ str_module _loc m1 (mod_apply _loc (mod_ident _loc (Lident id)) (mod_ident _loc (Lident m2)))
+           @ str_let_wild _loc (exp_apply _loc (exp_dot _loc m1 "do_begin_env") [exp_unit _loc])
+           @ str_let_wild _loc (exp_apply _loc (exp_dot _loc m1 "do_end_env") [exp_unit _loc])
          else
-           <:struct<
-             module $uid:m1$ = $uid:id$
-             let _ = $uid:m1$.do_begin_env ()
-             let _ = $uid:m1$.do_end_env ()
-           >>)
+           str_module _loc m1 (mod_ident _loc (Lident id))
+           @ str_let_wild _loc (exp_apply _loc (exp_dot _loc m1 "do_begin_env") [exp_unit _loc])
+           @ str_let_wild _loc (exp_apply _loc (exp_dot _loc m1 "do_end_env") [exp_unit _loc]))
     | "\\begin" '{' idb:lid '}' ->>
         let config = try List.assoc idb state.environment with Not_found -> [] in
           args:(macro_arguments Text config)
@@ -1873,45 +1894,41 @@ let _ = set_grammar math_toplevel (parser
            let m1 = freshUid () in
            let m2 = freshUid () in
            let arg =
-             if args = [] then <:struct<>> else
+             if args = [] then [] else
                let gen i e =
                  let id = Printf.sprintf "arg%i" (i+1) in
-                 <:struct<let $lid:id$ = $e$>>
+                 str_let _loc id e
                in
                let args = List.mapi gen args in
                let args = List.fold_left (@) [] args in
-               <:struct<
-                 module $uid:"Arg_"^m2$ =
-                   struct
-                     $struct:args$
-                   end
-               >>
+               str_module _loc ("Arg_"^m2) (mod_structure _loc args)
            in
            let def =
              let name = "Env_" ^ idb in
              let argname = "Arg_" ^ m2 in
              if args = [] then
-               <:struct<module $uid:m2$ = $uid:name$>>
+               str_module _loc m2 (mod_ident _loc (Lident name))
              else
-               <:struct<module $uid:m2$ = $uid:name$($uid:argname$)>>
+               str_module _loc m2 (mod_apply _loc (mod_ident _loc (Lident name)) (mod_ident _loc (Lident argname)))
            in
-           <:struct< module $uid:m1$ =
-                       struct
-                         $struct:arg$
-                         $struct:def$
-                         open $uid:m2$
-                         let _ = $uid:m2$ . do_begin_env ()
-                         $struct:ps indent_first$
-                         let _ = $uid:m2$ . do_end_env ()
-                        end>>)
+           let body = arg @ def @ str_open _loc m2
+             @ str_let_wild _loc (exp_apply _loc (exp_dot _loc m2 "do_begin_env") [exp_unit _loc])
+             @ ps indent_first
+             @ str_let_wild _loc (exp_apply _loc (exp_dot _loc m2 "do_end_env") [exp_unit _loc]) in
+           str_module _loc m1 (mod_structure _loc body))
     | m:{ "\\[" math_toplevel "\\]" | "$$" math_toplevel "$$" } ->
          (fun _ ->
-           <:struct<let _ = D.structure := newPar !D.structure
-                        ~environment:(fun x -> {x with par_indent = []})
-                        Complete.normal displayedFormula
-                        [bB (fun env0 -> Maths.kdraw
-                          [ { env0 with mathStyle = Mathematical.Display } ]
-                          $m$)]>>)
+           let env_fun = exp_fun_s _loc "x" (exp_record _loc [(mkloc (Lident "par_indent") _loc, exp_nil _loc)] (Some (exp_lid _loc "x"))) in
+           let style_rec = exp_record _loc [(mkloc (Lident "mathStyle") _loc, exp_dot _loc "Mathematical" "Display")] (Some (exp_lid _loc "env0")) in
+           let kdraw_body = exp_apply2 _loc (exp_dot _loc "Maths" "kdraw") (exp_list _loc [style_rec]) m in
+           let bb = exp_list _loc [exp_apply1 _loc (exp_lid _loc "bB") (exp_fun_s _loc "env0" kdraw_body)] in
+           str_let_wild _loc (exp_ref_assign _loc (exp_dot _loc "D" "structure")
+             (Exp.apply ~loc:_loc (exp_lid _loc "newPar")
+               [(Labelled "environment", env_fun);
+                (Nolabel, exp_deref _loc (exp_dot _loc "D" "structure"));
+                (Nolabel, exp_dot _loc "Complete" "normal");
+                (Nolabel, exp_lid _loc "displayedFormula");
+                (Nolabel, bb)])))
     | l:paragraph_basic_text -> l
     | s:symbol_def -> fun _ -> s
 
@@ -1963,12 +1980,14 @@ let parser text_item lvl =
     (fun _ lvl' ->
       assert(lvl' = lvl);
       let code =
-        <:struct<
-          let _ = D.structure := newStruct ~in_toc:$bool:in_toc$ ~numbered:$bool:num$
-                    !D.structure $title$
-          $struct:txt false (lvl+1)$
-          let _ = go_up D.structure
-        >>
+        let new_struct = Exp.apply ~loc:_loc (exp_lid _loc "newStruct")
+          [(Labelled "in_toc", exp_bool _loc in_toc);
+           (Labelled "numbered", exp_bool _loc num);
+           (Nolabel, exp_deref _loc (exp_dot _loc "D" "structure"));
+           (Nolabel, title)] in
+        str_let_wild _loc (exp_ref_assign _loc (exp_dot _loc "D" "structure") new_struct)
+        @ txt false (lvl+1)
+        @ str_let_wild _loc (exp_apply1 _loc (exp_lid _loc "go_up") (exp_dot _loc "D" "structure"))
       in
       (true, lvl, code))
 
@@ -1978,11 +1997,13 @@ let parser text_item lvl =
      (fun _ lvl' ->
        assert (lvl' >= lvl);
       let code =
-        <:struct<
-          let _ = D.structure := newStruct ~numbered:$bool:num$ !D.structure $title$
-          $struct:txt false (lvl+1)$
-          let _ = go_up D.structure
-        >>
+        let new_struct = Exp.apply ~loc:_loc (exp_lid _loc "newStruct")
+          [(Labelled "numbered", exp_bool _loc num);
+           (Nolabel, exp_deref _loc (exp_dot _loc "D" "structure"));
+           (Nolabel, title)] in
+        str_let_wild _loc (exp_ref_assign _loc (exp_dot _loc "D" "structure") new_struct)
+        @ txt false (lvl+1)
+        @ str_let_wild _loc (exp_apply1 _loc (exp_lid _loc "go_up") (exp_dot _loc "D" "structure"))
       in
       (true, lvl, code))
 
@@ -2034,49 +2055,54 @@ let parser title =
 
       let date =
         match date with
-        | None   -> <:expr<[]>>
-        | Some t -> <:expr<["Date", string_of_contents $t$]>>
+        | None   -> exp_nil _loc
+        | Some t -> exp_list _loc [exp_tuple _loc [exp_string _loc "Date"; exp_apply1 _loc (exp_lid _loc "string_of_contents") t]]
       in
       let inst =
         match inst with
-        | None   -> <:expr<[]>>
-        | Some t -> <:expr<["Institute", string_of_contents $t$]>>
+        | None   -> exp_nil _loc
+        | Some t -> exp_list _loc [exp_tuple _loc [exp_string _loc "Institute"; exp_apply1 _loc (exp_lid _loc "string_of_contents") t]]
       in
       let auth =
         match auth with
-        | None   -> <:expr<[]>>
-        | Some t -> <:expr<["Author", string_of_contents $t$]>>
+        | None   -> exp_nil _loc
+        | Some t -> exp_list _loc [exp_tuple _loc [exp_string _loc "Author"; exp_apply1 _loc (exp_lid _loc "string_of_contents") t]]
       in
-      <:struct<
-        let _ = Patoline_Format.title D.structure
-                  ~extra_tags:($auth$ @ $inst$ @ $date$) $title$
-      >>
+      let tags = exp_infix _loc "@" auth (exp_infix _loc "@" inst date) in
+      str_let_wild _loc (Exp.apply ~loc:_loc (exp_dot _loc "Patoline_Format" "title")
+        [(Nolabel, exp_dot _loc "D" "structure");
+         (Labelled "extra_tags", tags);
+         (Nolabel, title)])
 
 let wrap basename _loc ast =
-  <:struct<
-    open Patoraw
-    open Typography
-    open Typography.Box
-    open Typography.Document
-    open Typography.Maths
-    open RawContent
-    open Color
-    open Driver
-    open DefaultMacros
-
-    module Document = functor(Patoline_Output:DefaultFormat.Output)
-      -> functor(D:DocumentStructure)->struct
-      let $lid:("cache_"^basename)$ = $array:(List.rev !cache_buf)$
-      let $lid:("mcache_"^basename)$ = $array:(List.rev !mcache_buf)$
-
-      module Patoline_Format = $uid:!patoline_format$ .Format(D)
-      open $uid:!patoline_format$
-      open Patoline_Format
-      let temp1 = List.map fst (snd !D.structure)
-      $struct:ast$
-      let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
-    end
-   >>
+  let opens = List.concat [
+    str_open_lid _loc (Lident "Patoraw");
+    str_open_lid _loc (Lident "Typography");
+    str_open_lid _loc (Ldot (Lident "Typography", "Box"));
+    str_open_lid _loc (Ldot (Lident "Typography", "Document"));
+    str_open_lid _loc (Ldot (Lident "Typography", "Maths"));
+    str_open_lid _loc (Lident "RawContent");
+    str_open_lid _loc (Lident "Color");
+    str_open_lid _loc (Lident "Driver");
+    str_open_lid _loc (Lident "DefaultMacros")] in
+  let cache_let = str_let _loc ("cache_"^basename) (exp_array _loc (List.rev !cache_buf)) in
+  let mcache_let = str_let _loc ("mcache_"^basename) (exp_array _loc (List.rev !mcache_buf)) in
+  let format_mod = str_module _loc "Patoline_Format"
+    (mod_apply _loc (mod_ident _loc (Ldot (Lident !patoline_format, "Format"))) (mod_ident _loc (Lident "D"))) in
+  let open_format = str_open _loc !patoline_format @ str_open _loc "Patoline_Format" in
+  let temp1_let = str_let _loc "temp1"
+    (exp_apply2 _loc (exp_dot _loc "List" "map") (exp_lid _loc "fst")
+      (exp_apply1 _loc (exp_lid _loc "snd") (exp_deref _loc (exp_dot _loc "D" "structure")))) in
+  let follow_let = str_let_wild _loc (exp_ref_assign _loc (exp_dot _loc "D" "structure")
+    (exp_apply2 _loc (exp_lid _loc "follow")
+      (exp_apply1 _loc (exp_lid _loc "top") (exp_deref _loc (exp_dot _loc "D" "structure")))
+      (exp_apply1 _loc (exp_dot _loc "List" "rev") (exp_lid _loc "temp1")))) in
+  let functor_body = cache_let @ mcache_let @ format_mod @ open_format @ temp1_let @ ast @ follow_let in
+  let doc_mod = str_module _loc "Document"
+    (Mod.functor_ ~loc:_loc (Named (mkloc (Some "Patoline_Output") _loc, Mty.ident ~loc:_loc (mkloc (Ldot (Lident "DefaultFormat", "Output")) _loc)))
+      (Mod.functor_ ~loc:_loc (Named (mkloc (Some "D") _loc, Mty.ident ~loc:_loc (mkloc (Lident "DocumentStructure") _loc)))
+        (mod_structure _loc functor_body))) in
+  opens @ doc_mod
 
 let parser full_text = f:header ->>
   let _ = f () in
@@ -2096,10 +2122,10 @@ let parser directive =
        | "DRIVER"  -> patoline_driver := a
        | "PACKAGE" -> patoline_packages := a :: !patoline_packages
        | _ -> give_up ());
-    [])
-let extra_structure = directive :: extra_structure
+    ([] : Parsetree.structure_item list))
+(* let extra_structure = [directive] (* unused - Extension removed *) *)
 
-let parser patoline_quotations (_,lvl) =
+let parser patoline_quotations ((_,lvl) : Pa_ocaml_prelude.alm * Pa_ocaml_prelude.expression_prio) =
   | "<<" par:simple_text     ">>" when lvl <= Atom -> par
   | "<$" mat:math_toplevel "$>" when lvl <= Atom -> mat
 
@@ -2107,34 +2133,29 @@ let _ =
   let reserved = ["<<"; ">>"; "<$"; "$>"; "<<$"; "$>>"] in
   List.iter Pa_lexing.add_reserved_symb reserved
 
-let extra_expressions = patoline_quotations :: extra_expressions
+(* let extra_expressions = [patoline_quotations] (* unused - Extension removed *) *)
 
 (* Entry points and extension creation **************************************)
 
 (* Adding the new entry points *)
 
-let entry_points =
-  let parse_ml  =
-    parser f:header ->>
-      let _ =
-        try f () with e ->
-          Printf.eprintf "Exception: %s\nTrace:\n%!" (Printexc.to_string e)
-      in
-      structure
-  in
-  let parse_mli =
-    parser f:header ->>
-      let _ =
-        try f () with e ->
-          Printf.eprintf "Exception: %s\nTrace:\n%!" (Printexc.to_string e)
-      in
-      signature
-  in
-  [ (".txp", Implementation (full_text, blank2))
-  ; (".ml" , Implementation (parse_ml , blank2))
-  ; (".mli", Interface      (parse_mli, blank2)) ]
+let parse_ml =
+  parser f:header ->>
+    let _ =
+      try f () with e ->
+        Printf.eprintf "Exception: %s\nTrace:\n%!" (Printexc.to_string e)
+    in
+    structure
 
-end (* of the functor *)
+let parse_mli =
+  parser f:header ->>
+    let _ =
+      try f () with e ->
+        Printf.eprintf "Exception: %s\nTrace:\n%!" (Printexc.to_string e)
+    in
+    signature
+
+(* End of grammar/parser definitions *)
 
 (* Generator for the main file. *)
 let write_main_file driver form build_dir dir name =
@@ -2151,55 +2172,83 @@ let write_main_file driver form build_dir dir name =
     c ^ cs
   in
   let ast =
-    <:struct<
-      open Patoraw
-      open Typography
-      open Typography.Box
-      open Typography.Document
-      open RawContent
-      open Color
-
-      let _ = Distance.read_cache $string:dcache$
-
-      module D : DocumentStructure =
-        struct
-          let structure =
-            ref (Node { empty with node_tags=["intoc",""] },[])
-        end
-
-      module Driver = $uid:driver$
-
-      let _ = Arg.parse_argv (Driver.filter_options Sys.argv)
-                (Driver.driver_options @ DefaultFormat.spec) ignore "Usage :"
-
-      module Patoline_Format0 = $uid:form$.Format(D)
-      open Patoline_Format0
-      module Patoline_Format = Patoline_Format0
-      module Patoline_Output = Patoline_Format0.Output(Driver)
-      module TMP = $uid:m$.Document(Patoline_Output)(D)
-      open TMP
-
-      let _ = Patoline_Output.output Patoline_Output.outputParams
-                (fst (top !D.structure))
-                (List.fold_left (fun acc f -> f acc)
-                  Patoline_Format.defaultEnv !init_env_hook) $string:full$
-
-      let _ = Distance.write_cache $string:dcache$
-    >>
+    let opens = List.concat [
+      str_open_lid _loc (Lident "Patoraw");
+      str_open_lid _loc (Lident "Typography");
+      str_open_lid _loc (Ldot (Lident "Typography", "Box"));
+      str_open_lid _loc (Ldot (Lident "Typography", "Document"));
+      str_open_lid _loc (Lident "RawContent");
+      str_open_lid _loc (Lident "Color")] in
+    let read_cache = str_let_wild _loc (exp_apply1 _loc (exp_dot _loc "Distance" "read_cache") (exp_string _loc dcache)) in
+    let d_struct_body = str_let _loc "structure"
+      (exp_apply1 _loc (exp_lid _loc "ref")
+        (exp_tuple _loc [
+          exp_apply1 _loc (exp_lid _loc "Node")
+            (exp_record _loc [(mkloc (Lident "node_tags") _loc,
+              exp_list _loc [exp_tuple _loc [exp_string _loc "intoc"; exp_string _loc ""]])]
+              (Some (exp_lid _loc "empty")));
+          exp_nil _loc])) in
+    let d_mod = str_module _loc "D"
+      (Mod.constraint_ ~loc:_loc (mod_structure _loc d_struct_body)
+        (Mty.ident ~loc:_loc (mkloc (Lident "DocumentStructure") _loc))) in
+    let driver_mod = str_module _loc "Driver" (mod_ident _loc (Lident driver)) in
+    let parse_argv = str_let_wild _loc (exp_apply _loc (exp_dot _loc "Arg" "parse_argv")
+      [exp_apply1 _loc (exp_dot _loc "Driver" "filter_options") (exp_dot _loc "Sys" "argv");
+       exp_infix _loc "@" (exp_dot _loc "Driver" "driver_options") (exp_dot _loc "DefaultFormat" "spec");
+       exp_lid _loc "ignore"; exp_string _loc "Usage :"]) in
+    let format0_mod = str_module _loc "Patoline_Format0"
+      (mod_apply _loc (mod_ident _loc (Ldot (Lident form, "Format"))) (mod_ident _loc (Lident "D"))) in
+    let open_f0 = str_open _loc "Patoline_Format0" in
+    let format_mod = str_module _loc "Patoline_Format" (mod_ident _loc (Lident "Patoline_Format0")) in
+    let output_mod = str_module _loc "Patoline_Output"
+      (mod_apply _loc (mod_ident _loc (Ldot (Lident "Patoline_Format0", "Output"))) (mod_ident _loc (Lident "Driver"))) in
+    let tmp_mod = str_module _loc "TMP"
+      (mod_apply _loc (mod_apply _loc (mod_ident _loc (Ldot (Lident m, "Document"))) (mod_ident _loc (Lident "Patoline_Output"))) (mod_ident _loc (Lident "D"))) in
+    let open_tmp = str_open _loc "TMP" in
+    let output_call = str_let_wild _loc (exp_apply _loc (exp_dot _loc "Patoline_Output" "output")
+      [exp_dot _loc "Patoline_Output" "outputParams";
+       exp_apply1 _loc (exp_lid _loc "fst") (exp_apply1 _loc (exp_lid _loc "top") (exp_deref _loc (exp_dot _loc "D" "structure")));
+       exp_apply _loc (exp_dot _loc "List" "fold_left")
+         [exp_fun_s _loc "acc" (exp_fun_s _loc "f" (exp_apply1 _loc (exp_lid _loc "f") (exp_lid _loc "acc")));
+          exp_dot _loc "Patoline_Format" "defaultEnv";
+          exp_deref _loc (exp_lid _loc "init_env_hook")];
+       exp_string _loc full]) in
+    let write_cache = str_let_wild _loc (exp_apply1 _loc (exp_dot _loc "Distance" "write_cache") (exp_string _loc dcache)) in
+    opens @ read_cache @ d_mod @ driver_mod @ parse_argv @ format0_mod @ open_f0
+    @ format_mod @ output_mod @ tmp_mod @ open_tmp @ output_call @ write_cache
   in
   Format.fprintf fmt "%a\n%!" Pprintast.structure ast;
   close_out oc;
   if !debug then Printf.eprintf "Written main file %s\n%!" file
 
-(* Creating and running the extension *)
+(* Creating and running the parser - standalone main *)
 let _ =
   try
-    let module ParserExt = Pa_parser.Ext(Pa_ocaml_prelude.Initial) in
-    let module PaExt = Ext(ParserExt) in
-    let module PatolineDefault = Pa_ocaml.Make(PaExt) in
-    let module M = Pa_main.Start(PatolineDefault) in
-    let open PaExt in
-    match !Pa_ocaml_prelude.file, !in_ocamldep with
+    let usage = Printf.sprintf "usage: %s [options] file" Sys.argv.(0) in
+    let file_ref = file in
+    Arg.parse (spec @ [
+      ("--debug", Arg.Set_int Earley.debug_lvl,
+        "Sets the value of \"Earley.debug_lvl\".");
+      ("--ascii", Arg.Unit ignore,
+        "Output ASCII (always on, kept for compatibility).")
+    ]) (fun s -> file_ref := Some s) usage;
+    let (filename, ic) =
+      match !file_ref with
+      | None       -> ("stdin", stdin)
+      | Some file  -> (file, open_in file)
+    in
+    let ext = try Filename.extension filename with _ -> ".txp" in
+    let (grammar, blank) =
+      match ext with
+      | ".txp" -> (full_text, blank2)
+      | _      -> (parse_ml, blank2)
+    in
+    let ast =
+      Earley.handle_exception
+        (Earley.parse_channel ~filename grammar blank) ic
+    in
+    Format.printf "%a\n%!" Pprintast.structure ast;
+    match !file, !in_ocamldep with
     | Some s, false ->
        let (dir, base, _) = Filename.decompose s in
        let name = base ^ ".tgy" in

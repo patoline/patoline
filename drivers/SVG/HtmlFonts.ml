@@ -167,7 +167,7 @@ let filter_fonts cmd cache =
   let temp_dir = Filename.temp_file "patfonts" "" in
   Sys.remove temp_dir; Unix.mkdir temp_dir 0o700;
   StrMap.iter (fun filename buf->
-    let filename = Filename.(concat temp_dir (basename filename)) in
+    let filename = Filename.concat temp_dir (Filename.basename filename) in
     let out=open_out filename in
     Buffer.output_buffer out buf;
     close_out out;

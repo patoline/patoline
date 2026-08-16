@@ -14,15 +14,16 @@ let rec load_driver driverdir name =
   let rec fn = function
     | []     -> failwith (Printf.sprintf "Driver %S not found." name)
     | dir::l ->
-        try
-          Dynlink.loadfile (Filename.concat dir name);
-          Printf.fprintf stderr "Driver %s loaded.\n%!" name
-        with 
-        | Dynlink.Error (Dynlink.File_not_found _) -> fn l
-        | Dynlink.Error s ->
-            Printf.fprintf stderr "Dynlink error: %s\n"
-              (Dynlink.error_message s);
-            exit 1
+        let path = Filename.concat dir name in
+        if not (Sys.file_exists path) then fn l
+        else begin
+          try
+            Dynlink.loadfile path;
+            Printf.fprintf stderr "Driver %s loaded.\n%!" name
+          with
+          | Dynlink.Error s ->
+              Printf.fprintf stderr "Dynlink error: %s\n"
+                (Dynlink.error_message s);
+              exit 1
+        end
   in fn driverdir
-
-

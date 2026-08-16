@@ -23,12 +23,12 @@ homepage: "https://patoline.github.io"
 bug-reports: "https://github.com/patoline/patoline/issues"
 depends: [
   "dune" {>= "2.7"}
-  "ocaml" {>= "4.03.0"}
+  "ocaml" {>= "5.2.0"}
   "ocamlfind"
-  "earley" {= "2.0.0"}
+  "earley" {>= "3.0.0"}
   "camlzip"
   "sqlite3"
-  "imagelib" {= "20180522"}
+  "imagelib" {>= "20200929"}
   "odoc" {with-doc}
 ]
 depopts: ["lablgl" "cairo2" "cryptokit"]

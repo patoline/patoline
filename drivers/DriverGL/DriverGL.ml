@@ -728,7 +728,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
         try GlTex.bind_texture ~target:`texture_2d
               (Hashtbl.find win.imageCache i)
         with Not_found ->
-          let image = ImageLib.openfile i.image_file in
+          let image = ImageLib_unix.openfile i.image_file in
           let w =Image.(image.width) in
           let h =Image.(image.height) in
           let raw = Raw.create `ubyte ~len:(4*w*h) in
@@ -1339,7 +1339,7 @@ let output' ?(structure:structure={name="";raw_name=[];metadata=[];tags=[];
              | ADDR_UNIX s    -> s
              | ADDR_INET(a,_) -> string_of_inet_addr a
            in
-           Printf.fprintf Pervasives.stderr "Trying connect to %s:%d\n%!"
+           Printf.fprintf Stdlib.stderr "Trying connect to %s:%d\n%!"
              str_addr port;
            let sock= socket addr.ai_family addr.ai_socktype 0 in
            try

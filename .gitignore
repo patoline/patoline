@@ -3,3 +3,5 @@ _build/
 .merlin
 *~
 examples/*.pdf
+_opam/
+.envrc

@@ -22,7 +22,7 @@ let iter : ('a -> unit) -> 'a list -> unit = fun f ls ->
     Mutex.lock m;
     match !bag with
     | t::ts -> bag := ts; Mutex.unlock m; f t; thread_fun ()
-    | []    -> Mutex.unlock m; Thread.exit ()
+    | []    -> Mutex.unlock m; raise Thread.Exit
   in
   let ths = Array.init !nb_threads (fun _ -> Thread.create thread_fun ()) in
   Array.iter Thread.join ths
