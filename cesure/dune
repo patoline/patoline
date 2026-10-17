@@ -10,5 +10,4 @@
   (public_name cesure)
   (package patoline)
   (modules cesure)
-  (preprocess (action (run pa_ocaml %{input-file})))
   (libraries earley.core earley.str hyphen))

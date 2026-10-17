@@ -22,7 +22,14 @@ val fontName : ?index:int -> font -> name
 
 (** Loads a font in the memory from a file name. Actual
     implementations may keep the file open *)
-val loadFont : ?offset:int -> ?size:int option -> string -> font
+val loadFont :
+  ?offset:int ->
+  ?size:int option ->
+  ?family:string ->
+  ?family_hint:string ->
+  ?weight:int ->
+  ?slant:string ->
+  string -> font
 
 val cardinal : font -> int
 
@@ -91,3 +98,14 @@ val add_kerning : fontInfo -> (IntMap.key * int * 'a FTypes.kerningBox *
 val cff_only : font -> CFF.font
 
 val is_cff : font -> bool
+
+(** P1-5: Build a list of [make_ligature]-style callbacks from the GSUB
+    ligature substitutions of an OpenType font. Returns [[]] for
+    fonts without a GSUB table or without ligature lookups. *)
+val ligature_callbacks_from_gsub : font -> (glyph_id list -> glyph_id list) list
+
+(** Apply OpenType ligature features (e.g. ["liga"], ["dlig"]) directly
+    to a glyph list. Useful for callers that want feature-tag-scoped
+    substitution. Returns the input unchanged for fonts without a
+    GSUB table. *)
+val apply_ligature_features : font -> string list -> glyph_id list -> glyph_id list

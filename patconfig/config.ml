@@ -5,9 +5,14 @@ module Spec = struct
 
   include PatDefault
 
+  (* Windows has neither XDG_DATA_HOME nor HOME by default: fall back to
+     USERPROFILE (and finally the current directory) instead of raising. *)
   let home =
     try Sys.getenv "XDG_DATA_HOME"
-    with Not_found -> Sys.getenv "HOME"
+    with Not_found ->
+      (try Sys.getenv "HOME"
+       with Not_found ->
+         (try Sys.getenv "USERPROFILE" with Not_found -> "."))
 
   (* Default Patoline configuration. *)
   let spec =
@@ -61,20 +66,25 @@ let findPath ?(subdir=false) (path, paths) fname =
   if debug then List.iter (Printf.eprintf " - %S\n%!") (path :: paths);
   let rec search base =
     let path = Filename.concat base fname in
-    if Sys.file_exists path then path else
-      let dirs = Sys.readdir base in
+    if Sys.file_exists path then path else begin
+      (* [readdir] on a not-yet-installed share directory must behave
+         like a miss, not a fatal [Sys_error]: this runs in dev trees
+         before [dune install] has populated share/patoline. *)
+      let dirs = try Sys.readdir base with Sys_error _ -> [||] in
       let rec fn i =
         if i < 0 then raise Not_found;
         let dname = Filename.concat base dirs.(i) in
-        if Sys.is_directory dname then search dname
+        if (try Sys.is_directory dname with Sys_error _ -> false) then
+          search dname
         else fn (i-1)
       in
       if subdir then fn (Array.length dirs - 1)
       else raise Not_found
+    end
   in
   let rec find = function
     | []    -> raise Not_found
-    | p::ps -> try search p with Not_found -> find ps
+    | p::ps -> try search p with (Not_found | Sys_error _) -> find ps
   in find (List.rev (path :: paths))
 
 let findFont    fn = findPath ~subdir:true patoconfig.fonts_dir fn

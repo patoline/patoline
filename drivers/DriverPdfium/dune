@@ -1,0 +1,7 @@
+(library
+ (name DriverPdfium)
+ (public_name patoline.driver.DriverPdfium)
+ (modules :standard)
+ (wrapped false)
+ (optional) ; requires `pdfium` C library at runtime. See README.md.
+ (libraries patoraw))

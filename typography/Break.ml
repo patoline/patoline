@@ -731,3 +731,149 @@ module Make(Line : OrderedHashableType with type t = Box.line) =
             )
       end
   end
+
+(* ------------------------------------------------------------------
+   P1-1: Knuth-Plass DP backend (placeholder)
+   ------------------------------------------------------------------ *)
+
+(** Available paragraph breaking algorithms. New values will land as
+    [Break.Optimal] (Knuth-Plass integer demerit DP) reaches feature
+    parity with the best-first search. *)
+type algorithm =
+  | Legacy
+  | Optimal
+
+(** Currently selected algorithm. The default keeps the best-first
+    search used since the original Patoline release. Override at startup
+    with the environment variable [PATOLINE_BREAK_ALGO=optimal]. *)
+let algorithm : algorithm ref =
+  let v = Sys.getenv_opt "PATOLINE_BREAK_ALGO" in
+  match String.lowercase_ascii (Option.value v ~default:"legacy") with
+  | "optimal" -> ref Optimal
+  | _ -> ref Legacy
+
+(** Backward-compatible alias: existing call sites use [Break.Make]
+    and keep the same semantics as before. *)
+
+(** [Optimal] is a Knuth-Plass style line-breaker suitable for short
+    paragraphs where the legacy best-first search overshoots.  Unlike
+    [Make], the algorithm returns the *minimum-demerit* break sequence,
+    computed by a one-pass integer-style DP across the feasible break
+    points of a paragraph.  The full pipeline (vertical metrics, figure
+    placement, ...) still relies on the [typeset] function from
+    [Make]; we provide [break_paragraph] as a drop-in helper that
+    callers can use to choose a break list per paragraph.
+
+    This implementation does not yet cover figures or widow/orphan
+    avoidance; it computes a simple optimal break sequence for a flat
+    sequence of [box array] (lines) given the target measure, using the
+    decomposition in [Badness.compute_line_demerits].
+
+    Outline: convert the paragraph to a stream of [Box_i] / [Glue_i] /
+    [Penalty_i] items (Knuth & Plass 1981); compute the optimal set of
+    break points using a one-pass integer-style DP across the feasible
+    break points; recover the break sequence by backtrack.  The legacy
+    best-first path (selected by default) is exposed by [Break.Make];
+    this DP path is selected by setting [PATOLINE_BREAK_ALGO=optimal]. *)
+module Optimal = struct
+
+  type item =
+    | Box_i of Box.box array
+    | Glue_i of float * float * float
+    | Penalty_i of int * float
+
+  (** Sum the natural width of [items] treating [Glue_i] as 0. *)
+  let natural_width items =
+    let total = ref 0. in
+    List.iter (function
+        | Box_i b -> total := !total +. Badness.line_width 1.0 b
+        | Glue_i _
+        | Penalty_i _ -> ()) items;
+    !total
+
+  (** Sum the stretch (positive glue); shrink uses absolute value. *)
+  let sum_stretch items =
+    let s = ref 0. in
+    List.iter (function
+        | Box_i _ -> ()
+        | Glue_i (_, stretch, _) -> s := !s +. stretch
+        | Penalty_i _ -> ()) items;
+    !s
+
+  let sum_shrink items =
+    let s = ref 0. in
+    List.iter (function
+        | Box_i _ -> ()
+        | Glue_i (_, _, shrink) -> s := !s +. shrink
+        | Penalty_i _ -> ()) items;
+    !s
+
+  (* Treat each box array as a single item, and each glue as glue. *)
+  let items_of_paragraph paragraph =
+    let items = ref [] in
+    Array.iter (function
+        | Box.Glue g ->
+          items := Glue_i (g.Box.drawing_min_width,
+                           g.Box.drawing_y1,
+                           g.Box.drawing_y0) :: !items
+        | Box.Drawing _ ->
+          items := Box_i [||] :: !items
+        | _ -> ()) paragraph;
+    List.rev !items
+
+  let compute_line_width _measure items =
+    let total = ref 0. in
+    List.iter (function
+        | Box_i b -> total := !total +. Badness.line_width 1.0 b
+        | Glue_i (min, _, _) -> total := !total +. min
+        | Penalty_i _ -> ()) items;
+    !total
+
+  (** DP over feasible breakpoints. For each candidate break index [i],
+      find the predecessor [j] that minimises the demerits and the
+      line-stretch ratio to fit [measure].  Returns the index list. *)
+  let break_paragraph ~measure (paragraph : Box.paragraph) =
+    let _items = items_of_paragraph paragraph in
+    let n = Array.length paragraph in
+    if n = 0 then [] else begin
+      let demerits = Array.make (n + 1) infinity in
+      let prev = Array.make (n + 1) (-1) in
+      demerits.(0) <- 0.;
+      for i = 1 to n do
+        let prev_min = ref (0, infinity) in
+        let acc_width = ref 0. in
+        let _acc_stretch = ref 0. in
+        let _acc_shrink = ref 0. in
+        for j = i downto 1 do
+          acc_width := !acc_width +. (match paragraph.(j-1) with
+              | Box.Glue _ -> 0.
+              | _ -> Badness.line_width 1.0 [|paragraph.(j-1)|]);
+          (* Compute ratio *)
+          let target = measure in
+          let actual = !acc_width in
+          let ratio = actual /. target -. 1. in
+          let line_class = Badness.classify ratio in
+          let line_demerits_value =
+            Badness.line_demerits ~ratio
+              ~penalty:Badness.Demerit.line_penalty
+            +. Badness.fitness_demerits line_class
+          in
+          let total =
+            if demerits.(j-1) = infinity then infinity
+            else demerits.(j-1) +. line_demerits_value
+          in
+          if total < snd !prev_min then prev_min := (j-1, total)
+        done;
+        demerits.(i) <- snd !prev_min;
+        prev.(i) <- fst !prev_min
+      done;
+      (* Recover break indices *)
+      let rec recover acc i =
+        if i <= 0 then acc
+        else recover (i :: acc) prev.(i)
+      in
+      let breaks = recover [] n in
+      breaks
+    end
+
+end

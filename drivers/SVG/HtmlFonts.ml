@@ -164,14 +164,14 @@ let output_fonts cache=
   ) cache.fontBuffers
 
 let filter_fonts cmd cache =
-  let temp_dir = Filename.temp_file "patfonts" "" in
-  Sys.remove temp_dir; Unix.mkdir temp_dir 0o700;
+  let tmp = Printf.sprintf "%s/patfonts_%d" (Filename.get_temp_dir_name ()) (Unix.getpid ()) in
+  Sys.remove tmp; Unix.mkdir tmp 0o700;
   StrMap.iter (fun filename buf->
-    let filename = Filename.(concat temp_dir (basename filename)) in
-    let out=open_out filename in
+    let out_name = Filename.(concat tmp (basename filename)) in
+    let out=open_out out_name in
     Buffer.output_buffer out buf;
     close_out out;
-    let cmd = cmd ^ " " ^ filename in
+    let cmd = cmd ^ " " ^ out_name in
     Printf.eprintf "filtering: %s\n" cmd;
     if Sys.command cmd <> 0 then
       begin
@@ -184,7 +184,7 @@ let filter_fonts cmd cache =
     close_in cin;
     Sys.remove filename;
   ) cache.fontBuffers;
-  Unix.rmdir temp_dir
+  Unix.rmdir tmp
 
 let classStyle cache gl_=
   let gl=gl_.glyph in

@@ -109,4 +109,8 @@ let get : t -> int -> 'a = fun m k ->
 (** [compact m] reduces the size of the given map if possible. *)
 let compact : t -> unit = fun m ->
   let r = Sqlite3.exec m.db "VACUUM" in
-  if r <> Sqlite3.Rc.OK then assert false
+  if r <> Sqlite3.Rc.OK then
+    (* VACUUM is only a size optimisation; it can legitimately fail on
+       Windows (journal/locking quirks), so warn instead of aborting. *)
+    Printf.eprintf "Warning: permap VACUUM failed: %s\n%!"
+      (Sqlite3.errmsg m.db)

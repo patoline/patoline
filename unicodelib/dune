@@ -1,20 +1,18 @@
 (library
-  (name unicodelib)
-  (public_name patoline.unicodelib)
-  (modules :standard \ pa_convert pa_unicode_data)
-  (libraries permap unix))
+ (name unicodelib)
+ (public_name patoline.unicodelib)
+ (modules :standard \ pa_convert pa_unicode_data)
+ (libraries permap unix uucp uunf uunf.string uutf))
 
 (executable
   (name pa_convert)
   (modules pa_convert)
-  (preprocess (action (run pa_ocaml %{input-file})))
-  (libraries earley.core earley.str earley.ocaml))
+  (libraries earley.core earley.str pa_ocaml_lib))
 
 (executable
   (name pa_unicode_data)
   (modules pa_unicode_data)
-  (preprocess (action (run pa_ocaml %{input-file})))
-  (libraries earley.core earley.str earley.ocaml unicodelib))
+  (libraries earley.core earley.str pa_ocaml_lib unicodelib))
 
 (rule
   (targets unicode.data)
@@ -30,7 +28,7 @@
 (rule
   (targets roman.ml)
   (action (with-stdout-to roman.ml
-    (run ./pa_convert.exe --ascii ./encoding_data/ROMAN.TXT)))
+    (run ./pa_convert.exe ./encoding_data/ROMAN.TXT)))
   (deps
     ./pa_convert.exe
     ./encoding_data/ROMAN.TXT))
@@ -38,7 +36,7 @@
 (rule
   (targets latin1.ml)
   (action (with-stdout-to latin1.ml
-    (run ./pa_convert.exe --ascii ./encoding_data/LATIN1.TXT)))
+    (run ./pa_convert.exe ./encoding_data/LATIN1.TXT)))
   (deps
     ./pa_convert.exe
     ./encoding_data/LATIN1.TXT))

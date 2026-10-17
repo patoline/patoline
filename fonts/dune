@@ -1,6 +1,28 @@
+; Vendored CJK + western fonts for the Chinese book format
+; (FormatZhBook): Fandol (the ctex default font set, OFL) and Latin
+; Modern (the default XeLaTeX text fonts, GUST font licence).
 (install
-  (section share)
-  (files
+ (section share)
+ (files
+    (Fandol/FandolSong-Regular.ttf as fonts/Fandol/FandolSong-Regular.ttf)
+    (Fandol/FandolSong-Bold.ttf as fonts/Fandol/FandolSong-Bold.ttf)
+    (Fandol/FandolHei-Regular.ttf as fonts/Fandol/FandolHei-Regular.ttf)
+    (Fandol/FandolHei-Bold.ttf as fonts/Fandol/FandolHei-Bold.ttf)
+    (Fandol/FandolKai-Regular.ttf as fonts/Fandol/FandolKai-Regular.ttf)
+    (Fandol/FandolFang-Regular.ttf as fonts/Fandol/FandolFang-Regular.ttf)
+    (Fandol/FandolSong-Regular.otf as fonts/Fandol/FandolSong-Regular.otf)
+    (Fandol/FandolSong-Bold.otf as fonts/Fandol/FandolSong-Bold.otf)
+    (Fandol/FandolHei-Regular.otf as fonts/Fandol/FandolHei-Regular.otf)
+    (Fandol/FandolHei-Bold.otf as fonts/Fandol/FandolHei-Bold.otf)
+    (Fandol/FandolKai-Regular.otf as fonts/Fandol/FandolKai-Regular.otf)
+    (Fandol/FandolFang-Regular.otf as fonts/Fandol/FandolFang-Regular.otf)
+    (lmodern/lmroman10-regular.otf as fonts/lmodern/lmroman10-regular.otf)
+    (lmodern/lmroman10-italic.otf as fonts/lmodern/lmroman10-italic.otf)
+    (lmodern/lmroman10-bold.otf as fonts/lmodern/lmroman10-bold.otf)
+    (lmodern/lmroman10-bolditalic.otf as fonts/lmodern/lmroman10-bolditalic.otf)
+    (lmodern/lmmono10-regular.otf as fonts/lmodern/lmmono10-regular.otf)
+    (lmodern/lmmono10-italic.otf as fonts/lmodern/lmmono10-italic.otf)
+    (lmodern/lmromancaps10-regular.otf as fonts/lmodern/lmromancaps10-regular.otf)
     (DejaVu-2.34/DejaVuSerifCondensed.ttf as fonts/DejaVu-2.34/DejaVuSerifCondensed.ttf)
     (DejaVu-2.34/DejaVuSansMono-BoldOblique.ttf as fonts/DejaVu-2.34/DejaVuSansMono-BoldOblique.ttf)
     (DejaVu-2.34/DejaVuSerif-Italic.ttf as fonts/DejaVu-2.34/DejaVuSerif-Italic.ttf)

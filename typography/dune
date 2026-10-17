@@ -1,9 +1,13 @@
 (library
-  (name typography)
-  (public_name patoline.typography)
-  (modules :standard)
-  (libraries
-    patoraw patutil patconfig patfonts
-    (select ConfigFindFont.ml from
-      (fontconfig -> ConfigFindFont.fontconfig.ml)
-      (           -> ConfigFindFont.legacy.ml))))
+ (name typography)
+ (public_name patoline.typography)
+ ; Dev helper using Graphics; not required for the library (see optional exe below).
+ (modules :standard \ test_offset)
+ (libraries
+   patoraw patutil patconfig patfonts
+   (select ConfigFindFont.ml from
+     (fontconfig -> ConfigFindFont.fontconfig.ml)
+     (           -> ConfigFindFont.legacy.ml)))
+ ; Reserve [Demerit] / [fit_class] for [Break.Optimal] (planned in P1-1).
+ ; Suppress -32 until that lands so typography still compiles.
+ (flags (:standard -w -32-33-37-39)))

@@ -1,0 +1,14 @@
+Let us test the Knuth-Plass paragraph optimizer on a long paragraph.
+
+This is a really long paragraph meant to push the line-breaker to its limits. The breaking
+algorithm must compute reasonable break points so that the resulting text fits the line measure.
+
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+A second paragraph follows. The line-breaker should not merge them, regardless of stretch.
+
+Another paragraph, hopefully shorter, so the DP solution is observable.
+
+EOF

@@ -1,0 +1,30 @@
+                               Hello, World!
+
+
+                                   Patoline newbies
+
+
+
+
+Section with text
+
+
+This is my first document! That's so cool!
+
+
+
+Section with maths
+
+                           2
+Did you known that   a + b = a2 + 2invisible ab + b2 ?
+
+Verbatim
+
+
+You can also use verbatim text (and also with this syntax).
+
+
+
+
+                                             1
+

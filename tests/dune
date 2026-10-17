@@ -1,0 +1,13 @@
+(library
+ (name test_lib)
+ (modules test_lib))
+
+(executables
+ (names test_runner)
+ (libraries test_lib)
+ (modules test_runner))
+
+(rule
+ (alias runtest)
+ (action
+   (run %{exe:test_runner.exe})))

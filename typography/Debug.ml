@@ -98,6 +98,7 @@ and print_marker m=match m with
   | FigureRef i->Printf.sprintf "FigureRef %d" i
   | Pageref s->Printf.sprintf "PageRef %S" s
   | Structure _->Printf.sprintf "Structure"
+  | HeadTitle s->Printf.sprintf "HeadTitle %S" s
   | BeginLink s->Printf.sprintf "BeginLink %a" print_link s
   | EndLink->Printf.sprintf "EndLink"
   | AlignmentMark->Printf.sprintf "AlignmentMark"

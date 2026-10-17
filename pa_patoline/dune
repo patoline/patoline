@@ -1,8 +1,49 @@
+; The pa_ocaml sources (pa_ast.ml, pa_lexing.ml, pa_main.ml, pa_ocaml.ml,
+; pa_ocaml_prelude.ml, pa_parser.ml) are vendored from ocaml-earley 3.0.0
+; (https://github.com/rlepigre/ocaml-earley/archive/3.0.0.tar.gz, CeCILL-B).
+; They live in this directory because earley 3.0.0 dropped the `earley.ocaml`
+; library and the upstream `pa_ocaml` preprocessor is no longer in the Opam
+; package. AST types come from `compiler-libs.common`.
+;
+; Earley `parser` syntax has been expanded to plain OCaml (no pa_ocaml at
+; build). The previous `patoline_ocaml/` directory was merged here so the
+; layout matches the upstream Patoline repository on
+; https://github.com/patoline/patoline.
+;
+; Splitting the vendored Pa_* modules into their own `pa_ocaml_lib` library
+; keeps `unicodelib/pa_convert.exe` (which generates `latin1.ml` / `roman.ml`
+; consumed by the `unicodelib` library) free of a cyclic dependency on
+; `pa_patoline_support`. With everything in one library, building
+; `pa_patoline.exe` transitively pulled in `unicodelib`, which generated
+; `latin1.ml`/`roman.ml` via `pa_convert.exe`, which depended back on
+; `pa_patoline_support`, producing the cycle.
+
+(library
+ (name pa_ocaml_lib)
+ (wrapped false)
+ (modules
+  pa_ast
+  pa_lexing
+  pa_main
+  pa_ocaml
+  pa_ocaml_prelude
+  pa_parser)
+ (flags (:standard -w -39-27-9-33-34-32))
+ (libraries earley.core earley.str compiler-libs.common str))
+
+(library
+ (name pa_patoline_support)
+ (wrapped false)
+ (modules pa_patoline_ast_helpers)
+ (flags (:standard -w -32-37))
+ (libraries pa_ocaml_lib earley.core earley.str str
+   patutil unicodelib patconfig))
+
 (executable
-  (name pa_patoline)
-  (public_name pa_patoline)
-  (package patoline)
-  (modules :standard)
-  (preprocess (action (run pa_ocaml %{input-file})))
-  (libraries earley.core earley.str earley.ocaml
-    patutil unicodelib patconfig))
+ (name pa_patoline)
+ (public_name pa_patoline)
+ (package patoline)
+ (modules pa_patoline prefixTree Subsup)
+ (flags (:standard -w -32-37))
+ (libraries pa_patoline_support earley.core earley.str str
+   patutil unicodelib patconfig))

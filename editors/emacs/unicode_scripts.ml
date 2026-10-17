@@ -55,7 +55,7 @@ let parse_line s =
 let subscripts : uchar list ref = ref []
 let superscripts : uchar list ref = ref []
 
-let string_forall i len p s =
+let _string_forall i len p s =
   if i >= String.length s then true else
   let len = if i+len-1 < String.length s then len else String.length s - i in
   let max = i + len in
@@ -101,7 +101,7 @@ let subscripts =
 let int_to_bytes n =
   UTF8.init 1 (fun _ -> UChar.chr n)
 
-let esc_int_to_bytes n =
+let _esc_int_to_bytes n =
   String.escaped (int_to_bytes n)
 
 let _ =

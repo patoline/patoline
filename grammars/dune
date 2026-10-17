@@ -2,7 +2,7 @@
   (targets DefaultGrammar.ml DefaultGrammar_.ml DefaultGrammar.tgy quail.el)
   (action (with-stdout-to DefaultGrammar.ml
     (run pa_patoline --build-dir %{project_root}/grammars
-           --main --no-default-grammar --ascii
+           --main --no-default-grammar
            --quail-out ./quail.el
            ./DefaultGrammar.txp)))
   (deps ./DefaultGrammar.txp))
@@ -16,7 +16,7 @@
 (rule
   (targets DefaultGrammar.pdf)
   (action (setenv UNICODE_DATA_FILE ../unicodelib/unicode.data
-    (run ./DefaultGrammar_.exe --quiet --driver Pdf
+    (run ./DefaultGrammar_.exe --driver Pdf
            --extra-fonts-dir %{project_root}/fonts
            --extra-hyph-dir %{project_root}/hyphs)))
   (deps

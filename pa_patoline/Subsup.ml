@@ -1,193 +1,1287 @@
-let parser subscript =
-|"\226\177\188" -> "j"
-|"\226\130\156" -> "t"
-|"\226\130\155" -> "s"
-|"\226\130\154" -> "p"
-|"\226\130\153" -> "n"
-|"\226\130\152" -> "m"
-|"\226\130\151" -> "l"
-|"\226\130\150" -> "k"
-|"\226\130\149" -> "h"
-|"\226\130\148" -> "\201\153"
-|"\226\130\147" -> "x"
-|"\226\130\146" -> "o"
-|"\226\130\145" -> "e"
-|"\226\130\144" -> "a"
-|"\226\130\142" -> ")"
-|"\226\130\141" -> "("
-|"\226\130\140" -> "="
-|"\226\130\139" -> "\226\136\146"
-|"\226\130\138" -> "+"
-|"\226\130\137" -> "9"
-|"\226\130\136" -> "8"
-|"\226\130\135" -> "7"
-|"\226\130\134" -> "6"
-|"\226\130\133" -> "5"
-|"\226\130\132" -> "4"
-|"\226\130\131" -> "3"
-|"\226\130\130" -> "2"
-|"\226\130\129" -> "1"
-|"\226\130\128" -> "0"
-|"\225\181\170" -> "\207\135"
-|"\225\181\169" -> "\207\134"
-|"\225\181\168" -> "\207\129"
-|"\225\181\167" -> "\206\179"
-|"\225\181\166" -> "\206\178"
-|"\225\181\165" -> "v"
-|"\225\181\164" -> "u"
-|"\225\181\163" -> "r"
-|"\225\181\162" -> "i"
-
-let parser superscript =
-|"\240\159\133\171" -> "M"
-|"\240\159\133\170" -> "M"
-|"\234\173\159" -> "\234\173\146"
-|"\234\173\158" -> "\201\171"
-|"\234\173\157" -> "\234\172\183"
-|"\234\173\156" -> "\234\156\167"
-|"\234\159\185" -> "\197\147"
-|"\234\159\184" -> "\196\166"
-|"\234\157\176" -> "\234\157\175"
-|"\234\154\157" -> "\209\140"
-|"\234\154\156" -> "\209\138"
-|"\227\134\159" -> "\228\186\186"
-|"\227\134\158" -> "\229\156\176"
-|"\227\134\157" -> "\229\164\169"
-|"\227\134\156" -> "\228\184\129"
-|"\227\134\155" -> "\228\184\153"
-|"\227\134\154" -> "\228\185\153"
-|"\227\134\153" -> "\231\148\178"
-|"\227\134\152" -> "\228\184\139"
-|"\227\134\151" -> "\228\184\173"
-|"\227\134\150" -> "\228\184\138"
-|"\227\134\149" -> "\229\155\155"
-|"\227\134\148" -> "\228\184\137"
-|"\227\134\147" -> "\228\186\140"
-|"\227\134\146" -> "\228\184\128"
-|"\226\181\175" -> "\226\181\161"
-|"\226\177\189" -> "V"
-|"\226\132\162" -> "T"
-|"\226\132\160" -> "S"
-|"\226\129\191" -> "n"
-|"\226\129\190" -> ")"
-|"\226\129\189" -> "("
-|"\226\129\188" -> "="
-|"\226\129\187" -> "\226\136\146"
-|"\226\129\186" -> "+"
-|"\226\129\185" -> "9"
-|"\226\129\184" -> "8"
-|"\226\129\183" -> "7"
-|"\226\129\182" -> "6"
-|"\226\129\181" -> "5"
-|"\226\129\180" -> "4"
-|"\226\129\177" -> "i"
-|"\226\129\176" -> "0"
-|"\225\182\191" -> "\206\184"
-|"\225\182\190" -> "\202\146"
-|"\225\182\189" -> "\202\145"
-|"\225\182\188" -> "\202\144"
-|"\225\182\187" -> "z"
-|"\225\182\186" -> "\202\140"
-|"\225\182\185" -> "\202\139"
-|"\225\182\184" -> "\225\180\156"
-|"\225\182\183" -> "\202\138"
-|"\225\182\182" -> "\202\137"
-|"\225\182\181" -> "\198\171"
-|"\225\182\180" -> "\202\131"
-|"\225\182\179" -> "\202\130"
-|"\225\182\178" -> "\201\184"
-|"\225\182\177" -> "\201\181"
-|"\225\182\176" -> "\201\180"
-|"\225\182\175" -> "\201\179"
-|"\225\182\174" -> "\201\178"
-|"\225\182\173" -> "\201\176"
-|"\225\182\172" -> "\201\177"
-|"\225\182\171" -> "\202\159"
-|"\225\182\170" -> "\225\182\133"
-|"\225\182\169" -> "\201\173"
-|"\225\182\168" -> "\202\157"
-|"\225\182\167" -> "\225\181\187"
-|"\225\182\166" -> "\201\170"
-|"\225\182\165" -> "\201\169"
-|"\225\182\164" -> "\201\168"
-|"\225\182\163" -> "\201\165"
-|"\225\182\162" -> "\201\161"
-|"\225\182\161" -> "\201\159"
-|"\225\182\160" -> "f"
-|"\225\182\159" -> "\201\156"
-|"\225\182\158" -> "\195\176"
-|"\225\182\157" -> "\201\149"
-|"\225\182\156" -> "c"
-|"\225\182\155" -> "\201\146"
-|"\225\181\184" -> "\208\189"
-|"\225\181\161" -> "\207\135"
-|"\225\181\160" -> "\207\134"
-|"\225\181\159" -> "\206\180"
-|"\225\181\158" -> "\206\179"
-|"\225\181\157" -> "\206\178"
-|"\225\181\156" -> "\225\180\165"
-|"\225\181\155" -> "v"
-|"\225\181\154" -> "\201\175"
-|"\225\181\153" -> "\225\180\157"
-|"\225\181\152" -> "u"
-|"\225\181\151" -> "t"
-|"\225\181\150" -> "p"
-|"\225\181\149" -> "\225\180\151"
-|"\225\181\148" -> "\225\180\150"
-|"\225\181\147" -> "\201\148"
-|"\225\181\146" -> "o"
-|"\225\181\145" -> "\197\139"
-|"\225\181\144" -> "m"
-|"\225\181\143" -> "k"
-|"\225\181\141" -> "g"
-|"\225\181\140" -> "\201\156"
-|"\225\181\139" -> "\201\155"
-|"\225\181\138" -> "\201\153"
-|"\225\181\137" -> "e"
-|"\225\181\136" -> "d"
-|"\225\181\135" -> "b"
-|"\225\181\134" -> "\225\180\130"
-|"\225\181\133" -> "\201\145"
-|"\225\181\132" -> "\201\144"
-|"\225\181\131" -> "a"
-|"\225\181\130" -> "W"
-|"\225\181\129" -> "U"
-|"\225\181\128" -> "T"
-|"\225\180\191" -> "R"
-|"\225\180\190" -> "P"
-|"\225\180\189" -> "\200\162"
-|"\225\180\188" -> "O"
-|"\225\180\186" -> "N"
-|"\225\180\185" -> "M"
-|"\225\180\184" -> "L"
-|"\225\180\183" -> "K"
-|"\225\180\182" -> "J"
-|"\225\180\181" -> "I"
-|"\225\180\180" -> "H"
-|"\225\180\179" -> "G"
-|"\225\180\178" -> "\198\142"
-|"\225\180\177" -> "E"
-|"\225\180\176" -> "D"
-|"\225\180\174" -> "B"
-|"\225\180\173" -> "\195\134"
-|"\225\180\172" -> "A"
-|"\225\131\188" -> "\225\131\156"
-|"\203\164" -> "\202\149"
-|"\203\163" -> "x"
-|"\203\162" -> "s"
-|"\203\161" -> "l"
-|"\203\160" -> "\201\163"
-|"\202\184" -> "y"
-|"\202\183" -> "w"
-|"\202\182" -> "\202\129"
-|"\202\181" -> "\201\187"
-|"\202\180" -> "\201\185"
-|"\202\179" -> "r"
-|"\202\178" -> "j"
-|"\202\177" -> "\201\166"
-|"\202\176" -> "h"
-|"\194\186" -> "o"
-|"\194\185" -> "1"
-|"\194\179" -> "3"
-|"\194\178" -> "2"
-|"\194\170" -> "a"
+let subscript = Earley_core.Earley.declare_grammar "subscript"
+let _ =
+  Earley_core.Earley.set_grammar subscript
+    (Earley_core.Earley.alternatives
+       (List.cons
+          (Earley_core.Earley.fsequence_ignore
+             (Earley_core.Earley.string "\225\181\162" "\225\181\162")
+             (Earley_core.Earley.empty "i"))
+          (List.cons
+             (Earley_core.Earley.fsequence_ignore
+                (Earley_core.Earley.string "\226\177\188" "\226\177\188")
+                (Earley_core.Earley.empty "j"))
+             (List.cons
+                (Earley_core.Earley.fsequence_ignore
+                   (Earley_core.Earley.string "\226\130\156" "\226\130\156")
+                   (Earley_core.Earley.empty "t"))
+                (List.cons
+                   (Earley_core.Earley.fsequence_ignore
+                      (Earley_core.Earley.string "\226\130\155"
+                         "\226\130\155") (Earley_core.Earley.empty "s"))
+                   (List.cons
+                      (Earley_core.Earley.fsequence_ignore
+                         (Earley_core.Earley.string "\226\130\154"
+                            "\226\130\154") (Earley_core.Earley.empty "p"))
+                      (List.cons
+                         (Earley_core.Earley.fsequence_ignore
+                            (Earley_core.Earley.string "\226\130\153"
+                               "\226\130\153") (Earley_core.Earley.empty "n"))
+                         (List.cons
+                            (Earley_core.Earley.fsequence_ignore
+                               (Earley_core.Earley.string "\226\130\152"
+                                  "\226\130\152")
+                               (Earley_core.Earley.empty "m"))
+                            (List.cons
+                               (Earley_core.Earley.fsequence_ignore
+                                  (Earley_core.Earley.string "\226\130\151"
+                                     "\226\130\151")
+                                  (Earley_core.Earley.empty "l"))
+                               (List.cons
+                                  (Earley_core.Earley.fsequence_ignore
+                                     (Earley_core.Earley.string
+                                        "\226\130\150" "\226\130\150")
+                                     (Earley_core.Earley.empty "k"))
+                                  (List.cons
+                                     (Earley_core.Earley.fsequence_ignore
+                                        (Earley_core.Earley.string
+                                           "\226\130\149" "\226\130\149")
+                                        (Earley_core.Earley.empty "h"))
+                                     (List.cons
+                                        (Earley_core.Earley.fsequence_ignore
+                                           (Earley_core.Earley.string
+                                              "\226\130\148" "\226\130\148")
+                                           (Earley_core.Earley.empty
+                                              "\201\153"))
+                                        (List.cons
+                                           (Earley_core.Earley.fsequence_ignore
+                                              (Earley_core.Earley.string
+                                                 "\226\130\147"
+                                                 "\226\130\147")
+                                              (Earley_core.Earley.empty "x"))
+                                           (List.cons
+                                              (Earley_core.Earley.fsequence_ignore
+                                                 (Earley_core.Earley.string
+                                                    "\226\130\146"
+                                                    "\226\130\146")
+                                                 (Earley_core.Earley.empty
+                                                    "o"))
+                                              (List.cons
+                                                 (Earley_core.Earley.fsequence_ignore
+                                                    (Earley_core.Earley.string
+                                                       "\226\130\145"
+                                                       "\226\130\145")
+                                                    (Earley_core.Earley.empty
+                                                       "e"))
+                                                 (List.cons
+                                                    (Earley_core.Earley.fsequence_ignore
+                                                       (Earley_core.Earley.string
+                                                          "\226\130\144"
+                                                          "\226\130\144")
+                                                       (Earley_core.Earley.empty
+                                                          "a"))
+                                                    (List.cons
+                                                       (Earley_core.Earley.fsequence_ignore
+                                                          (Earley_core.Earley.string
+                                                             "\226\130\142"
+                                                             "\226\130\142")
+                                                          (Earley_core.Earley.empty
+                                                             ")"))
+                                                       (List.cons
+                                                          (Earley_core.Earley.fsequence_ignore
+                                                             (Earley_core.Earley.string
+                                                                "\226\130\141"
+                                                                "\226\130\141")
+                                                             (Earley_core.Earley.empty
+                                                                "("))
+                                                          (List.cons
+                                                             (Earley_core.Earley.fsequence_ignore
+                                                                (Earley_core.Earley.string
+                                                                   "\226\130\140"
+                                                                   "\226\130\140")
+                                                                (Earley_core.Earley.empty
+                                                                   "="))
+                                                             (List.cons
+                                                                (Earley_core.Earley.fsequence_ignore
+                                                                   (Earley_core.Earley.string
+                                                                    "\226\130\139"
+                                                                    "\226\130\139")
+                                                                   (Earley_core.Earley.empty
+                                                                    "\226\136\146"))
+                                                                (List.cons
+                                                                   (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\130\138"
+                                                                    "\226\130\138")
+                                                                    (Earley_core.Earley.empty
+                                                                    "+"))
+                                                                   (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\130\137"
+                                                                    "\226\130\137")
+                                                                    (Earley_core.Earley.empty
+                                                                    "9"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\130\136"
+                                                                    "\226\130\136")
+                                                                    (Earley_core.Earley.empty
+                                                                    "8"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\130\135"
+                                                                    "\226\130\135")
+                                                                    (Earley_core.Earley.empty
+                                                                    "7"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\130\134"
+                                                                    "\226\130\134")
+                                                                    (Earley_core.Earley.empty
+                                                                    "6"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\130\133"
+                                                                    "\226\130\133")
+                                                                    (Earley_core.Earley.empty
+                                                                    "5"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\130\132"
+                                                                    "\226\130\132")
+                                                                    (Earley_core.Earley.empty
+                                                                    "4"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\130\131"
+                                                                    "\226\130\131")
+                                                                    (Earley_core.Earley.empty
+                                                                    "3"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\130\130"
+                                                                    "\226\130\130")
+                                                                    (Earley_core.Earley.empty
+                                                                    "2"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\130\129"
+                                                                    "\226\130\129")
+                                                                    (Earley_core.Earley.empty
+                                                                    "1"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\130\128"
+                                                                    "\226\130\128")
+                                                                    (Earley_core.Earley.empty
+                                                                    "0"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\170"
+                                                                    "\225\181\170")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\207\135"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\169"
+                                                                    "\225\181\169")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\207\134"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\168"
+                                                                    "\225\181\168")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\207\129"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\167"
+                                                                    "\225\181\167")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\206\179"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\166"
+                                                                    "\225\181\166")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\206\178"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\165"
+                                                                    "\225\181\165")
+                                                                    (Earley_core.Earley.empty
+                                                                    "v"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\164"
+                                                                    "\225\181\164")
+                                                                    (Earley_core.Earley.empty
+                                                                    "u"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\163"
+                                                                    "\225\181\163")
+                                                                    (Earley_core.Earley.empty
+                                                                    "r")) [])))))))))))))))))))))))))))))))))))))))
+let superscript = Earley_core.Earley.declare_grammar "superscript"
+let _ =
+  Earley_core.Earley.set_grammar superscript
+    (Earley_core.Earley.alternatives
+       (List.cons
+          (Earley_core.Earley.fsequence_ignore
+             (Earley_core.Earley.string "\194\170" "\194\170")
+             (Earley_core.Earley.empty "a"))
+          (List.cons
+             (Earley_core.Earley.fsequence_ignore
+                (Earley_core.Earley.string "\240\159\133\171"
+                   "\240\159\133\171") (Earley_core.Earley.empty "M"))
+             (List.cons
+                (Earley_core.Earley.fsequence_ignore
+                   (Earley_core.Earley.string "\240\159\133\170"
+                      "\240\159\133\170") (Earley_core.Earley.empty "M"))
+                (List.cons
+                   (Earley_core.Earley.fsequence_ignore
+                      (Earley_core.Earley.string "\234\173\159"
+                         "\234\173\159")
+                      (Earley_core.Earley.empty "\234\173\146"))
+                   (List.cons
+                      (Earley_core.Earley.fsequence_ignore
+                         (Earley_core.Earley.string "\234\173\158"
+                            "\234\173\158")
+                         (Earley_core.Earley.empty "\201\171"))
+                      (List.cons
+                         (Earley_core.Earley.fsequence_ignore
+                            (Earley_core.Earley.string "\234\173\157"
+                               "\234\173\157")
+                            (Earley_core.Earley.empty "\234\172\183"))
+                         (List.cons
+                            (Earley_core.Earley.fsequence_ignore
+                               (Earley_core.Earley.string "\234\173\156"
+                                  "\234\173\156")
+                               (Earley_core.Earley.empty "\234\156\167"))
+                            (List.cons
+                               (Earley_core.Earley.fsequence_ignore
+                                  (Earley_core.Earley.string "\234\159\185"
+                                     "\234\159\185")
+                                  (Earley_core.Earley.empty "\197\147"))
+                               (List.cons
+                                  (Earley_core.Earley.fsequence_ignore
+                                     (Earley_core.Earley.string
+                                        "\234\159\184" "\234\159\184")
+                                     (Earley_core.Earley.empty "\196\166"))
+                                  (List.cons
+                                     (Earley_core.Earley.fsequence_ignore
+                                        (Earley_core.Earley.string
+                                           "\234\157\176" "\234\157\176")
+                                        (Earley_core.Earley.empty
+                                           "\234\157\175"))
+                                     (List.cons
+                                        (Earley_core.Earley.fsequence_ignore
+                                           (Earley_core.Earley.string
+                                              "\234\154\157" "\234\154\157")
+                                           (Earley_core.Earley.empty
+                                              "\209\140"))
+                                        (List.cons
+                                           (Earley_core.Earley.fsequence_ignore
+                                              (Earley_core.Earley.string
+                                                 "\234\154\156"
+                                                 "\234\154\156")
+                                              (Earley_core.Earley.empty
+                                                 "\209\138"))
+                                           (List.cons
+                                              (Earley_core.Earley.fsequence_ignore
+                                                 (Earley_core.Earley.string
+                                                    "\227\134\159"
+                                                    "\227\134\159")
+                                                 (Earley_core.Earley.empty
+                                                    "\228\186\186"))
+                                              (List.cons
+                                                 (Earley_core.Earley.fsequence_ignore
+                                                    (Earley_core.Earley.string
+                                                       "\227\134\158"
+                                                       "\227\134\158")
+                                                    (Earley_core.Earley.empty
+                                                       "\229\156\176"))
+                                                 (List.cons
+                                                    (Earley_core.Earley.fsequence_ignore
+                                                       (Earley_core.Earley.string
+                                                          "\227\134\157"
+                                                          "\227\134\157")
+                                                       (Earley_core.Earley.empty
+                                                          "\229\164\169"))
+                                                    (List.cons
+                                                       (Earley_core.Earley.fsequence_ignore
+                                                          (Earley_core.Earley.string
+                                                             "\227\134\156"
+                                                             "\227\134\156")
+                                                          (Earley_core.Earley.empty
+                                                             "\228\184\129"))
+                                                       (List.cons
+                                                          (Earley_core.Earley.fsequence_ignore
+                                                             (Earley_core.Earley.string
+                                                                "\227\134\155"
+                                                                "\227\134\155")
+                                                             (Earley_core.Earley.empty
+                                                                "\228\184\153"))
+                                                          (List.cons
+                                                             (Earley_core.Earley.fsequence_ignore
+                                                                (Earley_core.Earley.string
+                                                                   "\227\134\154"
+                                                                   "\227\134\154")
+                                                                (Earley_core.Earley.empty
+                                                                   "\228\185\153"))
+                                                             (List.cons
+                                                                (Earley_core.Earley.fsequence_ignore
+                                                                   (Earley_core.Earley.string
+                                                                    "\227\134\153"
+                                                                    "\227\134\153")
+                                                                   (Earley_core.Earley.empty
+                                                                    "\231\148\178"))
+                                                                (List.cons
+                                                                   (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\227\134\152"
+                                                                    "\227\134\152")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\228\184\139"))
+                                                                   (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\227\134\151"
+                                                                    "\227\134\151")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\228\184\173"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\227\134\150"
+                                                                    "\227\134\150")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\228\184\138"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\227\134\149"
+                                                                    "\227\134\149")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\229\155\155"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\227\134\148"
+                                                                    "\227\134\148")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\228\184\137"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\227\134\147"
+                                                                    "\227\134\147")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\228\186\140"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\227\134\146"
+                                                                    "\227\134\146")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\228\184\128"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\181\175"
+                                                                    "\226\181\175")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\226\181\161"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\177\189"
+                                                                    "\226\177\189")
+                                                                    (Earley_core.Earley.empty
+                                                                    "V"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\132\162"
+                                                                    "\226\132\162")
+                                                                    (Earley_core.Earley.empty
+                                                                    "T"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\132\160"
+                                                                    "\226\132\160")
+                                                                    (Earley_core.Earley.empty
+                                                                    "S"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\191"
+                                                                    "\226\129\191")
+                                                                    (Earley_core.Earley.empty
+                                                                    "n"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\190"
+                                                                    "\226\129\190")
+                                                                    (Earley_core.Earley.empty
+                                                                    ")"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\189"
+                                                                    "\226\129\189")
+                                                                    (Earley_core.Earley.empty
+                                                                    "("))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\188"
+                                                                    "\226\129\188")
+                                                                    (Earley_core.Earley.empty
+                                                                    "="))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\187"
+                                                                    "\226\129\187")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\226\136\146"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\186"
+                                                                    "\226\129\186")
+                                                                    (Earley_core.Earley.empty
+                                                                    "+"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\185"
+                                                                    "\226\129\185")
+                                                                    (Earley_core.Earley.empty
+                                                                    "9"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\184"
+                                                                    "\226\129\184")
+                                                                    (Earley_core.Earley.empty
+                                                                    "8"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\183"
+                                                                    "\226\129\183")
+                                                                    (Earley_core.Earley.empty
+                                                                    "7"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\182"
+                                                                    "\226\129\182")
+                                                                    (Earley_core.Earley.empty
+                                                                    "6"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\181"
+                                                                    "\226\129\181")
+                                                                    (Earley_core.Earley.empty
+                                                                    "5"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\180"
+                                                                    "\226\129\180")
+                                                                    (Earley_core.Earley.empty
+                                                                    "4"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\177"
+                                                                    "\226\129\177")
+                                                                    (Earley_core.Earley.empty
+                                                                    "i"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\226\129\176"
+                                                                    "\226\129\176")
+                                                                    (Earley_core.Earley.empty
+                                                                    "0"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\191"
+                                                                    "\225\182\191")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\206\184"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\190"
+                                                                    "\225\182\190")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\146"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\189"
+                                                                    "\225\182\189")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\145"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\188"
+                                                                    "\225\182\188")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\144"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\187"
+                                                                    "\225\182\187")
+                                                                    (Earley_core.Earley.empty
+                                                                    "z"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\186"
+                                                                    "\225\182\186")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\140"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\185"
+                                                                    "\225\182\185")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\139"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\184"
+                                                                    "\225\182\184")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\225\180\156"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\183"
+                                                                    "\225\182\183")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\138"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\182"
+                                                                    "\225\182\182")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\137"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\181"
+                                                                    "\225\182\181")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\198\171"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\180"
+                                                                    "\225\182\180")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\131"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\179"
+                                                                    "\225\182\179")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\130"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\178"
+                                                                    "\225\182\178")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\184"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\177"
+                                                                    "\225\182\177")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\181"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\176"
+                                                                    "\225\182\176")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\180"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\175"
+                                                                    "\225\182\175")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\179"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\174"
+                                                                    "\225\182\174")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\178"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\173"
+                                                                    "\225\182\173")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\176"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\172"
+                                                                    "\225\182\172")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\177"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\171"
+                                                                    "\225\182\171")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\159"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\170"
+                                                                    "\225\182\170")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\225\182\133"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\169"
+                                                                    "\225\182\169")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\173"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\168"
+                                                                    "\225\182\168")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\157"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\167"
+                                                                    "\225\182\167")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\225\181\187"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\166"
+                                                                    "\225\182\166")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\170"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\165"
+                                                                    "\225\182\165")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\169"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\164"
+                                                                    "\225\182\164")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\168"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\163"
+                                                                    "\225\182\163")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\165"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\162"
+                                                                    "\225\182\162")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\161"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\161"
+                                                                    "\225\182\161")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\159"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\160"
+                                                                    "\225\182\160")
+                                                                    (Earley_core.Earley.empty
+                                                                    "f"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\159"
+                                                                    "\225\182\159")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\156"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\158"
+                                                                    "\225\182\158")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\195\176"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\157"
+                                                                    "\225\182\157")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\149"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\156"
+                                                                    "\225\182\156")
+                                                                    (Earley_core.Earley.empty
+                                                                    "c"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\182\155"
+                                                                    "\225\182\155")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\146"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\184"
+                                                                    "\225\181\184")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\208\189"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\161"
+                                                                    "\225\181\161")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\207\135"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\160"
+                                                                    "\225\181\160")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\207\134"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\159"
+                                                                    "\225\181\159")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\206\180"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\158"
+                                                                    "\225\181\158")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\206\179"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\157"
+                                                                    "\225\181\157")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\206\178"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\156"
+                                                                    "\225\181\156")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\225\180\165"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\155"
+                                                                    "\225\181\155")
+                                                                    (Earley_core.Earley.empty
+                                                                    "v"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\154"
+                                                                    "\225\181\154")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\175"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\153"
+                                                                    "\225\181\153")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\225\180\157"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\152"
+                                                                    "\225\181\152")
+                                                                    (Earley_core.Earley.empty
+                                                                    "u"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\151"
+                                                                    "\225\181\151")
+                                                                    (Earley_core.Earley.empty
+                                                                    "t"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\150"
+                                                                    "\225\181\150")
+                                                                    (Earley_core.Earley.empty
+                                                                    "p"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\149"
+                                                                    "\225\181\149")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\225\180\151"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\148"
+                                                                    "\225\181\148")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\225\180\150"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\147"
+                                                                    "\225\181\147")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\148"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\146"
+                                                                    "\225\181\146")
+                                                                    (Earley_core.Earley.empty
+                                                                    "o"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\145"
+                                                                    "\225\181\145")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\197\139"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\144"
+                                                                    "\225\181\144")
+                                                                    (Earley_core.Earley.empty
+                                                                    "m"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\143"
+                                                                    "\225\181\143")
+                                                                    (Earley_core.Earley.empty
+                                                                    "k"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\141"
+                                                                    "\225\181\141")
+                                                                    (Earley_core.Earley.empty
+                                                                    "g"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\140"
+                                                                    "\225\181\140")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\156"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\139"
+                                                                    "\225\181\139")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\155"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\138"
+                                                                    "\225\181\138")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\153"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\137"
+                                                                    "\225\181\137")
+                                                                    (Earley_core.Earley.empty
+                                                                    "e"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\136"
+                                                                    "\225\181\136")
+                                                                    (Earley_core.Earley.empty
+                                                                    "d"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\135"
+                                                                    "\225\181\135")
+                                                                    (Earley_core.Earley.empty
+                                                                    "b"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\134"
+                                                                    "\225\181\134")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\225\180\130"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\133"
+                                                                    "\225\181\133")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\145"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\132"
+                                                                    "\225\181\132")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\144"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\131"
+                                                                    "\225\181\131")
+                                                                    (Earley_core.Earley.empty
+                                                                    "a"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\130"
+                                                                    "\225\181\130")
+                                                                    (Earley_core.Earley.empty
+                                                                    "W"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\129"
+                                                                    "\225\181\129")
+                                                                    (Earley_core.Earley.empty
+                                                                    "U"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\181\128"
+                                                                    "\225\181\128")
+                                                                    (Earley_core.Earley.empty
+                                                                    "T"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\191"
+                                                                    "\225\180\191")
+                                                                    (Earley_core.Earley.empty
+                                                                    "R"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\190"
+                                                                    "\225\180\190")
+                                                                    (Earley_core.Earley.empty
+                                                                    "P"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\189"
+                                                                    "\225\180\189")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\200\162"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\188"
+                                                                    "\225\180\188")
+                                                                    (Earley_core.Earley.empty
+                                                                    "O"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\186"
+                                                                    "\225\180\186")
+                                                                    (Earley_core.Earley.empty
+                                                                    "N"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\185"
+                                                                    "\225\180\185")
+                                                                    (Earley_core.Earley.empty
+                                                                    "M"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\184"
+                                                                    "\225\180\184")
+                                                                    (Earley_core.Earley.empty
+                                                                    "L"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\183"
+                                                                    "\225\180\183")
+                                                                    (Earley_core.Earley.empty
+                                                                    "K"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\182"
+                                                                    "\225\180\182")
+                                                                    (Earley_core.Earley.empty
+                                                                    "J"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\181"
+                                                                    "\225\180\181")
+                                                                    (Earley_core.Earley.empty
+                                                                    "I"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\180"
+                                                                    "\225\180\180")
+                                                                    (Earley_core.Earley.empty
+                                                                    "H"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\179"
+                                                                    "\225\180\179")
+                                                                    (Earley_core.Earley.empty
+                                                                    "G"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\178"
+                                                                    "\225\180\178")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\198\142"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\177"
+                                                                    "\225\180\177")
+                                                                    (Earley_core.Earley.empty
+                                                                    "E"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\176"
+                                                                    "\225\180\176")
+                                                                    (Earley_core.Earley.empty
+                                                                    "D"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\174"
+                                                                    "\225\180\174")
+                                                                    (Earley_core.Earley.empty
+                                                                    "B"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\173"
+                                                                    "\225\180\173")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\195\134"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\180\172"
+                                                                    "\225\180\172")
+                                                                    (Earley_core.Earley.empty
+                                                                    "A"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\225\131\188"
+                                                                    "\225\131\188")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\225\131\156"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\203\164"
+                                                                    "\203\164")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\149"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\203\163"
+                                                                    "\203\163")
+                                                                    (Earley_core.Earley.empty
+                                                                    "x"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\203\162"
+                                                                    "\203\162")
+                                                                    (Earley_core.Earley.empty
+                                                                    "s"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\203\161"
+                                                                    "\203\161")
+                                                                    (Earley_core.Earley.empty
+                                                                    "l"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\203\160"
+                                                                    "\203\160")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\163"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\202\184"
+                                                                    "\202\184")
+                                                                    (Earley_core.Earley.empty
+                                                                    "y"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\202\183"
+                                                                    "\202\183")
+                                                                    (Earley_core.Earley.empty
+                                                                    "w"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\202\182"
+                                                                    "\202\182")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\202\129"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\202\181"
+                                                                    "\202\181")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\187"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\202\180"
+                                                                    "\202\180")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\185"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\202\179"
+                                                                    "\202\179")
+                                                                    (Earley_core.Earley.empty
+                                                                    "r"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\202\178"
+                                                                    "\202\178")
+                                                                    (Earley_core.Earley.empty
+                                                                    "j"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\202\177"
+                                                                    "\202\177")
+                                                                    (Earley_core.Earley.empty
+                                                                    "\201\166"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\202\176"
+                                                                    "\202\176")
+                                                                    (Earley_core.Earley.empty
+                                                                    "h"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\194\186"
+                                                                    "\194\186")
+                                                                    (Earley_core.Earley.empty
+                                                                    "o"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\194\185"
+                                                                    "\194\185")
+                                                                    (Earley_core.Earley.empty
+                                                                    "1"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\194\179"
+                                                                    "\194\179")
+                                                                    (Earley_core.Earley.empty
+                                                                    "3"))
+                                                                    (List.cons
+                                                                    (Earley_core.Earley.fsequence_ignore
+                                                                    (Earley_core.Earley.string
+                                                                    "\194\178"
+                                                                    "\194\178")
+                                                                    (Earley_core.Earley.empty
+                                                                    "2")) [])))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))

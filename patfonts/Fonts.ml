@@ -1,4 +1,5 @@
 open Unicodelib
+open FTypes
 module OpT = Opentype
 
 type font =
@@ -13,14 +14,18 @@ let fontName ?index:(index=0) = function
   | CFF f -> CFF.fontName ~index:index f
   | OpT f -> OpT.fontName ~index:index f
 
-let loadFont ?offset:(offset = 0) ?size:(size = None) fn =
+let loadFont ?offset:(offset = 0) ?size:(size = None) ?family ?family_hint ?weight ?slant fn =
+  let family = (family : string option) in
+  let family_hint = (family_hint : string option) in
+  let weight = (weight : int option) in
+  let slant = (slant : string option) in
   (* Check if the font file exists. *)
   if not (Sys.file_exists fn) then
     failwith (Printf.sprintf "Font file %S not found..." fn);
   (* Load the font file according to its extension. *)
   let extension_in = List.exists (Filename.check_suffix fn) in
   if extension_in OpT.extensions then
-    OpT (OpT.loadFont ~offset ~size fn)
+    OpT (OpT.loadFont ~offset ~size ?family ?family_hint ?weight ?slant fn)
   else if extension_in CFF.extensions then
     CFF (CFF.loadFont ~offset ~size fn)
   else
@@ -167,3 +172,71 @@ let is_cff : font -> bool = function
   | CFF _           -> true
   | OpT (OpT.CFF _) -> true
   | _               -> false
+
+(** P1-5: Build a list of [make_ligature]-style callbacks from the GSUB
+    ligature substitutions of an OpenType font. Returns [[]] for
+    fonts without a GSUB table or without ligature lookups. The
+    callbacks returned here are intended to be merged with the
+    hard-coded ligature fallback list when constructing font tuples.
+
+    The substitution algorithm is local to this module to avoid
+    pulling [Typography] into [patfonts] (the reverse direction
+    would create a cycle). It is equivalent to
+    [Typography.Document.make_ligature] modulo the [glyph_utf8]
+    string of the result (we leave it empty; downstream consumers
+    reconstruct it from the surrounding context). *)
+let ligature_callbacks_from_gsub (font : font)
+    : (glyph_id list -> glyph_id list) list =
+  let make_ligature_local ids lig_glyph glyphs =
+    (* Match the ligature pattern at the *current* position of the
+       remaining list (the previous version always tested the original
+       [glyphs] closure variable: it either missed every ligature after
+       the first, or — when the pattern was a prefix — recursed
+       forever and crashed with [Stack overflow] on long paragraphs).
+       The loop is tail-recursive with an accumulator so its depth is
+       constant. *)
+    let rec match_lig l x = match (l, x) with
+      | [], [] -> Some []
+      | _ :: _, [] -> None
+      | [], _ -> Some x
+      | h1 :: s1, h2 :: s2 when h1 = h2.glyph_index -> match_lig s1 s2
+      | _ :: _, _ :: _ -> None
+    in
+    let rec loop acc = function
+      | [] -> List.rev acc
+      | ((h :: s) as cur) ->
+          (match match_lig ids cur with
+           | None -> loop (h :: acc) s
+           | Some g -> loop (lig_glyph :: acc) g)
+    in
+    loop [] glyphs
+  in
+  match font with
+  | CFF _ -> []
+  | OpT f ->
+      let substs = OpT.read_gsub f in
+      let entries = List.concat (Array.to_list (Array.map List.rev substs)) in
+      List.filter_map (function
+          | Subst s
+            when Array.length s.subst_glyphs = 1
+                 && Array.length s.original_glyphs >= 2 ->
+              let lig_glyph =
+                { glyph_utf8 = ""; glyph_index = s.subst_glyphs.(0) }
+              in
+              Some (make_ligature_local
+                      (Array.to_list s.original_glyphs) lig_glyph)
+          | _ -> None)
+        entries
+
+(** Apply OpenType ligature features (e.g. ["liga"], ["dlig"]) directly
+    to a glyph list. Useful for callers that want feature-tag-scoped
+    substitution (e.g. the existing [substitutions] field on
+    [environment]). Returns the input unchanged for fonts without a
+    GSUB table. *)
+let apply_ligature_features font feature_tags glyphs =
+  match font with
+  | CFF _ -> glyphs
+  | OpT f ->
+      let features = OpT.select_features f feature_tags in
+      OpT.apply_features f features glyphs
+

@@ -157,18 +157,47 @@ let rec gmath lvl e =
      let l = List.map (gmath lvl) l in
      <$ ( \lineMatrix(l) ) $>
   | Pow(e,f) ->
-     if (lvl < PPow) then <$ (\gmath(pp PPow)(e)^{\gmath(PPow)(f)}) $>
-     else <$ \gmath(pp PPow)(e)^{\gmath(PPow)(f)} $>
+     (* Hand-built: pa_patoline (<$ … $>) can emit [[Maths.Ordinary …]] (invalid
+        nesting) for ^{…} / subscripts on embedded OCaml math. *)
+     [
+       Maths.Ordinary
+         {
+           (Maths.node (fun env st -> Maths.draw [env] ((gmath (pp PPow)) e)))
+           with superscript_right = (gmath PPow) f
+         }
+     ]
   | Inv e ->
-     if (lvl < PPow) then <$ (\gmath(pp PPow)(e)^{-1}) $>
-     else <$ \gmath(pp PPow)(e)^{-1} $>
+     [
+       Maths.Ordinary
+         {
+           (Maths.node (fun env st -> Maths.draw [env] ((gmath (pp PPow)) e)))
+           with
+           superscript_right =
+             [
+               Maths.bin 3
+                 (Maths.Normal (true, Maths.node (Maths.glyphs "-"), false))
+                 []
+                 [ Maths.Ordinary (Maths.node (Maths.glyphs "1")) ];
+             ]
+         }
+     ]
   | Opp e ->
-     if (lvl < PPow) then <$ (-\gmath(pp PPow)(e)) $>
-     else <$ -\gmath(pp PPow)(e) $>
+     [
+       Maths.bin 3
+         (Maths.Normal (true, Maths.node (Maths.glyphs "-"), false))
+         []
+         ((gmath (pp PPow)) e)
+     ]
   | App(e,l) ->
      <$ \gmath(PAtm)(e)(\gmathl(l)) $>
   | Ind(e,l) ->
-     <$ \gmath(PPow)(e)_{\gmathl(l)} $>
+     [
+       Maths.Ordinary
+         {
+           (Maths.node (fun env st -> Maths.draw [env] ((gmath PPow) e)))
+           with subscript_right = gmathl l
+         }
+     ]
 
 and gmathl l =
   match l with

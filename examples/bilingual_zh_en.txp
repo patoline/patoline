@@ -1,0 +1,41 @@
+(*
+  UTF-8 中文 / English / 한국어 混排示例（无数学公式）。
+  DefaultFormat 在找到 WenQuanYi Zen Hei 时用作正文（如 Debian/Ubuntu 的 fonts-wqy-zenhei）。
+  若从 git 开发 Patoline，请 dune install 或 opam install .，以便 ocamlfind 使用当前 DefaultFormat。
+*)
+======================
+Patoline · 中文 / English / 한국어
+----------------------
+字体与混排测试
+======================
+
+-> 中文
+
+这是一段简体中文正文，用于检查汉字是否正常显示与换行。混排时可与英文、韩文并列。
+
+English: Patoline typesets UTF-8 text; default body font prefers WenQuanYi Zen Hei when installed.
+
+한국어: 이 문장은 한글 표시를 시험합니다. 가나다라마바사.
+
+-<
+
+-> 英文段落
+
+The quick brown fox jumps over the lazy dog. This paragraph checks Latin glyphs and spacing next to CJK.
+
+中文穿插：你好，世界。다음은 한국어입니다.
+
+-<
+
+-> 韩文
+
+한국어는 조합형 음절 문자로, 글꼴에 따라 가독성이 달라질 수 있습니다.
+영문과 병기: Hello, world. 中文：测试。
+
+-<
+
+-> 强调与样式
+
+正文可与 //斜体//、**粗体** 混用；**한글 굵게**、//English italics//、中文**粗体** 一并检查。
+
+-<

@@ -60,15 +60,19 @@ let make_ligature l gl x=
     | h1::s1, h2::s2 when h1=h2.glyph_index-> match_lig s1 s2
     | _::_,_::_->None
   in
-  let rec make_ligature x=match x with
-      []->[]
-    | h::s->(
-        match match_lig l x with
-            None->h::make_ligature s
-          | Some g->gl::make_ligature g
+  (* Tail-recursive with an accumulator: the recursion depth stays
+     constant even for very long paragraphs (previously it was the
+     segment length, which could overflow the stack on pathological
+     inputs).  Matching still happens at the current position. *)
+  let rec make_ligature acc x=match x with
+      []->List.rev acc
+    | ((h::s) as cur)->(
+        match match_lig l cur with
+            None->make_ligature (h::acc) s
+          | Some g->make_ligature (gl::acc) g
       )
   in
-    make_ligature x
+    make_ligature [] x
 
 (* Italic is second *)
 type fontFamily =
@@ -362,9 +366,10 @@ let empty_zipper = DocZipper.empty empty
 (** Function that takes a tree zipper [(t,cxt)] pointing to some node
    [t] and returns a zipper pointing to the father node of [t]. If this
    function is called on a zipper that points to the root of the tree, a
-   new empty node is created to have [t] as its only child. *)
+   new empty node is created to have [t] as its only child.
+
+   @deprecated Use DocZipper.up instead. *)
 let up = DocZipper.up
-  [@@ocaml.deprecated "Use DocZipper.up instead"]
 
 (** Function that applies {!val:up} n times on a zipper, effectively moving the
    zipper to the n-th ancestor of the currently pointed node. *)
@@ -895,16 +900,17 @@ let badness env paragraphs _ _
     +. v_bad
     (* Page pas assez remplie *)
     +. (if layout_page node_i<>layout_page node_j &&
-        node_i.height>=(fst node_i.layout).frame_y0+.env.lead then 10000. else 0.)
+        node_i.height>=(fst node_i.layout).frame_y0+.env.lead
+        then Badness.Demerit.page_underfull else 0.)
       (* Cesures *)
     +. (if node_j.hyphenEnd >=0 then
         (if node_j.hyphenStart >=0 then
-            1e10
+            Badness.Demerit.consecutive_hyphen
          else
-            1e8)
+            Badness.Demerit.hyphen)
       else
         (if node_j.hyphenStart >=0 then
-            1e8
+            Badness.Demerit.hyphen
          else
             0.)
     )
@@ -917,7 +923,7 @@ let badness env paragraphs _ _
       else 0.0
     )
     (* Différence de compression entre deux lignes consécutives *)
-    +. (1000.*.(abs_float (comp_i-.comp_j)))
+    +. (Badness.Demerit.compression_jitter *. (abs_float (comp_i-.comp_j)))
   )
 
 (** {3 Figures} *)
@@ -1167,7 +1173,7 @@ let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
       let _=Sys.command (Printf.sprintf "ffmpeg -i %s -t 1 -r 1 %s-%%d.png" imageFile tmp) in
       ()
     );
-  let w,h = ImageLib.size (tmp^"-1.png") in
+  let w,h = ImageLib_unix.size (tmp^"-1.png") in
   let fw,fh=
     if width=0. then
       if height=0. then
@@ -1273,19 +1279,59 @@ let makeGlue env x0=
               Glue y->Drawing y
             | y->y)
         | 0x205f->let w=env.size*.4./.18. in (glue (w*.2./.3.) w (w*.3./.2.))
+        | 0x3000->let w=env.size in (glue (w*.2./.3.) w (w*.3./.2.)) (* 全角空格 *)
         | 0xfeff->(glue 0. 0. 0.)
         | _->stdGlue
 
-(** Converts a [string] to a list of glyphs, according to the environment. *)
+(** P3-1: CJK spacing knobs. [cjk_latin_space] is the nominal gap, in
+    units of the current font size, inserted at CJK/Latin boundaries;
+    [cjk_justify_stretch] is the maximum stretch (again in font-size
+    units) of the zero-width glue placed between adjacent ideographs,
+    which lets justified CJK lines distribute slack without ever
+    showing an inter-character space. *)
+let cjk_latin_space : float ref = ref 0.25
+let cjk_justify_stretch : float ref = ref 0.5
+
+(** Glue inserted at an inter-segment break opportunity (i.e. not at a
+    white-space character).  Ideograph-to-ideograph boundaries get a
+    zero-natural-width stretchable glue; CJK/Latin boundaries get a
+    small configurable space; anything else keeps the historical
+    behaviour of [makeGlue]. *)
+let breakGlue env prev_cp next_cp =
+  match UChar.line_break_class prev_cp, UChar.line_break_class next_cp with
+  | Ideographic, Other | Other, Ideographic ->
+      let w = env.size *. !cjk_latin_space in
+      glue (w *. 0.4) w (w *. 1.6)
+  | _ ->
+      let s = env.size *. !cjk_justify_stretch in
+      glue 0. 0. s
+
+(** P1-7: Convert a string into a list of glyphs using the current
+    font, falling back to the next family in [env.fontFamily] when a
+    glyph is missing. The list semantics of [fontFamily] already
+    support a fallback chain; we just had to honour it here. *)
 let gl_of_str env str =
-  try
-    let res = hyphenate env.hyphenate env.substitutions env.positioning env.font
-                        env.size env.fontColor str
-    in
-    res
-  with Glyph_not_found _ ->
-    Printf.eprintf "glyph not found in: %s (%S)\n%!" str str;
-    []
+  let rec try_with fam =
+    match fam with
+    | [] ->
+        Printf.eprintf "glyph not found in: %s (%S)\n%!" str str;
+        []
+    | (alt, (reg_lazy, ital_lazy)) :: rest ->
+        let matched = alt = env.fontAlternative in
+        if not matched then
+          try_with rest
+        else
+          (* Pick the italic face when the environment asks for it. *)
+          let f, _subst, _pos =
+            Lazy.force (if env.fontItalic then ital_lazy else reg_lazy)
+          in
+          try
+            hyphenate env.hyphenate env.substitutions env.positioning
+              f env.size env.fontColor str
+          with Glyph_not_found _ ->
+            try_with rest
+  in
+  try_with env.fontFamily
 
 (**/**)
 let append buf nbuf x=
@@ -1308,8 +1354,10 @@ let mappend m x=
   IntMap.add (a+1) x m
 
 
-(* let nfkc = UNF8.nfkc *)
-let nfkc x = x
+(* Normalize a UTF-8 string to NFKC before parsing. The previous
+   identity stub lost the [UNF8.nfkc] behavior; we now delegate to
+   [UChar.nfkc_string] which is backed by the [uucp] opam package. *)
+let nfkc x = UChar.nfkc_string x
 (**/**)
 
 
@@ -1357,8 +1405,9 @@ let boxify buf nbuf env0 l=
         | _                      ->
            let l = ref IntMap.empty in
            let t = nfkc t in
-           let rec cut_str i0 i =
-             if i >= String.length t then
+           let rec cut_str i0 i prev_cp =
+             let len = String.length t in
+             if i >= len then
                let sub = String.sub t i0 (i-i0) in
                l := mappend !l (gl_of_str env sub)
              else if UChar.is_space (UTF8.look t i) then
@@ -1366,10 +1415,24 @@ let boxify buf nbuf env0 l=
                l := mappend !l (gl_of_str env (nfkc sub));
                if i <> i0 || i = 0 then
                  l:=mappend !l [makeGlue env (UChar.code (UTF8.look t i))];
-               cut_str (UTF8.next t i) (UTF8.next t i)
-             else
-               cut_str i0 (UTF8.next t i)
-           in cut_str 0 0;
+               cut_str (UTF8.next t i) (UTF8.next t i) (-1)
+             else if prev_cp >= 0 &&
+                     UChar.is_break_opportunity prev_cp
+                       (UChar.code (UTF8.look t i)) then (
+               let sub = String.sub t i0 (i-i0) in
+               l := mappend !l (gl_of_str env (nfkc sub));
+               (* CJK-aware break glue: zero-width stretch between
+                  ideographs, small configurable space at CJK/Latin
+                  boundaries (see [breakGlue]). *)
+               l := mappend !l
+                 [breakGlue env prev_cp (UChar.code (UTF8.look t i))];
+               (* Resume *at* the character that triggered the break:
+                  skipping it with [UTF8.next] would drop it (it
+                  produced neither glyph nor glue). *)
+               cut_str i i (-1)
+             ) else
+               cut_str i0 (UTF8.next t i) (UChar.code (UTF8.look t i))
+           in cut_str 0 0 (-1);
            if keep_cache then cache := Some !l;
            IntMap.iter (fun _->List.iter (append buf nbuf)) !l;
            boxify keep_cache env s)
@@ -1558,7 +1621,16 @@ let adjust_width env buf nbuf =
               let profile_right = Distance.bezier_profile dir' epsilon bezier_right in
               if !Distance.debug then
                 Printf.fprintf stderr "Drawing(2): i0 = %d (%d,%d)\n" !i0 (List.length profile_left) (List.length profile_right);
-              if profile_left = [] || profile_right = [] then raise Exit;
+              let nan_p l =
+                List.exists (fun (x, _) -> classify_float x = FP_nan) l
+              in
+              (* P6-3: profiles that are empty *or* carry NaN points
+                 (degenerate glyph outlines) cannot be fed to
+                 [Distance.distance]: skip the fine adjustment and
+                 keep the nominal width instead of aborting. *)
+              if profile_left = [] || profile_right = []
+                 || nan_p profile_left || nan_p profile_right
+              then raise Exit;
 
               if !Distance.debug then
                 Printf.fprintf stderr "Drawing(2b): i0 = %d\n" !i0;
@@ -1574,8 +1646,8 @@ let adjust_width env buf nbuf =
 
 
                let nominal' = !nominal +. char_space in
-              let min' = Pervasives.min  (Pervasives.max (x0_r -. x1_r) (x0_l -. x1_l))  (!min -. nominal') in
-              let max' = Pervasives.max (2. *. char_space) (!max -. nominal') in
+              let min' = Stdlib.min  (Stdlib.max (x0_r -. x1_r) (x0_l -. x1_l))  (!min -. nominal') in
+              let max' = Stdlib.max (2. *. char_space) (!max -. nominal') in
               let da = d min' in
               let db = d max' in
               let target = nominal' in
@@ -1678,6 +1750,45 @@ let altStates l =
 
 
 
+(** P3-2: automatic CJK first-line indentation.
+
+    A paragraph whose text content is mostly CJK gets a two-full-width
+    character first-line indent (中文首行缩进两字符) instead of the
+    language-default indent.  Paragraphs that explicitly request an
+    empty indent (titles, TOC entries, list items…) keep it. *)
+
+let contents_mostly_cjk contents =
+  let total = ref 0 in
+  let han = ref 0 in
+  let scan s =
+    let i = ref 0 in
+    let len = String.length s in
+    while !i < len do
+      let cp = UChar.code (UTF8.look s !i) in
+      if not (UChar.is_space cp) then begin
+        incr total;
+        if UChar.is_cjk cp then incr han
+      end;
+      i := UTF8.next s !i
+    done
+  in
+  List.iter (fun c -> match c with T (s, _) -> scan s | _ -> ()) contents;
+  !total > 0 && float !han /. float !total > 0.5
+
+let cjk_indent_boxes size =
+  let w = 2.0 *. size in
+  [Drawing { drawing_min_width = w;
+             drawing_max_width = w;
+             drawing_width_fixed = true;
+             drawing_adjust_before = false;
+             drawing_y0 = 0.;
+             drawing_y1 = 0.;
+             drawing_nominal_width = w;
+             drawing_contents = (fun _ -> []);
+             drawing_break_badness = 0.;
+             drawing_states = [];
+             drawing_badness = fun _ -> 0. }]
+
 (** "flattens" a document tree to an array of paragraphs, a paragraph
     being an array of boxes. *)
 let flatten ?(initial_path=[]) env0 str=
@@ -1698,7 +1809,15 @@ let flatten ?(initial_path=[]) env0 str=
   let nbuf=ref 0 in
   let frees=ref 0 in
   let add_paragraph env tree path p=
-    let cont = bB (fun env->(p.par_env env).par_indent) :: p.par_contents in
+    (* P3-2: swap the default indent for a two-character CJK indent on
+       paragraphs whose content is mostly ideographic. *)
+    let cont =
+      bB (fun env->
+        let ind = (p.par_env env).par_indent in
+        if ind = [] then []
+        else if contents_mostly_cjk p.par_contents then cjk_indent_boxes env.size
+        else ind) :: p.par_contents
+    in
     nbuf:= !frees;
     let env=boxify buf nbuf env cont in
     adjust_width env buf nbuf;

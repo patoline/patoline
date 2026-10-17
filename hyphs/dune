@@ -1,3 +1,15 @@
+; Hyphenation patterns. Adding a new language is two steps:
+;   1. drop a TeX-style hyph-<lang>.tex file next to this dune;
+;   2. add a (rule ...) + an entry in the (install ...) list below.
+; `cesure` (see cesure/cesure.ml) compiles the patterns into a binary
+; .hdict that Patoline loads at runtime via DefaultFormat.hyphenate_dict.
+;
+; Some TeX hyphenation files (hyph-de.tex, hyph-de-1901.tex,
+; hyph-pt.tex, hyph-ru.tex) contain constructs cesure does not parse
+; (\message{...}, terminal dashes like [0-9]-). The .tex sources are
+; kept here for future preprocessing work; only the languages below
+; have working .hdict rules.
+
 (rule
   (targets hyph-en-us.hdict)
   (action (run cesure hyph-en-us.tex))
@@ -8,8 +20,56 @@
   (action (run cesure hyph-fr.tex))
   (deps ./hyph-fr.tex))
 
+(rule
+  (targets hyph-es.hdict)
+  (action (run cesure hyph-es.tex))
+  (deps ./hyph-es.tex))
+
+(rule
+  (targets hyph-it.hdict)
+  (action (run cesure hyph-it.tex))
+  (deps ./hyph-it.tex))
+
+(rule
+  (targets hyph-nl.hdict)
+  (action (run cesure hyph-nl.tex))
+  (deps ./hyph-nl.tex))
+
+(rule
+  (targets hyph-pl.hdict)
+  (action (run cesure hyph-pl.tex))
+  (deps ./hyph-pl.tex))
+
+(rule
+  (targets hyph-cs.hdict)
+  (action (run cesure hyph-cs.tex))
+  (deps ./hyph-cs.tex))
+
+(rule
+  (targets hyph-sv.hdict)
+  (action (run cesure hyph-sv.tex))
+  (deps ./hyph-sv.tex))
+
+(rule
+  (targets hyph-fi.hdict)
+  (action (run cesure hyph-fi.tex))
+  (deps ./hyph-fi.tex))
+
+(rule
+  (targets hyph-hu.hdict)
+  (action (run cesure hyph-hu.tex))
+  (deps ./hyph-hu.tex))
+
 (install
   (section share)
   (files
     (hyph-en-us.hdict as hyphen/hyph-en-us.hdict)
-    (hyph-fr.hdict as hyphen/hyph-fr.hdict)))
+    (hyph-fr.hdict as hyphen/hyph-fr.hdict)
+    (hyph-es.hdict as hyphen/hyph-es.hdict)
+    (hyph-it.hdict as hyphen/hyph-it.hdict)
+    (hyph-nl.hdict as hyphen/hyph-nl.hdict)
+    (hyph-pl.hdict as hyphen/hyph-pl.hdict)
+    (hyph-cs.hdict as hyphen/hyph-cs.hdict)
+    (hyph-sv.hdict as hyphen/hyph-sv.hdict)
+    (hyph-fi.hdict as hyphen/hyph-fi.hdict)
+    (hyph-hu.hdict as hyphen/hyph-hu.hdict)))

@@ -27,6 +27,13 @@
   (libraries typography DefaultFormat hyphen))
 
 (library
+  (name FormatZhBook)
+  (public_name patoline.format.FormatZhBook)
+  (modules FormatZhBook)
+  (wrapped false)
+  (libraries typography DefaultFormat hyphen))
+
+(library
   (name FormatThese)
   (public_name patoline.format.FormatThese)
   (modules FormatThese)

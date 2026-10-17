@@ -2,36 +2,97 @@ on:
   pull_request:
   push:
   workflow_dispatch:
+
 jobs:
   build:
     strategy:
       fail-fast: false
       matrix:
-        ocaml-version: [
-          4.03.0,
-          4.04.0,
-          4.05.0,
-          4.06.0, 4.06.1,
-          4.07.0, 4.07.1
-        ]
+        # Patoline keeps OCaml >= 5.2.0 as the floor and tests across
+        # the latest 5.x minor releases (5.2 / 5.4) so that
+        # Parsetree-shape regressions (notably Pexp_function in 5.2+)
+        # are caught at CI time. The upper bound (< 5.5.0) keeps the
+        # vendored pa_ast.ml in sync with what it was last hand-patched
+        # against; bumping the ceiling requires a fresh Parsetree audit.
+        # See README.md ("OCaml 5 upgrade (2026)" section).
+        ocaml-version:
+          - 5.2.1
+          - 5.4.1
+        include:
+          - ocaml-version: 5.2.1
+            dune: "3.0"
+          - ocaml-version: 5.4.1
+            dune: "3.0"
     runs-on: "ubuntu-latest"
     steps:
       - name: "Checking out the repo..."
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
       - name: "Recovering cached opam files..."
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.opam
-          key: ${{ runner.os }}-ocaml-${{ matrix.ocaml-version }}
+          key: ${{ runner.os }}-ocaml-${{ matrix.ocaml-version }}-dune-${{ matrix.dune }}
+          restore-keys: |
+            ${{ runner.os }}-ocaml-${{ matrix.ocaml-version }}-dune-
+
+      - name: "Installing PDF smoke-test tools (poppler-utils)..."
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
       - name: "Setting up opam..."
-        uses: avsm/setup-ocaml@v1
+        uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-version: ${{ matrix.ocaml-version }}
+          ocaml-compiler: ${{ matrix.ocaml-version }}
+          dune-version: ${{ matrix.dune }}
+
+      - name: "Installing patoline and its dependencies..."
+        run: |
+          set -e
+          opam update
+          opam pin add -n -k path patoline .
+          # Runtime deps (matches README "Dependencies" section).
+          opam install --deps-only -d -t patoline
+          # depopts that are still supported on this OCaml version.
+          opam install cairo2 cryptokit || true
+
+      - name: "Building patoline..."
+        run: |
+          set -e
+          eval $(opam env)
+          dune build
+
       - name: "Installing patoline..."
         run: |
+          set -e
           eval $(opam env)
-          opam update
-          opam upgrade
-          opam pin add -n -k path patoline .
-          opam install --deps-only -d -t patoline
-          opam install patoline
+          dune install
+
+      - name: "Running examples (PDF driver)..."
+        run: |
+          set -e
+          eval $(opam env)
+          mkdir -p build-artifacts
+          for ex in minimal hello_world xkcd genealogy; do
+            patoline --driver Pdf --format FormatArticle \
+              --extra-fonts-dir "$GITHUB_WORKSPACE/fonts" \
+              --extra-hyph-dir "$GITHUB_WORKSPACE/hyphs" \
+              -o "build-artifacts/${ex}.pdf" \
+              "examples/${ex}.txp"
+          done
+          # Smoke test: every generated PDF must parse and have at least
+          # one page. A regression that silently corrupts the output
+          # (e.g. an empty PDF) will fail this step.
+          for pdf in build-artifacts/*.pdf; do
+            pages=$(pdfinfo "$pdf" | awk '/^Pages:/ {print $2}')
+            test -n "$pages" && test "$pages" -ge 1
+            pdftotext "$pdf" - | head -1 | grep -q . || {
+              echo "::error::$pdf produced no extractable text"
+              exit 1
+            }
+          done
+
+      - name: "Linting patoline.opam..."
+        run: |
+          set -e
+          eval $(opam env)
+          opam lint patoline.opam

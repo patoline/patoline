@@ -246,23 +246,30 @@ let adjust_space ?(absolute=false) env target minimum box_left box_right =
     r
   in
 
-  let db = d target in
-  let da = d minimum in
+  (* P6-2: blank glyphs (the parser spacing cells, fonts reporting
+     degenerate extents for empty outlines) yield no drawable
+     profile; [Distance.distance] then raises [Not_found].  Fall
+     back to the requested distance instead of aborting the whole
+     document. *)
+  let db = try d target with Not_found -> target in
+  let da = try d minimum with Not_found -> minimum in
   let epsilon = epsilon /. 16. in
 
   if !debug_kerning then Printf.eprintf "start Adjust: min = %f => %f, target = %f => %f\n" minimum da target db;
 
   let r =
-    if da > target then minimum else if db < target then target else
+    try
+      if da > target then minimum else if db < target then target else
 
-        let rec fn sa da sb db  =
-          let sc = (sa +. sb) /. 2.0 in
-          let dc = d sc in
-          if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
-          else if dc < target then fn sc dc sb db
-          else fn sa da sc dc
-        in
-        fn minimum da target db
+          let rec fn sa da sb db  =
+            let sc = (sa +. sb) /. 2.0 in
+            let dc = d sc in
+            if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
+            else if dc < target then fn sc dc sb db
+            else fn sa da sc dc
+          in
+          fn minimum da target db
+    with Not_found -> target
   in
 
   if !debug_kerning then Printf.fprintf stderr "Adjust => %f\n" r;
@@ -532,7 +539,16 @@ let rec draw draw_env env_stack mlist =
                 let box_op = draw_boxes env op in
                 let (x0,_,x1,_) = bounding_box_full box_op in
                 let (x0',_,x1',_) = bounding_box_kerning box_op in
-                assert (x0 <= x1);
+                (* P6-1: a degenerate or empty operator box (spacing
+                   cells such as the parser placeholder, or fonts
+                   whose blank glyphs report inverted extents) must
+                   not abort the document: collapse its extents to a
+                   point and let the surrounding math spacing place
+                   the operands. *)
+                let (x0, x1, x0', x1') =
+                  if x0 <= x1 && x0' <= x1' then (x0, x1, x0', x1')
+                  else (0., 0., 0., 0.)
+                in
                 let dist0 =
                   if bin_left = [] then 0.0 else
                   let space = if no_sp_left then
@@ -558,11 +574,23 @@ let rec draw draw_env env_stack mlist =
                 in
                 let dist0, dist1 =
                   let delta = (dist2 -. dist0 -. dist1 -. (x1 -. x0)) in
-                  if delta > 0.0 then
-                    let l = if no_sp_left then 0.0 (*mathsEnv.punctuation_factor*) else 1.0 in
-                    let r = if no_sp_right then 0.0 (*mathsEnv.punctuation_factor*) else 1.0 in
+                  let l = if no_sp_left then 0.0 else 1.0 in
+                  let r = if no_sp_right then 0.0 else 1.0 in
+                  (* P6-4: when both sides suppress spacing (the parser
+                     invisible juxtaposition cells: no_sp_left and
+                     no_sp_right are both true) the share formula below
+                     evaluated delta*0/(0+0) = 0/0 = NaN.  The NaN glue
+                     then poisoned the running x offset of everything
+                     after it inside the matrix cell, and the remaining
+                     operands were emitted at NaN coordinates, which the
+                     PDF writer drops -- hence the missing right-hand
+                     sides of align/aligned cells.  Split the correction
+                     evenly when nobody claims it. *)
+                  if delta > 0.0 && (l +. r) > 0.0 then
                     dist0 +. delta *. l /. (l +. r),
                     dist1 +. delta *. r /. (l +. r)
+                  else if delta > 0.0 then
+                    dist0 +. (delta /. 2.0), dist1 +. (delta /. 2.0)
                   else
                     dist0, dist1
                 in
@@ -879,7 +907,17 @@ let dist_boxes env _ a b =
 
   Distance.distance beta dir profile_left profile_right
 
+(* The parser marks mathematical spacing cells (quantifier argument
+   separators, implicit products, invisible infixes and delimiters)
+   with the literal string "invisible".  It must never reach the
+   font as text: the cell becomes an empty box list.  Its extents
+   are normalised by the guards at every consumer (the operator
+   bounding box in [draw] and the empty-profile short-circuit of
+   [adjust_space]), so the cell contributes neither ink nor bogus
+   profile points, while the surrounding binary symbols keep
+   their regular inter-symbol spacing. *)
 let glyphs (c:string) envs st=
+  if c = "invisible" then [] else
   let env=env_style envs.mathsEnvironment st in
   let font=Lazy.force env.mathsFont in
   let s=env.mathsSize*.envs.size in
@@ -1260,7 +1298,6 @@ let ams_font=Lazy.from_fun (fun ()->Fonts.loadFont
                                             (findFont FontPattern.({family = "Euler"; slant = Roman; weight = Regular})))
 let ams name code = symbol ~name (Lazy.force ams_font) [code]
 
-
 let adjusted_asana_delimiters' _ ls =
   match ls with
     [] -> assert false
@@ -1271,6 +1308,48 @@ let adjusted_asana_delimiters' _ ls =
 
 let adjusted_asana_delimiters name ls =
   adjusted_asana_delimiters' name (List.map (asana name) ls)
+
+(** P2-3: Math font fallback chain. We try the requested family first
+    (e.g. ["Asana Math"]) and walk the list until we find a font that
+    can be loaded. The last entry is always the bundled [DejaVu
+    Sans] which is guaranteed to exist. *)
+let math_fallback_chain =
+  ["Asana Math";
+   "STIX Two Math";
+   "Latin Modern Math";
+   "DejaVu Sans Math";
+   "DejaVu Sans"]
+
+let math_font family =
+  Lazy.from_fun (fun () ->
+      let try_family fam =
+        try Some (Fonts.loadFont
+                    (findFont FontPattern.({family = fam; slant = Roman; weight = Regular})))
+        with _ -> None
+      in
+      let rec loop = function
+        | [] -> failwith "No math font available (even DejaVu Sans is missing)"
+        | h :: _ when h = family ->
+            (match try_family h with
+             | Some f -> f
+             | None ->
+                 Printf.eprintf
+                   "Warning: %S not found, falling back to default math font chain.\n\
+                    %!" family;
+                 loop (List.filter ((<>) h) math_fallback_chain))
+        | _ :: rest -> loop rest
+      in
+      loop math_fallback_chain)
+
+(** P2-3: Re-build [adjusted_asana_delimiters] against the configured
+    math font. We keep the historical Asana Math glyph IDs as the
+    default and accept an optional override for callers that want
+    to use a different math font. *)
+let adjusted_delimiters_with_font ~font_family name ls =
+  let f = Lazy.force (math_font font_family) in
+  let map_glyph gid = symbol ~name f [gid] in
+  adjusted_asana_delimiters' name (List.map map_glyph ls)
+
 
 (* This function is for asana delimiters that are not compatible with other
      Asana delimiters !!! *)

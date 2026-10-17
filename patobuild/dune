@@ -1,8 +1,7 @@
 (executable
-  (name patoline)
-  (public_name patoline)
-  (package patoline)
-  (modules :standard)
-  (preprocess (action (run pa_ocaml %{input-file})))
-  (libraries unix threads earley.core earley.str earley.ocaml
-    patutil patconfig))
+ (name patoline)
+ (public_name patoline)
+ (package patoline)
+ (modules build parallel patoline pragma serve)
+ (libraries unix threads earley.core earley.str str pa_ocaml_lib
+   pa_patoline_support patutil patconfig))
