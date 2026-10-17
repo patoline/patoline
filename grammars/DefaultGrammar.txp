@@ -689,5 +689,22 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_symbol{\bfY 𝐘}(Maths.euler "bfY" 446)
 \Add_symbol{\bfZ 𝐙}(Maths.euler "bfZ" 447)
 
+\Add_symbol{\ldots …}{…}
+\Add_symbol{\ddots ⋱}{⋱}
+
+(*
+  Upright function names for the Chinese book template: \lim, \exp,
+  \sin, \cos, \ln — registered through the state so that they are
+  usable (with subscripts, arguments and superscripts) like any
+  default symbol.  Document-side \Add_* + \Save_Grammar currently
+  does not activate symbols within the same run (pre-existing
+  limitation, cf. tests/math.txp line 54), hence the definitions
+  live here and ship in DefaultGrammar.tgy.
+*)
+\Add_limits_operator{\lim}( [(fun (env : Typography.Document.environment) st -> boxify_scoped { env with size = env.size *. (Maths.env_style env.mathsEnvironment st).Mathematical.mathsSize } [tT "lim"])] )
+\Add_symbol{\exp}(fun (env : Typography.Document.environment) st -> boxify_scoped { env with size = env.size *. (Maths.env_style env.mathsEnvironment st).Mathematical.mathsSize } [tT "exp"])
+\Add_symbol{\sin}(fun (env : Typography.Document.environment) st -> boxify_scoped { env with size = env.size *. (Maths.env_style env.mathsEnvironment st).Mathematical.mathsSize } [tT "sin"])
+\Add_symbol{\cos}(fun (env : Typography.Document.environment) st -> boxify_scoped { env with size = env.size *. (Maths.env_style env.mathsEnvironment st).Mathematical.mathsSize } [tT "cos"])
+\Add_symbol{\ln}(fun (env : Typography.Document.environment) st -> boxify_scoped { env with size = env.size *. (Maths.env_style env.mathsEnvironment st).Mathematical.mathsSize } [tT "ln"])
 
 \Save_Grammar
