@@ -29,7 +29,10 @@ let file_to_build_dir fn =
 let build_source fn =
   let (dir, base, ext) = Filename.decompose fn in
   let ext =
-    match ext with | ".cmi" -> ".mli" | ".cmx" -> ".ml" | _ -> assert false in
+    match ext with
+    | ".cmi" -> ".mli"
+    | ".cmx" -> ".ml"
+    | _ -> assert false in
   Filename.concat dir (base ^ ext)
 let original_source fn =
   let (dir, base, ext) = Filename.decompose fn in
@@ -212,7 +215,11 @@ let file_deps : config -> string -> string list =
        (let deps =
           let ic = Unix.open_process_in cmd in
           let line =
-            try input_line ic
+            (* Windows ocamldep prints CRLF: [input_line] leaves the CR
+               behind, which used to corrupt the final token
+               (ext=".cmx\r") and hit the [assert false] in
+               [build_source]. *)
+            try String.trim (input_line ic)
             with
             | End_of_file ->
                 (eprintf "dependency analysis failed on %S:\n%!" fn;
