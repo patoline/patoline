@@ -1,0 +1,698 @@
+(* #FORMAT FormatZhBook *)
+
+\Caml(
+  (* ---- Title page (P5) ------------------------------------------- *)
+  (* A horizontal rule of the given width and thickness (mm).  Rules
+     must be *stroked*: an open path with only a fill colour has zero
+     area and renders nothing. *)
+  let rule width thickness () =
+    [ bB (fun _ ->
+        let w = width in
+        let h = max thickness 0.05 in
+        [ Drawing
+            { drawing_min_width = w;
+              drawing_max_width = w;
+              drawing_width_fixed = true;
+              drawing_adjust_before = false;
+              drawing_y0 = 0.;
+              drawing_y1 = h;
+              drawing_nominal_width = w;
+              drawing_contents =
+                (fun _ ->
+                  [ RawContent.Path
+                      ( { RawContent.default_path_param with
+                          RawContent.lineWidth = h;
+                          RawContent.fillColor = None;
+                          RawContent.strokingColor = Some Color.black },
+                        [ [| [| 0.; w |], [| h /. 2.; h /. 2. |] |] ]) ]);
+              drawing_break_badness = 0.;
+              drawing_states = [];
+              drawing_badness = (fun _ -> 0.) } ]) ]
+
+  let centered c =
+    [ envOf (fun env -> { env with par_indent = [] });
+      C (fun env ->
+        let m = env.normalMeasure in
+        let boxes = boxify_scoped env c in
+        let w =
+          List.fold_left
+            (fun w b -> let _, a, _ = Box.box_interval b in w +. a)
+            0. boxes
+        in
+        let left = (m -. w) /. 2. in
+        let right = m -. w -. left in
+        bB (fun _ -> [glue left left left])
+        :: c
+        @ [bB (fun _ -> [glue right right right])]) ]
+
+  (* Figure with 图 caption; [name] becomes a cross-reference label.
+     [figure] returns content (and performs the structure insert as a
+     side effect), which is what the [zh_figure_test] macro below
+     needs. *)
+  let zh_figure ?(width = 60.0) ?(name = "") path caption =
+    figure ~name:name ~caption:[tT caption]
+      (fun env -> Typography.Document.image ~width:width path env)
+
+  (* One table cell holding a full-width horizontal rule.  Table cells
+     are document structures (the format's [table] maps minipages over
+     them), hence the [paragraph] wrapper. *)
+  let ruleCell () =
+    paragraph ~par_env:(fun x -> { x with par_indent = [] })
+      [ bB (fun env ->
+            let w = env.normalMeasure in
+            [ Drawing
+                { drawing_min_width = w;
+                  drawing_max_width = w;
+                  drawing_width_fixed = true;
+                  drawing_adjust_before = false;
+                  drawing_y0 = 0.;
+                  drawing_y1 = 0.2;
+                  drawing_nominal_width = w;
+                  drawing_contents =
+                    (fun _ ->
+                      [ RawContent.Path
+                          ( { RawContent.default_path_param with
+                              RawContent.lineWidth = 0.15;
+                              RawContent.fillColor = None;
+                              RawContent.strokingColor = Some Color.black },
+                            [ [| [| 0.; w |], [| 0.1; 0.1 |] |] ]) ]);
+                  drawing_break_badness = 0.;
+                  drawing_states = [];
+                  drawing_badness = (fun _ -> 0.) } ]) ]
+
+  let ruleRow cols = Array.init cols (fun _ -> ruleCell ())
+
+  let zh_table cols rows =
+    let params =
+      { widths =
+          (fun env ->
+            Array.make cols (env.normalMeasure /. float_of_int cols));
+        h_spacing = 5.0;
+        v_spacing = 0.8 }
+    in
+    table params rows
+
+  (* Attachment page: full-width image, centred (paren macro args
+     cannot carry leading ~labels, so the application lives here). *)
+  let attachment path =
+    D.structure :=
+      newPar !D.structure
+        ~environment:(fun e -> { e with par_indent = [] })
+        Complete.normal center
+        (includeGraphics ~width:150.0 path);
+    []
+
+  let put_table cols rows =
+    D.structure :=
+      newPar !D.structure
+        ~environment:(fun e -> { e with par_indent = [] })
+        Complete.normal center (zh_table cols rows)
+)
+
+\Caml(
+  let tp_rule thickness gap =
+    (vspaceBefore gap) @ centered (rule 130. thickness ())
+
+  (* Double rule as on the reference title page: [h1] on top, [h2]
+     below it, [sep] millimetres apart, all drawn as one box so the
+     pair stays tight. *)
+  let tp_rules h1 h2 sep gap =
+    (vspaceBefore gap)
+    @ centered
+        [ bB (fun _ ->
+              let w = 130. in
+              let hh = h1 +. sep +. h2 in
+              [ Drawing
+                  { drawing_min_width = w;
+                    drawing_max_width = w;
+                    drawing_width_fixed = true;
+                    drawing_adjust_before = false;
+                    drawing_y0 = 0.;
+                    drawing_y1 = hh;
+                    drawing_nominal_width = w;
+                    drawing_contents =
+                      (fun _ ->
+                        [ RawContent.Path
+                            ( { RawContent.default_path_param with
+                                RawContent.lineWidth = h1;
+                                RawContent.fillColor = None;
+                                RawContent.strokingColor = Some Color.black },
+                              [ [| [| 0.; w |], [| h1 /. 2.; h1 /. 2. |] |] ]);
+                          RawContent.Path
+                            ( { RawContent.default_path_param with
+                                RawContent.lineWidth = h2;
+                                RawContent.fillColor = None;
+                                RawContent.strokingColor = Some Color.black },
+                              [ [| [| 0.; w |],
+                                  [| h1 +. sep +. h2 /. 2.;
+                                     h1 +. sep +. h2 /. 2. |] |] ]) ]);
+                    drawing_break_badness = 0.;
+                    drawing_states = [];
+                    drawing_badness = (fun _ -> 0.) } ]) ]
+
+  let small c =
+    [envOf (fun (env : Typography.Document.environment) ->
+        { env with size = env.size *. 0.87 })]
+    @ c
+
+  let tp_text scale gap s =
+    (vspaceBefore gap)
+    @ centered ([envOf (fun (env : Typography.Document.environment) ->
+          { env with size = env.size *. scale })] @ [tT s])
+
+  let tp_footer gap s =
+    (vspaceBefore gap) @ centered (small [tT s])
+)
+
+\tp_rules(0.71)(0.24)(0.47)(13.29)
+
+\tp_text(2.4)(2.71)("Patoline")
+
+\tp_text(2.5)(8.58)("中文书籍模板")
+
+\tp_rules(0.20)(0.58)(0.59)(4.01)
+
+\tp_text(1.14)(10.4)("作者：NELSON CHEUNG")
+
+\tp_text(1.0)(4.88)("ZHANGJUNYU@NELSON-CHEUNG.CN")
+
+\tp_footer(99.5)("如果你有任何问题或评论，")
+
+\tp_footer(1.9)("可以通过邮件 ZHANGJUNYU@NELSON-CHEUNG.CN 联系我")
+
+\tp_footer(2.8)("Happy Patoline-ing!")
+
+\pagesBefore(1)
+
+\begin{center}
+\linesBefore(17)
+//谨以此书献给我的家人。//
+\linesAfter(21)
+\end{center}
+
+-- 作者自序 --
+
+这是一个书籍模板。模板希望能够排版平时技术报告的主要内容，如正文、公式、代码等。文案选自《成都理工大学本科生实验报告 Patoline 模板》
+
+\begin{raggedRight}
+Nelson Cheung
+
+2021 年 12 月 17 日
+\end{raggedRight}
+
+-- 目录 --
+
+\TableOfContents
+
+\pagesBefore(1)
+
+== 模板使用基本知识 ==
+
+文档模板严格按照成都理工大学本科生实验报告模板撰写，部分略有不同。纠正了原 word 版本中一些错误，严格按照国际文档书写排版标准重新定制内容格式。本模板适用于**新手**，讲述内容不全面也不够精细，但是对于新人书写实验报告足够了，想要精细学习的读者可以阅读 Patoline 官方文档(https:\/\/patoline.github.io) 开始，进阶可以阅读 Patoline 源码与示例。对本模板有意见或者不懂之处欢迎致电作者，邮箱：549274614@qq.com，或加入本校交流群：77586170。
+
+在开始介绍前首先介绍我们所接触的 Patoline 中的 3 种名词，分别是套装发行版、编译引擎与编译器。
+
+\begin{itemize}
+\item **发行版：**Patoline 是一个基于 OCaml 的排版系统，通过 OPAM（OCaml 包管理器）安装。常见的安装方式有从源码编译安装和通过 OPAM 安装，本文使用 OPAM 安装的 Patoline，下载地址为 https:\/\/opam.ocaml.org\/。
+
+\item **编译引擎：**Patoline 的编译引擎为 patoline 命令，它将 .txp 源文件编译为 PDF。与其他排版系统不同，Patoline 使用 OCaml 作为扩展语言，通过 ##\C## 开头的环境直接嵌入 OCaml 代码来控制排版逻辑。
+
+\item **编辑器：**顾名思义，编辑器就是编辑 txp 文档所用的软件，编写本文档使用的是 VS Code，也是作者推荐的一款编辑器，网上可以免费下载。任何文本编辑器均可编写 Patoline 源文件，编辑器的种类很多，甚至于 word 都可以拿来写 txp 代码，只不过专业编辑器拥有自带的语法高亮、自动补全等快捷方式。
+\end{itemize}
+
+**阅读或使用本模板时建议与 txp 文档对比学习。**
+
+=== 文件结构 ===
+
+解压压缩包后，内含的文件内容与结构如下
+
+\begin{itemize}
+\item **book.pdf：**本文件，内包括写作方法与注意事项；
+
+\item **book.txp：**Patoline 源文件主文件，包括报告整体结构与一些全局定义；
+
+
+
+
+
+\item **figures 文件夹：**文档中各类图片依照命名规范至于此文件夹中，方便统一管理。
+
+\item **FormatZhBook：**Patoline 格式文件，定义了中文书籍的排版格式，包括标题、表格、图片等的自定义命令。
+
+\end{itemize}
+
+=== 文档结构 ===
+
+打开文件 book.txp 文件后，内为文档内容结构
+
+###
+(* #FORMAT FormatZhBook *)
+
+\Caml(
+  (* 标题页、表格、图片等自定义命令定义 *)
+  let rule width thickness () = ...
+  let put_table cols rows = ...
+  let zh_figure ?(width = 60.0) ?(name = "") path caption = ...
+)
+
+\tp_rules(0.71)(0.24)(0.47)(13.29)
+\tp_text(2.4)(2.71)("Patoline")
+\tp_text(2.5)(8.58)("中文书籍模板")
+
+\pagesBefore(1)
+-- 作者自序 --
+-- 目录 --
+\TableOfContents
+\pagesBefore(1)
+
+== 模板使用基本知识 ==
+== 利用 Patoline 排版中文文字 ==
+== 利用 Patoline 排版数学公式 ==
+== 利用 Patoline 排版图片与表格 ==
+== 交叉引用与其他 ==
+== 致谢 ==
+###
+
+文档首行的格式声明称为设置文档格式，本模板使用 FormatZhBook 格式，它定义了中文书籍排版所需的全部自定义命令。
+
+在 ##\C## 开头的环境中称为**导言区**，全局设置与自定义命令均写在此处。
+
+文档正文内容直接书写在源文件中，章节使用##== 标题 ==##语法。Patoline 会自动处理章节编号和目录生成。
+
+文档内容从格式声明开始，到文件结束为止。
+
+== 利用 Patoline 排版中文文字 ==
+
+Patoline 的源文件本质上是文本文档，利用 Windows 自带文本编辑器、note++、word、vim 等文本编辑器均可编写出 txp 文档，至于 VS Code、Sublime Text 等则为专业的代码编辑器，提供了语法高亮、匹配查找、自动补全命令等等用途。
+
+除此之外 Patoline 还可以排版数学公式、图片、表格等等，内容将在后续章节件数。
+
+=== Patoline 基本的命令与代码结构 ===
+
+Patoline 命令均由反斜线##\##开头，并为下列两种形式填空后续：
+
+\begin{itemize}
+\item 由反斜线##\##与一连串字母组成，如##\Patoline##。注意在命令后需加空格或其他非字母作分隔符；
+
+\item 由反斜线##\##由后面的非字母符号组成，不需要分隔符，如##\%##（百分号在 Patoline 中为注释），为转义意。
+\end{itemize}
+
+注意 Patoline 命令对**大小写是十分敏感的**，比如输入##\Patoline##可以得到错落有致的 Patoline 标志而输入##\patoline##或者##\PATOLINE##则会报错，不会得到任何内容。
+
+在 Patoline 中的参数大多在$\{\cdots\}$或是在$[\cdots]$内，如之前所述##FORMAT## 声明。一些命令会在后面附带参数，带参数与不带参数结果不同。
+
+为使一些状态、效果在局部生效，Patoline 引入了**环境**的用法，需要局部生效的内容被输入在环境内，由##\begin{environment name}{arguments}##开始，由##\end{environment}##结束。其中$environment$为环境名称，##\begin{environment}##与##\end{environment}##内的环境名应该一致，$arguments$为可选参数，环境之间允许嵌套使用。
+
+=== Patoline 排版中文 ===
+
+排版中文文章时，与 word 不同，无需关注缩进、标题等等，在 Patoline 中可以方便快捷的设置。一级标题设置代码为##\section{title}##大括号内为一级标题的名称，对应的可以书写二级、三级标题，Patoline 命令分别为##\subsection{title}##与##\subsubsection{title}##。书写时，Patoline 会自动忽略文字中间的空格，在换行时需要多空一行。另外的，Patoline 中的注释为“%”号。下面给出一个简短的例子。
+
+###
+\section{一级标题名称}
+这里是第一章的内容
+% 空一行代表分段，百分号在Patoline中代表注释
+这里是第一章的内容
+\subsection{二级标题名称}
+这里是1.1的内容
+###
+
+用户可以将代码放置在本模板中进行尝试，需要注意的是，在 body 文件夹内新建文档并书写完后，需要在主文档中依照给定格式导入新书写的文档。
+
+在 Patoline 中书写中文，无需注意文章标题的编号，在##\section{title}##类命令中，自带有计数器，可以为标题自动编号，这使得用户无需关注排版格式，更多的关注在文档内容上。
+
+=== 常用环境 ===
+
+==== 居中 ====
+
+在 Patoline 中有两种居中方式：
+
+\begin{itemize}
+\item ##\centering##，在环境内使用，该环境内所有内容居中
+
+\item ##center## 环境，在环境内的所有内容居中
+\end{itemize}
+
+\begin{center}
+当使用了##center##环境时候，环境内的所有内容都会被居中显示，且不会首行缩进。如果有特殊需要还可以使用 flushleft 和 flushright 环境，用于居左或者居右。
+\end{center}
+
+==== 带有编号的显示方式-列表（悬挂缩进） ====
+
+在书写实验报告时，经常会遇到需要分条叙述的方式，在一般书写排版中需要整体悬挂缩进。
+
+在 Patoline 中常用的两种环境，分别是 itemize（无序）环境与 enumerate（有序）两种环境可以互相嵌套使用，使用方法如下：
+
+###
+% itemize环境
+\begin{itemize}
+\item 第一条内容
+\item 第二条内容
+\end{itemize}
+% enumerate环境
+\begin{enumerate}[aa.]
+\item 第一条内容
+\item 第二条内容
+\end{enumerate}
+###
+
+itemize 环境会给每一条内容前加$\bullet$，而 enumerate 环境可以自定义，如(1. 2. 3.或者是 A. B. C.)，对应的设置方法需要在环境后的参数中写##1.##、##A.##，需要注意的是在给 enumerate 环境添加参数时候需要导入 enumerate 包，否则只会有##1. 2. 3.##的序号，并且无法设置样式。
+
+\begin{itemize}
+\item 第一条内容
+\item 第二条内容
+\end{itemize}
+
+\begin{enumerate}
+\item 第一条内容第一条内容第一条内容第一条内容第一条内容第一条内容第一条内容第一条内容第一条内容第一条内容第一条内容第一条内容第一条内容
+
+\item 第二条内容
+\end{enumerate}
+
+==== 代码 ====
+
+在实验报告中，多半部分需要加入对应的程序，在 Patoline 中可以使用三个井号包裹代码块，也可以使用 ##\C## 环境嵌入 OCaml 代码，下面分别叙述。
+
+使用三个井号包裹的代码块使用方法简单，但是不够美观，不能实现语法高亮。
+
+###
+#include<stdio.h>
+int main(){
+    printf("hello world");
+    return 0;
+}
+###
+
+在 Patoline 中，可以通过 ##\C## 环境嵌入 OCaml 代码来自定义排版逻辑，本模板给出了一些自定义命令供用户参考。
+
+###
+#include<stdio.h>
+int main(){
+    printf("hello world");
+    return 0;
+}
+###
+
+在 Patoline 中，代码使用三个井号包裹来实现等宽字体的代码显示。对于语法高亮，Patoline 通过 ##\C## 开头的环境嵌入 OCaml 代码来实现更复杂的排版逻辑。更多内容详见 Patoline 官方文档。
+
+###
+#include<stdio.h>
+int main(){
+    printf("hello world");
+    return 0; /*将Tab替换为空格*/
+}
+###
+
+要排版简短的代码或关键字，可使用##\verb## 命令：##\verb<delim>\Patoline<delim>##。
+
+在该命令中所有的##\##都不起作用。
+
+== 利用 Patoline 排版数学公式 ==
+
+在 Patoline 中排版数学公式使用内置的数学环境，对多行公式的排版提供了有力的支持。在实验报告的书写中，主要以 Patoline 数学环境的内容为主，其余内容不做阐述。
+
+=== 公式排版基础 ===
+
+在 Patoline 中书写数学公式时必须带有数学环境，数学环境内可以识别特殊的命令并且字体改变为数学字体，一般数学环境有两种，书写方式如下：
+
+\begin{itemize}
+\item **行内公式：**行内公式是出现在文字陈述中间的数学公式，需要用双##$##符号括起来，例如我们知道对于矩阵而言，乘法交换率是不成立的，也就是说${\forall} A \neq B$, ${\exists} A \times B \neq B \times A$(##$\forall A \neq B, \exists A \times B \neq B \times A$##)，书写时除去命令后必须的空格外，其他的空格会被一概忽略，至于如何添加空白会在后面叙述。
+
+\item **行间公式：**行间公式是出现在文字陈述段落中间的数学公式，一般需要编号。当行间公式需要编号时可以使用 equation 环境，不需要编号时可以使用简单的方式编写行间公式：##\[myEquation\]##
+\end{itemize}
+
+在数学环境内，不允许有多于的空格与空行，需要强制空格可以使用命令##\,##、##\quad##、##\qquad##等，他们的产生的空白距离有所不同。其次数学环境中的所有字母都会被当做变量处理，采用数学字体显示，当需要在数学环境中输入公式时，可以使用命令##\text{}##。
+
+=== 排版数学公式 ===
+
+在以往的实验报告中，数学公式都会使用 word 中的 mathtype 书写，在较高的版本中可以复制 mathtype 为 Patoline 代码，但这种投机取巧的方法写出来的符号会非常的丑，并且速度不会比直接使用 Patoline 书写快多少。下面，作者会首先叙述一部分必要的知识，其次的内容会以实例的方式展现，需与 tex 文档（源文档）配合学习。
+
+\begin{enumerate}
+\item 上标的表示方式为##a^{2}##，显示结果为$a^2$，当上标内容单一时可以省略大括号，如##a^2##也可以显示为$a^2$，当需要输入符号^时输入##\^##即可。
+
+\item 下表的表示方式为##a_{2}##，显示结果为$a_2$，当小标内容单一时也可以省略大括号，当需要输入符号_时输入##\_##即可。
+
+\item 同时需要上下标时书写没有先后顺序，##a^{x+y}_{x_1}##与##a_{x_1}^{x+y}##结果都是$a_{x_1}^{x+y}$。
+
+\item 对于巨运算符，如果直接书写##\sum^{n}_{i=1}n!##会容易显示为$\sum_{i=1}^n n!$，而添加命令##\limits##后，##\sum\limits^{n}_{i=1}n!##则会显示为$\sum_{i=1}^n n!$。
+
+\item 书写分数的命令为##\frac{text}{den}##，其中 text 为分子部分，den 部分为分母部分，如##\frac{1}{2}##会显示为$ {1 \over 2} $，如果觉得分数略小可以适当的使用命令##\dfrac{text}{den}##显示为$ {1 \over 2} $。
+
+\item 导数直接使用单引号即可##f' f'' f'''##显示为$f' f'' f'''$，常见的运算符号与巨运算符如##+ - \times \div = \sum \prod \int##，分别为${+}$ ${-}$ ${\times}$ ${\divide}$ ${=}$ ${\sum}$ ${\prod}$ ${\int}$，更多的基础符号见 Patoline 官方文档，下面也给出了支持所有的符号大全与手写符号识别的网址。
+
+Patoline 支持的符号大全：
+
+http:\/\/mirrors.ctan.org\/info\/symbols\/comprehensive\/symbols-a4.pdf
+
+手写符号识别：
+
+http:\/\/detexify.kirelabs.org\/classify.html
+
+\item 需要输入大括号时需输入##\{\}##。
+\end{enumerate}
+
+下面会用一些函数、习题、定理、证明过程或是计算过程作为实例：
+
+**Stolz 定理**：设$\{y_n\}$是严格单调增加的正无穷大量，且
+
+\[ \lim_{n → ∞} {x_n - x_{n-1} \over y_n - y_{n-1}} = a \hspace(0.5) (a\mathsText{可以为有限量，} +∞ \mathsText{与} -∞)\mathsText{，} \]
+
+则
+
+\[ \lim_{n → ∞} {x_n \over y_n} = a\mathsText{。} \]
+
+求极限
+
+\[ \lim_{n → ∞} {1^k + 2^k + \cdots + n^k \over n^{k+1}} (k\mathsText{为正整数})\mathsText{。} \]
+
+由已知，可得
+
+\display_equation(<$ \lim_{n → ∞} {a^n \over n!} = 0\mathsText{。} $>)
+
+\label("equ1")
+
+设函数
+
+\[ f(x) = ( {x + \exp^{ {1 \over x}} \over 1 + \exp^{ {4 \over x}}} + {\sin x \over |x|} )\mathsText{，} \]
+
+问当$x → 0$时，$f(x)$的极限是否存在？
+
+设$f(x)$在$[a, b]$上连续，且$f(x) > 0$，证明
+
+\display_equation(<$ {1 \over b - a} {\int_a^b \ln f(x) \mathrm{d} x} \leq \ln ( {1 \over b - a} {\int_a^b f(x) \mathrm{d} x} )\mathsText{。} $>)
+
+常用的希腊字符如下：
+
+\[ α β γ δ ε ζ θ η μ ξ π σ ω φ \]
+
+=== 多行公式的排版 ===
+
+在书写报告时，时长会遇到多行排版，如矩阵、分段函数等等，在下文将介绍部分常用的环境，用于排版多行公式。
+
+多行排版的环境使用方式大致类似，需要对齐的位置利用##\&##分割，行末需要使用##\\##分割。
+
+==== align 环境 ====
+
+align 环境会给环境内的每一行公式编号，去掉编号可以使用##\notag##，使用方式如下：
+
+###
+\begin{align}
+a & = b + c \\
+a & = b + c \\
+x + y & = d + e \notag
+\end{align}
+###
+
+显示为
+
+\display_equation(<$ \matrix{ a & {=} b + c \\ a & {=} b + c \\ x + y & {=} d + e } $>)
+
+align 环境会在##\&##符号处对齐，多个##\&##会分段对齐。
+
+==== aligned 环境 ====
+
+与 align 环境不同，aligned 环境会给公式整体一个编号，而不是每一行都有编号，同时需要 equation 环境套在外面。
+
+###
+\begin{equation}
+    \begin{aligned}
+        a & = b + c \\
+        x + y & = d + e
+    \end{aligned}
+\end{equation}
+###
+
+显示为
+
+\display_equation(<$ \matrix{ a & {=} b + c \\ x + y & {=} d + e } $>)
+
+split 环境和 aligned 环境用法类似，也用于和 equation 环境套用，区别是 split 只能将每行的一个公式分两栏，aligned 允许每行多个公式多栏。
+
+==== array 环境 ====
+
+array 环境用于排版数学数组、矩阵等，数组可作为一个公式块，在外套用##\left##、##\right##等定界符。跟在环境名后的##{cccc}##意为矩阵 4 列均居中（c 代表居中、l 代表左对齐、r 代表右对齐，更仔细的将在表格排版处讲述），具体实例如下：
+
+###
+\[ 
+\mathbf{X} = \left(
+\begin{array}{cccc}
+x_{11} & x_{12} & \ldots & x_{1n}\\
+x_{21} & x_{22} & \ldots & x_{2n}\\
+\vdots & \vdots & \ddots & \vdots\\
+x_{n1} & x_{n2} & \ldots & x_{nn}\\
+\end{array} \right) 
+\]
+###
+
+显示为
+
+\[ \mathbf{X} = ( \matrix{ x_{11} & x_{12} & \ldots & x_{1n} \\ x_{21} & x_{22} & \ldots & x_{2n} \\ \vdots & \vdots & \ddots & \vdots \\ x_{n1} & x_{n2} & \ldots & x_{nn} } ) \]
+
+其中，##\left(##、##\right)##就是矩阵的定界符，小括号可以替换为##[ {##等。
+
+==== case 环境 ====
+
+借用之前所述的定界符，使用单侧定界符可以用来书写分段函数，如$\mathbf{Riemann}$函数可以书写为：
+
+###
+\[
+\mathbf{R}(x)=\left\{\begin{array}{ll}
+\frac{1}{p},&x=\frac{q}{p}(p\in \mathbf{N}^{+},q\in \mathbf{Z}-\{0\},p,q\text{互质}),\\
+1,&x=0,\\
+0,&x\text{为无理数}
+\end{array}\right.
+\]
+###
+
+显示为
+
+\display_equation(<$ \mathbf{R}(x) = \{ \matrix{ {1 \over p}\mathsText{,} & x = {q \over p}(p ∈ \mathbb{N}^{+}, q ∈ \mathbb{Z} - \{0\}, p, q\mathsText{互质})\mathsText{,} \\ 1\mathsText{,} & x = 0\mathsText{,} \\ 0\mathsText{,} & x\mathsText{为无理数} } \right. $>)
+
+对于这类分段函数，可以使用更简单的 cases 环境来完成
+
+###
+\[ 
+\mathbf{R}(x)=\begin{cases}
+\frac{1}{p},&x=\frac{q}{p}(p\in \mathbf{N}^{+},q\in \mathbf{Z}-\{0\},p,q\text{互质}),\\
+1,&x=0,\\
+0,&x\text{为无理数}
+\end{cases}
+\]
+###
+
+显示为
+
+\[ \mathbf{R}(x) = \matrix{ {1 \over p}\mathsText{,} & x = {q \over p}(p ∈ \mathbb{N}^{+}, q ∈ \mathbb{Z} - \{0\}, p, q\mathsText{互质})\mathsText{,} \\ 1\mathsText{,} & x = 0\mathsText{,} \\ 0\mathsText{,} & x\mathsText{为无理数} }\]
+
+== 利用 Patoline 排版图片与表格 ==
+
+在介绍如何排版表格与图片时，先介绍浮动体的概念
+
+=== 浮动体 ===
+
+在排版中文文档或者实验报告时，尤其是在今后的论文、书籍撰写中，表格与图片均称为**浮动体**。顾名思义，浮动体在文中的位置不是固定的，美观起见需要自动放在合适的位置，在需要的时候做引用。在排版时，作者需要优先排版文字内容，最后再关注图片位置，不应固定死图片的位置，除了造成大片空白也会使得整体不够美观。
+
+==== 浮动体的用法 ====
+
+一般来说浮动体环境有两种，figure 环境与 table 环境，分别用于浮动图片与表格，用法如下：
+
+###
+\begin{figure}[<placement>]
+content...
+\end{figure}
+###
+
+表格与图片用法相同，跟在环境名后的$placement$提供了浮动体在页面中允许排版的位置，默认为 tbp，意为允许在顶部、底部、单独成页排版。
+
+\Caml(
+  let r = ruleRow 2 in
+  put_table 2
+    [| r;
+       [| paragraph [tT "h"]; paragraph [tT "代码所处的当前位置"] |];
+       [| paragraph [tT "t"]; paragraph [tT "页面顶端"] |];
+       [| paragraph [tT "b"]; paragraph [tT "页码底部"] |];
+       [| paragraph [tT "p"]; paragraph [tT "单独成页"] |];
+       [| paragraph [tT "!"]; paragraph [tT "在决定位置时忽略限制"] |];
+       r |])
+
+==== 浮动体的标题 ====
+
+在浮动体中，利用##\caption{...}##添加标题，用法与##\chapter{...}##类似，添加的标题会自动编号，figure 会在内容前显示如“图 1”的样式，表格类似。
+
+紧跟着##\caption{...}##后面可以添加##\label{key}##命令交叉引用，具体在后面章节叙述。图片的排版
+
+Patoline 本身支持插图功能，可以直接添加 .jpg.pdf.eps.png.bmp 格式的图片，
+
+可以使用命令##\zh_figure~name:...~width:... "figures/filename.png" "caption"##插入图片，filename 是图片的位置，本模板中需要将图片放在 figures 文件夹中，并使用相对路径调用。width 是需要的参数，如设置图片宽为 70.0 需要在该位置书写##~width:70.0##，具体的参数见表下表。
+
+\Caml(
+  let r = ruleRow 2 in
+  put_table 2
+    [| r;
+       [| paragraph [tT "参数"]; paragraph [tT "含义"] |];
+       [| paragraph [tT "width=h"]; paragraph [tT "将图片缩放到宽度为 h"] |];
+       [| paragraph [tT "height=h"]; paragraph [tT "将图片缩放到高度为 h"] |];
+       [| paragraph [tT "scale=h"]; paragraph [tT "将图片按照原尺寸缩放 h 倍"] |];
+       [| paragraph [tT "angle=h"]; paragraph [tT "令图片逆时针旋转 h 度"] |];
+       r |])
+
+###
+\Caml(let zh_figure_test = (zh_figure ~name:"fig1" ~width:70.0 "figures/example-image-A.png" "导入的图片"; []))
+
+\zh_figure_test
+###
+
+需要排版并排子图的场景，可以使用 Patoline 的 ##\C## 环境自定义实现，具体参考 Patoline 官方文档。
+
+在实验报告或者论文中，表格是比不可少的部分。下面给出一个简单的表格排版实例：
+
+\table_caption([tT "表格排版实例"])
+
+\label("tab1")
+
+\Caml(
+  let r = ruleRow 3 in
+  put_table 3
+    [| r;
+       [| paragraph [tT "AAA"]; paragraph [tT "B"]; paragraph [tT "CCC"] |];
+       [| paragraph [tT "A"]; paragraph [tT "BBB"]; paragraph [tT "C"] |];
+       r |])
+
+显示为表\ref_table("tab1")。
+
+与多行公式类似，Patoline 表格的列由 put_table 函数的参数决定，具体参考 Patoline 手册。行之间需要添加横线可以使用 ruleRow 函数。这里只讲述简单的部分。
+
+对于初次使用者而言，表格排版是一个很大的难题。在 Patoline 中，表格通过 put_table 函数构建，需要指定列数和每行的内容，熟练后可以快速绘制出想要的表格。
+
+== 交叉引用与其他 ==
+
+=== 交叉引用 ===
+
+在上一章我们强调了表格与图片需要在页面中自动寻找合适的位置，而不是固定在某个位置，那么我们需要引用表格内容时就不能用“如下表”类似的话语，而需要用到交叉引用，也就是“如图 1”类似的文字。
+
+细心的读者可以发现在浮动体环境内作者均加有##\label{key}##的语句，这是为了后文方便引用图片内容而写，每个图片、表格的$key$值必须唯一。
+
+在做引用的时候需要用到命令##\ref{label}##，$label$处填写唯一的$key$值，这样就可以做到交叉引用，更方便的是在 pdf 阅读时，可以通过单击索引小标来定位到该图片处，如这里引用之前的图片就可以写如图\ref_figure("fig1")。
+
+除了浮动体可以做交叉引用，公式也是可以做交叉引用的，这里引用文章出现的第一个公式可以写如公式\ref_equation("equ1")。
+
+需要注意的是，目录与交叉引用需要至少编译两次，也就是点两次编译按钮。
+
+由于本科实验报告中不要求添加参考文献，这里不做多于的叙述，详细的在 Patoline 官方文档中也有叙述。
+
+=== 其他 ===
+
+这里将会叙述一些其他的知识，有的是在作者平时写作中遇到的，有的是模板写作中的问题，本章节会即时更新。
+
+按照学校模板要求，在封面字体需为仿宋 GB2312 加粗，事实上，字体的加粗并不想 word 中强制加粗（会出现很多很多很多错误），而是用其他粗体的字体来代替，因此本文由于版权限制，使用黑体代替格式中要求的字体。
+
+在使用 matlab 绘图时，可以在图例、坐标轴等地方利用 Patoline 公式写出分式等符号，但是 matlab 中只允许一部分 Patoline 代码，并不是全部的数学公式代码都可以用。
+
+Patoline 有相当多的宏包用于不同的环境，神经网络、化学、生物等等学科的图都可以在宏包中找到。
+
+== 致谢 ==
+
+感谢成都理工大学的 Patoline 模板给予了笔者 Patoline 排版的启蒙。
+
+\pagesBefore(1)
+
+\attachment("figures/attachment_p1.png")
