@@ -4,7 +4,12 @@ let share =
       let env = Unix.environment () in
       Unix.open_process_full "opam var share" env
     in
-    let res = input_line ic in
+    (* [opam var share] prints CRLF on Windows: [input_line] only strips
+       the LF, so drop any trailing CR as well or every path derived
+       from [share] silently points at a non-existent "share\r"
+       directory (which in turn makes the default grammar, hyphenation
+       dictionaries and vendored fonts unfindable). *)
+    let res = String.trim (input_line ic) in
     ignore (Unix.close_process_full cs);
     res
   with _ -> "/usr/local/share"
@@ -27,6 +32,7 @@ let formats =
   ; "FormatSlides"
   ; "FormatMemoire"
   ; "FormatLivre"
+  ; "FormatZhBook"
   ; "LMFormat"
   ; "FormatArticle" ]
 
