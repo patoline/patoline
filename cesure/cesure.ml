@@ -81,7 +81,7 @@ let build_cesure_file fn =
   let tree = List.fold_left Hyphen.insert Hyphen.empty pa in
   let tree = List.fold_left Hyphen.insert_exception tree hy in
   let fn' = (try Filename.chop_extension fn with | _ -> fn) ^ ".hdict" in
-  let o = open_out fn' in output_value o tree; close_out o
+  let o = open_out_bin fn' in output_value o tree; close_out o
 let _ =
   if (Array.length Sys.argv) > 1
   then
