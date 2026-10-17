@@ -191,28 +191,20 @@ let cfg =
     }
 let _ = if !do_clean then Build.clean_build_dirs cfg
 let _ =
-  (* Handle cache maintenance flags before [Build.compile] runs. *)
-  if !do_clean_cache then
+  if !do_clean_cache then begin
     let cache_fn = Build.cache_file (List.hd cfg.path) in
-    if Sys.file_exists cache_fn then
-      (Unix.unlink cache_fn;
-       if (!Build.verbose) > 0 then
-         Printf.printf "[CACHE] removed %S\n%!" cache_fn);
-  let cfg =
-    if !do_rebuild then
-      (* Force every input to look "changed" by appending a marker
-         to [opt_args]. The hash cache compares binary mtime + file
-         digests, so changing the arg list alone is not enough; the
-         simplest portable way is to remove cache.bin (the user
-         would normally pair [--rebuild] with [--clean-cache], but we
-         do it automatically here). *)
-      let cache_fn = Build.cache_file (List.hd cfg.path) in
-      (if Sys.file_exists cache_fn then Unix.unlink cache_fn;
-       if (!Build.verbose) > 0 then
-         Printf.printf "[CACHE] removed %S (--rebuild)\n%!" cache_fn;
-       cfg)
-    else cfg
-  in
+    if Sys.file_exists cache_fn then begin
+      Unix.unlink cache_fn;
+      if (!Build.verbose) > 0 then
+        Printf.printf "[CACHE] removed %S\n%!" cache_fn
+    end
+  end;
+  if !do_rebuild then begin
+    let cache_fn = Build.cache_file (List.hd cfg.path) in
+    if Sys.file_exists cache_fn then Unix.unlink cache_fn;
+    if (!Build.verbose) > 0 then
+      Printf.printf "[CACHE] removed %S (--rebuild)\n%!" cache_fn
+  end;
   match !file with
   | None ->
       if (!Build.verbose) > 1 then Printf.eprintf "Nothing to do.\n%!";
