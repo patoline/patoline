@@ -16,7 +16,7 @@
 (rule
   (targets DefaultGrammar.pdf)
   (action (setenv UNICODE_DATA_FILE ../unicodelib/unicode.data
-    (run ./DefaultGrammar_.exe --quiet --driver Pdf
+    (run ./DefaultGrammar_.exe --driver Pdf
            --extra-fonts-dir %{project_root}/fonts
            --extra-hyph-dir %{project_root}/hyphs)))
   (deps
