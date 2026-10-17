@@ -188,6 +188,13 @@ let is_cff : font -> bool = function
 let ligature_callbacks_from_gsub (font : font)
     : (glyph_id list -> glyph_id list) list =
   let make_ligature_local ids lig_glyph glyphs =
+    (* Match the ligature pattern at the *current* position of the
+       remaining list (the previous version always tested the original
+       [glyphs] closure variable: it either missed every ligature after
+       the first, or — when the pattern was a prefix — recursed
+       forever and crashed with [Stack overflow] on long paragraphs).
+       The loop is tail-recursive with an accumulator so its depth is
+       constant. *)
     let rec match_lig l x = match (l, x) with
       | [], [] -> Some []
       | _ :: _, [] -> None
@@ -195,14 +202,14 @@ let ligature_callbacks_from_gsub (font : font)
       | h1 :: s1, h2 :: s2 when h1 = h2.glyph_index -> match_lig s1 s2
       | _ :: _, _ :: _ -> None
     in
-    let rec loop = function
-      | [] -> []
-      | h :: s ->
-          (match match_lig ids glyphs with
-           | None -> h :: loop s
-           | Some g -> lig_glyph :: loop g)
+    let rec loop acc = function
+      | [] -> List.rev acc
+      | ((h :: s) as cur) ->
+          (match match_lig ids cur with
+           | None -> loop (h :: acc) s
+           | Some g -> loop (lig_glyph :: acc) g)
     in
-    loop glyphs
+    loop [] glyphs
   in
   match font with
   | CFF _ -> []
