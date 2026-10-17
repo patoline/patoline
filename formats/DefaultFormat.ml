@@ -40,6 +40,49 @@ let findFont = ConfigFindFont.findFont
 
 let sprint_page_number = ref string_of_int
 let page_number_vpos   = ref 30.0
+
+(** P3-3: running heads (页眉).  When [running_heads] is [false]
+    (historical behaviour) every page gets the folio centred at the
+    bottom.  When [true], pages behave like a LaTeX [book] class with
+    the [headings] page style:
+
+      - page 1 (title page): no folio at all;
+      - chapter-opening pages: plain style (folio centred at the
+        bottom, [page_number_vpos] from the page edge);
+      - other pages: folio + running titles, odd pages show
+        [section mark left / folio right], even pages show
+        [folio left / chapter mark right], with the head baseline
+        [running_head_vpos] millimetres from the top of the page;
+      - page numbers are lowercase roman while the main matter has
+        not started (i.e. before the first numbered chapter), then
+        arabic starting from 1 on that chapter's page. *)
+let running_heads = ref false
+let running_head_vpos = ref 29.0
+
+(** P3-3b: horizontal anchors of the running head.  Mirrored books
+    put the head text at the (mirrored) text margins; the defaults
+    reproduce the historical centred behaviour.  [head_left_odd] is
+    the left anchor of the head text on right-hand pages (where the
+    text block starts at the inner margin), [head_left_even] on
+    left-hand pages. *)
+let head_left_odd = ref (-1.0)
+let head_left_even = ref (-1.0)
+
+(** Does the UTF-8 string start with “第” (U+7B2C, bytes e7 ac ac)?
+    Used to recognise numbered chapter headings (第一章 …) when
+    deciding where the arabic main-matter numbering begins. *)
+let starts_with_dai s =
+  String.length s >= 3 && s.[0] = '\xe7' && s.[1] = '\xac' && s.[2] = '\xac'
+
+(** Lowercase roman numerals for the front matter. *)
+let roman_text n =
+  let n = ref n in
+  let buf = Buffer.create 16 in
+  let add v s = while !n >= v do Buffer.add_string buf s; n := !n - v done in
+  add 1000 "m"; add 900 "cm"; add 500 "d"; add 400 "cd";
+  add 100 "c"; add 90 "xc"; add 50 "l"; add 40 "xl";
+  add 10 "x"; add 9 "ix"; add 5 "v"; add 4 "iv"; add 1 "i";
+  Buffer.contents buf
 let max_iterations     = ref patoconfig.max_iter
 let quiet = ref false
 
@@ -94,6 +137,10 @@ let spec =
     , "Adds directories to the search path for hyphenation dictionaries")
   ; ( "--hyphen-lang"      , Arg.String (fun l -> hyphen_lang := l)
     , "<lang> Hyphenation language (e.g. en-us, fr, de, es, it)")
+  ; ( "--cjk-latin-space"  , Arg.Float (fun x -> cjk_latin_space := x)
+    , "<f> Nominal CJK/Latin boundary gap as a fraction of the font size (default 0.25)")
+  ; ( "--cjk-justify-stretch", Arg.Float (fun x -> cjk_justify_stretch := x)
+    , "<f> Max stretch of inter-character CJK glue as a fraction of the font size (default 0.5)")
   ; ( "--quiet"            , Arg.Set quiet
     , "Turn off compilation messages")
   ;
@@ -271,6 +318,84 @@ let wenQuanYiZenHei =
     Caps, (m r, m i);
   ]
 
+(** System font families for Chinese typesetting (Windows: resolved
+    through [ConfigFindFont.system_font_dirs]).
+
+    [songTi] (宋体) is the book-body family: its bold slot points at
+    SimHei (黑体), following the usual Chinese convention that “bold
+    Song” is rendered with a Hei face.  Italics map to the upright
+    face, as CJK fonts have no true italics. *)
+let songTi =
+  let m = simpleFamilyMember in
+  let r () = Fonts.loadFont (findFont FontPattern.({ family="SimSun"; slant=Roman; weight=Regular })) in
+  let i () = Fonts.loadFont (findFont FontPattern.({ family="SimSun"; slant=Italic; weight=Regular })) in
+  let h () = Fonts.loadFont (findFont FontPattern.({ family="SimHei"; slant=Roman; weight=Regular })) in
+  [ Regular, (m r, m i);
+    Bold, (m h, m h);
+    Caps, (m r, m i) ]
+
+(** 黑体: heading family, no italic/small-caps variants of its own. *)
+let heiTi =
+  let m = simpleFamilyMember in
+  let h () = Fonts.loadFont (findFont FontPattern.({ family="SimHei"; slant=Roman; weight=Regular })) in
+  [ Regular, (m h, m h);
+    Bold, (m h, m h);
+    Caps, (m h, m h) ]
+
+(** 楷体 *)
+let kaiTi =
+  let m = simpleFamilyMember in
+  let r () = Fonts.loadFont (findFont FontPattern.({ family="KaiTi"; slant=Roman; weight=Regular })) in
+  [ Regular, (m r, m r);
+    Bold, (m r, m r);
+    Caps, (m r, m r) ]
+
+(** 仿宋 *)
+let fangSong =
+  let m = simpleFamilyMember in
+  let r () = Fonts.loadFont (findFont FontPattern.({ family="FangSong"; slant=Roman; weight=Regular })) in
+  [ Regular, (m r, m r);
+    Bold, (m r, m r);
+    Caps, (m r, m r) ]
+
+(** Times New Roman: the western face of the classic Chinese book
+    setup (ctex fontset=windows).  On Linux it falls back to whatever
+    the vendored fonts provide through [findFont]. *)
+let timesNewRoman = simpleFont "Times New Roman"
+
+(** Fandol fonts — the default [ctex] font set and the exact fonts of
+    the reference book template: FandolSong 宋体 (body, with a real
+    bold weight), FandolHei 黑体, FandolKai 楷体, FandolFang 仿宋. *)
+let fandolSong =
+  let m = simpleFamilyMember in
+  let r () = Fonts.loadFont (findFont FontPattern.({ family="FandolSong"; slant=Roman; weight=Regular })) in
+  let i () = Fonts.loadFont (findFont FontPattern.({ family="FandolSong"; slant=Italic; weight=Regular })) in
+  let b () = Fonts.loadFont (findFont FontPattern.({ family="FandolSong"; slant=Roman; weight=Bold })) in
+  let bi () = Fonts.loadFont (findFont FontPattern.({ family="FandolSong"; slant=Italic; weight=Bold })) in
+  [ Regular, (m r, m i);
+    Bold, (m b, m bi);
+    Caps, (m r, m i) ]
+
+let fandolHei =
+  let m = simpleFamilyMember in
+  let r () = Fonts.loadFont (findFont FontPattern.({ family="FandolHei"; slant=Roman; weight=Regular })) in
+  let b () = Fonts.loadFont (findFont FontPattern.({ family="FandolHei"; slant=Roman; weight=Bold })) in
+  [ Regular, (m r, m r);
+    Bold, (m b, m b);
+    Caps, (m r, m r) ]
+
+let fandolKai =
+  let m = simpleFamilyMember in
+  let r () = Fonts.loadFont (findFont FontPattern.({ family="FandolKai"; slant=Roman; weight=Regular })) in
+  [ Regular, (m r, m r);
+    Bold, (m r, m r);
+    Caps, (m r, m r) ]
+
+(** Latin Modern (Computer Modern OpenType) — the default western
+    text fonts of XeLaTeX documents and of the reference book. *)
+let latinModernRoman = simpleFont "Latin Modern Roman"
+let latinModernMono = simpleFont "Latin Modern Mono"
+
 (** P1-7: Default body font chain. The historical behaviour was to
     use [wenQuanYiZenHei] when available and fall back to [alegreya]
     otherwise. The [Document] environment already carries
@@ -279,17 +404,31 @@ let wenQuanYiZenHei =
     Future work will add per-glyph fallback across distinct families
     (e.g. WQY + Alegreya), see the [P1-7] entry in [CHANGES.md]. *)
 let fallback_chain () =
-  try
-    ignore (findFont FontPattern.({ family="WenQuanYi Zen Hei"; slant=Roman; weight=Regular }));
-    [wenQuanYiZenHei; alegreya]
-  with _ ->
-    if not !quiet then
-      Printf.eprintf
-        "Warning: WenQuanYi Zen Hei not found; CJK body text may show missing glyphs. Install fonts-wqy-zenhei (Debian/Ubuntu) or add --extra-fonts-dir with a folder containing wqy-zenhei.ttc.\n\
-         %!";
-    [alegreya]
+  let cjk =
+    try
+      ignore (findFont FontPattern.({ family="WenQuanYi Zen Hei"; slant=Roman; weight=Regular }));
+      Some wenQuanYiZenHei
+    with _ ->
+      (try
+         ignore (findFont FontPattern.({ family="SimSun"; slant=Roman; weight=Regular }));
+         Some songTi
+       with _ -> None)
+  in
+  match cjk with
+  | Some cjk ->
+      (* Latin first: glyphs absent from the Latin face fall through to
+         the CJK family, giving Alegreya+SimSun/WQY mixed typesetting. *)
+      [alegreya; cjk]
+  | None ->
+      if not !quiet then
+        Printf.eprintf
+          "Warning: no CJK font found (WenQuanYi Zen Hei / SimSun); CJK body text may show missing glyphs. On Debian/Ubuntu install fonts-wqy-zenhei; on Windows SimSun is normally present. You may also add --extra-fonts-dir with a .ttc/.ttf CJK font.\n\
+           %!";
+      [alegreya]
 
-let default_font_family = List.hd (fallback_chain ())
+(* Merge the whole chain into the variant table so that [gl_of_str]
+   can fall back from family to family for missing glyphs. *)
+let default_font_family = List.concat (fallback_chain ())
 
 let all_fonts = [alegreya; texgyrecursor] (* trick to force same type *)
 
@@ -1460,6 +1599,14 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
           let destinations=ref StrMap.empty in
           let urilinks=ref None in
 
+          (* P3-3: running-head marks and front/main numbering state.
+             These are function-local, so every resolve pass starts
+             from a clean state. *)
+          let chapter_mark = ref "" in
+          let section_mark = ref "" in
+          let main_matter_page = ref (-1) in
+          let page_is_chapter_start = ref false in
+
           let continued_link=ref None in
             (*
               let o=open_out "graph" in
@@ -1482,6 +1629,9 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                                    layout.frame_y1-.layout.frame_y0);
                        Driver.contents=[] }
             in
+            (* P3-3: a new page starts without any structural mark; the
+               scan below may set it again while drawing this page. *)
+            page_is_chapter_start := false;
 
             let endlink cont=
               continued_link:=None;
@@ -1558,6 +1708,38 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
                     ) else if l.line.paragraph<Array.length paragraphs then (
                       let line=l.line in
                       let param=l.line_params in
+                      (* P3-3: pick up running-head marks from structural
+                         markers carried by heading lines. *)
+                      if !running_heads then begin
+                        let arr = paragraphs.(line.paragraph) in
+                        let stop = min line.lineEnd (Array.length arr) in
+                        let mpath = ref None and mtitle = ref None in
+                        for k = line.lineStart to stop - 1 do
+                          (match arr.(k) with
+                           | Marker (Structure p) ->
+                               if !mpath = None then mpath := Some p
+                           | Marker (HeadTitle t) ->
+                               if !mtitle = None then mtitle := Some t
+                           | _ -> ())
+                        done;
+                        (match !mpath with
+                         | Some p when List.length p + 1 = 1 ->
+                             (match !mtitle with
+                              | Some t -> chapter_mark := t
+                              | None -> ());
+                             section_mark := "";
+                             page_is_chapter_start := true;
+                             if !main_matter_page < 0 &&
+                                (match !mtitle with
+                                 | Some t -> starts_with_dai t
+                                 | None -> false)
+                             then main_matter_page := i
+                         | Some p when List.length p + 1 = 2 ->
+                             (match !mtitle with
+                              | Some t -> section_mark := t
+                              | None -> ())
+                         | _ -> ())
+                      end;
                       if line.paragraph<> !par then (
                         par:=line.paragraph;
                         positions.(!par)<-
@@ -1726,12 +1908,79 @@ let figure_here ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawin
               );
               *)
 
-            let num=boxify_scoped defaultEnv [tT (!sprint_page_number (i+1))] in
-            let _,w,_=boxes_interval (Array.of_list num) in
-            page.contents<-
-                List.map (translate ((fst page.size-.w)/.2.) !page_number_vpos)
-              (draw_boxes env num)
-            @page.contents;
+            (* P4-4: the reference book centres folios within the
+               *text* block (they line up with the text margins), and
+               only falls back to page centring when no margins are
+               configured. *)
+            let folio_x w =
+              let anchor =
+                if (i + 1) mod 2 = 1 then !head_left_odd else !head_left_even
+              in
+              if anchor >= 0. then anchor +. (env.normalMeasure -. w) /. 2.
+              else (fst page.size -. w) /. 2.
+            in
+            if not !running_heads then begin
+              (* Historical behaviour: folio centred at the bottom of
+                 every page. *)
+              let num=boxify_scoped defaultEnv [tT (!sprint_page_number (i+1))] in
+              let _,w,_=boxes_interval (Array.of_list num) in
+              page.contents<-
+                  List.map (translate (folio_x w) !page_number_vpos)
+                (draw_boxes env num)
+              @page.contents
+            end else if i > 0 then begin
+              (* P3-3: LaTeX book “headings” page style. *)
+              let folio_text =
+                if !main_matter_page >= 0 && i >= !main_matter_page then
+                  string_of_int (i - !main_matter_page + 1)
+                else
+                  roman_text (i + 1)
+              in
+              if !page_is_chapter_start then begin
+                (* plain style: folio centred at the page bottom *)
+                let num=boxify_scoped defaultEnv [tT folio_text] in
+                let _,w,_=boxes_interval (Array.of_list num) in
+                page.contents<-
+                    List.map (translate (folio_x w) !page_number_vpos)
+                  (draw_boxes env num)
+                @page.contents
+              end else begin
+                let head_env = { env with size = env.size *. 0.9 } in
+                (* P3-3b: mirrored anchors when configured, else the
+                   historical centred box. *)
+                let anchor =
+                  if (i + 1) mod 2 = 1 then !head_left_odd else !head_left_even
+                in
+                let text_left =
+                  if anchor >= 0. then anchor
+                  else (fst page.size -. env.normalMeasure) /. 2.
+                in
+                let text_right = text_left +. env.normalMeasure in
+                let head_y = (snd page.size) -. !running_head_vpos in
+                let put s x align_right =
+                  if s <> "" then begin
+                    let bs = boxify_scoped head_env [tT s] in
+                    let _,w,_ = boxes_interval (Array.of_list bs) in
+                    let x = if align_right then x -. w else x in
+                    page.contents <-
+                      List.map (translate x head_y) (draw_boxes head_env bs)
+                      @ page.contents
+                  end
+                in
+                if (i + 1) mod 2 = 1 then begin
+                  (* right-hand (odd) page: section mark left, folio right *)
+                  put
+                    (if !section_mark = "" then !chapter_mark
+                     else !section_mark)
+                    text_left false;
+                  put folio_text text_right true
+                end else begin
+                  (* left-hand (even) page: folio left, chapter mark right *)
+                  put folio_text text_left false;
+                  put !chapter_mark text_right true
+                end
+              end
+            end;
 
             page.contents<-List.rev page.contents;
             page
