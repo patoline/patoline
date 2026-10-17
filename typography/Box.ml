@@ -72,6 +72,11 @@ and marker =
   | FigureRef of int
   | Pageref   of string
   | Structure of int list
+  | HeadTitle of string
+  (** P3-3: display text of a structural heading (“第一章 标题” /
+      “1.1 标题”), emitted by heading paragraphs next to their
+      [Structure] marker so that running heads can pick it up while
+      drawing pages.  Zero width, never breaks a line. *)
   | BeginLink of kind
   | EndLink
   | AlignmentMark
