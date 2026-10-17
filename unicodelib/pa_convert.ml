@@ -25,7 +25,7 @@ module Ext(In:Extension) =
         let next = (str', pos') in
         match (state, c) with
         | (_, '\255') -> cur
-        | (`Ini, (' '|'\t'|'\r')) -> fn `Ini next
+        | (`Ini, (' '|'\t'|'\r'|'\n'|'\026')) -> fn `Ini next
         | (`Ini, '#') -> fn `Com next
         | (`Ini, _) -> cur
         | (`Com, '\n') -> fn `Ini next
